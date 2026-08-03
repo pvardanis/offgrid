@@ -31,6 +31,27 @@ def test_a_missing_wired_limit_becomes_none():
     assert parse(BRAND, MEMSIZE, None).wired_limit_bytes is None
 
 
+def test_a_wired_limit_above_physical_memory_cannot_conjure_memory():
+    # iogpu.wired_limit_mb takes any value the user types, including a typo.
+    absurd = parse(BRAND, str(16 * GIB), str(512 * 1024))
+    assert absurd.usable_bytes == 16 * GIB
+
+
+def test_the_default_share_leaves_most_of_the_machine_usable():
+    # Guards the constant from below: shrinking it would refuse models that fit.
+    assert parse(BRAND, MEMSIZE, "0").usable_bytes == pytest.approx(48 * GIB)
+
+
+def test_a_machine_reporting_no_memory_is_refused():
+    with pytest.raises(UnsupportedMachineError, match="memory"):
+        parse(BRAND, "0", None)
+
+
+def test_unreadable_memory_is_refused_rather_than_guessed():
+    with pytest.raises(UnsupportedMachineError, match=r"hw\.memsize"):
+        parse(BRAND, "not-a-number", None)
+
+
 def test_intel_macs_are_refused():
     with pytest.raises(UnsupportedMachineError, match="Apple Silicon"):
         require_apple_silicon("Darwin", "x86_64")

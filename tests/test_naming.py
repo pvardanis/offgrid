@@ -18,8 +18,9 @@ BILLION = 1e9
         ("mistral-7b-v0.3", 7 * BILLION, None),
         # Gemma states effective parameters, which is what has to be held.
         ("google/gemma-4-e4b", 4 * BILLION, None),
-        # Fractions appear in small models.
+        # Fractions appear in small models, written either way.
         ("qwen/qwen2.5-1.5b", 1.5 * BILLION, None),
+        ("stabilityai/stablelm-2-1_6b", 1.6 * BILLION, None),
     ],
 )
 def test_sizes_are_read_from_the_identifier(
@@ -48,13 +49,28 @@ def test_a_quantization_is_not_mistaken_for_a_size(identifier: str):
     assert parameter_counts(identifier) == (None, None)
 
 
-def test_a_version_number_is_not_mistaken_for_a_size():
-    # qwen3.6 and llama-3.1 must not be read as 3.6B and 3.1B.
+@pytest.mark.parametrize(
+    "identifier",
+    [
+        # A version fused to a "b" is a version, not a size.
+        "publisher/qwen3.6b-instruct",
+        "publisher/llama3b-chat",
+        # Mixtral counts experts, not parameters: 8x7B holds 46.7 billion, so
+        # reading 7 would undersize it sevenfold.
+        "mistralai/Mixtral-8x7B-Instruct-v0.1",
+        "mistralai/Mixtral-8x22B-v0.1",
+    ],
+)
+def test_a_size_must_be_introduced_by_a_separator(identifier: str):
+    assert parameter_counts(identifier) == (None, None)
+
+
+def test_a_version_number_before_a_real_size_is_ignored():
     assert parameter_counts("qwen/qwen3.6-35b-a3b")[0] == 35 * BILLION
     assert parameter_counts("meta/llama-3.1-8b")[0] == 8 * BILLION
 
 
-def test_active_parameters_never_exceed_the_total():
-    total, active = parameter_counts("qwen/qwen3.6-35b-a3b")
-    assert total is not None and active is not None
-    assert active < total
+def test_an_active_count_without_a_total_is_not_half_known():
+    # Qwen1.5-MoE-A2.7B names what is active but never the total, and a model
+    # that cannot be sized must not report a speed either.
+    assert parameter_counts("Qwen/Qwen1.5-MoE-A2.7B") == (None, None)

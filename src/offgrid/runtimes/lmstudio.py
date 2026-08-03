@@ -5,6 +5,8 @@ parameter counts, so sizes are read from each identifier by
 ``offgrid.naming``.
 """
 
+import re
+
 import httpx
 
 from offgrid.dialect import Dialect
@@ -14,7 +16,7 @@ from offgrid.naming import parameter_counts
 
 CATALOGUE = "/api/v0/models"
 TIMEOUT_SECONDS = 5
-# Weights are stored at full precision unless the runtime says otherwise.
+# Unquantized MLX and GGUF weights are 16-bit; assume that when unstated.
 DEFAULT_BITS = 16
 
 
@@ -29,14 +31,18 @@ def dialect() -> Dialect:
 def _bits(quantization: str | None) -> int:
     """Read a bit width from LM Studio's quantization label.
 
-    :param quantization: A label such as ``4bit``, or ``None``.
+    :param quantization: An MLX label such as ``4bit``, a GGUF one such as
+        ``Q4_K_M`` or ``Q8_0``, an unquantized one such as ``BF16``, or
+        ``None`` when the catalogue states none.
 
-    :return: Bits per parameter, defaulting to full precision.
+    :return: Bits per parameter. Only the first run of digits is the width:
+        the ``0`` in ``Q8_0`` names a variant, and reading it as part of the
+        number sizes an eight billion parameter model at eighty billion.
     """
     if not quantization:
         return DEFAULT_BITS
-    digits = "".join(c for c in quantization if c.isdigit())
-    return int(digits) if digits else DEFAULT_BITS
+    found = re.search(r"\d+", quantization)
+    return int(found.group()) if found else DEFAULT_BITS
 
 
 def parse_models(payload: dict) -> list[Model]:
