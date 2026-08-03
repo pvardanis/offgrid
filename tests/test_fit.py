@@ -9,7 +9,7 @@ from offgrid.model import Model
 GIB = 1024**3
 
 
-def machine(memory_gib: int = 64, wired_gib: int | None = 56) -> Machine:
+def machine(memory_gib: int = 64, wired_gib: int | None = None) -> Machine:
     return Machine(
         chip="Apple M1 Max",
         memory_bytes=memory_gib * GIB,
@@ -63,6 +63,24 @@ def test_raising_the_wired_limit_is_what_lets_a_large_model_load():
     assert will_load(large, machine(wired_gib=56))
 
 
+def test_a_model_that_exactly_fills_the_memory_still_loads():
+    exact = model(params=48e9, bits=8)
+    weights = weights_bytes(exact)
+    assert weights is not None
+    snug = Machine(
+        chip="test", memory_bytes=int(weights), wired_limit_bytes=int(weights)
+    )
+    assert will_load(exact, snug)
+
+
+def test_ranking_weighs_quantization_as_well_as_parameters():
+    # 27B at 4-bit reads 13.5GB per token; 20B at 8-bit reads 20GB.
+    lean = model(identifier="27b-4bit", params=27e9, active=None, bits=4)
+    heavy = model(identifier="20b-8bit", params=20e9, active=None, bits=8)
+    order = [m.identifier for m in ranked([heavy, lean], machine())]
+    assert order == ["27b-4bit", "20b-8bit"]
+
+
 def test_ranking_prefers_fewer_active_parameters():
     moe = model(identifier="moe", params=35e9, active=3e9, bits=4)
     dense = model(identifier="dense", params=27e9, active=None, bits=4)
@@ -110,5 +128,9 @@ def test_a_model_never_loads_on_a_machine_smaller_than_its_weights(
 ):
     weights = weights_bytes(model(params=params, bits=bits))
     assert weights is not None
-    tiny = Machine(chip="test", memory_bytes=int(weights) - 1, wired_limit_bytes=None)
+    tiny = Machine(
+        chip="test",
+        memory_bytes=int(weights),
+        wired_limit_bytes=int(weights) - 1,
+    )
     assert not will_load(model(params=params, bits=bits), tiny)

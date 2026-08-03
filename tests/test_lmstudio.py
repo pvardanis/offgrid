@@ -56,11 +56,28 @@ def test_sizes_come_from_the_identifier_because_the_api_omits_them(payload: dict
     assert by_id["qwen/qwen3.6-27b"].active_parameters is None
 
 
-def test_the_loaded_context_wins_over_the_maximum(payload: dict):
-    # A model is served at the context it was loaded with, not its ceiling.
+def test_the_maximum_context_is_used_when_nothing_is_loaded(payload: dict):
     by_id = {model.identifier: model for model in parse_models(payload)}
-    assert by_id["qwen/qwen3.6-35b-a3b"].context_limit == 262144
     assert by_id["google/gemma-4-e4b"].context_limit == 131072
+
+
+def test_the_loaded_context_wins_over_the_maximum():
+    # A model is served at the context it was loaded with, not its ceiling.
+    # The captured fixture cannot show this: a server loaded at its maximum
+    # reports the same number twice.
+    loaded_below_ceiling = {
+        "data": [
+            {
+                "id": "a/model-7b",
+                "type": "llm",
+                "state": "loaded",
+                "max_context_length": 262144,
+                "loaded_context_length": 32768,
+            }
+        ]
+    }
+    (model,) = parse_models(loaded_below_ceiling)
+    assert model.context_limit == 32768
 
 
 def test_the_resident_model_is_the_loaded_one(payload: dict):
