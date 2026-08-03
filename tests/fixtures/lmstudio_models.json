@@ -1,0 +1,59 @@
+{
+    "data": [
+        {
+            "id": "qwen/qwen3.6-35b-a3b",
+            "object": "model",
+            "type": "vlm",
+            "publisher": "qwen",
+            "arch": "qwen3_5_moe",
+            "compatibility_type": "mlx",
+            "quantization": "4bit",
+            "state": "loaded",
+            "max_context_length": 262144,
+            "loaded_context_length": 262144,
+            "capabilities": [
+                "tool_use"
+            ]
+        },
+        {
+            "id": "qwen/qwen3.6-27b",
+            "object": "model",
+            "type": "vlm",
+            "publisher": "qwen",
+            "arch": "qwen3_5",
+            "compatibility_type": "mlx",
+            "quantization": "4bit",
+            "state": "not-loaded",
+            "max_context_length": 262144,
+            "capabilities": [
+                "tool_use"
+            ]
+        },
+        {
+            "id": "google/gemma-4-e4b",
+            "object": "model",
+            "type": "vlm",
+            "publisher": "google",
+            "arch": "gemma4",
+            "compatibility_type": "mlx",
+            "quantization": "4bit",
+            "state": "not-loaded",
+            "max_context_length": 131072,
+            "capabilities": [
+                "tool_use"
+            ]
+        },
+        {
+            "id": "text-embedding-nomic-embed-text-v1.5",
+            "object": "model",
+            "type": "embeddings",
+            "publisher": "nomic-ai",
+            "arch": "nomic-bert",
+            "compatibility_type": "gguf",
+            "quantization": "Q4_K_M",
+            "state": "not-loaded",
+            "max_context_length": 2048
+        }
+    ],
+    "object": "list"
+}
