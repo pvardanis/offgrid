@@ -15,6 +15,7 @@ def weights_bytes(model: Model) -> float | None:
     """
     if model.parameters is None:
         return None
+
     return model.parameters * model.quantization_bits / BITS_PER_BYTE
 
 

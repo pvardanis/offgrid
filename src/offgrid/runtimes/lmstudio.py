@@ -41,7 +41,9 @@ def _bits(quantization: str | None) -> int:
     """
     if not quantization:
         return DEFAULT_BITS
+
     found = re.search(r"\d+", quantization)
+
     return int(found.group()) if found else DEFAULT_BITS
 
 
@@ -61,17 +63,21 @@ def parse_models(payload: dict) -> list[Model]:
             f"The body at {CATALOGUE} is not a catalogue: it has no 'data', only "
             f"{sorted(payload) or 'nothing'}. Check the address points at LM Studio."
         )
+
     models = []
     for entry in payload["data"]:
         if entry.get("type") == "embeddings":
             continue
+
         identifier = entry.get("id")
         if not identifier:
             raise RuntimeUnreachableError(
                 f"The catalogue at {CATALOGUE} lists a model with no id. "
                 "Update LM Studio, or report the response it gave."
             )
+
         total, active = parameter_counts(identifier)
+
         models.append(
             Model(
                 identifier=identifier,
@@ -83,6 +89,7 @@ def parse_models(payload: dict) -> list[Model]:
                 or 0,
             )
         )
+
     return models
 
 
@@ -104,6 +111,7 @@ def resident(payload: dict) -> Model | None:
         for entry in payload.get("data", [])
         if entry.get("state") == "loaded"
     }
+
     return next((m for m in parse_models(payload) if m.identifier in loaded), None)
 
 
@@ -120,6 +128,7 @@ def catalogue(host: str) -> dict:
         being told to start it sends you looking in the wrong place.
     """
     url = f"http://{host}{CATALOGUE}"
+
     try:
         response = httpx.get(url, timeout=TIMEOUT_SECONDS)
     except httpx.TimeoutException as error:
@@ -138,6 +147,7 @@ def catalogue(host: str) -> dict:
             f"{url} answered {response.status_code}. The server is running but "
             "served no catalogue; check its local server is enabled."
         )
+
     try:
         return response.json()
     except ValueError as error:

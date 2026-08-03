@@ -34,6 +34,7 @@ def _first(pattern: re.Pattern[str], identifier: str) -> float | None:
     found = pattern.search(identifier)
     if found is None:
         return None
+
     return float(found.group(1).replace("_", ".")) * BILLION
 
 
@@ -55,6 +56,8 @@ def parameter_counts(identifier: str) -> tuple[float | None, float | None]:
     total = _first(_TOTAL, identifier)
     if total is None:
         total = _first(_EFFECTIVE, identifier)
+
     if total is None:
         return None, None
+
     return total, _first(_ACTIVE, identifier)

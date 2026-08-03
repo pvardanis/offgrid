@@ -41,6 +41,7 @@ class Machine:
         """
         if self.wired_limit_bytes is not None:
             return float(min(self.wired_limit_bytes, self.memory_bytes))
+
         return self.memory_bytes * DEFAULT_GPU_SHARE
 
 
@@ -57,6 +58,7 @@ def require_apple_silicon(system: str, architecture: str) -> None:
             f"offgrid runs on macOS, and this is {system}. "
             "Unified memory and Metal are what its sizing assumes."
         )
+
     if architecture != "arm64":
         raise UnsupportedMachineError(
             f"offgrid runs on Apple Silicon, and this is {architecture}. "
@@ -85,12 +87,15 @@ def parse(brand: str, memsize: str, wired_limit_mb: str | None) -> Machine:
             f"sysctl reported hw.memsize as {memsize!r}, which is not a number "
             "of bytes. Run `sysctl -n hw.memsize` to see what your shell reports."
         ) from error
+
     if memory <= 0:
         raise UnsupportedMachineError(
             f"sysctl reported {memory} bytes of memory, which cannot be right. "
             "offgrid cannot size a model for a machine it cannot measure."
         )
+
     wired = int(wired_limit_mb) if wired_limit_mb else 0
+
     return Machine(
         chip=brand.strip(),
         memory_bytes=memory,
@@ -120,8 +125,10 @@ def _sysctl(key: str) -> str | None:
             f"Could not run {SYSCTL} to read {key}: {error}. "
             "offgrid reads this machine's memory through sysctl."
         ) from error
+
     if result.returncode != 0:
         return None
+
     value = result.stdout.strip()
     if not value:
         raise UnsupportedMachineError(
@@ -140,11 +147,14 @@ def detect() -> Machine:
         or its memory cannot be read.
     """
     require_apple_silicon(platform.system(), platform.machine())
+
     memsize = _sysctl("hw.memsize")
     if memsize is None:
         raise UnsupportedMachineError(
             "sysctl does not know hw.memsize, so offgrid cannot size a model "
             "for this machine. Run `sysctl -n hw.memsize` to see for yourself."
         )
+
     brand = _sysctl("machdep.cpu.brand_string") or "Apple Silicon"
+
     return parse(brand, memsize, _sysctl("iogpu.wired_limit_mb"))
