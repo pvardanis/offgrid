@@ -46,8 +46,10 @@ def unsized(models: list[Model]) -> list[Model]:
 def ranked(models: list[Model], machine: Machine) -> list[Model]:
     """Models that fit, fastest first.
 
-    Decode is bound by the memory read per token, so a mixture of experts with
-    few active parameters outruns a dense model several times smaller on disk.
+    Decode is bound by the memory read per token, which is the active
+    parameters times their width, so a mixture of experts can outrun a dense
+    model that is smaller on disk. Weights only: cache reads grow with the
+    context and are not counted here.
 
     :param models: Candidates, in any order.
     :param machine: The host they would run on.

@@ -87,14 +87,17 @@ def parse_models(payload: dict) -> list[Model]:
 
 
 def resident(payload: dict) -> Model | None:
-    """Find the model currently held in memory.
+    """Find a model already held in memory.
 
-    Residency decides which model answers, because loading another evicts the
-    cached prompt prefix along with the weights.
+    Loading a model costs the wait for its weights and the prompt prefix
+    cached against whatever was there before, so a resident model is the
+    cheap choice.
 
     :param payload: A decoded response from the catalogue endpoint.
 
-    :return: The loaded model, or ``None`` when the server holds none.
+    :return: The first loaded model in catalogue order, or ``None`` when the
+        server holds none. LM Studio can hold several at once; which of them
+        answers is decided by the request, not by this.
     """
     loaded = {
         entry["id"]
