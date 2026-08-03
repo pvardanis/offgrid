@@ -51,15 +51,30 @@ def parse_models(payload: dict) -> list[Model]:
     :param payload: A decoded response from the catalogue endpoint.
 
     :return: Every model that generates text, embeddings excluded.
+
+    :raise RuntimeUnreachableError: When the body is not a catalogue. A
+        server that answers with something else has not told us it holds no
+        models, and reporting an empty list would say that it did.
     """
+    if "data" not in payload:
+        raise RuntimeUnreachableError(
+            f"The body at {CATALOGUE} is not a catalogue: it has no 'data', only "
+            f"{sorted(payload) or 'nothing'}. Check the address points at LM Studio."
+        )
     models = []
-    for entry in payload.get("data", []):
+    for entry in payload["data"]:
         if entry.get("type") == "embeddings":
             continue
-        total, active = parameter_counts(entry.get("id", ""))
+        identifier = entry.get("id")
+        if not identifier:
+            raise RuntimeUnreachableError(
+                f"The catalogue at {CATALOGUE} lists a model with no id. "
+                "Update LM Studio, or report the response it gave."
+            )
+        total, active = parameter_counts(identifier)
         models.append(
             Model(
-                identifier=entry["id"],
+                identifier=identifier,
                 parameters=total,
                 active_parameters=active,
                 quantization_bits=_bits(entry.get("quantization")),
@@ -96,14 +111,34 @@ def catalogue(host: str) -> dict:
 
     :return: The decoded response.
 
-    :raise RuntimeUnreachableError: When the server does not answer.
+    :raise RuntimeUnreachableError: When nothing answers, when the answer
+        takes too long, or when what comes back is not a catalogue. Each case
+        says which it was: a server that answered with a 500 is running, and
+        being told to start it sends you looking in the wrong place.
     """
+    url = f"http://{host}{CATALOGUE}"
     try:
-        response = httpx.get(f"http://{host}{CATALOGUE}", timeout=TIMEOUT_SECONDS)
-        response.raise_for_status()
-    except httpx.HTTPError as error:
+        response = httpx.get(url, timeout=TIMEOUT_SECONDS)
+    except httpx.TimeoutException as error:
+        raise RuntimeUnreachableError(
+            f"http://{host} did not answer within {TIMEOUT_SECONDS}s. "
+            "It may be loading a model; try again once it settles."
+        ) from error
+    except httpx.TransportError as error:
         raise RuntimeUnreachableError(
             f"No model server answered at http://{host}. "
             "Start LM Studio, or point offgrid elsewhere with --host."
         ) from error
-    return response.json()
+
+    if response.is_error:
+        raise RuntimeUnreachableError(
+            f"{url} answered {response.status_code}. The server is running but "
+            "served no catalogue; check its local server is enabled."
+        )
+    try:
+        return response.json()
+    except ValueError as error:
+        raise RuntimeUnreachableError(
+            f"{url} answered with {response.headers.get('content-type', 'no type')}, "
+            f"not JSON. Is http://{host} really LM Studio?"
+        ) from error
