@@ -1,12 +1,10 @@
 import pytest
-from hypothesis import given
-from hypothesis import strategies as st
 
-from offgrid.fit import ranked, unsized, weights_bytes, will_load
+from offgrid.fit import CACHE_SHARE, parameters_that_fit, sizes_that_fit
 from offgrid.machine import Machine
-from offgrid.model import Model
 
 GIB = 1024**3
+BILLION = 1e9
 
 
 def machine(memory_gib: int = 64, wired_gib: int | None = None) -> Machine:
@@ -17,106 +15,47 @@ def machine(memory_gib: int = 64, wired_gib: int | None = None) -> Machine:
     )
 
 
-def model(
-    identifier: str = "qwen",
-    params: float | None = 35e9,
-    active: float | None = 3e9,
-    bits: int = 8,
-    context: int = 262144,
-) -> Model:
-    return Model(
-        identifier=identifier,
-        parameters=params,
-        active_parameters=active,
-        quantization_bits=bits,
-        context_limit=context,
+def test_four_bit_holds_twice_the_parameters_of_eight():
+    lean = parameters_that_fit(machine(), quantization_bits=4)
+    dense = parameters_that_fit(machine(), quantization_bits=8)
+    assert lean == pytest.approx(dense * 2)
+
+
+def test_a_bigger_machine_holds_more():
+    assert parameters_that_fit(machine(memory_gib=64), 4) > parameters_that_fit(
+        machine(memory_gib=16), 4
     )
 
 
-def test_weights_bytes_is_one_byte_per_parameter_at_8_bit():
-    assert weights_bytes(model(params=1e9, bits=8)) == pytest.approx(1e9)
-
-
-def test_four_bit_weights_are_half_of_eight_bit():
-    half, whole = weights_bytes(model(bits=4)), weights_bytes(model(bits=8))
-    assert half is not None and whole is not None
-    assert half == pytest.approx(whole / 2)
-
-
-def test_a_model_larger_than_memory_does_not_load():
-    assert not will_load(model(params=70e9, bits=8), machine(memory_gib=32))
-
-
-def test_a_model_that_fits_loads():
-    assert will_load(model(params=35e9, bits=8), machine(memory_gib=64))
-
-
-def test_the_wired_limit_caps_what_loads_when_it_is_set():
-    # 35GB of weights fits in 64GB of RAM but not under a 32GB GPU wired limit.
-    assert not will_load(model(params=35e9, bits=8), machine(wired_gib=32))
-
-
-def test_raising_the_wired_limit_is_what_lets_a_large_model_load():
-    # macOS caps the GPU near 48GB of 64GB until iogpu.wired_limit_mb is raised.
-    large = model(params=52e9, bits=8)
-    assert not will_load(large, machine(wired_gib=None))
-    assert will_load(large, machine(wired_gib=56))
-
-
-def test_a_model_that_exactly_fills_the_memory_still_loads():
-    exact = model(params=48e9, bits=8)
-    weights = weights_bytes(exact)
-    assert weights is not None
-    snug = Machine(
-        chip="test", memory_bytes=int(weights), wired_limit_bytes=int(weights)
+def test_raising_the_wired_limit_holds_more():
+    assert parameters_that_fit(machine(wired_gib=56), 4) > parameters_that_fit(
+        machine(wired_gib=32), 4
     )
-    assert will_load(exact, snug)
 
 
-def test_ranking_weighs_quantization_as_well_as_parameters():
-    # 27B at 4-bit reads 13.5GB per token; 20B at 8-bit reads 20GB.
-    lean = model(identifier="27b-4bit", params=27e9, active=None, bits=4)
-    heavy = model(identifier="20b-8bit", params=20e9, active=None, bits=8)
-    order = [m.identifier for m in ranked([heavy, lean], machine())]
-    assert order == ["27b-4bit", "20b-8bit"]
-
-
-def test_ranking_prefers_fewer_active_parameters():
-    moe = model(identifier="moe", params=35e9, active=3e9, bits=4)
-    dense = model(identifier="dense", params=27e9, active=None, bits=4)
-    assert [m.identifier for m in ranked([dense, moe], machine())] == ["moe", "dense"]
-
-
-def test_a_model_of_unknown_size_cannot_be_promised_to_load():
-    assert not will_load(model(params=None), machine())
-
-
-def test_ranking_drops_models_of_unknown_size():
-    known = model(identifier="known")
-    assert [m.identifier for m in ranked([model(params=None), known], machine())] == [
-        "known"
-    ]
-
-
-def test_unsized_models_are_reported_rather_than_dropped_silently():
-    mystery = model(identifier="mystery", params=None)
-    assert unsized([mystery, model()]) == [mystery]
-
-
-def test_ranking_drops_models_that_cannot_load():
-    too_big = model(identifier="huge", params=200e9, bits=8)
-    assert ranked([too_big], machine()) == []
-
-
-@given(params=st.floats(min_value=1e6, max_value=1e12), bits=st.sampled_from([4, 8]))
-def test_a_model_never_loads_on_a_machine_smaller_than_its_weights(
-    params: float, bits: int
-):
-    weights = weights_bytes(model(params=params, bits=bits))
-    assert weights is not None
-    tiny = Machine(
-        chip="test",
-        memory_bytes=int(weights),
-        wired_limit_bytes=int(weights) - 1,
+def test_room_is_left_for_the_context_cache():
+    # Weights that fill the machine leave nothing for the cache the context
+    # grows into, so the answer is smaller than the memory divided by the width.
+    assert parameters_that_fit(machine(), 8) == pytest.approx(
+        machine().usable_bytes * (1 - CACHE_SHARE)
     )
-    assert not will_load(model(params=params, bits=bits), tiny)
+
+
+def test_this_mac_holds_a_useful_model():
+    # 64GiB with the wired limit raised: about 100 billion parameters at 4-bit.
+    fits = parameters_that_fit(machine(wired_gib=56), 4)
+    assert 90 * BILLION < fits < 110 * BILLION
+
+
+def test_a_small_mac_is_told_a_smaller_number():
+    # 16GiB, wired limit untouched: a handful of billions at 4-bit.
+    fits = parameters_that_fit(machine(memory_gib=16), 4)
+    assert 10 * BILLION < fits < 25 * BILLION
+
+
+def test_sizes_are_offered_for_each_common_width():
+    offered = sizes_that_fit(machine())
+    assert [bits for bits, _ in offered] == [4, 8, 16]
+    assert [size for _, size in offered] == sorted(
+        (size for _, size in offered), reverse=True
+    )

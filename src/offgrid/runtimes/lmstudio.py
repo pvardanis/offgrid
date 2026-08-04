@@ -1,23 +1,13 @@
-"""LM Studio, which serves Anthropic's message API alongside OpenAI's.
-
-The catalogue endpoint reports quantization, context and residency, but no
-parameter counts, so sizes are read from each identifier by
-``offgrid.naming``.
-"""
-
-import re
+"""LM Studio, which serves Anthropic's message API alongside OpenAI's."""
 
 import httpx
 
 from offgrid.dialect import Dialect
 from offgrid.exceptions import RuntimeUnreachableError
 from offgrid.model import Model
-from offgrid.naming import parameter_counts
 
 CATALOGUE = "/api/v0/models"
 TIMEOUT_SECONDS = 5
-# Unquantized MLX and GGUF weights are 16-bit; assume that when unstated.
-DEFAULT_BITS = 16
 
 
 def dialect() -> Dialect:
@@ -26,25 +16,6 @@ def dialect() -> Dialect:
     :return: The Anthropic dialect, which needs no translation for Claude Code.
     """
     return Dialect.ANTHROPIC
-
-
-def _bits(quantization: str | None) -> int:
-    """Read a bit width from LM Studio's quantization label.
-
-    :param quantization: An MLX label such as ``4bit``, a GGUF one such as
-        ``Q4_K_M`` or ``Q8_0``, an unquantized one such as ``BF16``, or
-        ``None`` when the catalogue states none.
-
-    :return: Bits per parameter. Only the first run of digits is the width:
-        the ``0`` in ``Q8_0`` names a variant, and reading it as part of the
-        number sizes an eight billion parameter model at eighty billion.
-    """
-    if not quantization:
-        return DEFAULT_BITS
-
-    found = re.search(r"\d+", quantization)
-
-    return int(found.group()) if found else DEFAULT_BITS
 
 
 def parse_models(payload: dict) -> list[Model]:
@@ -76,14 +47,9 @@ def parse_models(payload: dict) -> list[Model]:
                 "Update LM Studio, or report the response it gave."
             )
 
-        total, active = parameter_counts(identifier)
-
         models.append(
             Model(
                 identifier=identifier,
-                parameters=total,
-                active_parameters=active,
-                quantization_bits=_bits(entry.get("quantization")),
                 context_limit=entry.get("loaded_context_length")
                 or entry.get("max_context_length")
                 or 0,

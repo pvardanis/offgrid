@@ -1,73 +1,42 @@
-"""Whether a model runs on a machine, and which of several runs best."""
+"""How large a model a machine can hold.
+
+Which model to run is a choice offgrid leaves to whoever runs it. What it can
+say is how much room there is, so that the choice is made against a number
+rather than a guess.
+"""
 
 from offgrid.machine import Machine
-from offgrid.model import Model
 
 BITS_PER_BYTE = 8
 
+# Weights are not the whole of it: the cache grows with the context, and a
+# machine filled to the brim with weights stalls on the first long prompt.
+# A fifth is roughly what a long context costs on a hybrid-attention model.
+CACHE_SHARE = 0.2
 
-def weights_bytes(model: Model) -> float | None:
-    """Memory the model's weights occupy once loaded.
+# The widths models are published at. Below four bits, dequantization costs
+# more time than the smaller weights save.
+COMMON_WIDTHS = (4, 8, 16)
 
-    :param model: The model to size.
 
-    :return: Bytes of weights, or ``None`` when the parameter count is unknown.
+def parameters_that_fit(machine: Machine, quantization_bits: int) -> float:
+    """Work out how many parameters a machine holds at a given width.
+
+    :param machine: The host the model would run on.
+    :param quantization_bits: Bits per stored parameter, e.g. ``4``.
+
+    :return: A number of parameters, with room left for the context cache.
     """
-    if model.parameters is None:
-        return None
+    for_weights = machine.usable_bytes * (1 - CACHE_SHARE)
 
-    return model.parameters * model.quantization_bits / BITS_PER_BYTE
+    return for_weights * BITS_PER_BYTE / quantization_bits
 
 
-def will_load(model: Model, machine: Machine) -> bool:
-    """Whether the model's weights fit in the memory the GPU may use.
+def sizes_that_fit(machine: Machine) -> list[tuple[int, float]]:
+    """List what a machine holds at each width models are published at.
 
-    A model of unknown size is never promised to load. Report it with
-    :func:`unsized` rather than presenting the refusal as a poor fit.
+    :param machine: The host the model would run on.
 
-    :param model: The model to load.
-    :param machine: The host it would load on.
-
-    :return: ``True`` when the weights are known to fit, leaving the cache aside.
+    :return: ``(bits, parameters)`` pairs, largest model first.
     """
-    weights = weights_bytes(model)
-    return weights is not None and weights <= machine.usable_bytes
-
-
-def unsized(models: list[Model]) -> list[Model]:
-    """Models whose parameter count could not be established.
-
-    :param models: Candidates, in any order.
-
-    :return: Those that cannot be ranked, so a caller can say so.
-    """
-    return [model for model in models if not model.is_sized]
-
-
-def ranked(models: list[Model], machine: Machine) -> list[Model]:
-    """Models that fit, fastest first.
-
-    Decode is bound by the memory read per token, which is the active
-    parameters times their width, so a mixture of experts can outrun a dense
-    model that is smaller on disk. Weights only: cache reads grow with the
-    context and are not counted here.
-
-    :param models: Candidates, in any order.
-    :param machine: The host they would run on.
-
-    :return: The subset that loads, ordered by bytes read per token. Models of
-        unknown size are absent.
-    """
-    loadable = [model for model in models if will_load(model, machine)]
-    return sorted(loadable, key=_bytes_per_token)
-
-
-def _bytes_per_token(model: Model) -> float:
-    """Memory read to generate one token.
-
-    :param model: A model whose size is known.
-
-    :return: Bytes read per token.
-    """
-    per_token = model.parameters_per_token or 0.0
-    return per_token * model.quantization_bits / BITS_PER_BYTE
+    return [(bits, parameters_that_fit(machine, bits)) for bits in COMMON_WIDTHS]
