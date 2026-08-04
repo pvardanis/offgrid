@@ -105,3 +105,56 @@ def test_run_refuses_when_nothing_is_loaded(here, monkeypatch):
     result = runner.invoke(app, ["run"])
     assert result.exit_code == 1
     assert "load a model" in result.stdout.lower()
+
+
+def test_run_loads_a_named_model_that_is_not_resident(here, monkeypatch):
+    runner.invoke(app, ["setup"])
+    loaded = {}
+    monkeypatch.setattr(
+        "offgrid.cli.load_model",
+        lambda host, identifier, **kw: loaded.update(name=identifier),
+    )
+    monkeypatch.setattr("offgrid.cli.start", lambda launch: None)
+    monkeypatch.setattr(
+        "offgrid.cli.parse_models",
+        lambda payload: [Model(identifier="a/other-7b", context_limit=8192)],
+    )
+
+    result = runner.invoke(app, ["run", "--model", "a/other-7b"])
+    assert result.exit_code == 0
+    assert loaded["name"] == "a/other-7b"
+
+
+def test_a_resident_model_is_not_loaded_again(here, monkeypatch):
+    runner.invoke(app, ["setup"])
+    loaded = {}
+    monkeypatch.setattr(
+        "offgrid.cli.load_model", lambda *a, **k: loaded.update(called=True)
+    )
+    monkeypatch.setattr("offgrid.cli.start", lambda launch: None)
+
+    runner.invoke(app, ["run", "--model", "qwen/qwen3.6-35b-a3b"])
+    assert "called" not in loaded
+
+
+def test_swapping_models_says_what_it_costs(here, monkeypatch):
+    runner.invoke(app, ["setup"])
+    monkeypatch.setattr("offgrid.cli.load_model", lambda *a, **k: None)
+    monkeypatch.setattr("offgrid.cli.start", lambda launch: None)
+    monkeypatch.setattr(
+        "offgrid.cli.parse_models",
+        lambda payload: [Model(identifier="a/other-7b", context_limit=8192)],
+    )
+
+    result = runner.invoke(app, ["run", "--model", "a/other-7b"])
+    assert "cached prefix" in result.stdout
+
+
+def test_a_model_the_runtime_does_not_have_is_refused(here, monkeypatch):
+    runner.invoke(app, ["setup"])
+    monkeypatch.setattr("offgrid.cli.parse_models", lambda payload: [])
+    monkeypatch.setattr("offgrid.cli.start", lambda launch: None)
+
+    result = runner.invoke(app, ["run", "--model", "a/absent-7b"])
+    assert result.exit_code == 1
+    assert "a/absent-7b" in result.stdout

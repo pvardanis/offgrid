@@ -7,7 +7,12 @@ from offgrid.exceptions import RuntimeUnreachableError
 from offgrid.model import Model
 
 CATALOGUE = "/api/v0/models"
+MESSAGES = "/v1/messages"
 TIMEOUT_SECONDS = 5
+
+# Weights come off disk at gigabytes a second, so a large model takes tens of
+# seconds and a cold cache takes longer.
+LOAD_TIMEOUT_SECONDS = 300
 
 
 def dialect() -> Dialect:
@@ -121,3 +126,44 @@ def catalogue(host: str) -> dict:
             f"{url} answered with {response.headers.get('content-type', 'no type')}, "
             f"not JSON. Is http://{host} really LM Studio?"
         ) from error
+
+
+def load(host: str, identifier: str, timeout: float = LOAD_TIMEOUT_SECONDS) -> None:
+    """Hold a model in memory, waiting until it is ready to answer.
+
+    Asking for a single token is what makes the runtime load it. Doing that
+    here rather than leaving it to the first real request means the wait is
+    visible and attributable, instead of a silence in the middle of a turn.
+
+    :param host: Address the runtime listens on.
+    :param identifier: The model to load.
+    :param timeout: How long to wait before giving up.
+
+    :raise RuntimeUnreachableError: When the load does not finish in time, or
+        the runtime refuses it.
+    """
+    url = f"http://{host}{MESSAGES}"
+    body = {
+        "model": identifier,
+        "max_tokens": 1,
+        "messages": [{"role": "user", "content": "hi"}],
+    }
+
+    try:
+        response = httpx.post(url, json=body, timeout=timeout)
+    except httpx.TimeoutException as error:
+        raise RuntimeUnreachableError(
+            f"{identifier} did not finish loading within {timeout:.0f}s. "
+            "Load it in the runtime directly, or allow longer."
+        ) from error
+    except httpx.TransportError as error:
+        raise RuntimeUnreachableError(
+            f"No model server answered at http://{host}. "
+            "Start LM Studio, or point offgrid elsewhere with --host."
+        ) from error
+
+    if response.is_error:
+        raise RuntimeUnreachableError(
+            f"The runtime answered {response.status_code} loading {identifier}. "
+            "Check the name against `offgrid doctor`, and that it has room."
+        )

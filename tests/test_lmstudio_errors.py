@@ -1,3 +1,5 @@
+import json
+
 import httpx
 import pytest
 
@@ -73,3 +75,51 @@ def _serve(monkeypatch: pytest.MonkeyPatch, handler) -> None:
             return client.get(url)
 
     monkeypatch.setattr(httpx, "get", get)
+
+
+def test_loading_a_model_asks_it_for_one_token(monkeypatch: pytest.MonkeyPatch):
+    from offgrid.runtimes.lmstudio import load
+
+    asked = {}
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        asked["url"] = str(request.url)
+        asked["body"] = json.loads(request.content)
+        return httpx.Response(200, json={"content": []})
+
+    _serve_post(monkeypatch, answer)
+    load(HOST, "a/model-7b", timeout=5)
+
+    assert asked["url"].endswith("/v1/messages")
+    assert asked["body"]["model"] == "a/model-7b"
+    assert asked["body"]["max_tokens"] == 1
+
+
+def test_a_load_that_never_finishes_says_so(monkeypatch: pytest.MonkeyPatch):
+    from offgrid.runtimes.lmstudio import load
+
+    def stall(request: httpx.Request) -> httpx.Response:
+        raise httpx.ReadTimeout("still loading", request=request)
+
+    _serve_post(monkeypatch, stall)
+    with pytest.raises(RuntimeUnreachableError, match="did not finish loading"):
+        load(HOST, "a/model-7b", timeout=5)
+
+
+def test_a_refused_load_reports_what_the_server_said(monkeypatch: pytest.MonkeyPatch):
+    from offgrid.runtimes.lmstudio import load
+
+    _serve_post(monkeypatch, lambda request: httpx.Response(400, text="no such model"))
+    with pytest.raises(RuntimeUnreachableError, match="400"):
+        load(HOST, "a/model-7b", timeout=5)
+
+
+def _serve_post(monkeypatch: pytest.MonkeyPatch, handler) -> None:
+    """Point httpx.post at a transport that answers however the test wants."""
+    transport = httpx.MockTransport(handler)
+
+    def post(url: str, json: dict, timeout: float = 0) -> httpx.Response:
+        with httpx.Client(transport=transport) as client:
+            return client.post(url, json=json)
+
+    monkeypatch.setattr(httpx, "post", post)

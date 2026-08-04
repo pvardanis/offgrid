@@ -2,6 +2,7 @@
 
 import os
 import sys
+import time
 from pathlib import Path
 
 import typer
@@ -13,9 +14,11 @@ from offgrid.exceptions import OffgridError
 from offgrid.fit import sizes_that_fit
 from offgrid.machine import detect
 from offgrid.model import Model
-from offgrid.profile import DEFAULT_PATH, Profile, load, save
-from offgrid.runtimes.lmstudio import catalogue, resident
+from offgrid.profile import DEFAULT_PATH, Profile, save
+from offgrid.profile import load as load_profile
+from offgrid.runtimes.lmstudio import catalogue, parse_models, resident
 from offgrid.runtimes.lmstudio import dialect as runtime_dialect
+from offgrid.runtimes.lmstudio import load as load_model
 
 CONFIG_DIR = Path.home() / ".offgrid" / "claude-code"
 DEFAULT_HOST = "127.0.0.1:1234"
@@ -76,10 +79,18 @@ def doctor() -> None:
 @app.command(
     context_settings={"allow_extra_args": True, "ignore_unknown_options": True}
 )
-def run(context: typer.Context) -> None:
-    """Start the agent against whichever model the runtime is holding."""
+def run(
+    context: typer.Context,
+    model_name: str = typer.Option(
+        None,
+        "--model",
+        "-m",
+        help="Load and use this model instead of the resident one.",
+    ),
+) -> None:
+    """Start the agent against a model the runtime is holding."""
     profile = _profile()
-    model = _resident(profile)
+    model = _chosen(profile, model_name) if model_name else _resident(profile)
     require_compatible(runtime_dialect(), agent_dialect())
 
     prepare(CONFIG_DIR)
@@ -111,7 +122,58 @@ def _profile() -> Profile:
     :return: The stored profile.
     """
     try:
-        return load(DEFAULT_PATH)
+        return load_profile(DEFAULT_PATH)
+    except OffgridError as error:
+        typer.echo(f"  {error}")
+        raise typer.Exit(1) from error
+
+
+def _chosen(profile: Profile, identifier: str) -> Model:
+    """Hold the named model in memory, whatever the runtime is holding now.
+
+    :param profile: Where to reach the runtime.
+    :param identifier: The model asked for.
+
+    :return: The model that will answer.
+    """
+    payload = _catalogue(profile)
+    known = {model.identifier: model for model in parse_models(payload)}
+    if identifier not in known:
+        typer.echo(
+            f"  The runtime at {profile.host} does not have {identifier}. "
+            "`offgrid doctor` lists what it holds."
+        )
+        raise typer.Exit(1)
+
+    held = resident(payload)
+    if held is not None and held.identifier == identifier:
+        return held
+
+    if held is not None:
+        typer.echo(f"  Swapping from {held.identifier}, whose cached prefix is lost.")
+
+    typer.echo(f"  Loading {identifier} ...", nl=False)
+    started = time.monotonic()
+    try:
+        load_model(profile.host, identifier)
+    except OffgridError as error:
+        typer.echo("")
+        typer.echo(f"  {error}")
+        raise typer.Exit(1) from error
+    typer.echo(f" ready in {time.monotonic() - started:.0f}s")
+
+    return known[identifier]
+
+
+def _catalogue(profile: Profile) -> dict:
+    """Fetch the runtime's catalogue, or explain why it could not be reached.
+
+    :param profile: Where to reach the runtime.
+
+    :return: The decoded catalogue.
+    """
+    try:
+        return catalogue(profile.host)
     except OffgridError as error:
         typer.echo(f"  {error}")
         raise typer.Exit(1) from error
@@ -124,11 +186,7 @@ def _resident(profile: Profile) -> Model:
 
     :return: The model that would answer.
     """
-    try:
-        held = resident(catalogue(profile.host))
-    except OffgridError as error:
-        typer.echo(f"  {error}")
-        raise typer.Exit(1) from error
+    held = resident(_catalogue(profile))
 
     if held is None:
         typer.echo(
