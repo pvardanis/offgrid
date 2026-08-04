@@ -4,7 +4,12 @@ import httpx
 import pytest
 
 from offgrid.exceptions import RuntimeUnreachableError
-from offgrid.runtimes.lmstudio import catalogue, parse_models
+from offgrid.runtimes.lmstudio import (
+    LOAD_TIMEOUT_SECONDS,
+    TIMEOUT_SECONDS,
+    catalogue,
+    parse_models,
+)
 from tests.doubles import serve_get, serve_post
 
 HOST = "127.0.0.1:1234"
@@ -14,6 +19,42 @@ def test_a_catalogue_comes_back_decoded(monkeypatch: pytest.MonkeyPatch):
     body = {"data": [{"id": "a/model-7b", "type": "llm", "state": "loaded"}]}
     serve_get(monkeypatch, lambda request: httpx.Response(200, json=body))
     assert catalogue(HOST) == body
+
+
+def test_the_catalogue_is_asked_for_at_the_address_given(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    asked = {}
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        asked["url"] = str(request.url)
+        asked["timeout"] = request.extensions["timeout"]["read"]
+        return httpx.Response(200, json={"data": []})
+
+    serve_get(monkeypatch, answer)
+    catalogue(HOST)
+
+    assert asked["url"] == f"http://{HOST}/api/v0/models"
+    assert asked["timeout"] == TIMEOUT_SECONDS
+
+
+def test_a_load_is_waited_on_for_as_long_as_it_is_given(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    # Weights come off disk at gigabytes a second: the catalogue's few
+    # seconds would give up on a load that is going fine.
+    from offgrid.runtimes.lmstudio import load
+
+    asked = {}
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        asked["timeout"] = request.extensions["timeout"]["read"]
+        return httpx.Response(200, json={"model": "a/model-7b", "content": []})
+
+    serve_post(monkeypatch, answer)
+    load(HOST, "a/model-7b")
+
+    assert asked["timeout"] == LOAD_TIMEOUT_SECONDS
 
 
 def test_nothing_listening_says_to_start_the_server(monkeypatch: pytest.MonkeyPatch):
