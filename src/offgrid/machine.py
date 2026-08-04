@@ -6,8 +6,11 @@ from dataclasses import dataclass
 
 from offgrid.exceptions import UnsupportedMachineError
 
-# macOS reserves part of unified memory for the CPU until iogpu.wired_limit_mb
-# is raised, leaving the GPU roughly three quarters of the machine.
+# An estimate, and the weakest number here. Measured on one 64GB machine,
+# where the GPU was capped near 48GB until iogpu.wired_limit_mb was raised.
+# Apple documents no figure, and it is reportedly lower on smaller machines,
+# so this is optimistic on a 16GB Mac. Raising the wired limit replaces it
+# with a value the kernel actually reports, which is why offgrid says so.
 DEFAULT_GPU_SHARE = 0.75
 
 BYTES_PER_MB = 1024 * 1024

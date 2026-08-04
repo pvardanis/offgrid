@@ -14,9 +14,9 @@ BITS_PER_BYTE = 8
 # A fifth is roughly what a long context costs on a hybrid-attention model.
 CACHE_SHARE = 0.2
 
-# The widths models are published at. Below four bits, dequantization costs
-# more time than the smaller weights save.
-COMMON_WIDTHS = (4, 8, 16)
+# Bits per parameter, at the widths models are published at. Below four,
+# dequantization costs more time than the smaller weights save.
+QUANTIZATION_WIDTHS = (4, 8, 16)
 
 
 def parameters_that_fit(machine: Machine, quantization_bits: int) -> float:
@@ -39,4 +39,4 @@ def sizes_that_fit(machine: Machine) -> list[tuple[int, float]]:
 
     :return: ``(bits, parameters)`` pairs, largest model first.
     """
-    return [(bits, parameters_that_fit(machine, bits)) for bits in COMMON_WIDTHS]
+    return [(bits, parameters_that_fit(machine, bits)) for bits in QUANTIZATION_WIDTHS]
