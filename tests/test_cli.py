@@ -158,3 +158,65 @@ def test_a_model_the_runtime_does_not_have_is_refused(here, monkeypatch):
     result = runner.invoke(app, ["run", "--model", "a/absent-7b"])
     assert result.exit_code == 1
     assert "a/absent-7b" in result.stdout
+
+
+def test_run_lets_go_of_models_it_did_not_ask_for(here, monkeypatch):
+    runner.invoke(app, ["setup"])
+    let_go = []
+    monkeypatch.setattr("offgrid.cli.unload", lambda name: let_go.append(name))
+    monkeypatch.setattr("offgrid.cli.load_model", lambda *a, **k: None)
+    monkeypatch.setattr("offgrid.cli.start", lambda launch: 0)
+    monkeypatch.setattr(
+        "offgrid.cli.parse_models",
+        lambda payload: [Model(identifier="a/other-7b", context_limit=8192)],
+    )
+
+    runner.invoke(app, ["run", "--model", "a/other-7b"])
+    assert "qwen/qwen3.6-35b-a3b" in let_go
+
+
+def test_the_model_is_let_go_when_the_agent_finishes(here, monkeypatch):
+    runner.invoke(app, ["setup"])
+    let_go = []
+    monkeypatch.setattr("offgrid.cli.unload", lambda name: let_go.append(name))
+    monkeypatch.setattr("offgrid.cli.start", lambda launch: 0)
+
+    runner.invoke(app, ["run"])
+    assert let_go[-1] == "qwen/qwen3.6-35b-a3b"
+
+
+def test_the_agents_exit_code_is_offgrids_own(here, monkeypatch):
+    runner.invoke(app, ["setup"])
+    monkeypatch.setattr("offgrid.cli.unload", lambda name: None)
+    monkeypatch.setattr("offgrid.cli.start", lambda launch: 3)
+
+    assert runner.invoke(app, ["run"]).exit_code == 3
+
+
+def test_the_model_is_let_go_even_when_the_agent_is_interrupted(here, monkeypatch):
+    runner.invoke(app, ["setup"])
+    let_go = []
+    monkeypatch.setattr("offgrid.cli.unload", lambda name: let_go.append(name))
+
+    def interrupted(launch):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr("offgrid.cli.start", interrupted)
+
+    runner.invoke(app, ["run"])
+    assert let_go == ["qwen/qwen3.6-35b-a3b"]
+
+
+def test_a_runtime_that_will_not_let_go_is_reported_not_hidden(here, monkeypatch):
+    from offgrid.exceptions import RuntimeUnreachableError
+
+    runner.invoke(app, ["setup"])
+
+    def refuse(name):
+        raise RuntimeUnreachableError("lms would not unload it")
+
+    monkeypatch.setattr("offgrid.cli.unload", refuse)
+    monkeypatch.setattr("offgrid.cli.start", lambda launch: 0)
+
+    result = runner.invoke(app, ["run"])
+    assert "still holding" in result.stdout

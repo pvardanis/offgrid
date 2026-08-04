@@ -1,6 +1,7 @@
 """The three things offgrid does: describe, check, and launch."""
 
 import os
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -16,7 +17,7 @@ from offgrid.machine import detect
 from offgrid.model import Model
 from offgrid.profile import DEFAULT_PATH, Profile, save
 from offgrid.profile import load as load_profile
-from offgrid.runtimes.lmstudio import catalogue, parse_models, resident
+from offgrid.runtimes.lmstudio import catalogue, parse_models, resident, unload
 from offgrid.runtimes.lmstudio import dialect as runtime_dialect
 from offgrid.runtimes.lmstudio import load as load_model
 
@@ -97,23 +98,41 @@ def run(
     typer.echo(
         f"  {model.identifier}, context {model.context_limit or 'unstated'}", err=True
     )
-    start(
-        plan(
-            model,
-            host=profile.host,
-            config_dir=CONFIG_DIR,
-            token=TOKEN,
-            passthrough=list(context.args),
-        )
+
+    launch = plan(
+        model,
+        host=profile.host,
+        config_dir=CONFIG_DIR,
+        token=TOKEN,
+        passthrough=list(context.args),
     )
 
+    try:
+        code = start(launch)
+    except KeyboardInterrupt:
+        code = 130
 
-def start(launch: Launch) -> None:
-    """Replace this process with the agent.
+    _let_go(model.identifier)
+
+    raise typer.Exit(code)
+
+
+def start(launch: Launch) -> int:
+    """Run the agent and wait for it.
+
+    offgrid stays alive as its parent rather than handing over the process,
+    because a model held in memory has to be let go by somebody once the
+    agent is done with it.
 
     :param launch: The environment and command to run.
+
+    :return: The agent's exit code.
     """
-    os.execvpe(launch.argv[0], launch.argv, {**os.environ, **launch.env})
+    finished = subprocess.run(
+        launch.argv, env={**os.environ, **launch.env}, check=False
+    )
+
+    return finished.returncode
 
 
 def _profile() -> Profile:
@@ -149,8 +168,7 @@ def _chosen(profile: Profile, identifier: str) -> Model:
     if held is not None and held.identifier == identifier:
         return held
 
-    if held is not None:
-        typer.echo(f"  Swapping from {held.identifier}, whose cached prefix is lost.")
+    _clear(payload, identifier)
 
     typer.echo(f"  Loading {identifier} ...", nl=False)
     started = time.monotonic()
@@ -163,6 +181,34 @@ def _chosen(profile: Profile, identifier: str) -> Model:
     typer.echo(f" ready in {time.monotonic() - started:.0f}s")
 
     return known[identifier]
+
+
+def _clear(payload: dict, wanted: str) -> None:
+    """Let go of every model held that is not the one being asked for.
+
+    One machine, one pool of memory: a model left loaded is memory the rest
+    of the machine cannot use.
+
+    :param payload: The runtime's catalogue.
+    :param wanted: The model that will answer.
+    """
+    held = resident(payload)
+    if held is None or held.identifier == wanted:
+        return
+
+    typer.echo(f"  Letting go of {held.identifier}, whose cached prefix goes with it.")
+    _let_go(held.identifier)
+
+
+def _let_go(identifier: str) -> None:
+    """Unload a model, saying so if the runtime will not.
+
+    :param identifier: The model to unload.
+    """
+    try:
+        unload(identifier)
+    except OffgridError as error:
+        typer.echo(f"  The runtime is still holding {identifier}: {error}")
 
 
 def _catalogue(profile: Profile) -> dict:

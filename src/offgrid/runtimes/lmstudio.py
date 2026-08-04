@@ -1,5 +1,7 @@
 """LM Studio, which serves Anthropic's message API alongside OpenAI's."""
 
+import subprocess
+
 import httpx
 
 from offgrid.dialect import Dialect
@@ -13,6 +15,10 @@ TIMEOUT_SECONDS = 5
 # Weights come off disk at gigabytes a second, so a large model takes tens of
 # seconds and a cold cache takes longer.
 LOAD_TIMEOUT_SECONDS = 300
+
+# Letting go of a model is not part of the HTTP API; LM Studio's own tool is
+# what does it, and it talks to the copy running on this machine.
+TOOL = "lms"
 
 
 def dialect() -> Dialect:
@@ -166,4 +172,35 @@ def load(host: str, identifier: str, timeout: float = LOAD_TIMEOUT_SECONDS) -> N
         raise RuntimeUnreachableError(
             f"The runtime answered {response.status_code} loading {identifier}. "
             "Check the name against `offgrid doctor`, and that it has room."
+        )
+
+
+def unload(identifier: str) -> None:
+    """Let go of a model, freeing the memory it holds.
+
+    :param identifier: The model to unload.
+
+    :raise RuntimeUnreachableError: When the runtime's tool is missing or
+        refuses. Memory that stays held is worth saying out loud, since the
+        machine has one pool and everything else on it shares it.
+    """
+    try:
+        finished = subprocess.run(
+            [TOOL, "unload", identifier],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError as error:
+        raise RuntimeUnreachableError(
+            f"Could not run {TOOL} to unload {identifier}: {error}. "
+            "It ships with LM Studio; check it is on PATH."
+        ) from error
+
+    if finished.returncode != 0:
+        complaint = (
+            finished.stderr.strip() or finished.stdout.strip() or "no reason given"
+        )
+        raise RuntimeUnreachableError(
+            f"{TOOL} would not unload {identifier}: {complaint}"
         )
