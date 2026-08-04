@@ -14,10 +14,12 @@ concurrency:
 
 jobs:
   checks:
-    # offgrid measures this Mac by asking sysctl for its chip and its memory.
-    # Anywhere else the test that reads a real machine skips itself, and a
-    # check that skips the thing it exists to check is worse than none.
-    runs-on: macos-15
+    # Two things are not checked here and are checked on a Mac instead:
+    # reading a real machine's sysctl values, which skips itself off Apple
+    # Silicon, and anything against a live runtime or agent, which no runner
+    # has. What runs here is everything that can be told the truth by a
+    # double.
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
 
     steps:
