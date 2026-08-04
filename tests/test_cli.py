@@ -220,3 +220,52 @@ def test_a_runtime_that_will_not_let_go_is_reported_not_hidden(here, monkeypatch
 
     result = runner.invoke(app, ["run"])
     assert "still holding" in result.stdout
+
+
+def test_the_profile_names_the_model_when_the_command_line_does_not(here, monkeypatch):
+    runner.invoke(app, ["setup"])
+    _name_in_profile(here, "a/other-7b")
+    used = _watch(
+        monkeypatch, holding=[Model(identifier="a/other-7b", context_limit=8192)]
+    )
+
+    result = runner.invoke(app, ["run"])
+    assert result.exit_code == 0
+    assert used["loaded"] == "a/other-7b"
+
+
+def test_the_command_line_beats_the_profile(here, monkeypatch):
+    runner.invoke(app, ["setup"])
+    _name_in_profile(here, "a/from-profile-7b")
+    used = _watch(
+        monkeypatch,
+        holding=[
+            Model(identifier="a/from-profile-7b", context_limit=8192),
+            Model(identifier="a/asked-for-7b", context_limit=8192),
+        ],
+    )
+
+    runner.invoke(app, ["run", "-m", "a/asked-for-7b"])
+    assert used["loaded"] == "a/asked-for-7b"
+    assert used["env"]["ANTHROPIC_MODEL"] == "a/asked-for-7b"
+
+
+def _name_in_profile(here, identifier: str) -> None:
+    """Write a model into the stored profile, as a person editing it would."""
+    path = here / "profile.yaml"
+    path.write_text(path.read_text() + f"model: {identifier}\n")
+
+
+def _watch(monkeypatch, holding=None) -> dict:
+    """Record what run loads and launches, without loading or launching."""
+    seen: dict = {}
+    monkeypatch.setattr(
+        "offgrid.cli.load_model", lambda host, name, **kw: seen.update(loaded=name)
+    )
+    monkeypatch.setattr("offgrid.cli.unload", lambda name: seen.setdefault("freed", []))
+    monkeypatch.setattr(
+        "offgrid.cli.start", lambda launch: seen.update(env=launch.env) or 0
+    )
+    if holding is not None:
+        monkeypatch.setattr("offgrid.cli.parse_models", lambda payload: holding)
+    return seen

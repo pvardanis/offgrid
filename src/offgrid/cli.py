@@ -91,7 +91,8 @@ def run(
 ) -> None:
     """Start the agent against a model the runtime is holding."""
     profile = _profile()
-    model = _chosen(profile, model_name) if model_name else _resident(profile)
+    wanted = model_name or profile.model
+    model = _chosen(profile, wanted) if wanted else _resident(profile)
     require_compatible(runtime_dialect(), agent_dialect())
 
     prepare(CONFIG_DIR)

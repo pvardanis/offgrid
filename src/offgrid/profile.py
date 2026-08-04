@@ -24,6 +24,8 @@ class Profile(BaseModel):
     :param chip: Marketing name of the SoC, as measured.
     :param memory_bytes: Unified memory, as measured.
     :param wired_limit_bytes: The GPU wired limit, or ``None`` at its default.
+    :param model: The model to run unless one is named on the command line, or
+        ``None`` to use whatever the runtime is already holding.
     """
 
     host: str
@@ -32,13 +34,17 @@ class Profile(BaseModel):
     chip: str
     memory_bytes: int
     wired_limit_bytes: int | None = None
+    model: str | None = None
 
     @classmethod
-    def describing(cls, machine: Machine, *, host: str) -> "Profile":
+    def describing(
+        cls, machine: Machine, *, host: str, model: str | None = None
+    ) -> "Profile":
         """Build a profile from a measured machine.
 
         :param machine: The host offgrid is running on.
         :param host: Address the runtime listens on.
+        :param model: The model to run by default, if one has been chosen.
 
         :return: A profile ready to save.
         """
@@ -47,6 +53,7 @@ class Profile(BaseModel):
             chip=machine.chip,
             memory_bytes=machine.memory_bytes,
             wired_limit_bytes=machine.wired_limit_bytes,
+            model=model,
         )
 
     def machine(self) -> Machine:

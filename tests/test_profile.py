@@ -57,3 +57,30 @@ def test_the_machine_is_recorded_as_measured(tmp_path):
 
     assert profile.memory_bytes == 64 * GIB
     assert profile.wired_limit_bytes == 56 * GIB
+
+
+def test_a_profile_can_name_the_model_to_use(tmp_path):
+    path = tmp_path / "profile.yaml"
+    save(
+        Profile.describing(
+            a_machine(), host="127.0.0.1:1234", model="qwen/qwen3.6-35b-a3b"
+        ),
+        path,
+    )
+
+    assert load(path).model == "qwen/qwen3.6-35b-a3b"
+
+
+def test_a_profile_written_before_models_were_named_still_loads(tmp_path):
+    # Exactly what `offgrid setup` wrote before this key existed.
+    path = tmp_path / "profile.yaml"
+    path.write_text(
+        "host: 127.0.0.1:1234\n"
+        "runtime: lmstudio\n"
+        "agent: claude-code\n"
+        "chip: Apple M1 Max\n"
+        "memory_bytes: 68719476736\n"
+        "wired_limit_bytes: 60129542144\n"
+    )
+
+    assert load(path).model is None
