@@ -159,8 +159,10 @@ def load(host: str, identifier: str, timeout: float = LOAD_TIMEOUT_SECONDS) -> N
     :param identifier: The model to load.
     :param timeout: How long to wait before giving up.
 
-    :raise RuntimeUnreachableError: When the load does not finish in time, or
-        the runtime refuses it.
+    :raise RuntimeUnreachableError: When the load does not finish in time,
+        when the runtime refuses it, or when another model answers. A name
+        LM Studio does not have is answered 200 by whatever is loaded, and
+        the model named in the reply is what gives that away.
     """
     url = f"http://{host}{MESSAGES}"
     body = {
@@ -186,6 +188,23 @@ def load(host: str, identifier: str, timeout: float = LOAD_TIMEOUT_SECONDS) -> N
         raise RuntimeUnreachableError(
             f"The runtime answered {response.status_code} loading {identifier}. "
             "Check the name against `offgrid doctor`, and that it has room."
+        )
+
+    try:
+        answer = response.json()
+    except ValueError as error:
+        raise RuntimeUnreachableError(
+            f"{url} answered {response.status_code} loading {identifier} with "
+            f"{response.headers.get('content-type', 'no type')}, not JSON. "
+            f"Is http://{host} really LM Studio?"
+        ) from error
+
+    answered = answer.get("model") if isinstance(answer, dict) else None
+    if answered and answered != identifier:
+        raise RuntimeUnreachableError(
+            f"{identifier} was asked for and {answered} answered. LM Studio "
+            "takes a name it does not have and lets whatever is loaded reply, "
+            "so check the name against `offgrid doctor`."
         )
 
 

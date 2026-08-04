@@ -81,6 +81,47 @@ def test_loading_a_model_asks_it_for_one_token(monkeypatch: pytest.MonkeyPatch):
     assert asked["body"]["max_tokens"] == 1
 
 
+def test_a_load_another_model_answers_is_refused(monkeypatch: pytest.MonkeyPatch):
+    # Captured from the live server: asked for a name it does not have while
+    # google/gemma-4-e4b was loaded, it answered 200 as gemma.
+    from offgrid.runtimes.lmstudio import load
+
+    answered_as = {
+        "id": "msg_7awwpgbekenxou8epgv27q",
+        "type": "message",
+        "role": "assistant",
+        "content": [],
+        "model": "google/gemma-4-e4b",
+        "stop_reason": "max_tokens",
+    }
+    serve_post(monkeypatch, lambda request: httpx.Response(200, json=answered_as))
+
+    with pytest.raises(RuntimeUnreachableError, match="google/gemma-4-e4b") as raised:
+        load(HOST, "totally/made-up-model-9000", timeout=5)
+
+    assert "totally/made-up-model-9000" in str(raised.value)
+
+
+def test_a_load_the_right_model_answers_is_accepted(monkeypatch: pytest.MonkeyPatch):
+    from offgrid.runtimes.lmstudio import load
+
+    served = {"content": [], "model": "a/model-7b"}
+    serve_post(monkeypatch, lambda request: httpx.Response(200, json=served))
+
+    load(HOST, "a/model-7b", timeout=5)
+
+
+def test_a_load_answered_with_something_other_than_json_says_so(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    from offgrid.runtimes.lmstudio import load
+
+    serve_post(monkeypatch, lambda request: httpx.Response(200, html="<h1>hello</h1>"))
+
+    with pytest.raises(RuntimeUnreachableError, match="not JSON"):
+        load(HOST, "a/model-7b", timeout=5)
+
+
 def test_a_load_that_never_finishes_says_so(monkeypatch: pytest.MonkeyPatch):
     from offgrid.runtimes.lmstudio import load
 
