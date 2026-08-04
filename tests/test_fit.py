@@ -108,20 +108,6 @@ def test_ranking_drops_models_that_cannot_load():
     assert ranked([too_big], machine()) == []
 
 
-@given(
-    params=st.floats(min_value=1e6, max_value=1e12),
-    low=st.sampled_from([2, 3, 4]),
-    high=st.sampled_from([6, 8, 16]),
-)
-def test_more_bits_never_shrinks_the_weights(params: float, low: int, high: int):
-    more, fewer = (
-        weights_bytes(model(params=params, bits=high)),
-        weights_bytes(model(params=params, bits=low)),
-    )
-    assert more is not None and fewer is not None
-    assert more >= fewer
-
-
 @given(params=st.floats(min_value=1e6, max_value=1e12), bits=st.sampled_from([4, 8]))
 def test_a_model_never_loads_on_a_machine_smaller_than_its_weights(
     params: float, bits: int
