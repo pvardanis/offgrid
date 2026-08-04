@@ -1,6 +1,7 @@
 """The three things offgrid does: describe, check, and launch."""
 
 import os
+import signal
 import subprocess
 import sys
 import time
@@ -27,6 +28,10 @@ DEFAULT_HOST = "127.0.0.1:1234"
 TOKEN = "local"
 BILLION = 1e9
 GIB = 1024**3
+
+# Being stopped by either of these means offgrid is going away, and the agent
+# has to go with it rather than outlive the model it is talking to.
+STOPS = (signal.SIGTERM, signal.SIGHUP)
 
 app = typer.Typer(
     help="Run a coding agent against a model on this machine.", add_completion=False
@@ -112,8 +117,14 @@ def run(
         code = start(launch)
     except KeyboardInterrupt:
         code = 130
-
-    _let_go(profile.host, model.identifier)
+    except OSError as error:
+        typer.echo(
+            f"  Could not start {launch.argv[0]}: {error}. "
+            "Install it, or put it on PATH."
+        )
+        code = 127
+    finally:
+        _let_go(profile.host, model.identifier)
 
     raise typer.Exit(code)
 
@@ -123,17 +134,32 @@ def start(launch: Launch) -> int:
 
     offgrid stays alive as its parent rather than handing over the process,
     because a model held in memory has to be let go by somebody once the
-    agent is done with it.
+    agent is done with it. Being asked to stop is passed on for the same
+    reason: an agent left running would be talking to a model offgrid is
+    about to let go of.
 
     :param launch: The environment and command to run.
 
-    :return: The agent's exit code.
-    """
-    finished = subprocess.run(
-        launch.argv, env={**os.environ, **launch.env}, check=False
-    )
+    :return: The agent's exit code, or what a shell reports for the signal
+        that killed it.
 
-    return finished.returncode
+    :raise OSError: When the agent cannot be started at all.
+    """
+    agent = subprocess.Popen(launch.argv, env={**os.environ, **launch.env})
+
+    def pass_on(number: int, frame: object) -> None:
+        """Stop the agent, so offgrid outlives it and can let the model go."""
+        agent.terminate()
+
+    replaced = [(number, signal.signal(number, pass_on)) for number in STOPS]
+
+    try:
+        code = agent.wait()
+    finally:
+        for number, handler in replaced:
+            signal.signal(number, handler)
+
+    return code if code >= 0 else 128 - code
 
 
 def _profile() -> Profile:

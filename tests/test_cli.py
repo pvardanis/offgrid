@@ -241,6 +241,23 @@ def test_the_model_is_let_go_even_when_the_agent_is_interrupted(
     assert runtime["let_go"] == [RESIDENT]
 
 
+def test_the_model_is_let_go_when_the_agent_will_not_start(here, monkeypatch, runtime):
+    # A model held for an agent that never ran is memory nothing is using,
+    # and it stays held for the rest of the session.
+    runner.invoke(app, ["setup"])
+
+    def missing(launch):
+        raise FileNotFoundError(2, "No such file or directory", "claude")
+
+    monkeypatch.setattr("offgrid.cli.start", missing)
+
+    result = runner.invoke(app, ["run"])
+    assert result.exit_code == 127
+    assert "claude" in result.stdout
+    assert "on PATH" in result.stdout
+    assert runtime["let_go"] == [RESIDENT]
+
+
 def test_a_runtime_that_will_not_let_go_is_reported_not_hidden(here, monkeypatch):
     from offgrid.exceptions import RuntimeUnreachableError
 
