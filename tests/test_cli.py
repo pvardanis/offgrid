@@ -49,7 +49,7 @@ def _runtime(monkeypatch, *, holding=None, cold=None, ceiling=CEILING) -> dict:
         in_memory[identifier] = True
         asked["loaded"] = identifier
 
-    def unload(identifier: str) -> None:
+    def unload(host: str, identifier: str) -> None:
         in_memory[identifier] = False
         asked["let_go"].append(identifier)
 
@@ -246,7 +246,7 @@ def test_a_runtime_that_will_not_let_go_is_reported_not_hidden(here, monkeypatch
 
     runner.invoke(app, ["setup"])
 
-    def refuse(name):
+    def refuse(host, name):
         raise RuntimeUnreachableError("lms would not unload it")
 
     monkeypatch.setattr("offgrid.cli.unload", refuse)

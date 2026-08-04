@@ -189,14 +189,20 @@ def load(host: str, identifier: str, timeout: float = LOAD_TIMEOUT_SECONDS) -> N
         )
 
 
-def unload(identifier: str) -> None:
-    """Let go of a model, freeing the memory it holds.
+def unload(host: str, identifier: str) -> None:
+    """Let go of a model, and confirm the memory it held came back.
 
+    The tool exits 0 for a name it does not know, printing ``Model Not
+    Found`` and freeing nothing, so its exit code alone cannot say whether
+    anything was let go. The catalogue is what settles it.
+
+    :param host: Address the runtime listens on.
     :param identifier: The model to unload.
 
-    :raise RuntimeUnreachableError: When the runtime's tool is missing or
-        refuses. Memory that stays held is worth saying out loud, since the
-        machine has one pool and everything else on it shares it.
+    :raise RuntimeUnreachableError: When the runtime's tool is missing, when
+        it refuses, or when the model is still held afterwards. Memory that
+        stays held is worth saying out loud, since the machine has one pool
+        and everything else on it shares it.
     """
     try:
         finished = subprocess.run(
@@ -217,4 +223,11 @@ def unload(identifier: str) -> None:
         )
         raise RuntimeUnreachableError(
             f"{TOOL} would not unload {identifier}: {complaint}"
+        )
+
+    if any(model.identifier == identifier for model in loaded(catalogue(host))):
+        raise RuntimeUnreachableError(
+            f"{TOOL} exited cleanly, but http://{host} is still holding "
+            f"{identifier}: {finished.stdout.strip() or 'it said nothing'}. "
+            "Let it go in LM Studio directly."
         )

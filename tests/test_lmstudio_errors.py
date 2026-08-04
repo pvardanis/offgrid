@@ -5,17 +5,14 @@ import pytest
 
 from offgrid.exceptions import RuntimeUnreachableError
 from offgrid.runtimes.lmstudio import catalogue, parse_models
+from tests.doubles import serve_get, serve_post
 
 HOST = "127.0.0.1:1234"
 
 
-def serving(handler) -> httpx.MockTransport:
-    return httpx.MockTransport(handler)
-
-
 def test_a_catalogue_comes_back_decoded(monkeypatch: pytest.MonkeyPatch):
     body = {"data": [{"id": "a/model-7b", "type": "llm", "state": "loaded"}]}
-    _serve(monkeypatch, lambda request: httpx.Response(200, json=body))
+    serve_get(monkeypatch, lambda request: httpx.Response(200, json=body))
     assert catalogue(HOST) == body
 
 
@@ -23,7 +20,7 @@ def test_nothing_listening_says_to_start_the_server(monkeypatch: pytest.MonkeyPa
     def refuse(request: httpx.Request) -> httpx.Response:
         raise httpx.ConnectError("connection refused", request=request)
 
-    _serve(monkeypatch, refuse)
+    serve_get(monkeypatch, refuse)
     with pytest.raises(RuntimeUnreachableError, match="Start LM Studio") as raised:
         catalogue(HOST)
     assert HOST in str(raised.value)
@@ -35,13 +32,13 @@ def test_a_timeout_is_not_reported_as_a_dead_server(monkeypatch: pytest.MonkeyPa
     def stall(request: httpx.Request) -> httpx.Response:
         raise httpx.ReadTimeout("too slow", request=request)
 
-    _serve(monkeypatch, stall)
+    serve_get(monkeypatch, stall)
     with pytest.raises(RuntimeUnreachableError, match="did not answer within"):
         catalogue(HOST)
 
 
 def test_an_error_status_says_the_server_answered(monkeypatch: pytest.MonkeyPatch):
-    _serve(monkeypatch, lambda request: httpx.Response(500))
+    serve_get(monkeypatch, lambda request: httpx.Response(500))
     with pytest.raises(RuntimeUnreachableError, match="500") as raised:
         catalogue(HOST)
     assert "Start LM Studio" not in str(raised.value)
@@ -50,7 +47,7 @@ def test_an_error_status_says_the_server_answered(monkeypatch: pytest.MonkeyPatc
 def test_a_page_that_is_not_json_names_what_came_back(monkeypatch: pytest.MonkeyPatch):
     # Pointing at the wrong port is the likeliest mistake, and it used to
     # surface as a decode error naming nothing the user typed.
-    _serve(monkeypatch, lambda request: httpx.Response(200, html="<h1>hello</h1>"))
+    serve_get(monkeypatch, lambda request: httpx.Response(200, html="<h1>hello</h1>"))
     with pytest.raises(RuntimeUnreachableError, match="not JSON") as raised:
         catalogue(HOST)
     assert HOST in str(raised.value)
@@ -66,17 +63,6 @@ def test_an_entry_without_an_identifier_is_named_as_such():
         parse_models({"data": [{"type": "llm", "state": "loaded"}]})
 
 
-def _serve(monkeypatch: pytest.MonkeyPatch, handler) -> None:
-    """Point httpx.get at a transport that answers however the test wants."""
-    transport = serving(handler)
-
-    def get(url: str, **kwargs: object) -> httpx.Response:
-        with httpx.Client(transport=transport) as client:
-            return client.get(url)
-
-    monkeypatch.setattr(httpx, "get", get)
-
-
 def test_loading_a_model_asks_it_for_one_token(monkeypatch: pytest.MonkeyPatch):
     from offgrid.runtimes.lmstudio import load
 
@@ -87,7 +73,7 @@ def test_loading_a_model_asks_it_for_one_token(monkeypatch: pytest.MonkeyPatch):
         asked["body"] = json.loads(request.content)
         return httpx.Response(200, json={"content": []})
 
-    _serve_post(monkeypatch, answer)
+    serve_post(monkeypatch, answer)
     load(HOST, "a/model-7b", timeout=5)
 
     assert asked["url"].endswith("/v1/messages")
@@ -101,7 +87,7 @@ def test_a_load_that_never_finishes_says_so(monkeypatch: pytest.MonkeyPatch):
     def stall(request: httpx.Request) -> httpx.Response:
         raise httpx.ReadTimeout("still loading", request=request)
 
-    _serve_post(monkeypatch, stall)
+    serve_post(monkeypatch, stall)
     with pytest.raises(RuntimeUnreachableError, match="did not finish loading"):
         load(HOST, "a/model-7b", timeout=5)
 
@@ -109,17 +95,6 @@ def test_a_load_that_never_finishes_says_so(monkeypatch: pytest.MonkeyPatch):
 def test_a_refused_load_reports_what_the_server_said(monkeypatch: pytest.MonkeyPatch):
     from offgrid.runtimes.lmstudio import load
 
-    _serve_post(monkeypatch, lambda request: httpx.Response(400, text="no such model"))
+    serve_post(monkeypatch, lambda request: httpx.Response(400, text="no such model"))
     with pytest.raises(RuntimeUnreachableError, match="400"):
         load(HOST, "a/model-7b", timeout=5)
-
-
-def _serve_post(monkeypatch: pytest.MonkeyPatch, handler) -> None:
-    """Point httpx.post at a transport that answers however the test wants."""
-    transport = httpx.MockTransport(handler)
-
-    def post(url: str, json: dict, timeout: float = 0) -> httpx.Response:
-        with httpx.Client(transport=transport) as client:
-            return client.post(url, json=json)
-
-    monkeypatch.setattr(httpx, "post", post)

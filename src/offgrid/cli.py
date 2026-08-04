@@ -113,7 +113,7 @@ def run(
     except KeyboardInterrupt:
         code = 130
 
-    _let_go(model.identifier)
+    _let_go(profile.host, model.identifier)
 
     raise typer.Exit(code)
 
@@ -169,7 +169,7 @@ def _chosen(profile: Profile, identifier: str) -> Model:
     if held is not None and held.identifier == identifier:
         return held
 
-    _clear(payload, identifier)
+    _clear(profile.host, payload, identifier)
 
     typer.echo(f"  Loading {identifier} ...", nl=False)
     started = time.monotonic()
@@ -209,12 +209,13 @@ def _now_holding(profile: Profile, identifier: str) -> Model:
     return held[identifier]
 
 
-def _clear(payload: dict, wanted: str) -> None:
+def _clear(host: str, payload: dict, wanted: str) -> None:
     """Let go of every model held that is not the one being asked for.
 
     One machine, one pool of memory: a model left loaded is memory the rest
     of the machine cannot use.
 
+    :param host: Address the runtime listens on.
     :param payload: The runtime's catalogue.
     :param wanted: The model that will answer.
     """
@@ -223,16 +224,17 @@ def _clear(payload: dict, wanted: str) -> None:
         return
 
     typer.echo(f"  Letting go of {held.identifier}, whose cached prefix goes with it.")
-    _let_go(held.identifier)
+    _let_go(host, held.identifier)
 
 
-def _let_go(identifier: str) -> None:
+def _let_go(host: str, identifier: str) -> None:
     """Unload a model, saying so if the runtime will not.
 
+    :param host: Address the runtime listens on.
     :param identifier: The model to unload.
     """
     try:
-        unload(identifier)
+        unload(host, identifier)
     except OffgridError as error:
         typer.echo(f"  The runtime is still holding {identifier}: {error}")
 
