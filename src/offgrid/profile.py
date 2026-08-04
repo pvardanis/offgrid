@@ -5,9 +5,10 @@ decision. The profile holds the decision, so a later run is one word.
 """
 
 from pathlib import Path
+from typing import Literal
 
 import yaml
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from offgrid.exceptions import ProfileError
 from offgrid.machine import Machine
@@ -26,14 +27,20 @@ class Profile(BaseModel):
     :param wired_limit_bytes: The GPU wired limit, or ``None`` at its default.
     :param model: The model to run unless one is named on the command line, or
         ``None`` to use whatever the runtime is already holding.
+
+    A profile is hand-edited, so anything it says that offgrid cannot act on
+    is refused rather than ignored: a name offgrid does not have is a mistake
+    to report, not a preference to record.
     """
 
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
     host: str
-    runtime: str = "lmstudio"
-    agent: str = "claude-code"
+    runtime: Literal["lmstudio"] = "lmstudio"
+    agent: Literal["claude-code"] = "claude-code"
     chip: str
-    memory_bytes: int
-    wired_limit_bytes: int | None = None
+    memory_bytes: int = Field(gt=0)
+    wired_limit_bytes: int | None = Field(default=None, gt=0)
     model: str | None = None
 
     @classmethod
@@ -54,6 +61,24 @@ class Profile(BaseModel):
             memory_bytes=machine.memory_bytes,
             wired_limit_bytes=machine.wired_limit_bytes,
             model=model,
+        )
+
+    def remeasured(self, machine: Machine, *, host: str | None = None) -> "Profile":
+        """Record the machine as it is now, keeping what was chosen by hand.
+
+        :param machine: The host offgrid is running on.
+        :param host: Address the runtime listens on, or ``None`` to keep the
+            one already stored.
+
+        :return: A profile ready to save.
+        """
+        return self.model_copy(
+            update={
+                "host": host or self.host,
+                "chip": machine.chip,
+                "memory_bytes": machine.memory_bytes,
+                "wired_limit_bytes": machine.wired_limit_bytes,
+            }
         )
 
     def machine(self) -> Machine:
@@ -101,8 +126,12 @@ def load(path: Path = DEFAULT_PATH) -> Profile:
     try:
         return Profile(**body)
     except ValidationError as error:
-        missing = ", ".join(str(problem["loc"][0]) for problem in error.errors())
+        problems = ", ".join(
+            f"{problem['loc'][0] if problem['loc'] else 'the file'} "
+            f"({problem['msg'].lower()})"
+            for problem in error.errors()
+        )
         raise ProfileError(
-            f"{path} is missing or has the wrong type for: {missing}. "
+            f"{path} does not describe a machine offgrid can run on: {problems}. "
             "Fix it by hand, or run `offgrid setup` to write it again."
         ) from error

@@ -42,11 +42,16 @@ app = typer.Typer(
 
 @app.command()
 def setup(
-    host: str = typer.Option(DEFAULT_HOST, help="Where the runtime listens."),
+    host: str = typer.Option(None, help="Where the runtime listens."),
 ) -> None:
     """Measure this machine and record how to reach the runtime."""
     machine = detect()
-    profile = Profile.describing(machine, host=host)
+    stored = _stored()
+    profile = (
+        stored.remeasured(machine, host=host)
+        if stored
+        else Profile.describing(machine, host=host or DEFAULT_HOST)
+    )
     save(profile, DEFAULT_PATH)
 
     typer.echo(f"  {machine.chip} · {machine.memory_bytes / GIB:.0f}GB unified memory")
@@ -183,6 +188,22 @@ def _reported() -> Iterator[None]:
     except OffgridError as error:
         typer.echo(f"  {error}")
         raise typer.Exit(1) from error
+
+
+def _stored() -> Profile | None:
+    """Read the profile already there, so a re-run does not undo an edit.
+
+    :return: The stored profile, or ``None`` when there is none to keep.
+    """
+    if not DEFAULT_PATH.exists():
+        return None
+
+    try:
+        return load_profile(DEFAULT_PATH)
+    except OffgridError as error:
+        typer.echo(f"  {error}")
+        typer.echo("  Writing a fresh profile over it.")
+        return None
 
 
 def _profile() -> Profile:

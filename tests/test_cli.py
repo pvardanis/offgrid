@@ -129,6 +129,38 @@ def test_setup_writes_a_profile_that_can_be_read_back(here):
     assert load(here / "profile.yaml").chip == "Apple M1 Max"
 
 
+def test_setup_run_again_keeps_what_was_edited_by_hand(here):
+    # `setup` invites a re-run: the sysctl advice it prints is undone by a
+    # reboot. A re-run that wipes the model chosen since is a trap.
+    runner.invoke(app, ["setup"])
+    _name_in_profile(here, "a/chosen-by-hand-7b")
+
+    result = runner.invoke(app, ["setup"])
+
+    from offgrid.profile import load
+
+    assert result.exit_code == 0
+    assert load(here / "profile.yaml").model == "a/chosen-by-hand-7b"
+
+
+def test_setup_takes_the_host_it_is_given_over_the_stored_one(here):
+    runner.invoke(app, ["setup", "--host", "10.0.0.5:4321"])
+    runner.invoke(app, ["setup", "--host", "127.0.0.1:1234"])
+
+    from offgrid.profile import load
+
+    assert load(here / "profile.yaml").host == "127.0.0.1:1234"
+
+
+def test_setup_keeps_a_host_that_was_stored_when_none_is_given(here):
+    runner.invoke(app, ["setup", "--host", "10.0.0.5:4321"])
+    runner.invoke(app, ["setup"])
+
+    from offgrid.profile import load
+
+    assert load(here / "profile.yaml").host == "10.0.0.5:4321"
+
+
 def test_doctor_needs_a_profile_first(here):
     result = runner.invoke(app, ["doctor"])
     assert result.exit_code == 1
