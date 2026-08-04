@@ -265,12 +265,14 @@ def _clear(host: str, payload: dict, wanted: str) -> None:
     :param payload: The runtime's catalogue.
     :param wanted: The model that will answer.
     """
-    held = resident(payload)
-    if held is None or held.identifier == wanted:
-        return
+    for held in loaded(payload):
+        if held.identifier == wanted:
+            continue
 
-    typer.echo(f"  Letting go of {held.identifier}, whose cached prefix goes with it.")
-    _let_go(host, held.identifier)
+        typer.echo(
+            f"  Letting go of {held.identifier}, whose cached prefix goes with it."
+        )
+        _let_go(host, held.identifier)
 
 
 def _let_go(host: str, identifier: str) -> None:

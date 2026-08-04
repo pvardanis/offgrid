@@ -227,6 +227,21 @@ def test_run_lets_go_of_models_it_did_not_ask_for(here, monkeypatch):
     assert RESIDENT in asked["let_go"]
 
 
+def test_every_model_held_is_let_go_not_only_the_first(here, monkeypatch):
+    # LM Studio holds several at once. One left behind is memory nothing on
+    # the machine can use for the whole session.
+    runner.invoke(app, ["setup"])
+    asked = _runtime(
+        monkeypatch,
+        holding={RESIDENT: 212224, "a/also-held-7b": 8192},
+        cold={"a/other-7b": 8192},
+    )
+    _launched(monkeypatch)
+
+    runner.invoke(app, ["run", "-m", "a/other-7b"])
+    assert asked["let_go"][:2] == [RESIDENT, "a/also-held-7b"]
+
+
 def test_the_model_is_held_only_for_as_long_as_the_agent_runs(here, monkeypatch):
     # What is already held goes first, the wanted model is loaded next, and
     # it is let go after the agent and not before it.
