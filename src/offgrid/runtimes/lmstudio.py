@@ -70,6 +70,26 @@ def parse_models(payload: dict) -> list[Model]:
     return models
 
 
+def loaded(payload: dict) -> list[Model]:
+    """Find every model held in memory.
+
+    The machine has one pool of memory, and LM Studio can hold several models
+    in it at once, so what is held is a list rather than a single answer.
+
+    :param payload: A decoded response from the catalogue endpoint.
+
+    :return: Every loaded model, in catalogue order, described by the context
+        the runtime serves it at rather than its ceiling.
+    """
+    in_memory = {
+        entry["id"]
+        for entry in payload.get("data", [])
+        if entry.get("state") == "loaded"
+    }
+
+    return [model for model in parse_models(payload) if model.identifier in in_memory]
+
+
 def resident(payload: dict) -> Model | None:
     """Find a model already held in memory.
 
@@ -83,13 +103,7 @@ def resident(payload: dict) -> Model | None:
         server holds none. LM Studio can hold several at once; which of them
         answers is decided by the request, not by this.
     """
-    loaded = {
-        entry["id"]
-        for entry in payload.get("data", [])
-        if entry.get("state") == "loaded"
-    }
-
-    return next((m for m in parse_models(payload) if m.identifier in loaded), None)
+    return next(iter(loaded(payload)), None)
 
 
 def catalogue(host: str) -> dict:

@@ -17,7 +17,7 @@ from offgrid.machine import detect
 from offgrid.model import Model
 from offgrid.profile import DEFAULT_PATH, Profile, save
 from offgrid.profile import load as load_profile
-from offgrid.runtimes.lmstudio import catalogue, parse_models, resident, unload
+from offgrid.runtimes.lmstudio import catalogue, loaded, parse_models, resident, unload
 from offgrid.runtimes.lmstudio import dialect as runtime_dialect
 from offgrid.runtimes.lmstudio import load as load_model
 
@@ -181,7 +181,32 @@ def _chosen(profile: Profile, identifier: str) -> Model:
         raise typer.Exit(1) from error
     typer.echo(f" ready in {time.monotonic() - started:.0f}s")
 
-    return known[identifier]
+    return _now_holding(profile, identifier)
+
+
+def _now_holding(profile: Profile, identifier: str) -> Model:
+    """Read back a model from the runtime that has just loaded it.
+
+    A catalogue entry states a model's ceiling until it is loaded, and the
+    window it is served at once it is. Sizing the agent's context from the
+    ceiling means never compacting, and the runtime truncates the prefix
+    instead — which is the failure compacting exists to avoid.
+
+    :param profile: Where to reach the runtime.
+    :param identifier: The model that was loaded.
+
+    :return: The model as the runtime now serves it.
+    """
+    held = {model.identifier: model for model in loaded(_catalogue(profile))}
+
+    if identifier not in held:
+        typer.echo(
+            f"  The runtime at {profile.host} accepted {identifier} but is not "
+            "holding it. Load it in the runtime directly to see what it says."
+        )
+        raise typer.Exit(1)
+
+    return held[identifier]
 
 
 def _clear(payload: dict, wanted: str) -> None:
