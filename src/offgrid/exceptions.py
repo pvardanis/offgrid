@@ -32,5 +32,9 @@ class DialectMismatchError(OffgridError):
         self.expected = expected
 
 
+class AgentSettingsError(OffgridError):
+    """The agent's settings would let it do something offgrid cannot back."""
+
+
 class ProfileError(OffgridError):
     """The stored profile is missing, unreadable, or fails validation."""

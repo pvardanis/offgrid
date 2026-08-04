@@ -94,7 +94,34 @@ def test_an_existing_profile_is_left_alone(tmp_path):
 
     settings = tmp_path / "settings.json"
     tmp_path.mkdir(exist_ok=True)
-    settings.write_text('{"theme": "mine"}')
+    kept = '{"theme": "mine", "permissions": {"deny": ["WebSearch"]}}'
+    settings.write_text(kept)
 
     prepare(tmp_path)
-    assert settings.read_text() == '{"theme": "mine"}'
+    assert settings.read_text() == kept
+
+
+def test_a_profile_that_would_let_the_agent_search_is_refused(tmp_path):
+    # The file is hand-editable, and an edit that drops the deny brings back
+    # the invented answers it was written to prevent.
+    from offgrid.agents.claude_code import prepare
+    from offgrid.exceptions import AgentSettingsError
+
+    settings = tmp_path / "settings.json"
+    tmp_path.mkdir(exist_ok=True)
+    settings.write_text('{"theme": "mine"}')
+
+    with pytest.raises(AgentSettingsError, match="WebSearch"):
+        prepare(tmp_path)
+
+
+def test_a_profile_that_is_not_readable_json_is_refused(tmp_path):
+    from offgrid.agents.claude_code import prepare
+    from offgrid.exceptions import AgentSettingsError
+
+    settings = tmp_path / "settings.json"
+    tmp_path.mkdir(exist_ok=True)
+    settings.write_text('{"permissions": ')
+
+    with pytest.raises(AgentSettingsError, match=r"settings\.json"):
+        prepare(tmp_path)

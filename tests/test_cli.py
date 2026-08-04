@@ -337,6 +337,20 @@ def test_the_model_is_let_go_even_when_the_agent_is_interrupted(
     assert runtime["let_go"] == [RESIDENT]
 
 
+def test_settings_that_would_let_the_agent_search_stop_the_run(here, monkeypatch):
+    runner.invoke(app, ["setup"])
+    asked = _runtime(monkeypatch, cold={"a/other-7b": 8192})
+    _launched(monkeypatch)
+    config = here / "claude-code"
+    config.mkdir()
+    (config / "settings.json").write_text('{"theme": "mine"}')
+
+    result = runner.invoke(app, ["run", "-m", "a/other-7b"])
+    assert result.exit_code == 1
+    assert "WebSearch" in result.stdout
+    assert asked["order"] == []
+
+
 def test_the_model_is_let_go_when_the_agent_will_not_start(here, monkeypatch, runtime):
     # A model held for an agent that never ran is memory nothing is using,
     # and it stays held for the rest of the session.

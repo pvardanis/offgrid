@@ -108,7 +108,7 @@ def run(
     # someone's time.
     with _reported():
         require_compatible(runtime_dialect(), agent_dialect())
-    prepare(CONFIG_DIR)
+        prepare(CONFIG_DIR)
 
     wanted = model_name or profile.model
     model = _chosen(profile, wanted) if wanted else _resident(profile)

@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from offgrid.dialect import Dialect
+from offgrid.exceptions import AgentSettingsError
 from offgrid.model import Model
 
 # Decode runs at tens of tokens per second, so thinking and long replies cost
@@ -106,13 +107,45 @@ def prepare(config_dir: Path) -> None:
     """Make sure the agent has a profile to run against.
 
     Anything already there is left alone: the file is meant to be edited, and
-    a run is no place to lose those edits.
+    a run is no place to lose those edits. It is read rather than trusted,
+    because one of those edits can undo what it is for.
 
     :param config_dir: Profile directory to create if it is not there.
+
+    :raise AgentSettingsError: When the settings already there cannot be read,
+        or would let the agent search the web.
     """
     config_dir.mkdir(parents=True, exist_ok=True)
     settings = config_dir / "settings.json"
-    if settings.exists():
+    if not settings.exists():
+        settings.write_text(json.dumps(SLIM_SETTINGS, indent=2) + "\n")
         return
 
-    settings.write_text(json.dumps(SLIM_SETTINGS, indent=2) + "\n")
+    _require_no_search(settings)
+
+
+def _require_no_search(settings: Path) -> None:
+    """Refuse settings that would let the agent reach for WebSearch.
+
+    :param settings: The agent's settings file.
+
+    :raise AgentSettingsError: When it cannot be read, or does not deny it.
+    """
+    try:
+        stored = json.loads(settings.read_text())
+    except ValueError as error:
+        raise AgentSettingsError(
+            f"{settings} is not readable as JSON: {error}. Fix it, or delete it "
+            "and offgrid writes one."
+        ) from error
+
+    permissions = stored.get("permissions") if isinstance(stored, dict) else None
+    denied = permissions.get("deny") if isinstance(permissions, dict) else None
+
+    if not isinstance(denied, list) or "WebSearch" not in denied:
+        raise AgentSettingsError(
+            f"{settings} does not deny WebSearch, which runs on Anthropic's "
+            "servers: against a local model there is nothing to run it, so the "
+            "model invents a result and the agent returns it as an answer. Add "
+            "it to permissions.deny, or delete the file and offgrid writes one."
+        )
