@@ -5,6 +5,8 @@ import signal
 import subprocess
 import sys
 import time
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 
 import typer
@@ -96,11 +98,16 @@ def run(
 ) -> None:
     """Start the agent against a model the runtime is holding."""
     profile = _profile()
+
+    # Both of these are knowable before a load, and a load is a minute of
+    # someone's time.
+    with _reported():
+        require_compatible(runtime_dialect(), agent_dialect())
+    prepare(CONFIG_DIR)
+
     wanted = model_name or profile.model
     model = _chosen(profile, wanted) if wanted else _resident(profile)
-    require_compatible(runtime_dialect(), agent_dialect())
 
-    prepare(CONFIG_DIR)
     typer.echo(
         f"  {model.identifier}, context {model.context_limit or 'unstated'}", err=True
     )
@@ -162,16 +169,29 @@ def start(launch: Launch) -> int:
     return code if code >= 0 else 128 - code
 
 
+@contextmanager
+def _reported() -> Iterator[None]:
+    """Say what went wrong and stop, rather than raising at the terminal.
+
+    offgrid's own errors carry the operation, the input and what to do next,
+    which a traceback buries.
+
+    :yield: To the operation being run.
+    """
+    try:
+        yield
+    except OffgridError as error:
+        typer.echo(f"  {error}")
+        raise typer.Exit(1) from error
+
+
 def _profile() -> Profile:
     """Read the stored profile, or explain how to make one.
 
     :return: The stored profile.
     """
-    try:
+    with _reported():
         return load_profile(DEFAULT_PATH)
-    except OffgridError as error:
-        typer.echo(f"  {error}")
-        raise typer.Exit(1) from error
 
 
 def _chosen(profile: Profile, identifier: str) -> Model:
@@ -199,12 +219,12 @@ def _chosen(profile: Profile, identifier: str) -> Model:
 
     typer.echo(f"  Loading {identifier} ...", nl=False)
     started = time.monotonic()
-    try:
-        load_model(profile.host, identifier)
-    except OffgridError as error:
-        typer.echo("")
-        typer.echo(f"  {error}")
-        raise typer.Exit(1) from error
+    with _reported():
+        try:
+            load_model(profile.host, identifier)
+        except OffgridError:
+            typer.echo("")
+            raise
     typer.echo(f" ready in {time.monotonic() - started:.0f}s")
 
     return _now_holding(profile, identifier)
@@ -272,11 +292,8 @@ def _catalogue(profile: Profile) -> dict:
 
     :return: The decoded catalogue.
     """
-    try:
+    with _reported():
         return catalogue(profile.host)
-    except OffgridError as error:
-        typer.echo(f"  {error}")
-        raise typer.Exit(1) from error
 
 
 def _resident(profile: Profile) -> Model:
@@ -299,5 +316,14 @@ def _resident(profile: Profile) -> Model:
 
 
 def main() -> None:
-    """Run the command line."""
-    sys.exit(app())
+    """Run the command line, reporting offgrid's own errors as messages.
+
+    A command reports what it can itself. This is the net under everything
+    else, so an error offgrid raised on purpose reaches the terminal as the
+    sentence it was written as rather than as a traceback.
+    """
+    try:
+        app()
+    except OffgridError as error:
+        typer.echo(f"  {error}")
+        sys.exit(1)

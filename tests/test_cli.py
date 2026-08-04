@@ -35,7 +35,7 @@ def _runtime(monkeypatch, *, holding=None, cold=None, ceiling=CEILING) -> dict:
     """
     served = {**(holding or {}), **(cold or {})}
     in_memory = dict.fromkeys(holding or {}, True) | dict.fromkeys(cold or {}, False)
-    asked: dict = {"loaded": None, "let_go": []}
+    asked: dict = {"loaded": None, "let_go": [], "order": []}
 
     def catalogue(host: str) -> dict:
         return {
@@ -48,10 +48,12 @@ def _runtime(monkeypatch, *, holding=None, cold=None, ceiling=CEILING) -> dict:
     def load(host: str, identifier: str, **kwargs) -> None:
         in_memory[identifier] = True
         asked["loaded"] = identifier
+        asked["order"].append(("loaded", identifier))
 
     def unload(host: str, identifier: str) -> None:
         in_memory[identifier] = False
         asked["let_go"].append(identifier)
+        asked["order"].append(("let_go", identifier))
 
     monkeypatch.setattr("offgrid.cli.catalogue", catalogue)
     monkeypatch.setattr("offgrid.cli.load_model", load)
@@ -60,13 +62,26 @@ def _runtime(monkeypatch, *, holding=None, cold=None, ceiling=CEILING) -> dict:
     return asked
 
 
-def _launched(monkeypatch, code: int = 0) -> dict:
-    """Record what would have been started, without starting it."""
+def _launched(monkeypatch, code: int = 0, order: list | None = None) -> dict:
+    """Record what would have been started, without starting it.
+
+    :param monkeypatch: The test's patcher.
+    :param code: What the agent exits with.
+    :param order: A record of what the runtime was asked, to place the launch
+        among it.
+
+    :return: The environment and command the agent would have had.
+    """
     seen: dict = {}
-    monkeypatch.setattr(
-        "offgrid.cli.start",
-        lambda launch: seen.update(env=launch.env, argv=launch.argv) or code,
-    )
+
+    def start(launch) -> int:
+        if order is not None:
+            order.append(("started", launch.argv[0]))
+        seen.update(env=launch.env, argv=launch.argv)
+
+        return code
+
+    monkeypatch.setattr("offgrid.cli.start", start)
 
     return seen
 
@@ -212,6 +227,40 @@ def test_run_lets_go_of_models_it_did_not_ask_for(here, monkeypatch):
     assert RESIDENT in asked["let_go"]
 
 
+def test_the_model_is_held_only_for_as_long_as_the_agent_runs(here, monkeypatch):
+    # What is already held goes first, the wanted model is loaded next, and
+    # it is let go after the agent and not before it.
+    runner.invoke(app, ["setup"])
+    asked = _runtime(monkeypatch, holding={RESIDENT: 212224}, cold={"a/other-7b": 8192})
+    _launched(monkeypatch, order=asked["order"])
+
+    runner.invoke(app, ["run", "-m", "a/other-7b"])
+    assert asked["order"] == [
+        ("let_go", RESIDENT),
+        ("loaded", "a/other-7b"),
+        ("started", "claude"),
+        ("let_go", "a/other-7b"),
+    ]
+
+
+def test_an_agent_that_cannot_talk_to_the_runtime_is_refused_before_the_wait(
+    here, monkeypatch
+):
+    # Checking after the load spends a minute of someone's time to arrive at
+    # an answer that was knowable before it started.
+    from offgrid.dialect import Dialect
+
+    runner.invoke(app, ["setup"])
+    asked = _runtime(monkeypatch, cold={"a/other-7b": 8192})
+    _launched(monkeypatch)
+    monkeypatch.setattr("offgrid.cli.agent_dialect", lambda: Dialect.OPENAI)
+
+    result = runner.invoke(app, ["run", "-m", "a/other-7b"])
+    assert result.exit_code == 1
+    assert "translat" in result.stdout
+    assert asked["order"] == []
+
+
 def test_the_model_is_let_go_when_the_agent_finishes(here, monkeypatch, runtime):
     runner.invoke(app, ["setup"])
     _launched(monkeypatch)
@@ -307,6 +356,24 @@ def test_the_command_line_beats_the_profile(here, monkeypatch):
     runner.invoke(app, ["run", "-m", "a/asked-for-7b"])
     assert asked["loaded"] == "a/asked-for-7b"
     assert started["env"]["ANTHROPIC_MODEL"] == "a/asked-for-7b"
+
+
+def test_an_error_that_reaches_the_terminal_is_a_sentence_not_a_traceback(
+    monkeypatch, capsys
+):
+    from offgrid.cli import main
+    from offgrid.exceptions import RuntimeUnreachableError
+
+    def gone():
+        raise RuntimeUnreachableError("the runtime went away mid-run")
+
+    monkeypatch.setattr("offgrid.cli.app", gone)
+
+    with pytest.raises(SystemExit) as raised:
+        main()
+
+    assert raised.value.code == 1
+    assert "the runtime went away mid-run" in capsys.readouterr().out
 
 
 def _name_in_profile(here, identifier: str) -> None:
