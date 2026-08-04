@@ -1,0 +1,38 @@
+name: checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    # offgrid measures this Mac by asking sysctl for its chip and its memory.
+    # Anywhere else the test that reads a real machine skips itself, and a
+    # check that skips the thing it exists to check is worse than none.
+    runs-on: macos-15
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          enable-cache: true
+
+      - name: install what is locked
+        run: uv sync --locked
+
+      # The same hooks a commit runs locally, from the same config, so the
+      # two cannot drift apart.
+      - name: run the hooks
+        run: uv run prek run --all-files --show-diff-on-failure
