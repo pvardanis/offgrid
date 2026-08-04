@@ -18,7 +18,22 @@ class ModelUnavailableError(OffgridError):
 
 
 class DialectMismatchError(OffgridError):
-    """The agent speaks a different API dialect than the runtime serves."""
+    """The agent speaks a different API dialect than the runtime serves.
+
+    :param message: What went wrong and what to do about it.
+    :param served: The dialect the runtime serves.
+    :param expected: The dialect the agent expects.
+    """
+
+    def __init__(self, message: str, served: object, expected: object) -> None:
+        """Record which dialect each side speaks alongside the message."""
+        super().__init__(message)
+        self.served = served
+        self.expected = expected
+
+
+class AgentSettingsError(OffgridError):
+    """The agent's settings would let it do something offgrid cannot back."""
 
 
 class ProfileError(OffgridError):

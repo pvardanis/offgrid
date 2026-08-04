@@ -3,7 +3,7 @@ import pathlib
 
 import pytest
 
-from offgrid.runtimes.lmstudio import Dialect, dialect, parse_models, resident
+from offgrid.runtimes.lmstudio import Dialect, dialect, loaded, parse_models, resident
 
 FIXTURE = pathlib.Path(__file__).parent / "fixtures" / "lmstudio_models.json"
 
@@ -47,6 +47,27 @@ def test_the_resident_model_is_the_loaded_one(payload: dict):
     found = resident(payload)
     assert found is not None
     assert found.identifier == "qwen/qwen3.6-35b-a3b"
+
+
+def test_every_model_in_memory_is_reported():
+    # LM Studio holds several at once, and each one is memory the rest of the
+    # machine cannot use.
+    two_of_three = {
+        "data": [
+            {"id": "a/cold-7b", "type": "llm", "state": "not-loaded"},
+            {"id": "a/first-7b", "type": "llm", "state": "loaded"},
+            {"id": "a/second-7b", "type": "llm", "state": "loaded"},
+        ]
+    }
+    assert [model.identifier for model in loaded(two_of_three)] == [
+        "a/first-7b",
+        "a/second-7b",
+    ]
+
+
+def test_no_model_is_in_memory_when_none_is_loaded():
+    cold = {"data": [{"id": "a/b-7b", "type": "llm", "state": "not-loaded"}]}
+    assert loaded(cold) == []
 
 
 def test_nothing_is_resident_when_nothing_is_loaded():

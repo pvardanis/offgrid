@@ -1,5 +1,7 @@
 """LM Studio, which serves Anthropic's message API alongside OpenAI's."""
 
+import subprocess
+
 import httpx
 
 from offgrid.dialect import Dialect
@@ -7,7 +9,16 @@ from offgrid.exceptions import RuntimeUnreachableError
 from offgrid.model import Model
 
 CATALOGUE = "/api/v0/models"
+MESSAGES = "/v1/messages"
 TIMEOUT_SECONDS = 5
+
+# Weights come off disk at gigabytes a second, so a large model takes tens of
+# seconds and a cold cache takes longer.
+LOAD_TIMEOUT_SECONDS = 300
+
+# Letting go of a model is not part of the HTTP API; LM Studio's own tool is
+# what does it, and it talks to the copy running on this machine.
+TOOL = "lms"
 
 
 def dialect() -> Dialect:
@@ -59,6 +70,26 @@ def parse_models(payload: dict) -> list[Model]:
     return models
 
 
+def loaded(payload: dict) -> list[Model]:
+    """Find every model held in memory.
+
+    The machine has one pool of memory, and LM Studio can hold several models
+    in it at once, so what is held is a list rather than a single answer.
+
+    :param payload: A decoded response from the catalogue endpoint.
+
+    :return: Every loaded model, in catalogue order, described by the context
+        the runtime serves it at rather than its ceiling.
+    """
+    in_memory = {
+        entry["id"]
+        for entry in payload.get("data", [])
+        if entry.get("state") == "loaded"
+    }
+
+    return [model for model in parse_models(payload) if model.identifier in in_memory]
+
+
 def resident(payload: dict) -> Model | None:
     """Find a model already held in memory.
 
@@ -72,13 +103,7 @@ def resident(payload: dict) -> Model | None:
         server holds none. LM Studio can hold several at once; which of them
         answers is decided by the request, not by this.
     """
-    loaded = {
-        entry["id"]
-        for entry in payload.get("data", [])
-        if entry.get("state") == "loaded"
-    }
-
-    return next((m for m in parse_models(payload) if m.identifier in loaded), None)
+    return next(iter(loaded(payload)), None)
 
 
 def catalogue(host: str) -> dict:
@@ -121,3 +146,107 @@ def catalogue(host: str) -> dict:
             f"{url} answered with {response.headers.get('content-type', 'no type')}, "
             f"not JSON. Is http://{host} really LM Studio?"
         ) from error
+
+
+def load(host: str, identifier: str, timeout: float = LOAD_TIMEOUT_SECONDS) -> None:
+    """Hold a model in memory, waiting until it is ready to answer.
+
+    Asking for a single token is what makes the runtime load it. Doing that
+    here rather than leaving it to the first real request means the wait is
+    visible and attributable, instead of a silence in the middle of a turn.
+
+    :param host: Address the runtime listens on.
+    :param identifier: The model to load.
+    :param timeout: How long to wait before giving up.
+
+    :raise RuntimeUnreachableError: When the load does not finish in time,
+        when the runtime refuses it, or when another model answers. A name
+        LM Studio does not have is answered 200 by whatever is loaded, and
+        the model named in the reply is what gives that away.
+    """
+    url = f"http://{host}{MESSAGES}"
+    body = {
+        "model": identifier,
+        "max_tokens": 1,
+        "messages": [{"role": "user", "content": "hi"}],
+    }
+
+    try:
+        response = httpx.post(url, json=body, timeout=timeout)
+    except httpx.TimeoutException as error:
+        raise RuntimeUnreachableError(
+            f"{identifier} did not finish loading within {timeout:.0f}s. "
+            "Load it in the runtime directly, or allow longer."
+        ) from error
+    except httpx.TransportError as error:
+        raise RuntimeUnreachableError(
+            f"No model server answered at http://{host}. "
+            "Start LM Studio, or point offgrid elsewhere with --host."
+        ) from error
+
+    if response.is_error:
+        raise RuntimeUnreachableError(
+            f"The runtime answered {response.status_code} loading {identifier}. "
+            "Check the name against `offgrid doctor`, and that it has room."
+        )
+
+    try:
+        answer = response.json()
+    except ValueError as error:
+        raise RuntimeUnreachableError(
+            f"{url} answered {response.status_code} loading {identifier} with "
+            f"{response.headers.get('content-type', 'no type')}, not JSON. "
+            f"Is http://{host} really LM Studio?"
+        ) from error
+
+    answered = answer.get("model") if isinstance(answer, dict) else None
+    if answered and answered != identifier:
+        raise RuntimeUnreachableError(
+            f"{identifier} was asked for and {answered} answered. LM Studio "
+            "takes a name it does not have and lets whatever is loaded reply, "
+            "so check the name against `offgrid doctor`."
+        )
+
+
+def unload(host: str, identifier: str) -> None:
+    """Let go of a model, and confirm the memory it held came back.
+
+    The tool exits 0 for a name it does not know, printing ``Model Not
+    Found`` and freeing nothing, so its exit code alone cannot say whether
+    anything was let go. The catalogue is what settles it.
+
+    :param host: Address the runtime listens on.
+    :param identifier: The model to unload.
+
+    :raise RuntimeUnreachableError: When the runtime's tool is missing, when
+        it refuses, or when the model is still held afterwards. Memory that
+        stays held is worth saying out loud, since the machine has one pool
+        and everything else on it shares it.
+    """
+    try:
+        finished = subprocess.run(
+            [TOOL, "unload", identifier],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError as error:
+        raise RuntimeUnreachableError(
+            f"Could not run {TOOL} to unload {identifier}: {error}. "
+            "It ships with LM Studio; check it is on PATH."
+        ) from error
+
+    if finished.returncode != 0:
+        complaint = (
+            finished.stderr.strip() or finished.stdout.strip() or "no reason given"
+        )
+        raise RuntimeUnreachableError(
+            f"{TOOL} would not unload {identifier}: {complaint}"
+        )
+
+    if any(model.identifier == identifier for model in loaded(catalogue(host))):
+        raise RuntimeUnreachableError(
+            f"{TOOL} exited cleanly, but http://{host} is still holding "
+            f"{identifier}: {finished.stdout.strip() or 'it said nothing'}. "
+            "Let it go in LM Studio directly."
+        )
