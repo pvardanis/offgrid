@@ -3,6 +3,9 @@
 Runs a coding agent against a model held by a runtime on this machine. macOS on
 Apple Silicon only. Python, managed with `uv`.
 
+Domain language and module shape: `CONTEXT.md`. What was decided and why:
+`docs/decisions.md`.
+
 ## Commands
 
 ```sh
@@ -13,26 +16,40 @@ uv run interrogate            # docstring coverage, enforced at 100%
 prek run --all-files          # everything the hooks run
 ```
 
-## Vocabulary
+## Agent skills
 
-Use these words; they are what the code and its tests are named after.
+### /tdd
 
-- **runtime** — the server holding models in memory. LM Studio today.
-- **agent** — the coding tool being launched. Claude Code today.
-- **dialect** — the API shape a runtime serves and an agent expects. Mismatched
-  pairs are refused, never proxied.
-- **machine** — this Mac, and the memory a model may use on it.
-- **held** / **resident** — a model the runtime currently has in memory.
-- **launch** — an environment plus an argument list, built before anything runs.
-- **profile** — what offgrid remembers between runs, in YAML, hand-editable.
+Seams are agreed before a test is written, and these are the ones already
+agreed. Anything else needs a new agreement.
+
+| Seam | What is tested there |
+|---|---|
+| `offgrid setup`, `doctor`, `run` | what a person sees and what gets launched |
+| the profile file | that a hand-edited profile loads, and that older ones still do |
+| a runtime adapter's parsing | a payload captured from a live server |
+| a machine's sizing | what fits, at each quantization width |
+
+Not seams: anything private. `_chosen`, `_clear`, `_let_go` and their kind are
+structure, and a test against them breaks on a refactor that changed nothing.
+
+Work one slice at a time — one test, one implementation, then the next. Not all
+the tests, then all the code: bulk tests describe imagined behaviour, and they
+commit to a shape before the implementation has taught anything.
+
+A test that cannot be red is a regression guard, not a slice. Say which it is.
+
+### /grill-me
+
+Grill before building anything whose shape is not obvious, and record what was
+settled in `docs/decisions.md` — the reasoning is the part that gets lost, and
+without it a decision gets remade from memory six weeks later.
+
+Look facts up in the environment rather than asking for them. The runtime is
+running, the machine can be measured, and the git history is right there.
 
 ## Testing
 
-Test-driven, and test at seams agreed before writing the test: the CLI's
-commands, the profile file, an adapter's parsing of a real payload. Never
-against private helpers.
-
-- One test, one implementation, then the next. Not all tests, then all code.
 - Fixtures are captured from a live runtime, never invented. A test asserting
   behaviour against a fake payload tests the fake.
 - A test that passes with the guard it names deleted is worse than no test.
