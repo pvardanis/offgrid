@@ -39,6 +39,22 @@ commit to a shape before the implementation has taught anything.
 
 A test that cannot be red is a regression guard, not a slice. Say which it is.
 
+### /pr-review-toolkit:review-pr
+
+Run it on the branch diff **before pushing a pull request**, not after opening
+one. Findings arriving after review has started waste the reviewer's pass.
+
+Which agents apply here: `code-reviewer` and `silent-failure-hunter` always;
+`pr-test-analyzer` when tests changed; `type-design-analyzer` when a type was
+added; `comment-analyzer` when a comment claims something about hardware or a
+runtime's behaviour.
+
+Verify every finding before acting on it. Reviewers state falsehoods with the
+same confidence as truths — one insisted the models in the fixtures did not
+exist when they were captured from a live server an hour earlier. Reproduce the
+failure, then fix it. Report what a finding got wrong alongside what it got
+right.
+
 ### /grill-me
 
 Grill before building anything whose shape is not obvious, and record what was
