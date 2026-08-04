@@ -19,6 +19,7 @@ def here(monkeypatch, tmp_path):
     monkeypatch.setattr("offgrid.cli.DEFAULT_PATH", tmp_path / "profile.yaml")
     monkeypatch.setattr("offgrid.cli.CONFIG_DIR", tmp_path / "claude-code")
     monkeypatch.setattr("offgrid.cli.catalogue", lambda host: {"data": []})
+    monkeypatch.setattr("offgrid.cli.unload", lambda name: None)
     monkeypatch.setattr(
         "offgrid.cli.resident",
         lambda payload: Model(identifier="qwen/qwen3.6-35b-a3b", context_limit=212224),
