@@ -56,7 +56,7 @@ def _no_real_runtime(
         if isinstance(argv, list | tuple) and argv and "lms" in str(argv[0]):
             raise AssertionError(
                 f"A test reached the real runtime: {list(argv)}. "
-                "Patch offgrid.cli.unload, or the adapter's subprocess call."
+                "Patch offgrid.hold.unload, or the adapter's subprocess call."
             )
 
         return _run(argv, *args, **kwargs)

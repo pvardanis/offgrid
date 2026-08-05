@@ -45,6 +45,8 @@ fit.py         how much room it has
 model.py       a model the runtime describes
 dialect.py     which API shapes can be paired
 profile.py     what is remembered between runs
+launch.py      an environment and an argument list, and running one
+hold.py        holding the model that answers, and letting it go
 runtimes/      one module per runtime
 agents/        one module per agent
 cli.py         setup, doctor, run

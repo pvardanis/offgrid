@@ -6,11 +6,11 @@ before anything runs.
 """
 
 import json
-from dataclasses import dataclass
 from pathlib import Path
 
 from offgrid.dialect import Dialect
 from offgrid.exceptions import AgentSettingsError
+from offgrid.launch import Launch
 from offgrid.model import Model
 
 # Decode runs at tens of tokens per second, so thinking and long replies cost
@@ -44,18 +44,6 @@ results rather than as an error. Nothing replaces it yet.
 WebFetch does work: use it whenever a URL is known. Where one is not, say what
 could not be looked up rather than answering from memory.
 """
-
-
-@dataclass(frozen=True)
-class Launch:
-    """Everything needed to start the agent.
-
-    :param env: Environment variables to add to the caller's own.
-    :param argv: The command and its arguments.
-    """
-
-    env: dict[str, str]
-    argv: list[str]
 
 
 def dialect() -> Dialect:

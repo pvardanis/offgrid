@@ -30,9 +30,11 @@ agreed. Anything else needs a new agreement.
 | a runtime adapter's parsing | a payload captured from a live server |
 | a machine's sizing | what fits, at each quantization width |
 | a live run | that a real run holds a model and lets it go — `pytest -m live` |
+| `hold.py` | which error a caller gets, and what is said while it waits |
 
-Not seams: anything private. `_chosen`, `_clear`, `_let_go` and their kind are
-structure, and a test against them breaks on a refactor that changed nothing.
+Not seams: anything private. `_now_holding`, `_let_go_of_the_rest` and their
+kind are structure, and a test against them breaks on a refactor that changed
+nothing.
 
 Work one slice at a time — one test, one implementation, then the next. Not all
 the tests, then all the code: bulk tests describe imagined behaviour, and they
