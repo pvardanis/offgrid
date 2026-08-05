@@ -387,6 +387,24 @@ def test_the_model_is_let_go_when_the_agent_will_not_start(here, monkeypatch, ru
     assert runtime["let_go"] == [RESIDENT]
 
 
+def test_an_agent_that_is_there_but_not_executable_is_not_called_missing(
+    here, monkeypatch, runtime
+):
+    # "Install it, or put it on PATH" sends someone to check a PATH that is
+    # already right, for a file that is already there.
+    runner.invoke(app, ["setup"])
+
+    def denied(launch):
+        raise PermissionError(13, "Permission denied")
+
+    monkeypatch.setattr("offgrid.cli.start", denied)
+
+    result = runner.invoke(app, ["run"])
+    assert result.exit_code == 127
+    assert "not executable" in result.stderr
+    assert "on PATH" not in result.stderr
+
+
 def test_a_runtime_that_will_not_let_go_is_reported_not_hidden(here, monkeypatch):
     from offgrid.exceptions import RuntimeUnreachableError
 

@@ -1,5 +1,6 @@
 """The three things offgrid does: describe, check, and launch."""
 
+import errno
 import logging
 import sys
 from collections.abc import Iterator
@@ -125,10 +126,7 @@ def run(
         try:
             code = start(launch)
         except OSError as error:
-            _tell(
-                f"  Could not start {launch.argv[0]}: {error}. "
-                "Install it, or put it on PATH."
-            )
+            _tell(_would_not_start(launch.argv[0], error))
             code = 127
     except KeyboardInterrupt:
         code = 130
@@ -174,6 +172,26 @@ def _say_on_stderr() -> None:
     logger.addHandler(handler)
     logger.setLevel(logging.INFO)
     logger.propagate = False
+
+
+def _would_not_start(command: str, error: OSError) -> str:
+    """Say what stopped the agent starting, and what to do about that.
+
+    A missing command and a command without the bit that makes it runnable
+    fail the same way and are fixed differently, so the advice follows the
+    reason rather than the operation.
+
+    :param command: What was being started.
+    :param error: Why it was not.
+
+    :return: What to say.
+    """
+    advice = {
+        errno.ENOENT: "Install it, or put it on PATH.",
+        errno.EACCES: "It is there but not executable.",
+    }.get(error.errno, "")
+
+    return f"  Could not start {command}: {error}. {advice}".rstrip()
 
 
 def _tell(message: str) -> None:
