@@ -101,6 +101,29 @@ def test_an_existing_profile_is_left_alone(tmp_path):
     assert settings.read_text() == kept
 
 
+def test_the_profile_tells_the_agent_it_cannot_search(tmp_path):
+    # Discovering the wall by calling the tool costs a turn, and locally a
+    # turn is tens of seconds.
+    from offgrid.agents.claude_code import prepare
+
+    prepare(tmp_path)
+    notes = (tmp_path / "CLAUDE.md").read_text()
+
+    assert "WebSearch" in notes
+    assert "WebFetch" in notes
+
+
+def test_notes_already_written_are_left_alone(tmp_path):
+    from offgrid.agents.claude_code import prepare
+
+    notes = tmp_path / "CLAUDE.md"
+    tmp_path.mkdir(exist_ok=True)
+    notes.write_text("# mine\n")
+
+    prepare(tmp_path)
+    assert notes.read_text() == "# mine\n"
+
+
 def test_a_profile_that_would_let_the_agent_search_is_refused(tmp_path):
     # The file is hand-editable, and an edit that drops the deny brings back
     # the invented answers it was written to prevent.
