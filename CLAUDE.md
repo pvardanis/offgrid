@@ -89,6 +89,14 @@ then runs against code that is no longer on disk.
 - Comments explain why something is there. Never what it replaced.
 - Fail fast, and name the operation, the input, and what to do next.
 
+## Where the work is tracked
+
+GitHub issues on `pvardanis/offgrid`, read with `gh issue list`. What is
+deferred and why belongs in one, alongside the evidence that would settle it —
+a decision recorded nowhere outlives the session that made it.
+
+`docs/decisions.md` is for what was settled. Issues are for what was not.
+
 ## Commits
 
 Conventional Commits: `<type>(<scope>): <imperative summary>`. Subject in the
