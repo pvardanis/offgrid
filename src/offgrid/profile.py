@@ -117,7 +117,14 @@ def load(path: Path = DEFAULT_PATH) -> Profile:
     if not path.exists():
         raise ProfileError(f"No profile at {path}. Run `offgrid setup` to make one.")
 
-    body = yaml.safe_load(path.read_text())
+    try:
+        body = yaml.safe_load(path.read_text())
+    except yaml.YAMLError as error:
+        raise ProfileError(
+            f"{path} is not readable as YAML: {error}. Fix it by hand, or run "
+            "`offgrid setup` to write it again."
+        ) from error
+
     if not isinstance(body, dict):
         raise ProfileError(
             f"{path} is not a profile: it holds {type(body).__name__}, not a mapping."
