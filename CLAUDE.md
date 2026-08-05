@@ -102,6 +102,15 @@ A body only where the diff does not already say it: why the change was made,
 and for a fix, what was reproduced. Wrap at 72, `-` for bullets. A breaking
 change takes `!` before the colon and a `BREAKING CHANGE:` paragraph.
 
+One change per commit. If the subject needs an "and", or the type is not
+obvious from the diff, it is two commits: a fix and the housekeeping it sat
+next to, a refactor and the defect found while moving the code. Each one
+leaves the suite green on its own, so a bisect lands somewhere that runs and
+a revert takes back one thing.
+
+Tests go in the commit with the behaviour they cover, not in a commit of
+their own.
+
 Never in a commit: what the diff states, "I" or "we", or AI attribution in the
 prose. The `Co-Authored-By:` trailer stays.
 
