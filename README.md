@@ -111,6 +111,16 @@ cd offgrid
 just install            # uv sync, and the checks on every commit
 ```
 
+That puts the virtualenv at `.venv` in the clone, with offgrid and the dev
+tools in it. `uv run <command>` uses it without activating anything, which is
+what the recipes do. Activate it when you want the tools on your `PATH`
+directly — for a shell session, or to point an editor at the interpreter:
+
+```sh
+source .venv/bin/activate    # .venv/bin/activate.fish for fish
+offgrid --help               # and deactivate when done
+```
+
 The recipes need [just](https://github.com/casey/just):
 
 ```sh
