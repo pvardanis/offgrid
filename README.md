@@ -4,9 +4,10 @@ Run a coding agent against a local model, tuned to the machine it runs on.
 
 [![checks](https://github.com/pvardanis/offgrid/actions/workflows/checks.yml/badge.svg)](https://github.com/pvardanis/offgrid/actions/workflows/checks.yml)
 [![python](https://img.shields.io/badge/python-3.13%2B-blue)](https://www.python.org/downloads/)
-[![coverage](https://img.shields.io/badge/coverage-94%25-brightgreen)](#development)
+[![coverage](https://img.shields.io/badge/coverage-%E2%89%A590%25-brightgreen)](#development)
 [![docstrings](https://img.shields.io/badge/docstrings-100%25-brightgreen)](#development)
-[![ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![ruff](https://img.shields.io/badge/ruff-0.16.1-D7FF64?logo=ruff&logoColor=black)](https://github.com/astral-sh/ruff)
+[![ty](https://img.shields.io/badge/ty-0.0.65-261230)](https://github.com/astral-sh/ty)
 [![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
 [![platform](https://img.shields.io/badge/platform-macOS%20Apple%20Silicon-lightgrey)](#requirements)
 
