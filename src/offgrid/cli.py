@@ -34,6 +34,9 @@ app = typer.Typer(add_completion=False)
 @app.callback()
 def offgrid() -> None:
     """Run a coding agent against a model on this machine."""
+    # This docstring is the help a person reads, so the rest is said here:
+    # the callback runs before every command, and is where the command line
+    # attaches its own logging. The modules below it attach none.
     _say_on_stderr()
 
 
@@ -103,8 +106,9 @@ def run(
     wanted = model_name or profile.model
 
     with _reported():
-        # Both of these are knowable before a load, and a load is a minute of
-        # someone's time.
+        # A dialect that cannot be paired and settings that would undo a
+        # guarantee are both knowable before a load, and a load is tens of
+        # seconds nobody gets back.
         require_compatible(runtime_dialect(), agent_dialect())
         prepare(CONFIG_DIR)
 
