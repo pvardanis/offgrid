@@ -125,6 +125,23 @@ def test_what_a_swap_costs_is_said_before_it_is_paid(profile, monkeypatch, caplo
     )
 
 
+def test_a_swap_that_freed_nothing_does_not_load_on_top_of_it(profile, monkeypatch):
+    # The model that would not go is still holding its memory. Asking the
+    # runtime for another one either fails the load or starts the machine
+    # swapping, and the wait for both is paid before either is found out.
+    asked = _catalogue(monkeypatch, holding=[RESIDENT], cold=["a/other-7b"])
+
+    def refuse(host: str, identifier: str) -> None:
+        raise RuntimeUnreachableError("lms exited 0 and freed nothing")
+
+    monkeypatch.setattr("offgrid.hold.unload", refuse)
+
+    with pytest.raises(RuntimeUnreachableError, match="still holding"):
+        hold(profile, "a/other-7b")
+
+    assert asked["loaded"] is None
+
+
 def test_letting_go_says_whether_the_memory_came_back(profile, monkeypatch):
     # A log record is for a person. A caller embedding offgrid needs an
     # answer it can branch on.
