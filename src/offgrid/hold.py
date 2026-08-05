@@ -77,10 +77,17 @@ def hold(profile: Profile, identifier: str) -> Model:
 
     log.info("  Loading %s ...", identifier)
     started = time.monotonic()
-    load_model(profile.host, identifier)
-    log.info("  ready in %.0fs", time.monotonic() - started)
 
-    return _now_holding(profile, identifier)
+    try:
+        load_model(profile.host, identifier)
+        log.info("  ready in %.0fs", time.monotonic() - started)
+
+        return _now_holding(profile, identifier)
+    except BaseException:
+        # However this ended, the runtime may have taken the weights, and
+        # nobody downstream of here knows to let them go.
+        let_go(profile.host, identifier)
+        raise
 
 
 def let_go(host: str, identifier: str) -> bool:
