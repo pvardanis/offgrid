@@ -125,6 +125,23 @@ def test_what_a_swap_costs_is_said_before_it_is_paid(profile, monkeypatch, caplo
     )
 
 
+def test_letting_go_says_whether_the_memory_came_back(profile, monkeypatch):
+    # A log record is for a person. A caller embedding offgrid needs an
+    # answer it can branch on.
+    _catalogue(monkeypatch, holding=[RESIDENT])
+
+    assert let_go("127.0.0.1:1234", RESIDENT) is True
+
+
+def test_letting_go_says_when_the_memory_did_not_come_back(profile, monkeypatch):
+    def refuse(host: str, identifier: str) -> None:
+        raise RuntimeUnreachableError("lms exited 0 and freed nothing")
+
+    monkeypatch.setattr("offgrid.hold.unload", refuse)
+
+    assert let_go("127.0.0.1:1234", RESIDENT) is False
+
+
 def test_a_runtime_that_will_not_let_go_is_said_rather_than_raised(
     profile, monkeypatch, caplog
 ):
