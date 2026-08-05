@@ -109,26 +109,29 @@ def run(
 
         model = hold(profile, wanted) if wanted else held(profile)
 
-    _tell(f"  {model.identifier}, context {model.context_limit or 'unstated'}")
-
-    launch = plan(
-        model,
-        host=profile.host,
-        config_dir=CONFIG_DIR,
-        token=TOKEN,
-        passthrough=list(context.args),
-    )
-
+    # Nothing between here and the agent finishing may leave the model held:
+    # from this line on, letting go is owed whatever happens.
     try:
-        code = start(launch)
+        _tell(f"  {model.identifier}, context {model.context_limit or 'unstated'}")
+
+        launch = plan(
+            model,
+            host=profile.host,
+            config_dir=CONFIG_DIR,
+            token=TOKEN,
+            passthrough=list(context.args),
+        )
+
+        try:
+            code = start(launch)
+        except OSError as error:
+            _tell(
+                f"  Could not start {launch.argv[0]}: {error}. "
+                "Install it, or put it on PATH."
+            )
+            code = 127
     except KeyboardInterrupt:
         code = 130
-    except OSError as error:
-        _tell(
-            f"  Could not start {launch.argv[0]}: {error}. "
-            "Install it, or put it on PATH."
-        )
-        code = 127
     finally:
         let_go(profile.host, model.identifier)
 
