@@ -10,7 +10,11 @@ from collections.abc import Sequence
 
 import pytest
 
-from offgrid.exceptions import ModelUnavailableError, RuntimeUnreachableError
+from offgrid.exceptions import (
+    ModelNotHeldError,
+    ModelUnavailableError,
+    RuntimeUnreachableError,
+)
 from offgrid.hold import held, hold, let_go
 from offgrid.machine import Machine
 from offgrid.profile import Profile
@@ -95,7 +99,7 @@ def test_a_model_that_will_not_stay_held_is_reported(profile, monkeypatch):
     _catalogue(monkeypatch, cold=["a/other-7b"])
     monkeypatch.setattr("offgrid.hold.load_model", lambda host, identifier: None)
 
-    with pytest.raises(RuntimeUnreachableError, match="accepted"):
+    with pytest.raises(ModelNotHeldError, match="accepted"):
         hold(profile, "a/other-7b")
 
 
@@ -107,7 +111,7 @@ def test_a_model_that_did_not_stay_held_is_let_go_of_before_the_error(
     asked = _catalogue(monkeypatch, cold=["a/other-7b"])
     monkeypatch.setattr("offgrid.hold.load_model", lambda host, identifier: None)
 
-    with pytest.raises(RuntimeUnreachableError):
+    with pytest.raises(ModelNotHeldError):
         hold(profile, "a/other-7b")
 
     assert "a/other-7b" in asked["let_go"]

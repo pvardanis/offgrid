@@ -11,7 +11,11 @@ decides where it goes.
 import logging
 import time
 
-from offgrid.exceptions import ModelUnavailableError, RuntimeUnreachableError
+from offgrid.exceptions import (
+    ModelNotHeldError,
+    ModelUnavailableError,
+    RuntimeUnreachableError,
+)
 from offgrid.model import Model
 from offgrid.profile import Profile
 from offgrid.runtimes.lmstudio import catalogue, loaded, parse_models, resident, unload
@@ -124,12 +128,12 @@ def _now_holding(profile: Profile, identifier: str) -> Model:
 
     :return: The model as the runtime now serves it.
 
-    :raise RuntimeUnreachableError: When it is not being held.
+    :raise ModelNotHeldError: When it is not being held.
     """
     in_memory = {model.identifier: model for model in loaded(catalogue(profile.host))}
 
     if identifier not in in_memory:
-        raise RuntimeUnreachableError(
+        raise ModelNotHeldError(
             f"The runtime at {profile.host} accepted {identifier} but is not "
             "holding it. Load it in the runtime directly to see what it says."
         )
