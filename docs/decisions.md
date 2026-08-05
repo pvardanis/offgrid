@@ -47,3 +47,51 @@ on exactly the Macs least able to afford it. Metal reports the real figure via
 `recommendedMaxWorkingSetSize`, but reading it means a native dependency on a
 project deliberately kept thin. Raising `iogpu.wired_limit_mb` replaces the
 estimate with a value the kernel reports, which is why offgrid suggests it.
+
+## Ports wait until there is a second adapter to extract them from
+
+`runtimes/` and `agents/` are folders, not seams: `cli.py` imports LM Studio
+and Claude Code by name, and `profile.runtime` and `profile.agent` are
+validated but never dispatched on. A `Runtime` protocol was designed for this
+and then deferred, because it was drawn from one implementation and would have
+fitted that one. The second adapter is the thing that shows where the seam
+belongs — a payload dict crossing the boundary, or the catalogue re-read after
+a load, are LM Studio's problems and may be nobody else's. Protocols, a
+name-to-adapter registry, and the profile fields becoming load-bearing all
+arrive with it.
+
+## The run lifecycle is not the command line's work
+
+`hold.py` holds the model that will answer, lets go of the rest, reads back
+what the runtime serves, and lets go afterwards. `launch.py` carries the launch
+and starts it, passing signals on. `cli.py` keeps the commands, the arguments,
+the reporting and the exit codes.
+
+`doctor` asks what the runtime is holding, which is the question `run` asks, so
+it moves too and the two stop each keeping a copy. `setup` stays where it is:
+it measures a machine and writes a profile, and putting that in a module named
+for holding models would be filing it under the wrong word.
+
+This is worth doing before the ports rather than after. It invents no
+abstraction and guesses at nothing — it moves code that already exists — and it
+is where the search work would otherwise pile up on a file already over the
+line limit.
+
+## Progress is logged, failure is raised
+
+The lifecycle says what it is doing through `logging`, at info, and configures
+nothing. Whoever imports it decides where that goes; `cli.py` attaches one
+handler to stderr with the message and nothing else, so a person sees the same
+words as before. Passing a `say` callable through every function was the
+alternative, and it is ceremony for something the standard library already
+does, in the way an external caller already expects.
+
+Failure travels as `OffgridError`, never as `typer.Exit`. A library that raises
+its command line framework's exceptions has made that framework part of its
+interface. `cli.py` turns those into a message and an exit code, which it
+already did for the profile and the catalogue.
+
+Everything a person reads goes to stderr, errors included, which they did not
+before. Nothing is written to stdout yet, and that is the point: `offgrid run
+-- -p "..." > answer.txt` should capture what the agent said, not offgrid
+narrating over it.
