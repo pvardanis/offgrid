@@ -27,6 +27,7 @@ dev = [
     "interrogate>=1.7",
     "prek>=0.4.12",
     "pytest>=8.4",
+    "pytest-cov>=7.1.0",
     "ruff>=0.14",
     "ty>=0.0.1a20",
 ]
@@ -42,6 +43,15 @@ convention = "pep257"
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["D", "ANN"]
+
+[tool.coverage.run]
+source = ["offgrid"]
+
+[tool.coverage.report]
+# The badge in the README states the figure; this keeps it from becoming a
+# claim nothing checks.
+fail_under = 90
+show_missing = true
 
 [tool.interrogate]
 fail-under = 100
