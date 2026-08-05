@@ -99,6 +99,34 @@ def test_a_model_that_will_not_stay_held_is_reported(profile, monkeypatch):
         hold(profile, "a/other-7b")
 
 
+def test_a_model_that_did_not_stay_held_is_let_go_of_before_the_error(
+    profile, monkeypatch
+):
+    # The runtime may have taken the weights even though the catalogue does
+    # not say so, and nothing downstream knows to let them go.
+    asked = _catalogue(monkeypatch, cold=["a/other-7b"])
+    monkeypatch.setattr("offgrid.hold.load_model", lambda host, identifier: None)
+
+    with pytest.raises(RuntimeUnreachableError):
+        hold(profile, "a/other-7b")
+
+    assert "a/other-7b" in asked["let_go"]
+
+
+def test_a_load_that_is_interrupted_lets_go_of_what_it_started(profile, monkeypatch):
+    asked = _catalogue(monkeypatch, cold=["a/other-7b"])
+
+    def interrupted(host: str, identifier: str) -> None:
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr("offgrid.hold.load_model", interrupted)
+
+    with pytest.raises(KeyboardInterrupt):
+        hold(profile, "a/other-7b")
+
+    assert "a/other-7b" in asked["let_go"]
+
+
 def test_the_wait_for_a_load_is_said_while_it_is_waited_for(
     profile, monkeypatch, caplog
 ):
