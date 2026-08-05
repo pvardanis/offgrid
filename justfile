@@ -1,4 +1,7 @@
-# Commands for working on offgrid. `just` with no recipe lists them.
+# Commands for working on offgrid, not for using it. Running the tool is
+# `offgrid setup`, `offgrid doctor` and `offgrid run`, and stays that way.
+#
+# `just` with no recipe lists what is here.
 #
 # The single checks name a hook id rather than a tool, so this file and
 # .pre-commit-config.yaml cannot come to disagree about what a check is.
@@ -51,10 +54,6 @@ docs:
 # The suite, writing no .pyc files. Use for mutation testing.
 mutate *args:
     PYTHONDONTWRITEBYTECODE=1 uv run pytest {{ args }}
-
-# What offgrid says about this machine and the runtime on it.
-doctor:
-    uv run offgrid doctor
 
 # Caches, not the virtualenv.
 clean:
