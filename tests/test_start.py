@@ -5,8 +5,7 @@ import subprocess
 
 import pytest
 
-from offgrid.agents.claude_code import Launch
-from offgrid.cli import start
+from offgrid.launch import Launch, start
 
 LAUNCH = Launch(env={"ANTHROPIC_BASE_URL": "http://127.0.0.1:1234"}, argv=["claude"])
 

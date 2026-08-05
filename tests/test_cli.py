@@ -55,9 +55,9 @@ def _runtime(monkeypatch, *, holding=None, cold=None, ceiling=CEILING) -> dict:
         asked["let_go"].append(identifier)
         asked["order"].append(("let_go", identifier))
 
-    monkeypatch.setattr("offgrid.cli.catalogue", catalogue)
-    monkeypatch.setattr("offgrid.cli.load_model", load)
-    monkeypatch.setattr("offgrid.cli.unload", unload)
+    monkeypatch.setattr("offgrid.hold.catalogue", catalogue)
+    monkeypatch.setattr("offgrid.hold.load_model", load)
+    monkeypatch.setattr("offgrid.hold.unload", unload)
 
     return asked
 
@@ -107,19 +107,19 @@ def here(monkeypatch, tmp_path, runtime):
 def test_setup_reports_the_machine(here):
     result = runner.invoke(app, ["setup"])
     assert result.exit_code == 0
-    assert "Apple M1 Max" in result.stdout
+    assert "Apple M1 Max" in result.stderr
 
 
 def test_setup_says_what_size_of_model_fits(here):
     result = runner.invoke(app, ["setup"])
-    assert "4-bit" in result.stdout
-    assert "parameters" in result.stdout
+    assert "4-bit" in result.stderr
+    assert "parameters" in result.stderr
 
 
 def test_setup_names_no_model(here):
     # Choosing one is a manual step; offgrid states the budget, not the answer.
     result = runner.invoke(app, ["setup"])
-    assert "qwen" not in result.stdout
+    assert "qwen" not in result.stderr
 
 
 def test_setup_writes_a_profile_that_can_be_read_back(here):
@@ -164,14 +164,14 @@ def test_setup_keeps_a_host_that_was_stored_when_none_is_given(here):
 def test_doctor_needs_a_profile_first(here):
     result = runner.invoke(app, ["doctor"])
     assert result.exit_code == 1
-    assert "offgrid setup" in result.stdout
+    assert "offgrid setup" in result.stderr
 
 
 def test_doctor_reports_the_model_that_would_answer(here):
     runner.invoke(app, ["setup"])
     result = runner.invoke(app, ["doctor"])
     assert result.exit_code == 0
-    assert RESIDENT in result.stdout
+    assert RESIDENT in result.stderr
 
 
 def test_doctor_says_when_the_runtime_holds_nothing(here, monkeypatch):
@@ -180,7 +180,7 @@ def test_doctor_says_when_the_runtime_holds_nothing(here, monkeypatch):
 
     result = runner.invoke(app, ["doctor"])
     assert result.exit_code == 1
-    assert "no model" in result.stdout.lower()
+    assert "no model" in result.stderr.lower()
 
 
 def test_run_launches_the_agent_with_the_resident_model(here, monkeypatch):
@@ -207,7 +207,7 @@ def test_run_refuses_when_nothing_is_loaded(here, monkeypatch):
 
     result = runner.invoke(app, ["run"])
     assert result.exit_code == 1
-    assert "load a model" in result.stdout.lower()
+    assert "load a model" in result.stderr.lower()
 
 
 def test_run_loads_a_named_model_that_is_not_resident(here, monkeypatch):
@@ -238,7 +238,7 @@ def test_swapping_models_says_what_it_costs(here, monkeypatch):
 
     result = runner.invoke(app, ["run", "--model", "a/other-7b"])
     assert result.exit_code == 0
-    assert "cached prefix" in result.stdout
+    assert "cached prefix" in result.stderr
 
 
 def test_a_model_the_runtime_does_not_have_is_refused(here, monkeypatch):
@@ -247,7 +247,7 @@ def test_a_model_the_runtime_does_not_have_is_refused(here, monkeypatch):
 
     result = runner.invoke(app, ["run", "--model", "a/absent-7b"])
     assert result.exit_code == 1
-    assert "a/absent-7b" in result.stdout
+    assert "a/absent-7b" in result.stderr
 
 
 def test_run_lets_go_of_models_it_did_not_ask_for(here, monkeypatch):
@@ -304,7 +304,7 @@ def test_an_agent_that_cannot_talk_to_the_runtime_is_refused_before_the_wait(
 
     result = runner.invoke(app, ["run", "-m", "a/other-7b"])
     assert result.exit_code == 1
-    assert "translat" in result.stdout
+    assert "translat" in result.stderr
     assert asked["order"] == []
 
 
@@ -347,7 +347,7 @@ def test_settings_that_would_let_the_agent_search_stop_the_run(here, monkeypatch
 
     result = runner.invoke(app, ["run", "-m", "a/other-7b"])
     assert result.exit_code == 1
-    assert "WebSearch" in result.stdout
+    assert "WebSearch" in result.stderr
     assert asked["order"] == []
 
 
@@ -363,8 +363,8 @@ def test_the_model_is_let_go_when_the_agent_will_not_start(here, monkeypatch, ru
 
     result = runner.invoke(app, ["run"])
     assert result.exit_code == 127
-    assert "claude" in result.stdout
-    assert "on PATH" in result.stdout
+    assert "claude" in result.stderr
+    assert "on PATH" in result.stderr
     assert runtime["let_go"] == [RESIDENT]
 
 
@@ -376,11 +376,11 @@ def test_a_runtime_that_will_not_let_go_is_reported_not_hidden(here, monkeypatch
     def refuse(host, name):
         raise RuntimeUnreachableError("lms would not unload it")
 
-    monkeypatch.setattr("offgrid.cli.unload", refuse)
+    monkeypatch.setattr("offgrid.hold.unload", refuse)
     _launched(monkeypatch)
 
     result = runner.invoke(app, ["run"])
-    assert "still holding" in result.stdout
+    assert "still holding" in result.stderr
 
 
 def test_the_profile_names_the_model_when_the_command_line_does_not(here, monkeypatch):
@@ -434,7 +434,7 @@ def test_an_error_that_reaches_the_terminal_is_a_sentence_not_a_traceback(
         main()
 
     assert raised.value.code == 1
-    assert "the runtime went away mid-run" in capsys.readouterr().out
+    assert "the runtime went away mid-run" in capsys.readouterr().err
 
 
 def _name_in_profile(here, identifier: str) -> None:

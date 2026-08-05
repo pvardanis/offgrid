@@ -1,28 +1,24 @@
 """The three things offgrid does: describe, check, and launch."""
 
-import os
-import signal
-import subprocess
+import logging
 import sys
-import time
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 
 import typer
 
-from offgrid.agents.claude_code import Launch, plan, prepare
 from offgrid.agents.claude_code import dialect as agent_dialect
+from offgrid.agents.claude_code import plan, prepare
 from offgrid.dialect import require_compatible
 from offgrid.exceptions import OffgridError
 from offgrid.fit import sizes_that_fit
+from offgrid.hold import held, hold, let_go
+from offgrid.launch import start
 from offgrid.machine import detect
-from offgrid.model import Model
 from offgrid.profile import DEFAULT_PATH, Profile, save
 from offgrid.profile import load as load_profile
-from offgrid.runtimes.lmstudio import catalogue, loaded, parse_models, resident, unload
 from offgrid.runtimes.lmstudio import dialect as runtime_dialect
-from offgrid.runtimes.lmstudio import load as load_model
 
 CONFIG_DIR = Path.home() / ".offgrid" / "claude-code"
 DEFAULT_HOST = "127.0.0.1:1234"
@@ -31,13 +27,13 @@ TOKEN = "local"
 BILLION = 1e9
 GIB = 1024**3
 
-# Being stopped by either of these means offgrid is going away, and the agent
-# has to go with it rather than outlive the model it is talking to.
-STOPS = (signal.SIGTERM, signal.SIGHUP)
+app = typer.Typer(add_completion=False)
 
-app = typer.Typer(
-    help="Run a coding agent against a model on this machine.", add_completion=False
-)
+
+@app.callback()
+def offgrid() -> None:
+    """Run a coding agent against a model on this machine."""
+    _say_on_stderr()
 
 
 @app.command()
@@ -54,39 +50,39 @@ def setup(
     )
     save(profile, DEFAULT_PATH)
 
-    typer.echo(f"  {machine.chip} · {machine.memory_bytes / GIB:.0f}GB unified memory")
+    _tell(f"  {machine.chip} · {machine.memory_bytes / GIB:.0f}GB unified memory")
     limit = machine.wired_limit_bytes
-    typer.echo(
+    _tell(
         f"  GPU limit  {limit / GIB:.0f}GB" if limit else "  GPU limit  at its default"
     )
-    typer.echo(f"  usable     {machine.usable_bytes / 1e9:.0f}GB")
-    typer.echo("")
-    typer.echo("  A model of about this size fits, leaving room for context:")
-    typer.echo("")
+    _tell(f"  usable     {machine.usable_bytes / 1e9:.0f}GB")
+    _tell("")
+    _tell("  A model of about this size fits, leaving room for context:")
+    _tell("")
     for bits, parameters in sizes_that_fit(machine):
-        typer.echo(f"    {bits:>2}-bit   {parameters / BILLION:>5.0f}B parameters")
-    typer.echo("")
-    typer.echo(
-        f"  Load one in your runtime, then `offgrid run`. Profile: {DEFAULT_PATH}"
-    )
+        _tell(f"    {bits:>2}-bit   {parameters / BILLION:>5.0f}B parameters")
+    _tell("")
+    _tell(f"  Load one in your runtime, then `offgrid run`. Profile: {DEFAULT_PATH}")
 
     if limit is None:
-        typer.echo("")
-        typer.echo("  More fits with the GPU limit raised, which a reboot undoes:")
+        _tell("")
+        _tell("  More fits with the GPU limit raised, which a reboot undoes:")
         wanted = int(machine.memory_bytes * 0.875 / (1024 * 1024))
-        typer.echo(f"    sudo sysctl iogpu.wired_limit_mb={wanted}")
+        _tell(f"    sudo sysctl iogpu.wired_limit_mb={wanted}")
 
 
 @app.command()
 def doctor() -> None:
     """Check that the runtime is reachable and holding a model."""
     profile = _profile()
-    model = _resident(profile)
 
-    typer.echo(f"  runtime   {profile.host} reachable")
-    typer.echo(f"  model     {model.identifier}")
-    typer.echo(f"  context   {model.context_limit or 'unstated'}")
-    typer.echo(f"  agent     {profile.agent}, speaking {agent_dialect().value}")
+    with _reported():
+        model = held(profile)
+
+    _tell(f"  runtime   {profile.host} reachable")
+    _tell(f"  model     {model.identifier}")
+    _tell(f"  context   {model.context_limit or 'unstated'}")
+    _tell(f"  agent     {profile.agent}, speaking {agent_dialect().value}")
 
 
 @app.command(
@@ -103,19 +99,17 @@ def run(
 ) -> None:
     """Start the agent against a model the runtime is holding."""
     profile = _profile()
+    wanted = model_name or profile.model
 
-    # Both of these are knowable before a load, and a load is a minute of
-    # someone's time.
     with _reported():
+        # Both of these are knowable before a load, and a load is a minute of
+        # someone's time.
         require_compatible(runtime_dialect(), agent_dialect())
         prepare(CONFIG_DIR)
 
-    wanted = model_name or profile.model
-    model = _chosen(profile, wanted) if wanted else _resident(profile)
+        model = hold(profile, wanted) if wanted else held(profile)
 
-    typer.echo(
-        f"  {model.identifier}, context {model.context_limit or 'unstated'}", err=True
-    )
+    _tell(f"  {model.identifier}, context {model.context_limit or 'unstated'}")
 
     launch = plan(
         model,
@@ -130,48 +124,39 @@ def run(
     except KeyboardInterrupt:
         code = 130
     except OSError as error:
-        typer.echo(
+        _tell(
             f"  Could not start {launch.argv[0]}: {error}. "
             "Install it, or put it on PATH."
         )
         code = 127
     finally:
-        _let_go(profile.host, model.identifier)
+        let_go(profile.host, model.identifier)
 
     raise typer.Exit(code)
 
 
-def start(launch: Launch) -> int:
-    """Run the agent and wait for it.
+def _say_on_stderr() -> None:
+    """Print what offgrid says, as the words and nothing else.
 
-    offgrid stays alive as its parent rather than handing over the process,
-    because a model held in memory has to be let go by somebody once the
-    agent is done with it. Being asked to stop is passed on for the same
-    reason: an agent left running would be talking to a model offgrid is
-    about to let go of.
-
-    :param launch: The environment and command to run.
-
-    :return: The agent's exit code, or what a shell reports for the signal
-        that killed it.
-
-    :raise OSError: When the agent cannot be started at all.
+    A library configures no logging; the command line does. It goes to
+    stderr so that stdout carries whatever the agent has to say.
     """
-    agent = subprocess.Popen(launch.argv, env={**os.environ, **launch.env})
+    logger = logging.getLogger("offgrid")
+    handler = logging.StreamHandler(sys.stderr)
+    handler.setFormatter(logging.Formatter("%(message)s"))
 
-    def pass_on(number: int, frame: object) -> None:
-        """Stop the agent, so offgrid outlives it and can let the model go."""
-        agent.terminate()
+    logger.handlers.clear()
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
+    logger.propagate = False
 
-    replaced = [(number, signal.signal(number, pass_on)) for number in STOPS]
 
-    try:
-        code = agent.wait()
-    finally:
-        for number, handler in replaced:
-            signal.signal(number, handler)
+def _tell(message: str) -> None:
+    """Say something to whoever is running offgrid.
 
-    return code if code >= 0 else 128 - code
+    :param message: What to say.
+    """
+    typer.echo(message, err=True)
 
 
 @contextmanager
@@ -186,7 +171,7 @@ def _reported() -> Iterator[None]:
     try:
         yield
     except OffgridError as error:
-        typer.echo(f"  {error}")
+        _tell(f"  {error}")
         raise typer.Exit(1) from error
 
 
@@ -201,8 +186,8 @@ def _stored() -> Profile | None:
     try:
         return load_profile(DEFAULT_PATH)
     except OffgridError as error:
-        typer.echo(f"  {error}")
-        typer.echo("  Writing a fresh profile over it.")
+        _tell(f"  {error}")
+        _tell("  Writing a fresh profile over it.")
         return None
 
 
@@ -215,129 +200,6 @@ def _profile() -> Profile:
         return load_profile(DEFAULT_PATH)
 
 
-def _chosen(profile: Profile, identifier: str) -> Model:
-    """Hold the named model in memory, whatever the runtime is holding now.
-
-    :param profile: Where to reach the runtime.
-    :param identifier: The model asked for.
-
-    :return: The model that will answer.
-    """
-    payload = _catalogue(profile)
-    known = {model.identifier: model for model in parse_models(payload)}
-    if identifier not in known:
-        typer.echo(
-            f"  The runtime at {profile.host} does not have {identifier}. "
-            "`offgrid doctor` lists what it holds."
-        )
-        raise typer.Exit(1)
-
-    held = resident(payload)
-    if held is not None and held.identifier == identifier:
-        return held
-
-    _clear(profile.host, payload, identifier)
-
-    typer.echo(f"  Loading {identifier} ...", nl=False)
-    started = time.monotonic()
-    with _reported():
-        try:
-            load_model(profile.host, identifier)
-        except OffgridError:
-            typer.echo("")
-            raise
-    typer.echo(f" ready in {time.monotonic() - started:.0f}s")
-
-    return _now_holding(profile, identifier)
-
-
-def _now_holding(profile: Profile, identifier: str) -> Model:
-    """Read back a model from the runtime that has just loaded it.
-
-    A catalogue entry states a model's ceiling until it is loaded, and the
-    window it is served at once it is. Sizing the agent's context from the
-    ceiling means never compacting, and the runtime truncates the prefix
-    instead — which is the failure compacting exists to avoid.
-
-    :param profile: Where to reach the runtime.
-    :param identifier: The model that was loaded.
-
-    :return: The model as the runtime now serves it.
-    """
-    held = {model.identifier: model for model in loaded(_catalogue(profile))}
-
-    if identifier not in held:
-        typer.echo(
-            f"  The runtime at {profile.host} accepted {identifier} but is not "
-            "holding it. Load it in the runtime directly to see what it says."
-        )
-        raise typer.Exit(1)
-
-    return held[identifier]
-
-
-def _clear(host: str, payload: dict, wanted: str) -> None:
-    """Let go of every model held that is not the one being asked for.
-
-    One machine, one pool of memory: a model left loaded is memory the rest
-    of the machine cannot use.
-
-    :param host: Address the runtime listens on.
-    :param payload: The runtime's catalogue.
-    :param wanted: The model that will answer.
-    """
-    for held in loaded(payload):
-        if held.identifier == wanted:
-            continue
-
-        typer.echo(
-            f"  Letting go of {held.identifier}, whose cached prefix goes with it."
-        )
-        _let_go(host, held.identifier)
-
-
-def _let_go(host: str, identifier: str) -> None:
-    """Unload a model, saying so if the runtime will not.
-
-    :param host: Address the runtime listens on.
-    :param identifier: The model to unload.
-    """
-    try:
-        unload(host, identifier)
-    except OffgridError as error:
-        typer.echo(f"  The runtime is still holding {identifier}: {error}")
-
-
-def _catalogue(profile: Profile) -> dict:
-    """Fetch the runtime's catalogue, or explain why it could not be reached.
-
-    :param profile: Where to reach the runtime.
-
-    :return: The decoded catalogue.
-    """
-    with _reported():
-        return catalogue(profile.host)
-
-
-def _resident(profile: Profile) -> Model:
-    """Find the model the runtime is holding, or explain that it holds none.
-
-    :param profile: Where to reach the runtime.
-
-    :return: The model that would answer.
-    """
-    held = resident(_catalogue(profile))
-
-    if held is None:
-        typer.echo(
-            f"  The runtime at {profile.host} is holding no model. "
-            "Load a model in it, then try again."
-        )
-        raise typer.Exit(1)
-
-    return held
-
-
 def main() -> None:
     """Run the command line, reporting offgrid's own errors as messages.
 
@@ -348,5 +210,5 @@ def main() -> None:
     try:
         app()
     except OffgridError as error:
-        typer.echo(f"  {error}")
+        _tell(f"  {error}")
         sys.exit(1)
