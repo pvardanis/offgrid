@@ -6,6 +6,8 @@ progress that travels by logging rather than by return value.
 """
 
 import logging
+import subprocess
+import sys
 from collections.abc import Sequence
 
 import pytest
@@ -207,9 +209,24 @@ def test_a_runtime_that_will_not_let_go_is_said_rather_than_raised(
     assert any("still holding" in record.getMessage() for record in caplog.records)
 
 
-def test_nothing_is_logged_by_a_caller_that_configured_nothing(profile, monkeypatch):
+def test_progress_is_silent_for_a_caller_that_configured_nothing():
     # A library that prints without being asked is a library that cannot be
-    # embedded.
-    _catalogue(monkeypatch, holding=[RESIDENT])
+    # embedded. In this process pytest has already attached a handler, so
+    # the claim is only testable somewhere that has not.
+    finished = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import offgrid.hold as hold; hold.log.info('progress'); "
+            "hold.log.warning('memory that did not come back')",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
 
-    assert logging.getLogger("offgrid.hold").handlers == []
+    assert finished.stdout == ""
+    assert "progress" not in finished.stderr
+    # A warning is different: memory still held is worth surfacing even to a
+    # caller that asked for nothing, and Python's last resort handler shows it.
+    assert "memory that did not come back" in finished.stderr
