@@ -17,6 +17,14 @@ class ModelUnavailableError(OffgridError):
     """The requested model is not present on the runtime."""
 
 
+class ModelNotHeldError(ModelUnavailableError):
+    """The runtime took the model and is not holding it.
+
+    Which is not the same as a runtime that cannot be reached: this one
+    answered, twice, and the second answer disagreed with the first.
+    """
+
+
 class DialectMismatchError(OffgridError):
     """The agent speaks a different API dialect than the runtime serves.
 
