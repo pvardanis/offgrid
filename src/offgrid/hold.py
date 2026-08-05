@@ -77,20 +77,25 @@ def hold(profile: Profile, identifier: str) -> Model:
     return _now_holding(profile, identifier)
 
 
-def let_go(host: str, identifier: str) -> None:
+def let_go(host: str, identifier: str) -> bool:
     """Unload a model, saying so if the runtime will not.
 
-    Memory that stays held is worth saying out loud, but it is not worth
-    failing a run that has already finished, so this reports rather than
-    raises.
+    Memory that stays held is worth saying out loud, and worth answering
+    for: the log record is for whoever is watching, the answer is for
+    whoever has to decide what to do next.
 
     :param host: Address the runtime listens on.
     :param identifier: The model to unload.
+
+    :return: Whether the memory came back.
     """
     try:
         unload(host, identifier)
     except RuntimeUnreachableError as error:
         log.warning("  The runtime is still holding %s: %s", identifier, error)
+        return False
+
+    return True
 
 
 def _now_holding(profile: Profile, identifier: str) -> Model:
