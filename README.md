@@ -11,10 +11,10 @@ Run a coding agent against a local model, tuned to the machine it runs on.
 [![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
 [![platform](https://img.shields.io/badge/platform-macOS%20Apple%20Silicon-lightgrey)](#requirements)
 
-`offgrid run` points Claude Code at a model held in memory by LM Studio on this
-machine, sizes the agent's context to what that model is actually serving, and
-lets the model go when the agent exits. No prompt, code or file leaves the
-machine.
+`offgrid run` starts a coding **agent** against a model held in memory by a
+**runtime** on this machine. It holds the model you asked for, sizes the
+agent's context to the window the runtime is actually serving, and lets the
+model go when the agent exits. No prompt, code or file leaves the machine.
 
 ```console
 $ offgrid run -m qwen/qwen3.6-35b-a3b
@@ -25,23 +25,41 @@ $ offgrid run -m qwen/qwen3.6-35b-a3b
 
 ## Contents
 
+- [Concepts](#concepts)
 - [Why](#why)
 - [Requirements](#requirements)
 - [Install](#install)
 - [Quick start](#quick-start)
 - [Commands](#commands)
 - [What a run does](#what-a-run-does)
+- [Runtimes](#runtimes)
+- [Agents](#agents)
 - [The profile](#the-profile)
 - [What offgrid does not do](#what-offgrid-does-not-do)
-- [What LM Studio does that is worth knowing](#what-lm-studio-does-that-is-worth-knowing)
 - [Measured on an M1 Max](#measured-on-an-m1-max)
 - [Development](#development)
 - [Layout](#layout)
 - [Roadmap](#roadmap)
 
+## Concepts
+
+Five words carry the whole design, and the modules are named after them.
+
+- **runtime** — the server that holds models in memory and answers requests.
+  One adapter per runtime, in `runtimes/`.
+- **agent** — the coding tool being launched. One adapter per agent, in
+  `agents/`.
+- **dialect** — the HTTP API shape a runtime serves and an agent expects,
+  `anthropic` or `openai`. A runtime and an agent can be paired only when their
+  dialects match. offgrid refuses the pair rather than translating between them.
+- **held**, **resident** — a model the runtime currently has in memory. A held
+  model answers immediately; anything else costs a load first.
+- **profile** — what offgrid remembers between runs: the machine it measured,
+  where the runtime listens, and which runtime and agent to use.
+
 ## Why
 
-Pointing Claude Code at a local server is a dozen environment variables, and
+Pointing an agent at a local server is a dozen environment variables, and
 getting one wrong fails quietly rather than loudly.
 
 - **Context.** A model's catalogue entry states its *ceiling* until it is
@@ -49,12 +67,13 @@ getting one wrong fails quietly rather than loudly.
   ceiling and it never compacts — the runtime truncates the prefix instead,
   which is the failure compacting exists to prevent.
 - **Memory.** One machine, one pool. A model left loaded is memory nothing else
-  can use, and `lms unload` exits 0 whether or not it freed anything.
-- **Naming.** Ask LM Studio for a model it does not have and it answers `200`
-  with whatever *is* loaded, so a typo runs the wrong model without saying so.
-- **Search.** `WebSearch` executes on Anthropic's servers. Against a local
-  model there is nothing to run it, and what comes back is invented rather than
-  an error.
+  can use, and a runtime's own tooling will happily report success having freed
+  nothing.
+- **Naming.** A runtime asked for a model it does not have may answer anyway,
+  with whatever it does hold — so a typo runs the wrong model without saying so.
+- **Search.** An agent's web search may execute on its vendor's servers. Against
+  a local model there is nothing to run it, and what comes back is invented
+  rather than an error.
 
 offgrid does that plumbing, says what it did, and gets out of the way.
 
@@ -62,10 +81,9 @@ offgrid does that plumbing, says what it did, and gets out of the way.
 
 - macOS on Apple Silicon
 - Python 3.13+
-- [LM Studio](https://lmstudio.ai/), its local server running, and `lms` on
-  your `PATH`
-- [Claude Code](https://claude.com/claude-code) (`claude`)
-- A model downloaded in LM Studio
+- A [supported runtime](#runtimes), with its local server running
+- A [supported agent](#agents)
+- A model downloaded in the runtime
 
 ## Install
 
@@ -166,16 +184,16 @@ runtime already holds.
 |---|---|
 | *n* | whatever the agent exited with |
 | `1` | offgrid refused: no profile, no runtime, unknown model, unusable settings |
-| `127` | the agent could not be started — `claude` not on `PATH` |
+| `127` | the agent could not be started |
 | `130` | interrupted |
 | `128+n` | the agent was killed by signal *n* |
 
 ## What a run does
 
 1. Reads the profile, and refuses early when the runtime and the agent speak
-   different API dialects — before spending a minute on a load.
+   different dialects — before spending a minute on a load.
 2. Writes the agent's profile directory if it is not there, and refuses to
-   start when the settings there would let it search the web.
+   start when the settings there would undo a guarantee offgrid makes.
 3. Lets go of every model held that is not the one being asked for, saying so,
    because the cached prefix goes with it.
 4. Loads the model, and checks the reply came from the model that was asked
@@ -187,7 +205,58 @@ runtime already holds.
 7. Lets the model go, whatever became of the agent, and confirms against the
    catalogue that it is actually gone.
 
-The environment it builds:
+## Runtimes
+
+| Runtime | Dialect served | State |
+|---|---|---|
+| [LM Studio](https://lmstudio.ai/) | `anthropic` | supported |
+
+Adding one is a module in `runtimes/`: report a dialect, parse a catalogue, say
+which models are held, load one, unload one. Nothing above knows which runtime
+is answering.
+
+### LM Studio
+
+Reached over HTTP at the `host` in your profile, plus its own `lms` command for
+unloading, which is not part of the HTTP API. It serves Anthropic's
+`/v1/messages` alongside OpenAI's, so an Anthropic-dialect agent needs no
+translating proxy.
+
+- **Catalogue** — `GET /api/v0/models`, which states each model's
+  `max_context_length` and, once loaded, the `loaded_context_length` it is
+  actually served at. Embeddings models are filtered out.
+- **Loading** — a one-token request to `/v1/messages`. Doing it here rather
+  than leaving it to the agent's first message makes the wait visible and
+  attributable instead of a silence mid-turn.
+- **Unloading** — `lms unload`, then the catalogue is read back.
+
+Two behaviours are worth knowing, both reproduced against a live server, and
+both the reason for the checks above:
+
+**A name it does not have is answered anyway.** With `google/gemma-4-e4b`
+loaded, a request for `totally/made-up-model-9000` came back `200`, body saying
+`"model": "google/gemma-4-e4b"`. The model named in the reply is the only thing
+that gives it away.
+
+**`lms unload` exits 0 having freed nothing.** An unknown name prints `Model
+Not Found` and still exits 0, so the exit code cannot say whether memory came
+back. The catalogue can.
+
+## Agents
+
+| Agent | Dialect expected | State |
+|---|---|---|
+| [Claude Code](https://claude.com/claude-code) | `anthropic` | supported |
+
+Adding one is a module in `agents/`: report a dialect, build a launch — an
+environment and an argument list — and prepare whatever profile it reads.
+Launches are built rather than exported, so a caller can show one before
+anything runs.
+
+### Claude Code
+
+Configured entirely through the environment, so a launch is a set of variables
+and a command line:
 
 | Variable | Why |
 |---|---|
@@ -203,6 +272,24 @@ The environment it builds:
 Plus `--strict-mcp-config` with no config, so no MCP servers load at all, and
 `--exclude-dynamic-system-prompt-sections`, so the cached prefix stays
 identical between turns.
+
+**Its profile lives in `~/.offgrid/claude-code/`**, separate from your own
+`~/.claude`, which is what keeps your plugins, servers and hooks out of a
+prefix you pay to prefill on every cold request. offgrid writes two files there
+and then leaves them alone, since both are meant to be edited:
+
+- `settings.json` — denies `WebSearch`, loads no plugins or project MCP
+  servers. offgrid refuses to start if the deny has been removed.
+- `CLAUDE.md` — tells the agent that search is unavailable and why, that
+  `WebFetch` works when a URL is known, and to say what it could not look up
+  rather than answer from memory.
+
+**Why the search is denied:** `WebSearch` executes on Anthropic's servers. Sent
+to a local model instead, there is nothing to run it — the model writes what it
+imagines the results would look like, and the agent hands that back as a tool
+result. Reproduced here: the "results" contained a fabricated header and the
+boilerplate reminder from the real tool's output template. Exit code 0, no
+error anywhere. `WebFetch` is genuinely local and stays enabled.
 
 ## The profile
 
@@ -221,7 +308,7 @@ model: qwen/qwen3.6-35b-a3b
 | Key | Meaning |
 |---|---|
 | `host` | where the runtime listens |
-| `runtime`, `agent` | which adapters to use. Only `lmstudio` and `claude-code` exist, and a name offgrid cannot act on is refused rather than recorded |
+| `runtime`, `agent` | which adapters to use. A name offgrid has no adapter for is refused rather than recorded |
 | `chip`, `memory_bytes`, `wired_limit_bytes` | measured, refreshed by `setup` |
 | `model` | what `run` uses when the command line names nothing |
 
@@ -232,32 +319,18 @@ model named".
 
 - **Recommend a model.** It says how much room the machine has. Which model to
   run is a judgement about your work, not about your hardware.
-- **Search the web.** `WebSearch` is denied, because against a local model it
-  returns invented results with no error. `WebFetch` works and stays enabled,
-  so a URL that is known can still be read. A replacement is planned.
+- **Search the web.** See [Agents](#agents). A replacement is planned.
 - **Enforce privacy.** Nothing stops you running a hosted agent on private
   work. Whoever wants a local model runs `offgrid`.
 - **Fall back to a hosted model.** When the local model cannot do the job, that
   is the answer.
-- **Run anywhere else.** macOS on Apple Silicon, one runtime, one agent. More
-  of each is a later problem, and the adapters are shaped for it.
-
-## What LM Studio does that is worth knowing
-
-Both reproduced against a live server, and both are why the checks above exist.
-
-**A name it does not have is answered anyway.** With `google/gemma-4-e4b`
-loaded, a request for `totally/made-up-model-9000` came back `200`, body
-saying `"model": "google/gemma-4-e4b"`. The model named in the reply is the
-only thing that gives it away.
-
-**`lms unload` exits 0 having freed nothing.** An unknown name prints `Model
-Not Found` and still exits 0, so the exit code cannot say whether memory came
-back. The catalogue can.
+- **Translate between dialects.** A runtime and an agent that disagree are
+  refused, with what to do about it.
+- **Run anywhere else.** macOS on Apple Silicon, and one adapter each so far.
 
 ## Measured on an M1 Max
 
-64GB, LM Studio:
+64GB:
 
 | Model | Architecture | On disk | Decode |
 |---|---|---|---|
@@ -270,9 +343,9 @@ Pick by architecture.
 
 Prefill runs at ~384 tok/s cold, and prefix caching is worth protecting: a
 repeated 22k-token prefix dropped from 57.3s to 1.7s. That is why `run` says
-out loud when a swap is about to throw one away. The server answers one request
-at a time, so parallel subagents queue *and* evict each other's prefix — fan-out
-is a net loss locally.
+out loud when a swap is about to throw one away. The runtime answers one
+request at a time, so parallel subagents queue *and* evict each other's prefix
+— fan-out is a net loss locally.
 
 ## Development
 
@@ -302,7 +375,8 @@ default to `qwen3-0.6b-mlx` — small on purpose, since they prove the plumbing
 rather than the answers — and `--smoke-model` points them elsewhere.
 
 **The suite cannot reach your runtime by accident.** `tests/conftest.py` fails
-any test that calls LM Studio's tool, with `live` as the single exception.
+any test that calls a runtime's own tooling, with `live` as the single
+exception.
 
 When mutation-testing by hand, set `PYTHONDONTWRITEBYTECODE=1` — edits made
 within the same second as a restore leave stale `.pyc` files, and the suite
@@ -330,6 +404,6 @@ nothing about adapters.
 
 ## Roadmap
 
-- A way for local sessions to search the web, since `WebSearch` cannot work
-- A second runtime, and a second agent — the adapters are shaped for it
+- A way for local sessions to search the web
+- A second runtime, and a second agent
 - A model catalogue, and a verified private mode
