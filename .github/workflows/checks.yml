@@ -38,3 +38,8 @@ jobs:
       # two cannot drift apart.
       - name: run the hooks
         run: uv run prek run --all-files --show-diff-on-failure
+
+      # Separate from the hooks: a commit should not wait on coverage, but a
+      # push should not lower it either.
+      - name: measure coverage
+        run: uv run pytest --cov
