@@ -207,13 +207,18 @@ runtime already holds.
 
 ## Runtimes
 
-| Runtime | Dialect served | State |
+| Runtime | Dialect served | Supported |
 |---|---|---|
-| [LM Studio](https://lmstudio.ai/) | `anthropic` | supported |
+| [LM Studio](https://lmstudio.ai/) | `anthropic` | ✅ |
+| [Ollama](https://ollama.com/) | `openai` | ❌ |
 
 Adding one is a module in `runtimes/`: report a dialect, parse a catalogue, say
 which models are held, load one, unload one. Nothing above knows which runtime
 is answering.
+
+Ollama serving the `openai` dialect is the interesting part: pairing it with an
+agent that expects `anthropic` would be refused rather than translated, so it
+needs an agent on the same side or a proxy of your own between them.
 
 ### LM Studio
 
@@ -244,9 +249,10 @@ back. The catalogue can.
 
 ## Agents
 
-| Agent | Dialect expected | State |
+| Agent | Dialect expected | Supported |
 |---|---|---|
-| [Claude Code](https://claude.com/claude-code) | `anthropic` | supported |
+| [Claude Code](https://claude.com/claude-code) | `anthropic` | ✅ |
+| [OpenCode](https://opencode.ai/) | either, per provider | ❌ |
 
 Adding one is a module in `agents/`: report a dialect, build a launch — an
 environment and an argument list — and prepare whatever profile it reads.
