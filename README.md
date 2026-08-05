@@ -220,7 +220,10 @@ Ollama serving the `openai` dialect is the interesting part: pairing it with an
 agent that expects `anthropic` would be refused rather than translated, so it
 needs an agent on the same side or a proxy of your own between them.
 
-### LM Studio
+<details>
+<summary><b>LM Studio</b> — the endpoints used, and two behaviours worth knowing</summary>
+
+<br>
 
 Reached over HTTP at the `host` in your profile, plus its own `lms` command for
 unloading, which is not part of the HTTP API. It serves Anthropic's
@@ -247,6 +250,8 @@ that gives it away.
 Not Found` and still exits 0, so the exit code cannot say whether memory came
 back. The catalogue can.
 
+</details>
+
 ## Agents
 
 | Agent | Dialect expected | Supported |
@@ -259,7 +264,10 @@ environment and an argument list — and prepare whatever profile it reads.
 Launches are built rather than exported, so a caller can show one before
 anything runs.
 
-### Claude Code
+<details>
+<summary><b>Claude Code</b> — the environment it is given, the profile written for it, and why its search is denied</summary>
+
+<br>
 
 Configured entirely through the environment, so a launch is a set of variables
 and a command line:
@@ -296,6 +304,8 @@ imagines the results would look like, and the agent hands that back as a tool
 result. Reproduced here: the "results" contained a fabricated header and the
 boilerplate reminder from the real tool's output template. Exit code 0, no
 error anywhere. `WebFetch` is genuinely local and stays enabled.
+
+</details>
 
 ## The profile
 
