@@ -1,7 +1,7 @@
 """A launch, and the waiting that follows it.
 
-An environment and an argument list, built before anything runs so a caller
-can show them rather than guess at them, and the running of one.
+An environment and an argument list. An agent adapter decides what goes in
+one; this runs it, and stays alive until it is done.
 """
 
 import os

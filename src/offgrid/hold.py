@@ -4,8 +4,8 @@ One machine, one pool of memory: what is held is memory the rest of the
 machine cannot use, so every model but the one being asked for is let go, and
 that one goes when the agent is done with it.
 
-Progress is said at info and nothing is configured here. Whoever runs this
-decides where it goes.
+Progress is said at info, and memory that did not come back at warning.
+Nothing is configured here: whoever runs this decides where it goes.
 """
 
 import logging
@@ -55,8 +55,10 @@ def hold(profile: Profile, identifier: str) -> Model:
         serves it at.
 
     :raise ModelUnavailableError: When the runtime does not have it.
-    :raise RuntimeUnreachableError: When the load fails, when another model
-        answers, or when the runtime is not holding it afterwards.
+    :raise ModelNotHeldError: When it took the load and is not holding it.
+    :raise RuntimeUnreachableError: When the runtime cannot be reached, when
+        the load fails, when another model answers, or when what is already
+        held will not go and this one would be loaded on top of it.
     """
     payload = catalogue(profile.host)
     known = {model.identifier: model for model in parse_models(payload)}
