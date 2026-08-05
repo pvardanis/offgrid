@@ -258,15 +258,22 @@ is a net loss locally.
 ## Development
 
 ```sh
-uv sync
-uv run pytest                      # the suite
-uv run pytest --cov                # with coverage, floor at 90%
-uv run pytest -m live              # against the runtime on this machine
-uv run prek run --all-files        # everything CI runs
+just install                       # the project, its tools, the commit hooks
+just test                          # the suite
+just cov                           # with coverage, floor at 90%
+just live                          # against the runtime on this machine
+just check                         # everything CI runs
 ```
 
-`uv run prek install` runs all of it on every commit. CI runs the same hooks on
-Linux, where the one test that reads real hardware skips itself.
+`just` on its own lists the rest — `fmt`, `lint`, `types`, `docs` for one
+check at a time, and `mutate` for a run that writes no `.pyc` files. Each one
+names a hook rather than a tool, so the recipes cannot disagree with
+`.pre-commit-config.yaml` about what a check is. Install it with `brew install
+just`, or read the file and run the commands by hand.
+
+The hooks run on every commit once `just install` has been run. CI runs the
+same ones on Linux, where the single test that reads real hardware skips
+itself.
 
 **Live tests** are opt-in and deselected by default. They start a real agent
 against a real model, so they let go of whatever the runtime is holding. They
