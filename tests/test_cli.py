@@ -353,6 +353,23 @@ def test_settings_that_would_let_the_agent_search_stop_the_run(here, monkeypatch
     assert asked["order"] == []
 
 
+def test_the_model_is_let_go_when_the_launch_cannot_be_built(
+    here, monkeypatch, runtime
+):
+    # Between holding a model and starting the agent there is nothing a
+    # person waits for, but it is the second after the longest wait in the
+    # program, which is when a hand reaches for Ctrl-C.
+    runner.invoke(app, ["setup"])
+
+    def broken(*args, **kwargs):
+        raise RuntimeError("the launch could not be built")
+
+    monkeypatch.setattr("offgrid.cli.plan", broken)
+
+    runner.invoke(app, ["run"])
+    assert runtime["let_go"] == [RESIDENT]
+
+
 def test_the_model_is_let_go_when_the_agent_will_not_start(here, monkeypatch, runtime):
     # A model held for an agent that never ran is memory nothing is using,
     # and it stays held for the rest of the session.
