@@ -289,6 +289,19 @@ def test_every_model_held_is_let_go_not_only_the_first(here, monkeypatch):
     assert asked["let_go"][:2] == [RESIDENT, "a/also-held-7b"]
 
 
+def test_a_model_already_held_is_not_let_go_of_and_loaded_again(here, monkeypatch):
+    # `resident` answers with the first model in catalogue order, so a
+    # wanted model that is held but not first is one `continue` away from
+    # being evicted and reloaded — the whole wait, for no change.
+    runner.invoke(app, ["setup"])
+    asked = _runtime(monkeypatch, holding={RESIDENT: 212224, "a/wanted-7b": 8192})
+    _launched(monkeypatch)
+
+    runner.invoke(app, ["run", "-m", "a/wanted-7b"])
+    assert asked["loaded"] is None
+    assert "a/wanted-7b" not in asked["let_go"][:1]
+
+
 def test_the_model_is_held_only_for_as_long_as_the_agent_runs(here, monkeypatch):
     # What is already held goes first, the wanted model is loaded next, and
     # it is let go after the agent and not before it.

@@ -5,7 +5,7 @@ import subprocess
 
 import pytest
 
-from offgrid.launch import Launch, start
+from offgrid.launch import STOPS, Launch, start
 
 LAUNCH = Launch(env={"ANTHROPIC_BASE_URL": "http://127.0.0.1:1234"}, argv=["claude"])
 
@@ -13,12 +13,18 @@ LAUNCH = Launch(env={"ANTHROPIC_BASE_URL": "http://127.0.0.1:1234"}, argv=["clau
 class _Agent:
     """A process that is not started, answering as one that was."""
 
-    def __init__(self, code: int = 0, watching: dict | None = None):
+    def __init__(
+        self,
+        code: int = 0,
+        watching: dict | None = None,
+        listening_for: int = signal.SIGTERM,
+    ):
         self.code = code
         self.watching = watching if watching is not None else {}
+        self.listening_for = listening_for
 
     def wait(self) -> int:
-        self.watching["handler"] = signal.getsignal(signal.SIGTERM)
+        self.watching["handler"] = signal.getsignal(self.listening_for)
         return self.code
 
     def terminate(self) -> None:
@@ -71,14 +77,15 @@ def test_an_agent_killed_by_a_signal_reports_it_as_a_shell_would(monkeypatch):
     assert start(LAUNCH) == 128 + signal.SIGTERM
 
 
-def test_a_stop_signal_reaches_the_agent(monkeypatch):
+@pytest.mark.parametrize("number", STOPS)
+def test_a_stop_signal_reaches_the_agent(monkeypatch, number):
     # Being stopped without passing it on leaves the agent running against a
     # model offgrid is about to let go of.
     watching: dict = {}
-    _agent(monkeypatch, _Agent(watching=watching))
+    _agent(monkeypatch, _Agent(watching=watching, listening_for=number))
 
     start(LAUNCH)
-    watching["handler"](signal.SIGTERM, None)
+    watching["handler"](number, None)
 
     assert watching["terminated"] is True
 
