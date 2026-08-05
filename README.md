@@ -69,20 +69,39 @@ offgrid does that plumbing, says what it did, and gets out of the way.
 
 ## Install
 
-With [uv](https://github.com/astral-sh/uv):
+offgrid is installed with [uv](https://github.com/astral-sh/uv), which is one
+command if you do not have it:
+
+```sh
+curl -LsSf https://astral.sh/uv/install.sh | sh     # or: brew install uv
+```
+
+Then:
 
 ```sh
 uv tool install git+https://github.com/pvardanis/offgrid
 ```
+
+That puts `offgrid` on your `PATH`. `uv tool upgrade offgrid` later, `uv tool
+uninstall offgrid` to remove it.
 
 From a clone, for development:
 
 ```sh
 git clone https://github.com/pvardanis/offgrid
 cd offgrid
-uv sync
-uv run prek install     # run the checks on every commit
+just install            # uv sync, and the checks on every commit
 ```
+
+The recipes need [just](https://github.com/casey/just):
+
+```sh
+brew install just                    # or: cargo install just
+uvx --from rust-just just --list     # or run it without installing anything
+```
+
+Without it, `uv sync && uv run prek install` does the same thing — every recipe
+is one line, so the file reads as a list of commands.
 
 ## Quick start
 
@@ -268,8 +287,10 @@ just check                         # everything CI runs
 `just` on its own lists the rest — `fmt`, `lint`, `types`, `docs` for one
 check at a time, and `mutate` for a run that writes no `.pyc` files. Each one
 names a hook rather than a tool, so the recipes cannot disagree with
-`.pre-commit-config.yaml` about what a check is. Install it with `brew install
-just`, or read the file and run the commands by hand.
+`.pre-commit-config.yaml` about what a check is.
+
+The recipes are for working on offgrid. Using it is `offgrid setup`, `offgrid
+doctor` and `offgrid run`, and nothing here wraps those.
 
 The hooks run on every commit once `just install` has been run. CI runs the
 same ones on Linux, where the single test that reads real hardware skips
