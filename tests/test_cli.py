@@ -1,3 +1,5 @@
+import logging
+
 import pytest
 from typer.testing import CliRunner
 
@@ -417,6 +419,20 @@ def test_the_command_line_beats_the_profile(here, monkeypatch):
     runner.invoke(app, ["run", "-m", "a/asked-for-7b"])
     assert asked["loaded"] == "a/asked-for-7b"
     assert started["env"]["ANTHROPIC_MODEL"] == "a/asked-for-7b"
+
+
+def test_saying_something_after_a_command_does_not_write_to_a_closed_stream(
+    here, capsys
+):
+    # A handler that captured the stream a command ran on writes into a
+    # closed buffer once that command is over, and logging reports that as a
+    # traceback over whatever is being read at the time.
+    runner.invoke(app, ["setup"])
+    capsys.readouterr()
+
+    logging.getLogger("offgrid.hold").info("something after the fact")
+
+    assert "Logging error" not in capsys.readouterr().err
 
 
 def test_an_error_that_reaches_the_terminal_is_a_sentence_not_a_traceback(
