@@ -67,11 +67,15 @@ def hold(profile: Profile, identifier: str) -> Model:
             "`offgrid doctor` lists what it holds."
         )
 
-    already = resident(payload)
-    if already is not None and already.identifier == identifier:
-        return already
-
     stuck = _let_go_of_the_rest(profile.host, payload, identifier)
+
+    # `resident` answers with the first model in catalogue order, and the
+    # runtime can hold several: what matters is whether this one is among
+    # them, not whether it happens to be first.
+    in_memory = {model.identifier: model for model in loaded(payload)}
+    if identifier in in_memory:
+        return in_memory[identifier]
+
     if stuck:
         raise RuntimeUnreachableError(
             f"The runtime at {profile.host} is still holding {', '.join(stuck)}, so "

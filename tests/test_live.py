@@ -63,6 +63,10 @@ def test_a_run_lets_go_of_the_model_it_held(host: str, known: str):
     finished = _run(known)
 
     assert finished.returncode not in REFUSALS, finished.stderr
+    # Exit codes alone cannot tell a run that held a model from one that
+    # never reached the runtime — a usage error exits 2 and leaves nothing
+    # loaded, which would satisfy the rest of this on its own.
+    assert known in finished.stderr
     assert [model.identifier for model in loaded(catalogue(host))] == [], (
         finished.stderr
     )
