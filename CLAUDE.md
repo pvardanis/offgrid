@@ -86,6 +86,22 @@ then runs against code that is no longer on disk.
 - Comments explain why something is there. Never what it replaced.
 - Fail fast, and name the operation, the input, and what to do next.
 
+## Commits
+
+Conventional Commits: `<type>(<scope>): <imperative summary>`. Subject in the
+imperative, 50 characters where it fits and never past 72, no trailing period.
+
+Types: `feat`, `fix`, `refactor`, `perf`, `docs`, `test`, `chore`, `build`,
+`ci`, `style`, `revert`. Scopes are the modules — `machine`, `fit`, `model`,
+`dialect`, `profile`, `lmstudio`, `claude-code`, `cli` — plus `ci` and `deps`.
+
+A body only where the diff does not already say it: why the change was made,
+and for a fix, what was reproduced. Wrap at 72, `-` for bullets. A breaking
+change takes `!` before the colon and a `BREAKING CHANGE:` paragraph.
+
+Never in a commit: what the diff states, "I" or "we", or AI attribution in the
+prose. The `Co-Authored-By:` trailer stays.
+
 ## Scope
 
 v0.1 connects one runtime to one agent and gets out of the way. Which model to
