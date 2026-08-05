@@ -33,6 +33,19 @@ SLIM_SETTINGS = {
 }
 
 
+# Said once in the profile rather than discovered by calling the tool, which
+# costs a turn — and locally a turn is tens of seconds.
+INSTRUCTIONS = """# Answering from a model on this machine
+
+WebSearch is denied here. It runs on Anthropic's servers, and this session
+answers from a model held on this machine, so the call comes back as invented
+results rather than as an error. Nothing replaces it yet.
+
+WebFetch does work: use it whenever a URL is known. Where one is not, say what
+could not be looked up rather than answering from memory.
+"""
+
+
 @dataclass(frozen=True)
 class Launch:
     """Everything needed to start the agent.
@@ -106,9 +119,10 @@ def plan(
 def prepare(config_dir: Path) -> None:
     """Make sure the agent has a profile to run against.
 
-    Anything already there is left alone: the file is meant to be edited, and
-    a run is no place to lose those edits. It is read rather than trusted,
-    because one of those edits can undo what it is for.
+    The profile is its settings and the notes it reads at startup. Anything
+    already there is left alone: both are meant to be edited, and a run is no
+    place to lose those edits. The settings are read rather than trusted,
+    because one of those edits can undo what they are for.
 
     :param config_dir: Profile directory to create if it is not there.
 
@@ -116,6 +130,11 @@ def prepare(config_dir: Path) -> None:
         or would let the agent search the web.
     """
     config_dir.mkdir(parents=True, exist_ok=True)
+
+    notes = config_dir / "CLAUDE.md"
+    if not notes.exists():
+        notes.write_text(INSTRUCTIONS)
+
     settings = config_dir / "settings.json"
     if not settings.exists():
         settings.write_text(json.dumps(SLIM_SETTINGS, indent=2) + "\n")
