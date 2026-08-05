@@ -145,6 +145,19 @@ def test_setup_run_again_keeps_what_was_edited_by_hand(here):
     assert load(here / "profile.yaml").model == "a/chosen-by-hand-7b"
 
 
+def test_setup_keeps_the_profile_it_could_not_read(here):
+    # It is about to write over a file someone edited by hand. Whatever was
+    # in it is worth more than the seconds it takes to keep a copy.
+    runner.invoke(app, ["setup"])
+    (here / "profile.yaml").write_text("model: [unbalanced\n")
+
+    result = runner.invoke(app, ["setup"])
+
+    assert result.exit_code == 0
+    assert (here / "profile.yaml.rejected").read_text() == "model: [unbalanced\n"
+    assert "profile.yaml.rejected" in result.stderr
+
+
 def test_setup_takes_the_host_it_is_given_over_the_stored_one(here):
     runner.invoke(app, ["setup", "--host", "10.0.0.5:4321"])
     runner.invoke(app, ["setup", "--host", "127.0.0.1:1234"])

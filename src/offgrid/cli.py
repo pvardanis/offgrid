@@ -12,7 +12,7 @@ import typer
 from offgrid.agents.claude_code import dialect as agent_dialect
 from offgrid.agents.claude_code import plan, prepare
 from offgrid.dialect import require_compatible
-from offgrid.exceptions import OffgridError
+from offgrid.exceptions import OffgridError, ProfileError
 from offgrid.fit import sizes_that_fit
 from offgrid.hold import held, hold, let_go
 from offgrid.launch import start
@@ -228,9 +228,12 @@ def _stored() -> Profile | None:
 
     try:
         return load_profile(DEFAULT_PATH)
-    except OffgridError as error:
+    except ProfileError as error:
+        kept = DEFAULT_PATH.with_suffix(".yaml.rejected")
+        kept.write_text(DEFAULT_PATH.read_text())
+
         _tell(f"  {error}")
-        _tell("  Writing a fresh profile over it.")
+        _tell(f"  What was there is at {kept}. Writing a fresh profile.")
         return None
 
 

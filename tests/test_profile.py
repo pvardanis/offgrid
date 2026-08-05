@@ -82,6 +82,16 @@ def test_a_mistyped_key_is_named_rather_than_ignored(tmp_path):
         load(path)
 
 
+def test_a_profile_that_is_not_yaml_is_refused_as_a_profile(tmp_path):
+    # An unbalanced bracket is how a hand-edited YAML file usually breaks,
+    # and a parser's traceback is not what the person who typed it needs.
+    path = tmp_path / "profile.yaml"
+    path.write_text("host: [127.0.0.1:1234\nchip: Apple M1 Max\n")
+
+    with pytest.raises(ProfileError, match=r"profile\.yaml"):
+        load(path)
+
+
 def test_a_machine_with_no_memory_is_refused(tmp_path):
     path = tmp_path / "profile.yaml"
     path.write_text(
