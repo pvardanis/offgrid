@@ -29,6 +29,7 @@ agreed. Anything else needs a new agreement.
 | the profile file | that a hand-edited profile loads, and that older ones still do |
 | a runtime adapter's parsing | a payload captured from a live server |
 | a machine's sizing | what fits, at each quantization width |
+| a live run | that a real run holds a model and lets it go — `pytest -m live` |
 
 Not seams: anything private. `_chosen`, `_clear`, `_let_go` and their kind are
 structure, and a test against them breaks on a refactor that changed nothing.

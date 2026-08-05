@@ -50,4 +50,9 @@ exclude = ["tests"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-q"
+# Live checks are opt-in: they need the runtime and the agent on this machine,
+# and they let go of whatever the runtime is holding.
+addopts = "-q -m 'not live'"
+markers = [
+    "live: runs against the runtime and agent on this machine, evicting what is held",
+]
