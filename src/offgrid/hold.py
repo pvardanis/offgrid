@@ -67,7 +67,13 @@ def hold(profile: Profile, identifier: str) -> Model:
     if already is not None and already.identifier == identifier:
         return already
 
-    _let_go_of_the_rest(profile.host, payload, identifier)
+    stuck = _let_go_of_the_rest(profile.host, payload, identifier)
+    if stuck:
+        raise RuntimeUnreachableError(
+            f"The runtime at {profile.host} is still holding {', '.join(stuck)}, so "
+            f"{identifier} is not being loaded on top of it. Let go of it in the "
+            "runtime directly, or restart the runtime."
+        )
 
     log.info("  Loading %s ...", identifier)
     started = time.monotonic()
@@ -124,13 +130,17 @@ def _now_holding(profile: Profile, identifier: str) -> Model:
     return in_memory[identifier]
 
 
-def _let_go_of_the_rest(host: str, payload: dict, wanted: str) -> None:
+def _let_go_of_the_rest(host: str, payload: dict, wanted: str) -> list[str]:
     """Let go of every model held that is not the one being asked for.
 
     :param host: Address the runtime listens on.
     :param payload: The runtime's catalogue.
     :param wanted: The model that will answer.
+
+    :return: The models whose memory did not come back.
     """
+    stuck = []
+
     for model in loaded(payload):
         if model.identifier == wanted:
             continue
@@ -138,4 +148,7 @@ def _let_go_of_the_rest(host: str, payload: dict, wanted: str) -> None:
         log.info(
             "  Letting go of %s, whose cached prefix goes with it.", model.identifier
         )
-        let_go(host, model.identifier)
+        if not let_go(host, model.identifier):
+            stuck.append(model.identifier)
+
+    return stuck
