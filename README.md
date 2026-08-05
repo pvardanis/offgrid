@@ -397,8 +397,8 @@ itself.
 
 **Live tests** are opt-in and deselected by default. They start a real agent
 against a real model, so they let go of whatever the runtime is holding. They
-default to `qwen3-0.6b-mlx` — small on purpose, since they prove the plumbing
-rather than the answers — and `--smoke-model` points them elsewhere.
+default to `lfm2.5-1.2b-instruct-mlx` — small on purpose, since they prove the
+plumbing rather than the answers — and `--smoke-model` points them elsewhere.
 
 **The suite cannot reach your runtime by accident.** `tests/conftest.py` fails
 any test that calls a runtime's own tooling, with `live` as the single
