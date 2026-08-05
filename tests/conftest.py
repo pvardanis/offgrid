@@ -15,7 +15,7 @@ import pytest
 
 _run = subprocess.run
 
-SMOKE_MODEL = "qwen3-0.6b-mlx"
+SMOKE_MODEL = "lfm2.5-1.2b-instruct-mlx"
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:

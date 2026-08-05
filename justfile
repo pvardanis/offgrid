@@ -28,7 +28,7 @@ cov:
     uv run pytest --cov
 
 # Against the runtime here, which lets go of the model it is holding.
-live model="qwen3-0.6b-mlx":
+live model="lfm2.5-1.2b-instruct-mlx":
     uv run pytest -m live --smoke-model {{ model }}
 
 # Every check, the way a commit and CI run them.
