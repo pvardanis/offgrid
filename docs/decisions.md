@@ -95,3 +95,25 @@ Everything a person reads goes to stderr, errors included, which they did not
 before. Nothing is written to stdout yet, and that is the point: `offgrid run
 -- -p "..." > answer.txt` should capture what the agent said, not offgrid
 narrating over it.
+
+## The runtime owns which models are held
+
+offgrid asks a runtime to hold a model and to let one go. Whether a model is in
+memory is the runtime's to answer, not something offgrid tracks and enforces.
+
+LM Studio made the two look the same: nothing else manages that memory, so
+offgrid asking and offgrid deciding produced the same result. oMLX does not.
+It serves several models at once, evicts the least recently used, raises the
+Metal wired limit at startup and enforces a ceiling of its own. Against that
+runtime, offgrid unloading every model that is not the one being asked for is
+offgrid doing a job already being done, to a runtime that will undo it.
+
+So `hold` is a request and a report: ask, then say what the runtime says is
+there. Confirming a model was really let go stays, because a tool that exits 0
+having freed nothing is why that check exists — but it verifies an outcome
+rather than enforcing one, and a runtime holding other models is not a fault to
+correct.
+
+What this costs: on a runtime that holds one model at a time, nothing. On one
+that holds several, offgrid stops promising the memory is free for the model it
+just loaded, because it no longer decides that.
