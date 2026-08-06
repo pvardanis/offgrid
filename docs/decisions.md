@@ -117,3 +117,65 @@ correct.
 What this costs: on a runtime that holds one model at a time, nothing. On one
 that holds several, offgrid stops promising the memory is free for the model it
 just loaded, because it no longer decides that.
+
+## offgrid recommends from a published list, and still does not choose
+
+`setup` says how large a model this machine holds. `offgrid recommend` says
+which published models that size admits, ranked, so a person choosing one is
+reading a list rather than remembering. It downloads nothing, and it writes
+nothing to the profile: a model worth recommending is one that is not on the
+disk yet, and `profile.model` naming it would make the next `run` ask the
+runtime for something it does not have.
+
+This is a separate command rather than part of `setup` because the two run on
+different clocks. Memory is fixed until the machine changes; a leaderboard's
+whole value is that it moved since it was last read. Folding the second into
+the first puts a thing that must be re-read inside the command nobody re-runs,
+and makes writing a profile depend on someone else's site being up. `setup`
+ends by naming `recommend`, which is where a person is looking anyway.
+
+The list is onyx.app's coding table, fetched as the payload their page is
+rendered from. Their sibling page for hardware answers the same question and is
+not used: it renders nothing server-side, and its whole filter is
+`vram_int4 <= vram`, against an M1 Max it records as having 32GB. `fit.py`
+measures the real figure, so it decides what fits, and `vram_int4` is ignored —
+it is a parameter count times four bits, which `fit.py` already computes.
+
+Three rules drop a row, and each says how many it dropped: no parameter count,
+so it cannot be sized; no coding score, so it cannot be ranked; too large at
+every width. The first takes every closed model without a word about licences,
+which is fortunate, because that field holds a date on one row and nothing on a
+model that has one.
+
+The quality figure keeps the shape of theirs — memory headroom, a score, speed,
+context window, out of 97 — with one term replaced. Theirs ranks a model by
+percentile within what fits, needs six populated benchmarks and five ranked
+models to compute either, and has an empty fallback map, so on a Mac it is the
+constant 50 for everything and the term reduces to a reward for having more
+active parameters. Substituting the published SWE-bench figure makes the column
+mean what it says. It also reverses the order: the dense 27B leads their table
+for being dense.
+
+Speed is derived here rather than taken from the table. Their figure is a
+hosted GPU's and does not move with quantization width; their formula divides
+bandwidth by the whole of the weights, which is right for a dense model and
+reads all 35B of a 3B-active one. `docs/models.md` measured both cases on this
+machine, and its constants — 60% of peak bandwidth dense, 21% for a MoE with
+few active parameters, over the weights actually read per token — land within
+about a tenth of every figure recorded there. The cost is a table of bandwidth
+per chip, which offgrid did not need before; a chip missing from it means no
+speed figure for that row rather than a wrong one.
+
+Nothing is printed without saying where it came from: the table's own date, and
+that nobody independent produced any of it. What is not claimed is that the
+numbers are the vendors' own. That was established for the two models that fit
+this machine, by hand, and it lives in `docs/models.md` where a person wrote it,
+not in a line generated from a table where it would be a guess about the other
+twenty-five.
+
+The last good table is cached beside the profile so an unreachable site
+degrades to a stale answer with its date shown. No copy is committed. Fetching
+is what their robots.txt permits and names AI crawlers to permit; whether the
+table may be redistributed is stated nowhere, and a copy in a public repository
+is the one form of use that would need it to be. A committed table would also
+be stale on the day it was cloned.

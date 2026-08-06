@@ -34,8 +34,17 @@ so it can be shown rather than guessed at.
 machine.
 
 **fits** — whether a model's weights, plus room for the context cache, are
-within the memory the GPU may use. offgrid says how much room there is. It does
-not say which model to run.
+within the memory the GPU may use. offgrid says how much room there is.
+
+**listing** — a model as a published list describes it: a name, a parameter
+count, what is active of it, a context window and a benchmark score. Nothing
+about this machine, and nothing about whether it has been downloaded. A
+**model** is what the runtime describes; a listing is what someone else
+published.
+
+**recommendation** — the listings that fit this machine, ranked. offgrid says
+what is worth trying. Downloading it, and choosing between what is left,
+stay a person's.
 
 ## Shape
 
@@ -43,13 +52,15 @@ not say which model to run.
 machine.py     what this Mac is
 fit.py         how much room it has
 model.py       a model the runtime describes
+listing.py     a model a published list describes, and which ones fit
 dialect.py     which API shapes can be paired
 profile.py     what is remembered between runs
 launch.py      an environment and an argument list, and running one
 hold.py        holding the model that answers, and letting it go
 runtimes/      one module per runtime
 agents/        one module per agent
-cli.py         setup, doctor, run
+leaderboards/  one module per published list
+cli.py         setup, doctor, run, recommend
 ```
 
 Dependencies point inwards: adapters know about the domain, the domain knows
