@@ -19,6 +19,9 @@ class Listing:
         Not an identifier any runtime answers to.
     :param parameters: How many parameters it has. A listing without one
         cannot be sized, and is not a listing.
+    :param active_parameters: How many of them are read per token, or
+        ``None`` when the list states none, which is how it writes a dense
+        model. Fewer than the whole is what makes a model a mixture.
     :param context_window: Tokens it is published as taking, or ``None``
         when the list states none.
     :param license: The licence as published, which offgrid prints and does
@@ -27,6 +30,7 @@ class Listing:
 
     name: str
     parameters: float
+    active_parameters: float | None
     context_window: int | None
     license: str | None
 

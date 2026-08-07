@@ -128,6 +128,7 @@ def _listings(models: list) -> list[Listing]:
             Listing(
                 name=model.get("name") or "unnamed",
                 parameters=parameters,
+                active_parameters=None,
                 context_window=model.get("contextWindow"),
                 license=(model.get("operational") or {}).get("license"),
             )
