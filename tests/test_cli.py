@@ -882,6 +882,53 @@ def test_recommend_leaves_the_speed_blank_on_a_chip_nobody_measured(here, monkey
     assert "—" in row
 
 
+def test_recommend_says_where_every_figure_it_shows_came_from(here, monkeypatch):
+    _leaderboard(monkeypatch, models=[_listed("A-Model-35B", "35B")])
+
+    result = runner.invoke(app, ["recommend"])
+
+    assert (
+        "swe, context and licence columns are as the table dated 2026-07-20"
+        in result.stderr
+    )
+    assert "states no source for any figure of its own" in result.stderr
+    assert (
+        "weights, tok/s and quality columns are offgrid's arithmetic" in result.stderr
+    )
+    assert "offgrid has run none of these models" in result.stderr
+
+
+def test_recommend_does_not_call_the_published_figures_self_reported(here, monkeypatch):
+    # That was established for two models by hand and lives in
+    # `docs/models.md`. The table itself says nothing about who measured
+    # what, so a line under every row cannot claim it of every row.
+    _leaderboard(monkeypatch, models=[_listed("A-Model-35B", "35B")])
+
+    result = runner.invoke(app, ["recommend"])
+
+    assert "self-reported" not in result.stderr
+    assert "vendor" not in result.stderr
+
+
+def test_recommend_attributes_the_one_row_it_shows_as_it_does_many(here, monkeypatch):
+    _leaderboard(monkeypatch, models=[_listed("A-Model-60B", "60B")])
+
+    result = runner.invoke(app, ["recommend"])
+
+    assert "offgrid has run none of these models" in result.stderr
+
+
+def test_recommend_attributes_no_figures_where_it_showed_none(here, monkeypatch):
+    # The line claims things about columns, and nothing fitting means there
+    # were none.
+    _a_16gb_mac(monkeypatch)
+    _leaderboard(monkeypatch, models=[_listed("A-Model-27B", "27B")])
+
+    result = runner.invoke(app, ["recommend"])
+
+    assert "offgrid has run none of these models" not in result.stderr
+
+
 def test_recommend_says_what_stopped_it_rather_than_raising(here, monkeypatch):
     from offgrid.exceptions import LeaderboardUnavailableError
 

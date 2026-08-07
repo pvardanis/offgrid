@@ -141,6 +141,7 @@ def recommend() -> None:
         _tell(_row(fit, judged, machine))
 
     _tell_block(_accounting(table, dropped))
+    _tell_block(_provenance(table.dated))
 
     _tell("")
     _tell("  Download one in your runtime, then `offgrid run`.")
@@ -328,6 +329,29 @@ def _accounting(table: Table, dropped: list[tuple[int, str]]) -> list[str]:
 
     return [f"  Left out of the {rows} row{'' if rows == 1 else 's'} on the table:"] + [
         f"    {count:>{figures}}  {rule}" for count, rule in dropped
+    ]
+
+
+def _provenance(dated: str | None) -> list[str]:
+    """Say who stands behind each column, under every row shown.
+
+    Three claims, true of every row: where the figures came from, that the
+    source cites nobody for any of its own, and that offgrid measured none of
+    them. What it does not claim is that they are the vendors' own numbers —
+    that was established for two models by hand and lives in
+    `docs/models.md`, and the table says nothing about who measured what.
+
+    :param dated: The date the list gives itself.
+
+    :return: The lines to say.
+    """
+    source = f"the table dated {dated}" if dated else "the undated table"
+
+    return [
+        f"  The swe, context and licence columns are as {source}",
+        "  published them, and it states no source for any figure of its own.",
+        "  The weights, tok/s and quality columns are offgrid's arithmetic, the",
+        "  last two of them for this machine. offgrid has run none of these models.",
     ]
 
 
