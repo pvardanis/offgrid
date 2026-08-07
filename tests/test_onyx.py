@@ -1,8 +1,10 @@
 """What the published table parses into.
 
 The fixture is the flight text `curl -H 'RSC: 1'` returned on 2026-08-07, kept
-verbatim but for the PostHog identifier onyx minted for that fetch, which is
-zeroed: it is a tracking id rather than data, and the parse never reads it.
+verbatim but for two things the parse never reads: the PostHog identifier onyx
+minted for that fetch, which is zeroed, and their chat widget's cloud API key,
+which is replaced. Both are theirs and public, and neither is part of the
+table; committing credential material trips a secret scanner besides.
 """
 
 import pathlib

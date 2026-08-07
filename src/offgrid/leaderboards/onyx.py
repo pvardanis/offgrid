@@ -53,8 +53,8 @@ def parse(flight: str) -> Table:
         raise _unreadable(f"has no list of models, only {sorted(config)}")
 
     listings = _listings(models)
-    if models and not listings:
-        raise _unreadable(f"states a size for none of its {len(models)} rows")
+    if not listings:
+        raise _unreadable(f"holds no model that can be sized, of {len(models)} rows")
 
     return Table(dated=config.get("lastUpdated"), listings=listings)
 
@@ -77,7 +77,7 @@ def fetch() -> str:
             f"{URL} did not answer within {TIMEOUT_SECONDS}s. "
             "Try again, or read docs/models.md for what was measured here."
         ) from error
-    except httpx.TransportError as error:
+    except httpx.RequestError as error:
         raise LeaderboardUnavailableError(
             f"Could not reach {URL}: {error}. This is the one command that "
             "needs a network; the rest of offgrid does not."
@@ -124,10 +124,10 @@ def _listings(models: list) -> list[Listing]:
 
         listings.append(
             Listing(
-                name=model.get("name", "unnamed"),
+                name=model.get("name") or "unnamed",
                 parameters=parameters,
                 context_window=model.get("contextWindow"),
-                license=model.get("operational", {}).get("license"),
+                license=(model.get("operational") or {}).get("license"),
             )
         )
 

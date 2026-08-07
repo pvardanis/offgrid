@@ -146,3 +146,46 @@ def test_a_table_that_has_moved_is_followed_rather_than_called_a_redesign(
     serve_get(monkeypatch, answer)
 
     assert '"config":{' in fetch()
+
+
+def test_a_row_whose_operational_block_is_null_is_not_a_traceback():
+    # The research note warns that a parser must tolerate a missing key and
+    # a null one, and they are not the same: a default only fires when the
+    # key is absent.
+    table = parse(
+        '"config":{"models":[{"name":"A-7B","parameters":"7B","operational":null}]}'
+    )
+
+    assert table.listings[0].license is None
+
+
+def test_a_row_with_no_name_is_still_printable():
+    table = parse('"config":{"models":[{"name":null,"parameters":"7B"}]}')
+
+    assert f"{table.listings[0].name:<24}".strip()
+
+
+def test_a_table_that_lists_no_models_at_all_is_a_failure():
+    # A page that rendered its table empty is a broken page, not a verdict
+    # on this machine.
+    with pytest.raises(LeaderboardUnavailableError) as raised:
+        parse('"config":{"lastUpdated":"2026-07-20","models":[]}')
+
+    assert URL in str(raised.value)
+
+
+def test_a_redirect_that_never_settles_is_reported_as_the_network(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    # Following redirects is what makes this reachable: a captive portal or
+    # a consent page that bounces forever is the case this command exists to
+    # report as a sentence.
+    def bounce(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(308, headers={"location": "/round-again"})
+
+    serve_get(monkeypatch, bounce)
+
+    with pytest.raises(LeaderboardUnavailableError) as raised:
+        fetch()
+
+    assert "network" in str(raised.value)
