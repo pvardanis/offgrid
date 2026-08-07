@@ -27,14 +27,17 @@ def test_a_listing_fits_at_the_widths_its_weights_are_small_enough_for():
     # at 16-bit, so a 35B model fits at the two lean widths and not the wide.
     fits = widths_that_fit(listing(parameters=35 * BILLION), machine(wired_gib=56))
 
-    assert [bits for bits, _ in fits] == [4, 8]
+    assert [fit.quantization_bits for fit in fits] == [4, 8]
 
 
 def test_the_weights_are_the_parameter_count_at_the_width_they_are_stored_at():
     # 35 billion parameters at four bits apiece is 17.5GB of weights.
-    fits = dict(
-        widths_that_fit(listing(parameters=35 * BILLION), machine(wired_gib=56))
-    )
+    fits = {
+        fit.quantization_bits: fit.weights_bytes
+        for fit in widths_that_fit(
+            listing(parameters=35 * BILLION), machine(wired_gib=56)
+        )
+    }
 
     assert fits[4] == 17.5e9
     assert fits[8] == 35e9
@@ -49,7 +52,7 @@ def test_a_model_larger_than_the_machine_fits_at_no_width():
 def test_a_small_model_fits_at_every_width():
     fits = widths_that_fit(listing(parameters=7 * BILLION), machine(wired_gib=56))
 
-    assert [bits for bits, _ in fits] == [4, 8, 16]
+    assert [fit.quantization_bits for fit in fits] == [4, 8, 16]
 
 
 def test_a_model_that_fits_a_large_mac_does_not_fit_a_small_one():
@@ -57,5 +60,5 @@ def test_a_model_that_fits_a_large_mac_does_not_fit_a_small_one():
     big = widths_that_fit(listing(parameters=27 * BILLION), machine(wired_gib=56))
     small = widths_that_fit(listing(parameters=27 * BILLION), machine(memory_gib=16))
 
-    assert [bits for bits, _ in big] == [4, 8]
+    assert [fit.quantization_bits for fit in big] == [4, 8]
     assert small == []
