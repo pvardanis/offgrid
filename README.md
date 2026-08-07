@@ -151,10 +151,26 @@ $ offgrid setup
   Load one in your runtime, then `offgrid run`. Profile: /Users/you/.offgrid/profile.yaml
 ```
 
-Which model to run is your choice. offgrid states the budget; it does not
-recommend.
+**2. See which published models that size admits:**
 
-**2. Check the runtime is reachable and holding something:**
+```console
+$ offgrid recommend
+  Models that fit this machine, from the list at
+  https://onyx.app/best-llm-for-coding, table dated 2026-07-20.
+
+    model                     weights  quant   context  license
+    Qwen3.6-35B-A3B            17.5GB  4-bit    262144  Apache 2.0
+    Qwen3.6-35B-A3B            35.0GB  8-bit    262144  Apache 2.0
+    Qwen3.6-27B                13.5GB  4-bit    262144  Apache 2.0
+    Qwen3.6-27B                27.0GB  8-bit    262144  Apache 2.0
+
+  Download one in your runtime, then `offgrid run`.
+```
+
+Downloading one, and choosing between what is left, stay yours. This is the
+one command that reaches the network — see [Commands](#commands).
+
+**3. Check the runtime is reachable and holding something:**
 
 ```console
 $ offgrid doctor
@@ -164,7 +180,7 @@ $ offgrid doctor
   agent     claude-code, speaking anthropic
 ```
 
-**3. Start the agent:**
+**4. Start the agent:**
 
 ```console
 $ offgrid run
@@ -182,11 +198,20 @@ $ offgrid run -- -p "explain what this module does"
 | Command | What it does |
 |---|---|
 | `offgrid setup [--host HOST]` | Measures this Mac, says what fits, writes the profile. Keeps whatever you edited into it by hand. |
+| `offgrid recommend` | Fetches a published coding table, keeps the models this machine can hold, and prints them at each width they fit at. |
 | `offgrid doctor` | Reports the runtime, the model that would answer, its context, and the agent's dialect. |
 | `offgrid run [-m MODEL] [-- ARGS]` | Starts the agent. Loads `MODEL` when it is not already held, otherwise uses what is. |
 
 `-m/--model` beats the `model:` in the profile, which beats whatever the
 runtime already holds.
+
+**`recommend` is the only command that reaches the network.** It is a `GET` of
+one public page, `https://onyx.app/best-llm-for-coding`, carrying an `RSC: 1`
+header alongside the HTTP client's own defaults — no model name, no memory
+figure, nothing about this machine or the work being done on it, and no
+cookie, since nothing is kept between runs. What the other end can see is what any
+web request shows it: an IP address, a time, and the page asked for. Nothing is
+downloaded, and nothing is written.
 
 **Exit codes**, so it composes in scripts:
 
@@ -343,8 +368,8 @@ model named".
 
 ## What offgrid does not do
 
-- **Recommend a model.** It says how much room the machine has. Which model to
-  run is a judgement about your work, not about your hardware.
+- **Choose a model.** `recommend` names the published models this machine can
+  hold. Which of them suits your work, and downloading it, stay yours.
 - **Search the web.** See [Agents](#agents). A replacement is planned.
 - **Enforce privacy.** Nothing stops you running a hosted agent on private
   work. Whoever wants a local model runs `offgrid`.
@@ -389,7 +414,7 @@ names a hook rather than a tool, so the recipes cannot disagree with
 `.pre-commit-config.yaml` about what a check is.
 
 The recipes are for working on offgrid. Using it is `offgrid setup`, `offgrid
-doctor` and `offgrid run`, and nothing here wraps those.
+recommend`, `offgrid doctor` and `offgrid run`, and nothing here wraps those.
 
 The hooks run on every commit once `just install` has been run. CI runs the
 same ones on Linux, where the single test that reads real hardware skips
@@ -400,9 +425,11 @@ against a real model, so they let go of whatever the runtime is holding. They
 default to `lfm2.5-1.2b-instruct-mlx` — small on purpose, since they prove the
 plumbing rather than the answers — and `--smoke-model` points them elsewhere.
 
-**The suite cannot reach your runtime by accident.** `tests/conftest.py` fails
-any test that calls a runtime's own tooling, with `live` as the single
-exception.
+**The suite cannot reach your runtime, or the network, by accident.**
+`tests/conftest.py` fails any test that calls a runtime's own tooling, and any
+test that opens a socket, with `live` as the single exception. The published
+table is parsed from a payload captured on 2026-08-07 and kept in
+`tests/fixtures/`; the live check is what notices the page being redesigned.
 
 When mutation-testing by hand, set `PYTHONDONTWRITEBYTECODE=1` — edits made
 within the same second as a restore leave stale `.pyc` files, and the suite
@@ -418,13 +445,15 @@ with the modules as scopes. What was decided and why lives in
 machine.py      what this Mac is
 fit.py          how much room it has
 model.py        a model the runtime describes
+listing.py      a model a published list describes, and which ones fit
 dialect.py      which API shapes can be paired
 profile.py      what is remembered between runs
 launch.py       an environment and an argument list, and running one
 hold.py         holding the model that answers, and letting it go
 runtimes/       one module per runtime
 agents/         one module per agent
-cli.py          setup, doctor, run
+leaderboards/   one module per published list
+cli.py          setup, doctor, recommend, run
 ```
 
 Dependencies point inwards: adapters know about the domain, the domain knows
