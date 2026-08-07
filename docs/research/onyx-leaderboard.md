@@ -276,9 +276,22 @@ Mac it is the constant 50 and the term reduces to `0.3 + log2(active)/log2(70)`
 `{consumer: 0.7, datacenter: 0.7, apple_silicon: 0.65}`, one number per class
 with no dense-versus-mixture distinction.
 
-Two places offgrid departs from it, both recorded in `docs/decisions.md`: the
-rank term becomes the published SWE-bench figure over the same 30 points, and
-a row with no speed figure scores nothing for speed rather than their 6.
+Four places offgrid departs from it:
+
+1. **The rank term** becomes the published SWE-bench figure over the same 30
+   points, for the reason above. Recorded in `docs/decisions.md`.
+2. **A row with no speed figure scores nothing** for speed, where theirs
+   scores 6. An unmeasured chip should read as unknown, not as middling.
+3. **Headroom is measured at the width being scored.** Theirs divides a fixed
+   `vram_int4` by the GPU's total, so every row of a model scores the same
+   headroom whatever width it is listed at. offgrid divides that width's own
+   weights by what the GPU may use here. This is load-bearing: together with
+   the speed term it is what makes a 4-bit build outrank the same model at
+   8-bit, which their formula cannot express.
+4. **The speed figure is rounded before it is clamped**, so the term is
+   computed from the number printed in the table rather than the one behind
+   it. Theirs clamps the raw estimate. The two differ by a point in narrow
+   bands — an estimate of 5.5 to 5.9 tok/s scores 1 here and 0 there.
 
 **The chip table**, Apple rows only, as `slug: bandwidthGbS`:
 
