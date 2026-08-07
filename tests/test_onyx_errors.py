@@ -128,7 +128,7 @@ def test_a_table_whose_rows_cannot_be_read_is_a_failure_not_an_empty_shortlist()
         parse('"config":{"lastUpdated":"2026-07-20","models":[{"model":"A"},"B"]}')
 
     assert URL in str(raised.value)
-    assert "2 rows" in str(raised.value)
+    assert "2 models" in str(raised.value)
 
 
 def test_a_table_that_has_moved_is_followed_rather_than_called_a_redesign(
