@@ -776,6 +776,24 @@ def test_recommend_says_where_the_list_starts_when_nothing_on_it_fits(
     assert "sudo sysctl iogpu.wired_limit_mb=14336" in result.stderr
 
 
+def test_recommend_names_the_smallest_model_it_could_have_shown(here, monkeypatch):
+    # A row the table scores at nothing is never shown at any size, so its
+    # size is not where the list starts. Naming it would send someone after
+    # 13.5GB of room that buys them nothing.
+    _a_16gb_mac(monkeypatch)
+    _leaderboard(
+        monkeypatch,
+        models=[
+            _listed("An-Unscored-27B", "27B", score=None),
+            _listed("A-Scored-60B", "60B"),
+        ],
+    )
+
+    result = runner.invoke(app, ["recommend"])
+
+    assert "smallest model on it needs 30.0GB at 4-bit" in result.stderr
+
+
 def test_recommend_never_says_a_machine_can_run_no_model_at_all(here, monkeypatch):
     # `docs/models.md` measures a 1.2B model at 191 tok/s on this hardware.
     # A person reading "no models fit your hardware" would conclude they can
