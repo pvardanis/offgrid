@@ -49,6 +49,18 @@ def test_a_mixture_is_read_only_where_it_is_active():
     assert speed == pytest.approx(56, abs=0.5)
 
 
+def test_a_model_stating_all_of_itself_as_active_is_dense():
+    # Two rows on the table state their active count as the whole, and two
+    # more state it as "N/A". Reading equal as a mixture would put a 27B
+    # dense model at a third of the bandwidth it reaches, and say so.
+    stated = tokens_per_second(
+        at(4, listing(27 * BILLION, active=27 * BILLION)), machine()
+    )
+    omitted = tokens_per_second(at(4, listing(27 * BILLION)), machine())
+
+    assert stated == omitted
+
+
 def test_a_mixture_and_a_dense_model_of_one_size_are_not_one_speed():
     # A regression guard rather than a slice: the two tests above already
     # pin the arithmetic. This is the claim the ranking rests on, said the
