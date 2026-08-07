@@ -22,7 +22,7 @@ from offgrid.listing import Fit, widths_that_fit
 from offgrid.machine import Machine, detect
 from offgrid.profile import DEFAULT_PATH, Profile, save
 from offgrid.profile import load as load_profile
-from offgrid.quality import quality
+from offgrid.quality import Quality, quality
 from offgrid.runtimes.lmstudio import dialect as runtime_dialect
 from offgrid.speed import tokens_per_second
 
@@ -143,8 +143,8 @@ def recommend() -> None:
         return
 
     _tell(HEADING)
-    for fit in fits:
-        _tell(_row(fit, machine))
+    for judged, fit in fits:
+        _tell(_row(fit, judged, machine))
 
     _tell("")
     _tell("  Download one in your runtime, then `offgrid run`.")
@@ -259,30 +259,30 @@ def _would_not_start(command: str, error: OSError) -> str:
     return f"  Could not start {command}: {error}. {advice}".rstrip()
 
 
-def _ranked(fits: list[Fit], machine: Machine) -> list[Fit]:
-    """Put the best of what fits first.
+def _ranked(fits: list[Fit], machine: Machine) -> list[tuple[Quality, Fit]]:
+    """Put the best of what fits first, judging each one once.
 
     :param fits: Every model at every width this machine holds it at.
     :param machine: The host they would run on.
 
-    :return: The same fits, best first, and the leaner width first where two
-        are judged the same — the cheaper build is the one to read as the
-        default.
+    :return: Each fit with what it was judged to be worth, best first, and
+        the leaner width first where two are judged the same — the cheaper
+        build is the one to read as the default.
     """
-    return sorted(
-        fits, key=lambda fit: (-quality(fit, machine).score, fit.quantization_bits)
-    )
+    judged = [(quality(fit, machine), fit) for fit in fits]
+
+    return sorted(judged, key=lambda pair: (-pair[0].score, pair[1].quantization_bits))
 
 
-def _row(fit: Fit, machine: Machine) -> str:
+def _row(fit: Fit, judged: Quality, machine: Machine) -> str:
     """Lay out one model of the recommendation.
 
     :param fit: The model, at one of the widths this machine holds it at.
+    :param judged: What that fit is worth here.
     :param machine: The host it would run on.
 
     :return: The line to say.
     """
-    judged = quality(fit, machine)
     speed = tokens_per_second(fit, machine)
 
     return COLUMNS.format(
