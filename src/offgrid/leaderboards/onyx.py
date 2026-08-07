@@ -63,7 +63,11 @@ def parse(flight: str) -> Table:
             f"lists {len(models)} models and states a size for none of them"
         )
 
-    return Table(dated=config.get("lastUpdated"), listings=listings)
+    return Table(
+        dated=config.get("lastUpdated"),
+        listings=listings,
+        unsized=len(models) - len(listings),
+    )
 
 
 def fetch() -> str:

@@ -47,10 +47,14 @@ class Table:
         when it states none. What it says about itself, not when it was
         fetched.
     :param listings: The models on it that carry enough to be sized.
+    :param unsized: How many of its rows carried no parameter count to size
+        them by. They are not listings and cannot become any, so the count is
+        what is left to account for someone's missing model with.
     """
 
     dated: str | None
     listings: list[Listing]
+    unsized: int
 
 
 @dataclass(frozen=True)

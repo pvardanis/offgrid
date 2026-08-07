@@ -39,6 +39,15 @@ def test_a_model_published_with_no_size_is_not_listed(flight: str):
     assert "DeepSeek-V4-Pro" in names
 
 
+def test_how_many_rows_stated_no_size_is_carried_off_the_table(flight: str):
+    # A row dropped here is dropped before anything downstream sees it, so
+    # the count is the only thing left to account for it with.
+    table = parse(flight)
+
+    assert table.unsized == 9
+    assert len(table.listings) == 18
+
+
 def test_a_size_the_table_writes_as_unavailable_is_not_a_size(flight: str):
     names = [listing.name for listing in parse(flight).listings]
 
