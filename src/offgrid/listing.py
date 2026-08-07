@@ -71,6 +71,39 @@ class Fit:
     quantization_bits: int
     weights_bytes: float
 
+    @property
+    def active_parameters(self) -> float:
+        """How many parameters a token reads, as against how many are held.
+
+        :return: The published active count where the list states a smaller
+            one, else the whole model. A list writes a dense model's active
+            count both by omitting it and by repeating the total, so both
+            mean the same thing here.
+        """
+        active = self.listing.active_parameters
+        if active is None or active >= self.listing.parameters:
+            return self.listing.parameters
+
+        return active
+
+    @property
+    def is_mixture(self) -> bool:
+        """Whether a token reads only part of what is held.
+
+        :return: ``True`` when the model routes each token to a fraction of
+            itself.
+        """
+        return self.active_parameters < self.listing.parameters
+
+    @property
+    def active_bytes(self) -> float:
+        """What a token reads, as against what must be held.
+
+        :return: The weights read per token, at this width. The whole of
+            ``weights_bytes`` for a dense model.
+        """
+        return self.weights_bytes * self.active_parameters / self.listing.parameters
+
 
 def widths_that_fit(listing: Listing, machine: Machine) -> list[Fit]:
     """Work out which quantization widths a machine holds a listing at.
