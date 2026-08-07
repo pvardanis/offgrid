@@ -81,7 +81,7 @@ def _headroom(fit: Fit, machine: Machine) -> int:
 
     :return: Points for the room left over.
     """
-    used = min(100, round(fit.weights_bytes / machine.usable_bytes * 100))
+    used = round(fit.weights_bytes / machine.usable_bytes * 100)
     if used <= COMFORTABLE_SHARE:
         return HEADROOM_POINTS
 
@@ -122,7 +122,7 @@ def _context(window: int | None) -> int:
 
     :return: Points for the window.
     """
-    if not window or window <= 0:
+    if not window:
         return UNSTATED_CONTEXT_POINTS
 
     if window <= SHORTEST_CONTEXT:
