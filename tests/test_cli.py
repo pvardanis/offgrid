@@ -107,6 +107,14 @@ def here(monkeypatch, tmp_path, runtime):
     return tmp_path
 
 
+def _a_16gb_mac(monkeypatch) -> None:
+    """Answer with a 16GB Mac whose GPU limit is still at its default."""
+    monkeypatch.setattr(
+        "offgrid.cli.detect",
+        lambda: Machine(chip="Apple M1", memory_bytes=16 * GIB, wired_limit_bytes=None),
+    )
+
+
 def test_setup_reports_the_machine(here):
     result = runner.invoke(app, ["setup"])
     assert result.exit_code == 0
@@ -117,6 +125,21 @@ def test_setup_says_what_size_of_model_fits(here):
     result = runner.invoke(app, ["setup"])
     assert "4-bit" in result.stderr
     assert "parameters" in result.stderr
+
+
+def test_setup_says_how_to_raise_a_gpu_limit_still_at_its_default(here, monkeypatch):
+    # The one thing offgrid can suggest that changes what fits.
+    _a_16gb_mac(monkeypatch)
+
+    result = runner.invoke(app, ["setup"])
+
+    assert "sudo sysctl iogpu.wired_limit_mb=14336" in result.stderr
+
+
+def test_setup_suggests_nothing_where_the_gpu_limit_is_already_raised(here):
+    result = runner.invoke(app, ["setup"])
+
+    assert "iogpu.wired_limit_mb" not in result.stderr
 
 
 def test_setup_names_no_model(here):
