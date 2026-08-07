@@ -42,6 +42,11 @@ about this machine, and nothing about whether it has been downloaded. A
 **model** is what the runtime describes; a listing is what someone else
 published.
 
+**quality** — what a fit is worth here, as a score out of 97 and a word for
+it. Four terms: the room left after the weights, the published coding score,
+the speed on this machine, and the context window. A composite, not a
+measurement, and what the ranking sorts on.
+
 **recommendation** — the listings that fit this machine, ranked. offgrid says
 what is worth trying. Downloading it, and choosing between what is left,
 stay a person's.
@@ -53,6 +58,8 @@ machine.py     what this Mac is
 fit.py         how much room it has
 model.py       a model the runtime describes
 listing.py     a model a published list describes, and which ones fit
+speed.py       how fast this machine reads a model's weights
+quality.py     how good a fit is, as one number and one word
 dialect.py     which API shapes can be paired
 profile.py     what is remembered between runs
 launch.py      an environment and an argument list, and running one
