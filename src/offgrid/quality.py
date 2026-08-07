@@ -3,7 +3,7 @@
 Four terms: room left after the weights, what the list says the model is
 worth at coding, how fast this machine decodes it, and how long a session
 the window holds. The shape is the one onyx.app scores its own table with,
-and `docs/decisions.md` records which term was replaced and why.
+and `docs/decisions.md` records where offgrid's differs from theirs and why.
 
 Speed is scored off the figure a person reads in the table, so the word and
 the number agree.
@@ -21,8 +21,10 @@ SCORE_POINTS = 30
 SPEED_POINTS = 13
 CONTEXT_POINTS = 12
 
-# Four terms reaching 100 that are never all full at once, so the best a fit
-# is ever called is 97.
+# The four terms reach 100 together, on a model small and fast and good
+# enough to take all of them. Nothing is called perfect: a composite of
+# published figures is not a measurement, and the top of the scale is where
+# that shows most.
 BEST = 97
 
 # Below this share of the memory the GPU may use, the weights cost nothing in
@@ -95,6 +97,9 @@ def _published(fit: Fit) -> int:
 
     :return: Points for the published score, or none where there is none.
     """
+    # `recommend` drops a listing with no score before it ranks anything, so
+    # this cannot fire today. It stays because the field is optional and the
+    # type checker reads it as one.
     published = fit.listing.coding_score
     if published is None:
         return 0
