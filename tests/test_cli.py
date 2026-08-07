@@ -705,6 +705,39 @@ def test_recommend_says_a_machine_nothing_fits_is_not_the_problem(here, monkeypa
     assert "Nothing on this list fits" in result.stderr
 
 
+def test_recommend_states_the_one_model_that_fits_rather_than_ranking_it(
+    here, monkeypatch
+):
+    # A 60B model fits at 4-bit and at no width above it, so it is the whole
+    # of what this machine can hold off this table. A list filtered to one
+    # model is not a ranking, and announcing it as one would say the other
+    # rows had been beaten rather than dropped.
+    _leaderboard(monkeypatch, models=[_listed("A-Model-60B", "60B")])
+
+    result = runner.invoke(app, ["recommend"])
+
+    assert "One model on this list fits this machine" in result.stderr
+    assert "Models that fit this machine" not in result.stderr
+    assert "A-Model-60B" in result.stderr
+
+
+def test_recommend_summarises_no_tiers_over_a_single_row(here, monkeypatch):
+    # A regression guard rather than a slice: nothing counts tiers today, and
+    # a count of one would be a ranking's summary over something not ranked.
+    _leaderboard(monkeypatch, models=[_listed("A-Model-60B", "60B")])
+
+    tiers = ("excellent", "good", "decent", "weak", "poor")
+    result = runner.invoke(app, ["recommend"])
+    tiered = [
+        line
+        for line in result.stderr.splitlines()
+        if any(tier in line for tier in tiers)
+    ]
+
+    assert len(tiered) == 1
+    assert "A-Model-60B" in tiered[0]
+
+
 def test_recommend_says_where_the_list_starts_when_nothing_on_it_fits(
     here, monkeypatch
 ):
