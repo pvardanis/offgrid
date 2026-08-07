@@ -372,7 +372,11 @@ def _nothing_fits(table: Table, machine: Machine) -> list[str]:
     # The leanest width, which is where the smallest of everything is.
     bits, holds = sizes_that_fit(machine)[0]
 
-    smallest = min(one.parameters for one in table.listings)
+    # A row the table scores at nothing is dropped at any size, so its size is
+    # not where the list starts — naming it sends someone after room that
+    # would still show them nothing.
+    showable = [one.parameters for one in table.listings if one.coding_score]
+    smallest = min(showable or [one.parameters for one in table.listings])
 
     return [
         "  Nothing on this list fits this machine.",
