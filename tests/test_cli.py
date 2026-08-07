@@ -725,6 +725,7 @@ def test_recommend_leaves_out_a_model_the_table_scores_at_nothing(here, monkeypa
 
     result = runner.invoke(app, ["recommend"])
 
+    assert result.exit_code == 0
     assert "A-Unscored-7B" not in result.stderr
     assert "A-Scored-7B" in result.stderr
 
