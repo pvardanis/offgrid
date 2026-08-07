@@ -56,7 +56,9 @@ show_missing = true
 [tool.interrogate]
 fail-under = 100
 ignore-init-module = true
-exclude = ["tests"]
+# `.claude` holds agent worktrees, each a whole checkout of this repo. Walking
+# one counts its tests, and the run fails at half the coverage it measured.
+exclude = ["tests", ".claude"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
