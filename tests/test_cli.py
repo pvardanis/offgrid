@@ -136,6 +136,23 @@ def test_setup_says_how_to_raise_a_gpu_limit_still_at_its_default(here, monkeypa
     assert "sudo sysctl iogpu.wired_limit_mb=14336" in result.stderr
 
 
+def test_setup_says_how_to_raise_a_gpu_limit_set_below_what_would_fit(
+    here, monkeypatch
+):
+    # Having a limit is not having enough of one. A machine left at 8GB of 16
+    # is where the advice is worth most, and where it used to say nothing.
+    monkeypatch.setattr(
+        "offgrid.cli.detect",
+        lambda: Machine(
+            chip="Apple M1", memory_bytes=16 * GIB, wired_limit_bytes=8 * GIB
+        ),
+    )
+
+    result = runner.invoke(app, ["setup"])
+
+    assert "sudo sysctl iogpu.wired_limit_mb=14336" in result.stderr
+
+
 def test_setup_suggests_nothing_where_the_gpu_limit_is_already_raised(here):
     result = runner.invoke(app, ["setup"])
 

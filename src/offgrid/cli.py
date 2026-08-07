@@ -371,6 +371,7 @@ def _nothing_fits(table: Table, machine: Machine) -> list[str]:
     """
     # The leanest width, which is where the smallest of everything is.
     bits, holds = sizes_that_fit(machine)[0]
+
     smallest = min(one.parameters for one in table.listings)
 
     return [
@@ -400,14 +401,20 @@ def _raising_the_gpu_limit(machine: Machine) -> list[str]:
 
     This is the one thing offgrid can suggest that changes what fits.
 
+    Having a limit is not having enough of one: it takes whatever value was
+    typed at it, and one left low is where this advice is worth most. So what
+    decides is whether the suggestion would raise anything, not whether a
+    limit is set.
+
     :param machine: The host, as it is set up now.
 
-    :return: The lines to say, or none where the limit is already raised.
+    :return: The lines to say, or none where the limit already reaches them.
     """
-    if machine.wired_limit_bytes is not None:
-        return []
-
     wanted = int(machine.memory_bytes * WIRED_SHARE / BYTES_PER_MB)
+
+    already = machine.wired_limit_bytes
+    if already is not None and wanted * BYTES_PER_MB <= already:
+        return []
 
     return [
         "  More fits with the GPU limit raised, which a reboot undoes:",
