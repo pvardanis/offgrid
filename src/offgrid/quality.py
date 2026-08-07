@@ -35,10 +35,10 @@ CROWDING = 2.5
 UNUSABLE_SPEED = 5
 AMPLE_SPEED = 200
 SHORTEST_CONTEXT = 4096
-AMPLE_CONTEXT = 62.5
+AMPLE_CONTEXT = 256_000
 
 # A row stating no window is unknown rather than short.
-UNSTATED_CONTEXT = 4
+UNSTATED_CONTEXT_POINTS = 4
 
 LABELS = ((85, "excellent"), (70, "good"), (50, "decent"), (30, "weak"))
 
@@ -123,12 +123,14 @@ def _context(window: int | None) -> int:
     :return: Points for the window.
     """
     if not window or window <= 0:
-        return UNSTATED_CONTEXT
+        return UNSTATED_CONTEXT_POINTS
 
     if window <= SHORTEST_CONTEXT:
         return 1
 
-    reach = math.log2(window / SHORTEST_CONTEXT) / math.log2(AMPLE_CONTEXT)
+    reach = math.log2(window / SHORTEST_CONTEXT) / math.log2(
+        AMPLE_CONTEXT / SHORTEST_CONTEXT
+    )
 
     return min(CONTEXT_POINTS, round(reach * CONTEXT_POINTS))
 
