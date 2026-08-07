@@ -16,6 +16,10 @@ def machine(chip: str = "Apple M1 Max") -> Machine:
     return Machine(chip=chip, memory_bytes=64 * GIB, wired_limit_bytes=56 * GIB)
 
 
+def small_mac() -> Machine:
+    return Machine(chip="Apple M1", memory_bytes=16 * GIB, wired_limit_bytes=None)
+
+
 def listing(
     parameters: float,
     active: float | None = None,
@@ -82,6 +86,22 @@ def test_the_word_changes_where_the_score_crosses_and_not_beside_it():
 
     assert (on.score, on.label) == (70, "good")
     assert (under.score, under.label) == (69, "decent")
+
+
+def test_the_bottom_of_the_scale_is_reached_by_a_machine_that_is_short_of_room():
+    # A 16GB M1 running the largest model it holds: 20B at 4-bit fills three
+    # quarters of what the GPU may use and decodes below the speed term's
+    # floor, so what is left of the figure is the published score.
+    def judged(score: float) -> tuple[int, str]:
+        listed = listing(20 * BILLION, score=score, context=8192)
+        found = quality(at(4, listed, small_mac()), small_mac())
+
+        return found.score, found.label
+
+    assert judged(90) == (50, "decent")
+    assert judged(87) == (49, "weak")
+    assert judged(24) == (30, "weak")
+    assert judged(20) == (29, "poor")
 
 
 def test_weights_that_crowd_the_machine_cost_the_room_they_take():
