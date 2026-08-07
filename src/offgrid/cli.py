@@ -283,12 +283,13 @@ def _row(fit: Fit, judged: Quality, machine: Machine) -> str:
 
     :return: The line to say.
     """
+    published = fit.listing.coding_score
     speed = tokens_per_second(fit, machine)
 
     return COLUMNS.format(
         model=fit.listing.name,
         quality=f"{judged.label} {judged.score}",
-        score=f"{fit.listing.coding_score:.1f}",
+        score=f"{published:.1f}" if published is not None else NOTHING,
         speed=f"~{speed:.0f}" if speed else NOTHING,
         weights=f"{fit.weights_bytes / 1e9:.1f}GB",
         quant=f"{fit.quantization_bits}-bit",
