@@ -39,10 +39,20 @@ BANDWIDTH_GB_PER_SECOND = {
 
 BYTES_PER_GB = 1e9
 
-# What LM Studio's MLX engine reaches of the peak, measured on an M1 Max and
-# written up in `docs/models.md`: 191 tok/s over 1.25GB of dense weights is
-# 239 GB/s of 400, and 52 tok/s over 1.63GB of active mixture weights is 85.
-# Routing and gathering the experts is what the mixture hands back.
+# Peak bandwidth is what the chip can read; efficiency is the share of it a
+# real decode reaches. There are two figures because the two kinds of model
+# spend the bandwidth differently.
+#
+# A dense model reads every weight it has for every token, in one sweep the
+# memory system is built for. A mixture holds many experts and routes each
+# token to a few of them, so it reads far less — but it reads a different,
+# scattered few each time, and picking and gathering them is time the sweep
+# does not pay. The mixture still wins by a wide margin: it hands back most
+# of its advantage in efficiency and keeps the rest in how little it reads.
+#
+# Both measured on an M1 Max and written up in `docs/models.md`: a dense
+# model at 191 tok/s over 1.25GB reaches 239 GB/s of 400, and a 3B-active
+# mixture at 52 tok/s over 1.63GB reaches 85.
 DENSE_EFFICIENCY = 0.60
 MIXTURE_EFFICIENCY = 0.21
 
