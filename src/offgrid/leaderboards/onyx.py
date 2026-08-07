@@ -54,7 +54,9 @@ def parse(flight: str) -> Table:
 
     listings = _listings(models)
     if not listings:
-        raise _unreadable(f"holds no model that can be sized, of {len(models)} rows")
+        raise _unreadable(
+            f"lists {len(models)} models and states a size for none of them"
+        )
 
     return Table(dated=config.get("lastUpdated"), listings=listings)
 
