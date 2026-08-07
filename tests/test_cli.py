@@ -703,7 +703,40 @@ def test_recommend_says_a_machine_nothing_fits_is_not_the_problem(here, monkeypa
 
     assert result.exit_code == 0
     assert "Nothing on this list fits" in result.stderr
-    assert "offgrid setup" in result.stderr
+
+
+def test_recommend_says_where_the_list_starts_when_nothing_on_it_fits(
+    here, monkeypatch
+):
+    # The smallest model on the table needs about 14GB, so a 16GB Mac fits
+    # nothing on it. What that is worth knowing for is the gap between the
+    # two numbers, which is what says whether raising the limit would help —
+    # so it is the smallest row that is named and not any of the others.
+    _a_16gb_mac(monkeypatch)
+    _leaderboard(
+        monkeypatch,
+        models=[_listed("A-Model-400B", "400B"), _listed("A-Model-27B", "27B")],
+    )
+
+    result = runner.invoke(app, ["recommend"])
+
+    assert result.exit_code == 0
+    assert "smallest model on it needs 13.5GB at 4-bit" in result.stderr
+    assert "this machine has room for 10.3GB" in result.stderr
+    assert "sudo sysctl iogpu.wired_limit_mb=14336" in result.stderr
+
+
+def test_recommend_never_says_a_machine_can_run_no_model_at_all(here, monkeypatch):
+    # `docs/models.md` measures a 1.2B model at 191 tok/s on this hardware.
+    # A person reading "no models fit your hardware" would conclude they can
+    # run nothing, which is false and the opposite of what offgrid is for.
+    _a_16gb_mac(monkeypatch)
+    _leaderboard(monkeypatch, models=[_listed("A-Model-27B", "27B")])
+
+    result = runner.invoke(app, ["recommend"])
+
+    assert "where this list starts, not where this machine stops" in result.stderr
+    assert "Models smaller than any it publishes run here" in result.stderr
 
 
 def _printed_order(stderr: str) -> list[tuple[str, str]]:

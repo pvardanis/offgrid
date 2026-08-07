@@ -13,7 +13,7 @@ from offgrid.agents.claude_code import dialect as agent_dialect
 from offgrid.agents.claude_code import plan, prepare
 from offgrid.dialect import require_compatible
 from offgrid.exceptions import OffgridError, ProfileError
-from offgrid.fit import sizes_that_fit
+from offgrid.fit import BITS_PER_BYTE, sizes_that_fit
 from offgrid.hold import held, hold, let_go
 from offgrid.launch import start
 from offgrid.leaderboards.onyx import URL as LEADERBOARD
@@ -130,9 +130,10 @@ def recommend() -> None:
     _tell("")
 
     if not ranked:
-        _tell("  Nothing on this list fits this machine. That is this list rather")
-        _tell("  than this machine: `offgrid setup` says how much room there is,")
-        _tell("  and how to raise it.")
+        for line in _nothing_fits(table, machine):
+            _tell(line)
+
+        _tell_block(_raising_the_gpu_limit(machine))
         _tell_block(_accounting(table, dropped))
         return
 
@@ -307,6 +308,46 @@ def _accounting(table: Table, dropped: list[tuple[int, str]]) -> list[str]:
     return [f"  Left out of the {rows} row{'' if rows == 1 else 's'} on the table:"] + [
         f"    {count:>{figures}}  {rule}" for count, rule in dropped
     ]
+
+
+def _nothing_fits(table: Table, machine: Machine) -> list[str]:
+    """Put the limit on the list rather than on the machine.
+
+    The smallest model this list publishes needs about 14GB, so a 16GB Mac
+    fits none of them while decoding a 1.2B model at 191 tok/s — a figure
+    `docs/models.md` measured on this hardware. "Nothing fits your hardware"
+    would tell that person the opposite of the truth, and of what offgrid is
+    for. So what is named is where the list starts.
+
+    :param table: The published list, as it was read.
+    :param machine: The host none of it fits.
+
+    :return: The lines to say.
+    """
+    # The leanest width, which is where the smallest of everything is.
+    bits, holds = sizes_that_fit(machine)[0]
+    smallest = min(one.parameters for one in table.listings)
+
+    return [
+        "  Nothing on this list fits this machine.",
+        "",
+        f"    the smallest model on it needs {_gb(smallest, bits)} at {bits}-bit",
+        f"    this machine has room for {_gb(holds, bits)}",
+        "",
+        "  That is where this list starts, not where this machine stops.",
+        "  Models smaller than any it publishes run here.",
+    ]
+
+
+def _gb(parameters: float, bits: int) -> str:
+    """Say what a number of parameters weighs at a width.
+
+    :param parameters: How many there are.
+    :param bits: Bits per stored parameter, e.g. ``4``.
+
+    :return: The size, as a person reads one.
+    """
+    return f"{parameters * bits / BITS_PER_BYTE / 1e9:.1f}GB"
 
 
 def _raising_the_gpu_limit(machine: Machine) -> list[str]:
