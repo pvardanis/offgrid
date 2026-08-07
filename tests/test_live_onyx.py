@@ -25,3 +25,16 @@ def test_the_published_table_is_still_where_the_parser_looks():
     assert table.dated
     assert table.listings
     assert all(listing.parameters > 0 for listing in table.listings)
+
+
+def test_the_keys_the_ranking_reads_are_still_the_keys_the_table_writes():
+    # Renaming either of these leaves a table that parses into listings with
+    # nothing to rank them by, and `recommend` prints an empty shortlist
+    # rather than saying anything went wrong.
+    try:
+        listings = parse(fetch()).listings
+    except OffgridError as error:
+        pytest.skip(f"no leaderboard answering: {error}")
+
+    assert any(listing.coding_score for listing in listings)
+    assert any(listing.active_parameters for listing in listings)

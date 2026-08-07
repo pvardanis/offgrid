@@ -1,4 +1,5 @@
 import logging
+import pathlib
 
 import pytest
 from typer.testing import CliRunner
@@ -520,14 +521,20 @@ def _name_in_profile(here, identifier: str) -> None:
     path.write_text(path.read_text() + f"model: {identifier}\n")
 
 
-def _listed(name: str, parameters: str | None, context: int = 262144) -> dict:
+def _listed(
+    name: str,
+    parameters: str | None,
+    context: int = 262144,
+    score: float | None = 70.0,
+    active: str | None = None,
+) -> dict:
     """Describe one model the way the published table does."""
     return {
         "name": name,
         "parameters": parameters,
-        "activeParameters": parameters,
+        "activeParameters": active or parameters,
         "contextWindow": context,
-        "benchmarks": {"swe_bench_verified": 70.0},
+        "benchmarks": {"swe_bench_verified": score},
         "operational": {"vram_int4": 18, "license": "Apache 2.0"},
     }
 
@@ -638,6 +645,109 @@ def test_recommend_says_a_machine_nothing_fits_is_not_the_problem(here, monkeypa
     assert result.exit_code == 0
     assert "Nothing on this list fits" in result.stderr
     assert "offgrid setup" in result.stderr
+
+
+def _ranked(stderr: str) -> list[tuple[str, str]]:
+    """Read back what was printed, as the order of model and width."""
+    rows = [line.split() for line in stderr.splitlines() if "-bit" in line]
+
+    return [
+        (row[0], next(word for word in row if word.endswith("-bit"))) for row in rows
+    ]
+
+
+def test_recommend_ranks_the_best_first_and_not_the_order_it_read_them(
+    here, monkeypatch
+):
+    # The dense model scores four points higher on the benchmark and decodes
+    # at a third the speed, and is listed first in what is parsed.
+    _leaderboard(
+        monkeypatch,
+        models=[
+            _listed("A-Dense-27B", "27B", score=77.2),
+            _listed("A-Mixture-35B", "35B", score=73.4, active="3B"),
+        ],
+    )
+
+    result = runner.invoke(app, ["recommend"])
+
+    assert _ranked(result.stderr) == [
+        ("A-Mixture-35B", "4-bit"),
+        ("A-Dense-27B", "4-bit"),
+        ("A-Mixture-35B", "8-bit"),
+        ("A-Dense-27B", "8-bit"),
+    ]
+
+
+def test_recommend_reaches_the_shortlist_docs_models_arrived_at_by_hand(
+    here, monkeypatch
+):
+    # The whole path against the captured table. `docs/models.md` concluded
+    # by hand that the mixture at 4-bit is the model for this machine, above
+    # a dense model with a higher published score. Nothing here read it.
+    fixture = pathlib.Path(__file__).parent / "fixtures" / "onyx_leaderboard.txt"
+    monkeypatch.setattr("offgrid.cli.fetch", fixture.read_text)
+
+    result = runner.invoke(app, ["recommend"])
+
+    assert _ranked(result.stderr) == [
+        ("Qwen3.6-35B-A3B", "4-bit"),
+        ("Qwen3.6-27B", "4-bit"),
+        ("Qwen3.6-35B-A3B", "8-bit"),
+        ("Qwen3.6-27B", "8-bit"),
+    ]
+
+
+def test_recommend_states_the_quality_the_score_and_the_speed_of_each_row(
+    here, monkeypatch
+):
+    _leaderboard(
+        monkeypatch, models=[_listed("A-Mixture-35B", "35B", score=73.4, active="3B")]
+    )
+
+    result = runner.invoke(app, ["recommend"])
+    row = next(line for line in result.stderr.splitlines() if "A-Mixture-35B" in line)
+
+    assert "excellent 88" in row
+    assert "73.4" in row
+    assert "56" in row
+
+
+def test_recommend_leaves_out_a_model_the_table_scores_at_nothing(here, monkeypatch):
+    # Unmeasured is not bad. Ranking it last would say it was.
+    _leaderboard(
+        monkeypatch,
+        models=[
+            _listed("A-Unscored-7B", "7B", score=None),
+            _listed("A-Scored-7B", "7B"),
+        ],
+    )
+
+    result = runner.invoke(app, ["recommend"])
+
+    assert "A-Unscored-7B" not in result.stderr
+    assert "A-Scored-7B" in result.stderr
+
+
+def test_recommend_leaves_the_speed_blank_on_a_chip_nobody_measured(here, monkeypatch):
+    # The row still ranks on its published figures; only the estimate is
+    # missing, and it is visibly missing rather than quietly wrong.
+    monkeypatch.setattr(
+        "offgrid.cli.detect",
+        lambda: Machine(
+            chip="Apple M9 Extreme",
+            memory_bytes=64 * GIB,
+            wired_limit_bytes=56 * GIB,
+        ),
+    )
+    _leaderboard(monkeypatch, models=[_listed("A-Model-35B", "35B", active="3B")])
+
+    result = runner.invoke(app, ["recommend"])
+    row = next(line for line in result.stderr.splitlines() if "A-Model-35B" in line)
+
+    assert result.exit_code == 0
+    assert "56" not in row
+    assert "—" in row
 
 
 def test_recommend_says_what_stopped_it_rather_than_raising(here, monkeypatch):

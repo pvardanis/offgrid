@@ -19,10 +19,12 @@ from offgrid.launch import start
 from offgrid.leaderboards.onyx import URL as LEADERBOARD
 from offgrid.leaderboards.onyx import fetch, parse
 from offgrid.listing import Fit, widths_that_fit
-from offgrid.machine import detect
+from offgrid.machine import Machine, detect
 from offgrid.profile import DEFAULT_PATH, Profile, save
 from offgrid.profile import load as load_profile
+from offgrid.quality import quality
 from offgrid.runtimes.lmstudio import dialect as runtime_dialect
+from offgrid.speed import tokens_per_second
 
 CONFIG_DIR = Path.home() / ".offgrid" / "claude-code"
 DEFAULT_HOST = "127.0.0.1:1234"
@@ -32,14 +34,24 @@ BILLION = 1e9
 GIB = 1024**3
 
 # One layout, so the heading and the models under it cannot drift apart.
-COLUMNS = "    {model:<24}{weights:>9}  {quant:<7}{context:>8}  {license}"
+COLUMNS = (
+    "    {model:<22}{quality:>14}{score:>7}{speed:>7}"
+    "{weights:>9}  {quant:<7}{context:>8}  {license}"
+)
 HEADING = COLUMNS.format(
     model="model",
+    quality="quality",
+    score="swe",
+    speed="tok/s",
     weights="weights",
     quant="quant",
     context="context",
     license="license",
 )
+
+# What a column says where offgrid has no figure for it, as against a figure
+# it has and prints.
+NOTHING = "—"
 
 app = typer.Typer(add_completion=False)
 
@@ -110,9 +122,15 @@ def recommend() -> None:
     with _reported():
         table = parse(fetch())
 
-    fits = [
-        fit for listing in table.listings for fit in widths_that_fit(listing, machine)
-    ]
+    fits = _ranked(
+        [
+            fit
+            for listing in table.listings
+            if listing.coding_score is not None
+            for fit in widths_that_fit(listing, machine)
+        ],
+        machine,
+    )
 
     _tell("  Models that fit this machine, from the list at")
     _tell(f"  {LEADERBOARD}, table dated {table.dated or 'undated'}.")
@@ -126,7 +144,7 @@ def recommend() -> None:
 
     _tell(HEADING)
     for fit in fits:
-        _tell(_row(fit))
+        _tell(_row(fit, machine))
 
     _tell("")
     _tell("  Download one in your runtime, then `offgrid run`.")
@@ -241,15 +259,37 @@ def _would_not_start(command: str, error: OSError) -> str:
     return f"  Could not start {command}: {error}. {advice}".rstrip()
 
 
-def _row(fit: Fit) -> str:
+def _ranked(fits: list[Fit], machine: Machine) -> list[Fit]:
+    """Put the best of what fits first.
+
+    :param fits: Every model at every width this machine holds it at.
+    :param machine: The host they would run on.
+
+    :return: The same fits, best first, and the leaner width first where two
+        are judged the same — the cheaper build is the one to read as the
+        default.
+    """
+    return sorted(
+        fits, key=lambda fit: (-quality(fit, machine).score, fit.quantization_bits)
+    )
+
+
+def _row(fit: Fit, machine: Machine) -> str:
     """Lay out one model of the recommendation.
 
     :param fit: The model, at one of the widths this machine holds it at.
+    :param machine: The host it would run on.
 
     :return: The line to say.
     """
+    judged = quality(fit, machine)
+    speed = tokens_per_second(fit, machine)
+
     return COLUMNS.format(
         model=fit.listing.name,
+        quality=f"{judged.label} {judged.score}",
+        score=f"{fit.listing.coding_score:.1f}",
+        speed=f"~{speed:.0f}" if speed else NOTHING,
         weights=f"{fit.weights_bytes / 1e9:.1f}GB",
         quant=f"{fit.quantization_bits}-bit",
         context=str(fit.listing.context_window or "unstated"),
