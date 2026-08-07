@@ -251,6 +251,55 @@ Sources: `https://onyx.app/llm-hardware-requirements`,
 `https://onyx.app/_next/static/chunks/1265-a79672506f1ea1a7.js`, fetched
 2026-08-06.
 
+## 3a. Their composite, and the chip table under it, read verbatim
+
+Fetched 2026-08-07 from
+`https://onyx.app/_next/static/chunks/1265-a79672506f1ea1a7.js` — the same
+chunk hash as on 2026-08-06, so the file has not been rebuilt between the two
+fetches. Deminified, their quality score is:
+
+```js
+c = round(vramInt4 / vramGb * 100)
+p = c <= 70 ? 45 : round(45 * (1 - (c-70)/30) ** 2.5)                        // 45
+_ = round((rank ?? 50)/100 * 30 * (0.3 + log2(clamp(activeB,1,70))/log2(70))) // 30
+s = mid ? round(log2(clamp(mid,5,200)/5)/log2(40) * 13) : 6                  // 13
+x = cw>4096 ? min(12, round(log2(cw/4096)/log2(62.5)*12)) : (cw>0 ? 1 : 4)   // 12
+d = min(97, p + _ + s + x)
+```
+
+labelled `Excellent` at 85, `Good` at 70, `Decent` at 50, `Weak` at 30, else
+`Poor`. The rank term is the one issue #26 describes: `rank` comes from a
+percentile that needs six populated benchmarks and five ranked models, and the
+fallback map is built from a tier table that is empty for this page, so on a
+Mac it is the constant 50 and the term reduces to `0.3 + log2(active)/log2(70)`
+— a reward for having more active parameters. Their efficiency figures are
+`{consumer: 0.7, datacenter: 0.7, apple_silicon: 0.65}`, one number per class
+with no dense-versus-mixture distinction.
+
+Two places offgrid departs from it, both recorded in `docs/decisions.md`: the
+rank term becomes the published SWE-bench figure over the same 30 points, and
+a row with no speed figure scores nothing for speed rather than their 6.
+
+**The chip table**, Apple rows only, as `slug: bandwidthGbS`:
+
+```
+m1 68, m1-pro 200, m1-max 400, m1-ultra 800, m2 100, m2-pro 200, m2-max 400,
+m2-ultra 800, m3 100, m3-pro 150, m3-max 400, m4 120, m4-pro 273, m4-max 546,
+m5 150, m5-pro 307, m5-max 614
+```
+
+This is the only per-chip bandwidth list found, and `speed.py` carries it. Two
+caveats that a measurement would settle and nothing here does. Apple ships the
+M3 Max in a 300 GB/s bin as well as the 400 recorded here, and onyx has one row
+per chip with no notion that a chip ships at several configurations — the same
+flaw that makes their `vramGb` say an M1 Max has 32GB. And the `m5-pro` and
+`m5-max` figures were not checked against Apple at all. Their `m1-max` 400 is
+the figure `docs/models.md` measures against, which is the one row here that
+has been corroborated.
+
+Source: `https://onyx.app/_next/static/chunks/1265-a79672506f1ea1a7.js`,
+reached from `https://onyx.app/llm-hardware-requirements`, fetched 2026-08-07.
+
 ## 4. Terms of reuse: robots.txt permits fetching; nothing grants reuse
 
 **robots.txt.** `https://onyx.app/robots.txt`, in full for the part that
