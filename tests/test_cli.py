@@ -660,6 +660,42 @@ def test_recommend_prints_a_licence_it_cannot_read(here, monkeypatch):
     assert "A-Licenceless-7B" in result.stderr
 
 
+def test_recommend_accounts_for_every_row_it_did_not_show(here, monkeypatch):
+    # A model someone expected to see being absent is explainable from the
+    # output alone, which takes a count against each rule that drops one.
+    _leaderboard(
+        monkeypatch,
+        models=[
+            _listed("A-Closed-Model", None),
+            _listed("An-Unscored-7B", "7B", score=None),
+            _listed("A-Model-400B", "400B"),
+            _listed("A-Model-35B", "35B"),
+        ],
+    )
+
+    result = runner.invoke(app, ["recommend"])
+    left_out = [line for line in result.stderr.splitlines() if line.startswith("    1")]
+
+    assert "Left out of the 4 rows" in result.stderr
+    assert left_out == [
+        "    1  published no size",
+        "    1  published no coding score",
+        "    1  too large for this machine at every width",
+    ]
+
+
+def test_recommend_counts_no_rule_that_dropped_nothing(here, monkeypatch):
+    # A rule reporting zero accounts for no absence and is noise under a
+    # table that has none.
+    _leaderboard(monkeypatch, models=[_listed("A-Model-35B", "35B")])
+
+    result = runner.invoke(app, ["recommend"])
+
+    assert result.exit_code == 0
+    assert "A-Model-35B" in result.stderr
+    assert "Left out" not in result.stderr
+
+
 def test_recommend_says_a_machine_nothing_fits_is_not_the_problem(here, monkeypatch):
     _leaderboard(monkeypatch, models=[_listed("A-Model-400B", "400B")])
 

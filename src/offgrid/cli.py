@@ -18,7 +18,7 @@ from offgrid.hold import held, hold, let_go
 from offgrid.launch import start
 from offgrid.leaderboards.onyx import URL as LEADERBOARD
 from offgrid.leaderboards.onyx import fetch, parse
-from offgrid.listing import Fit, widths_that_fit
+from offgrid.listing import Fit, Table, widths_that_fit
 from offgrid.machine import BYTES_PER_MB, Machine, detect
 from offgrid.profile import DEFAULT_PATH, Profile, save
 from offgrid.profile import load as load_profile
@@ -122,29 +122,25 @@ def recommend() -> None:
     with _reported():
         table = parse(fetch())
 
-    fits = _ranked(
-        [
-            fit
-            for listing in table.listings
-            if listing.coding_score is not None
-            for fit in widths_that_fit(listing, machine)
-        ],
-        machine,
-    )
+    fits, dropped = _shortlist(table, machine)
+    ranked = _ranked(fits, machine)
 
     _tell("  Models that fit this machine, from the list at")
     _tell(f"  {LEADERBOARD}, table dated {table.dated or 'undated'}.")
     _tell("")
 
-    if not fits:
+    if not ranked:
         _tell("  Nothing on this list fits this machine. That is this list rather")
         _tell("  than this machine: `offgrid setup` says how much room there is,")
         _tell("  and how to raise it.")
+        _tell_block(_accounting(table, dropped))
         return
 
     _tell(HEADING)
-    for judged, fit in fits:
+    for judged, fit in ranked:
         _tell(_row(fit, judged, machine))
+
+    _tell_block(_accounting(table, dropped))
 
     _tell("")
     _tell("  Download one in your runtime, then `offgrid run`.")
@@ -257,6 +253,60 @@ def _would_not_start(command: str, error: OSError) -> str:
     }.get(error.errno, "")
 
     return f"  Could not start {command}: {error}. {advice}".rstrip()
+
+
+def _shortlist(
+    table: Table, machine: Machine
+) -> tuple[list[Fit], list[tuple[int, str]]]:
+    """Keep what this machine can hold, and count what each rule dropped.
+
+    The rules run in order and no row is counted twice: one published with
+    no size never reaches the rule about scores.
+
+    :param table: The published list, as it was read.
+    :param machine: The host the models would run on.
+
+    :return: Every fit there is to rank, and one ``(count, rule)`` pair per
+        rule that took something.
+    """
+    unscored = [one for one in table.listings if one.coding_score is None]
+    widths = [
+        (one, widths_that_fit(one, machine))
+        for one in table.listings
+        if one.coding_score is not None
+    ]
+    too_large = [one for one, found in widths if not found]
+
+    counted = (
+        (table.unsized, "published no size"),
+        (len(unscored), "published no coding score"),
+        (len(too_large), "too large for this machine at every width"),
+    )
+
+    return [fit for _, found in widths for fit in found], [
+        pair for pair in counted if pair[0]
+    ]
+
+
+def _accounting(table: Table, dropped: list[tuple[int, str]]) -> list[str]:
+    """Say how many rows each rule took, so an absence is explainable.
+
+    A rule that took nothing explains no absence, so it is not printed.
+
+    :param table: The published list, as it was read.
+    :param dropped: What each rule took.
+
+    :return: The lines to say, or none where nothing was dropped.
+    """
+    if not dropped:
+        return []
+
+    rows = table.unsized + len(table.listings)
+    figures = max(len(str(count)) for count, _ in dropped)
+
+    return [f"  Left out of the {rows} row{'' if rows == 1 else 's'} on the table:"] + [
+        f"    {count:>{figures}}  {rule}" for count, rule in dropped
+    ]
 
 
 def _raising_the_gpu_limit(machine: Machine) -> list[str]:
