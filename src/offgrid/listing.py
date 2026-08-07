@@ -45,17 +45,40 @@ class Table:
     listings: list[Listing]
 
 
-def widths_that_fit(listing: Listing, machine: Machine) -> list[tuple[int, float]]:
+@dataclass(frozen=True)
+class Fit:
+    """A listing at one of the widths a machine has room for it at.
+
+    The same model is a different proposition at each width, which is why a
+    fit is a listing and a width together rather than a property of either.
+
+    :param listing: The model as published.
+    :param quantization_bits: Bits per stored parameter, e.g. ``4``.
+    :param weights_bytes: What holding it costs at that width. Weights only:
+        the room for the context cache is what ``fit.py`` set aside before
+        deciding this fits at all.
+    """
+
+    listing: Listing
+    quantization_bits: int
+    weights_bytes: float
+
+
+def widths_that_fit(listing: Listing, machine: Machine) -> list[Fit]:
     """Work out which quantization widths a machine holds a listing at.
 
     :param listing: The model as published.
     :param machine: The host it would run on.
 
-    :return: ``(bits, weights_bytes)`` pairs, one per width the machine has
-        room for, leanest first. Empty when it fits at none.
+    :return: One fit per width the machine has room for, leanest first.
+        Empty when it fits at none.
     """
     return [
-        (bits, listing.parameters * bits / BITS_PER_BYTE)
+        Fit(
+            listing=listing,
+            quantization_bits=bits,
+            weights_bytes=listing.parameters * bits / BITS_PER_BYTE,
+        )
         for bits, parameters in sizes_that_fit(machine)
         if listing.parameters <= parameters
     ]
