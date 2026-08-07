@@ -147,6 +147,19 @@ every width. The first takes every closed model without a word about licences,
 which is fortunate, because that field holds a date on one row and nothing on a
 model that has one.
 
+When nothing survives them, the limit named is the list's and not the machine's.
+The smallest model this table publishes needs about 14GB, so a 16GB Mac fits
+none of it — while `docs/models.md` measures a 1.2B model on this same hardware
+at 191 tok/s. "No models fit your hardware" would tell that person they can run
+nothing, which is false and is the opposite of what offgrid is for. So the
+message states where the list starts, what the machine has room for, and the one
+fix offgrid has: the GPU wired limit, which `setup` already knows how to suggest
+and now suggests from the same place.
+
+One row that fits is stated rather than ranked. A leaderboard filtered down to a
+single model is not a ranking, and framing it as one would say the rows that are
+gone had been beaten rather than dropped.
+
 The quality figure keeps the shape of theirs — memory headroom, a score, speed,
 context window, out of 97 — with one term replaced. Theirs ranks a model by
 percentile within what fits, needs six populated benchmarks and five ranked
