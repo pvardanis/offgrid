@@ -17,6 +17,7 @@ def listing(parameters: float, active: float | None = None) -> Listing:
         name="A-Model",
         parameters=parameters,
         active_parameters=active,
+        coding_score=73.4,
         context_window=262144,
         license="Apache 2.0",
     )

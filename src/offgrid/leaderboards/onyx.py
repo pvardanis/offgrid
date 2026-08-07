@@ -27,6 +27,11 @@ TABLE = '"config":{'
 # Sizes are published as strings — "35B", "1.6T" — so the suffix says how many.
 SCALES = {"M": 1e6, "B": 1e9, "T": 1e12}
 
+# The one benchmark of the twenty that measures work on a repository. The
+# table's own schema, and it is mid-migration: `terminal_bench` and
+# `terminal_bench_21` already sit beside each other as separate keys.
+CODING = "swe_bench_verified"
+
 
 def parse(flight: str) -> Table:
     """Read the table out of the page's own payload.
@@ -128,7 +133,8 @@ def _listings(models: list) -> list[Listing]:
             Listing(
                 name=model.get("name") or "unnamed",
                 parameters=parameters,
-                active_parameters=None,
+                active_parameters=_parameters(model.get("activeParameters")),
+                coding_score=(model.get("benchmarks") or {}).get(CODING),
                 context_window=model.get("contextWindow"),
                 license=(model.get("operational") or {}).get("license"),
             )

@@ -53,6 +53,30 @@ def test_a_size_written_as_a_string_is_read_as_a_number(flight: str):
     assert by_name["DeepSeek-V4-Pro"].parameters == 1.6e12
 
 
+def test_what_is_active_of_a_model_is_read_where_the_table_states_it(flight: str):
+    # The table states it for a mixture and states it again as the whole for
+    # a dense model, so equal is not the same as absent.
+    by_name = {listing.name: listing for listing in parse(flight).listings}
+
+    assert by_name["Qwen3.6-35B-A3B"].active_parameters == 3e9
+    assert by_name["Qwen3.6-27B"].active_parameters == 27e9
+
+
+def test_the_coding_score_is_read_where_the_table_publishes_one(flight: str):
+    by_name = {listing.name: listing for listing in parse(flight).listings}
+
+    assert by_name["Qwen3.6-27B"].coding_score == 77.2
+    assert by_name["Qwen3.6-35B-A3B"].coding_score == 73.4
+
+
+def test_a_model_the_table_scores_at_nothing_carries_no_score(flight: str):
+    # Five open-weight rows publish no coding score. Ranking drops them; the
+    # parse states what the table states.
+    by_name = {listing.name: listing for listing in parse(flight).listings}
+
+    assert by_name["Kimi K3"].coding_score is None
+
+
 def test_the_context_window_is_carried_as_published(flight: str):
     by_name = {listing.name: listing for listing in parse(flight).listings}
 
