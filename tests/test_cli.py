@@ -647,12 +647,18 @@ def test_recommend_says_a_machine_nothing_fits_is_not_the_problem(here, monkeypa
     assert "offgrid setup" in result.stderr
 
 
-def _ranked(stderr: str) -> list[tuple[str, str]]:
-    """Read back what was printed, as the order of model and width."""
+def _printed_order(stderr: str) -> list[tuple[str, str]]:
+    """Read back the rows of the table, as the name and width of each.
+
+    The model name is the first word of a row and the width is the one
+    ending in `-bit`; everything between them is a number whose column
+    could move without changing the order being asserted.
+    """
     rows = [line.split() for line in stderr.splitlines() if "-bit" in line]
 
     return [
-        (row[0], next(word for word in row if word.endswith("-bit"))) for row in rows
+        (words[0], next(word for word in words if word.endswith("-bit")))
+        for words in rows
     ]
 
 
@@ -671,7 +677,7 @@ def test_recommend_ranks_the_best_first_and_not_the_order_it_read_them(
 
     result = runner.invoke(app, ["recommend"])
 
-    assert _ranked(result.stderr) == [
+    assert _printed_order(result.stderr) == [
         ("A-Mixture-35B", "4-bit"),
         ("A-Dense-27B", "4-bit"),
         ("A-Mixture-35B", "8-bit"),
@@ -690,7 +696,7 @@ def test_recommend_reaches_the_shortlist_docs_models_arrived_at_by_hand(
 
     result = runner.invoke(app, ["recommend"])
 
-    assert _ranked(result.stderr) == [
+    assert _printed_order(result.stderr) == [
         ("Qwen3.6-35B-A3B", "4-bit"),
         ("Qwen3.6-27B", "4-bit"),
         ("Qwen3.6-35B-A3B", "8-bit"),
