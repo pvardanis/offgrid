@@ -17,6 +17,7 @@ def listing(parameters: float = 27 * BILLION) -> Listing:
     return Listing(
         name="A-Model-27B",
         parameters=parameters,
+        active_parameters=None,
         context_window=262144,
         license="Apache 2.0",
     )
