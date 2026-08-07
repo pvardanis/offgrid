@@ -118,3 +118,31 @@ def test_a_size_written_in_a_way_that_is_not_a_number_is_not_a_size():
     )
 
     assert [listing.name for listing in table.listings] == ["A-Sized-Model"]
+
+
+def test_a_table_whose_rows_cannot_be_read_is_a_failure_not_an_empty_shortlist():
+    # Rows that carry none of the keys they carried is what a schema change
+    # looks like from here, and printing "nothing fits this machine" from it
+    # would be a statement about the machine rather than about the table.
+    with pytest.raises(LeaderboardUnavailableError) as raised:
+        parse('"config":{"lastUpdated":"2026-07-20","models":[{"model":"A"},"B"]}')
+
+    assert URL in str(raised.value)
+    assert "2 rows" in str(raised.value)
+
+
+def test_a_table_that_has_moved_is_followed_rather_than_called_a_redesign(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    # A page that moved and a page that was rewritten are fixed differently,
+    # and a redirect read as an empty body sends the maintainer to the wrong
+    # one.
+    def answer(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/best-llm-for-coding":
+            return httpx.Response(308, headers={"location": "/coding-leaderboard"})
+
+        return httpx.Response(200, text='"config":{"models":[]}')
+
+    serve_get(monkeypatch, answer)
+
+    assert '"config":{' in fetch()
