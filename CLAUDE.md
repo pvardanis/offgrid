@@ -127,6 +127,7 @@ prose. The `Co-Authored-By:` trailer stays.
 ## Scope
 
 v0.1 connects one runtime to one agent and gets out of the way. Which model to
-run is a manual choice; offgrid says how much room the machine has, and does
-not recommend. A model catalogue, more runtimes, more agents, and a verified
-private mode are all later.
+run stays a manual choice: offgrid says how much room the machine has, and
+names what a published list says fits it, ranked. It downloads nothing and
+writes no model into the profile. A model catalogue, more runtimes, more
+agents, and a verified private mode are all later.
