@@ -42,6 +42,13 @@ about this machine, and nothing about whether it has been downloaded. A
 **model** is what the runtime describes; a listing is what someone else
 published.
 
+**mixture** — a model that holds many experts and routes each token to a few
+of them, as against a **dense** model, which reads all of itself for every
+token. Its **parameters** are what must be held in memory; its **active
+parameters** are what a token actually reads. A 35B model with 3B active
+costs the memory of 35B and the reading time of 3B, which is why the two
+counts are carried separately and why speed is estimated from the second.
+
 **quality** — what a fit is worth here, as a score out of 97 and a word for
 it. Four terms: the room left after the weights, the published coding score,
 the speed on this machine, and the context window. A composite, not a
