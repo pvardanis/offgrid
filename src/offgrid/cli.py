@@ -19,7 +19,7 @@ from offgrid.launch import start
 from offgrid.leaderboards.onyx import URL as LEADERBOARD
 from offgrid.leaderboards.onyx import fetch, parse
 from offgrid.listing import Fit, widths_that_fit
-from offgrid.machine import Machine, detect
+from offgrid.machine import BYTES_PER_MB, Machine, detect
 from offgrid.profile import DEFAULT_PATH, Profile, save
 from offgrid.profile import load as load_profile
 from offgrid.quality import Quality, quality
@@ -32,6 +32,10 @@ DEFAULT_HOST = "127.0.0.1:1234"
 TOKEN = "local"
 BILLION = 1e9
 GIB = 1024**3
+
+# What to suggest the GPU be allowed of the machine's memory, leaving the rest
+# for everything that is not the model.
+WIRED_SHARE = 0.875
 
 # One layout, so the heading and the models under it cannot drift apart.
 COLUMNS = (
@@ -93,11 +97,7 @@ def setup(
     _tell("")
     _tell(f"  Load one in your runtime, then `offgrid run`. Profile: {DEFAULT_PATH}")
 
-    if limit is None:
-        _tell("")
-        _tell("  More fits with the GPU limit raised, which a reboot undoes:")
-        wanted = int(machine.memory_bytes * 0.875 / (1024 * 1024))
-        _tell(f"    sudo sysctl iogpu.wired_limit_mb={wanted}")
+    _tell_block(_raising_the_gpu_limit(machine))
 
 
 @app.command()
@@ -257,6 +257,39 @@ def _would_not_start(command: str, error: OSError) -> str:
     }.get(error.errno, "")
 
     return f"  Could not start {command}: {error}. {advice}".rstrip()
+
+
+def _raising_the_gpu_limit(machine: Machine) -> list[str]:
+    """Say how to give the GPU more of the memory, where it has not been given.
+
+    This is the one thing offgrid can suggest that changes what fits.
+
+    :param machine: The host, as it is set up now.
+
+    :return: The lines to say, or none where the limit is already raised.
+    """
+    if machine.wired_limit_bytes is not None:
+        return []
+
+    wanted = int(machine.memory_bytes * WIRED_SHARE / BYTES_PER_MB)
+
+    return [
+        "  More fits with the GPU limit raised, which a reboot undoes:",
+        f"    sudo sysctl iogpu.wired_limit_mb={wanted}",
+    ]
+
+
+def _tell_block(lines: list[str]) -> None:
+    """Say a group of lines under a blank one, or nothing where there are none.
+
+    :param lines: What to say.
+    """
+    if not lines:
+        return
+
+    _tell("")
+    for line in lines:
+        _tell(line)
 
 
 def _ranked(fits: list[Fit], machine: Machine) -> list[tuple[Quality, Fit]]:
