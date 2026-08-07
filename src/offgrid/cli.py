@@ -1,4 +1,4 @@
-"""The three things offgrid does: describe, check, and launch."""
+"""The four things offgrid does: describe, check, recommend, and launch."""
 
 import errno
 import logging
@@ -16,6 +16,9 @@ from offgrid.exceptions import OffgridError, ProfileError
 from offgrid.fit import sizes_that_fit
 from offgrid.hold import held, hold, let_go
 from offgrid.launch import start
+from offgrid.leaderboards.onyx import URL as LEADERBOARD
+from offgrid.leaderboards.onyx import fetch, parse
+from offgrid.listing import widths_that_fit
 from offgrid.machine import detect
 from offgrid.profile import DEFAULT_PATH, Profile, save
 from offgrid.profile import load as load_profile
@@ -87,6 +90,48 @@ def doctor() -> None:
     _tell(f"  model     {model.identifier}")
     _tell(f"  context   {model.context_limit or 'unstated'}")
     _tell(f"  agent     {profile.agent}, speaking {agent_dialect().value}")
+
+
+@app.command()
+def recommend() -> None:
+    """List the models a published table names that this machine can hold."""
+    machine = detect()
+
+    with _reported():
+        table = parse(fetch())
+
+    rows = [
+        (listing, bits, weights)
+        for listing in table.listings
+        for bits, weights in widths_that_fit(listing, machine)
+    ]
+
+    _tell("  Models that fit this machine, from the list at")
+    _tell(f"  {LEADERBOARD}, table dated {table.dated or 'undated'}.")
+    _tell("")
+
+    if not rows:
+        _tell("  Nothing on this list fits this machine. That is this list rather")
+        _tell("  than this machine: `offgrid setup` says how much room there is,")
+        _tell("  and how to raise it.")
+        return
+
+    _tell(_row("model", "weights", "quant", "context", "license"))
+    for listing, bits, weights in rows:
+        _tell(
+            _row(
+                listing.name,
+                f"{weights / 1e9:.1f}GB",
+                f"{bits}-bit",
+                str(listing.context_window or "unstated"),
+                # Printed, never read: it is absent on one open-weight row
+                # and a date on another, so nothing here can branch on it.
+                listing.license or "unstated",
+            )
+        )
+
+    _tell("")
+    _tell("  Download one in your runtime, then `offgrid run`.")
 
 
 @app.command(
@@ -196,6 +241,20 @@ def _would_not_start(command: str, error: OSError) -> str:
     }.get(error.errno, "")
 
     return f"  Could not start {command}: {error}. {advice}".rstrip()
+
+
+def _row(name: str, weights: str, quant: str, context: str, license: str) -> str:
+    """Lay out one line of the recommendation, header included.
+
+    :param name: The model as the table names it.
+    :param weights: What it costs to hold at this width.
+    :param quant: The width itself.
+    :param context: Tokens it takes.
+    :param license: The licence as published.
+
+    :return: The line to say.
+    """
+    return f"    {name:<24}{weights:>9}  {quant:<7}{context:>8}  {license}"
 
 
 def _tell(message: str) -> None:

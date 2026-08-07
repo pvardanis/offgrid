@@ -1,4 +1,4 @@
-"""Keep the suite off the machine it is running on.
+"""Keep the suite off the machine it is running on, and off the network.
 
 Unloading a model reaches for LM Studio's own tool, which acts on whatever
 server is running. A test that forgets to intercept it evicts the developer's
@@ -6,11 +6,17 @@ model, and does so invisibly, because the caller reports the failure rather
 than raising. Refusing the call here means a test cannot reach the runtime by
 omission.
 
-A test marked `live` reaches it on purpose, and is the one thing let through.
+`recommend` fetches a table from a third party, and a suite that reaches for
+it depends on someone else's site being up to pass. Refusing the transport
+that talks to a socket leaves the one a test hands to httpx alone.
+
+A test marked `live` reaches both on purpose, and is the one thing let
+through.
 """
 
 import subprocess
 
+import httpx
 import pytest
 
 _run = subprocess.run
@@ -62,3 +68,20 @@ def _no_real_runtime(
         return _run(argv, *args, **kwargs)
 
     monkeypatch.setattr(subprocess, "run", refuse)
+
+
+@pytest.fixture(autouse=True)
+def _no_network(
+    request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Refuse the transport that reaches a socket, whatever asked for it."""
+    if request.node.get_closest_marker("live"):
+        return
+
+    def refuse(self: httpx.HTTPTransport, sent: httpx.Request) -> httpx.Response:
+        raise AssertionError(
+            f"A test reached the network: {sent.method} {sent.url}. "
+            "Patch the fetch, or serve it with tests.doubles.serve_get."
+        )
+
+    monkeypatch.setattr(httpx.HTTPTransport, "handle_request", refuse)

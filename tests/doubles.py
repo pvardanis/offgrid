@@ -14,9 +14,11 @@ def serve_get(monkeypatch: pytest.MonkeyPatch, handler) -> None:
     """
     transport = httpx.MockTransport(handler)
 
-    def get(url: str, timeout: float = 0) -> httpx.Response:
+    def get(
+        url: str, headers: dict | None = None, timeout: float = 0
+    ) -> httpx.Response:
         with httpx.Client(transport=transport) as client:
-            return client.get(url, timeout=timeout)
+            return client.get(url, headers=headers, timeout=timeout)
 
     monkeypatch.setattr(httpx, "get", get)
 

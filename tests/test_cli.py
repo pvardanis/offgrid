@@ -518,3 +518,160 @@ def _name_in_profile(here, identifier: str) -> None:
     """Write a model into the stored profile, as a person editing it would."""
     path = here / "profile.yaml"
     path.write_text(path.read_text() + f"model: {identifier}\n")
+
+
+def _listed(name: str, parameters: str | None, context: int = 262144) -> dict:
+    """Describe one model the way the published table does."""
+    return {
+        "name": name,
+        "parameters": parameters,
+        "activeParameters": parameters,
+        "contextWindow": context,
+        "benchmarks": {"swe_bench_verified": 70.0},
+        "operational": {"vram_int4": 18, "license": "Apache 2.0"},
+    }
+
+
+def _leaderboard(monkeypatch, *, models: list[dict], dated: str = "2026-07-20") -> None:
+    """Answer for the published table, without reaching for it.
+
+    The payload is the page's own React flight text, so what is served here
+    is the shape that carries it: compact JSON with the table under the prop
+    name the parser locates.
+    """
+    import json
+
+    flight = '0:["$","div",null,' + json.dumps(
+        {"config": {"lastUpdated": dated, "models": models}}, separators=(",", ":")
+    )
+
+    monkeypatch.setattr("offgrid.cli.fetch", lambda: flight)
+
+
+def test_recommend_lists_a_model_once_for_each_width_it_fits_at(here, monkeypatch):
+    _leaderboard(
+        monkeypatch,
+        models=[_listed("A-Model-35B", "35B"), _listed("A-Model-400B", "400B")],
+    )
+
+    result = runner.invoke(app, ["recommend"])
+    rows = [line for line in result.stderr.splitlines() if "A-Model-35B" in line]
+
+    assert result.exit_code == 0
+    assert len(rows) == 2
+    assert "4-bit" in rows[0]
+    assert "8-bit" in rows[1]
+    assert "A-Model-400B" not in result.stderr
+
+
+def test_recommend_states_the_size_width_context_and_licence_of_each_row(
+    here, monkeypatch
+):
+    _leaderboard(monkeypatch, models=[_listed("A-Model-35B", "35B", context=131072)])
+
+    result = runner.invoke(app, ["recommend"])
+    row = next(line for line in result.stderr.splitlines() if "A-Model-35B" in line)
+
+    assert "17.5GB" in row
+    assert "4-bit" in row
+    assert "131072" in row
+    assert "Apache 2.0" in row
+
+
+def test_recommend_states_the_date_the_table_gives_itself(here, monkeypatch):
+    # A table is worth reading if it is recent, and only the table knows.
+    _leaderboard(
+        monkeypatch, models=[_listed("A-Model-35B", "35B")], dated="2026-07-20"
+    )
+
+    result = runner.invoke(app, ["recommend"])
+
+    assert "2026-07-20" in result.stderr
+
+
+def test_recommend_leaves_out_a_model_published_with_no_size(here, monkeypatch):
+    # Every closed model on the table is dropped by this rule alone, and no
+    # licence is read to do it.
+    _leaderboard(
+        monkeypatch,
+        models=[_listed("A-Closed-Model", None), _listed("A-Model-35B", "35B")],
+    )
+
+    result = runner.invoke(app, ["recommend"])
+
+    assert "A-Closed-Model" not in result.stderr
+    assert "A-Model-35B" in result.stderr
+
+
+def test_recommend_caps_nothing(here, monkeypatch):
+    _leaderboard(
+        monkeypatch,
+        models=[_listed(f"A-Model-{n}", "7B") for n in range(12)],
+    )
+
+    result = runner.invoke(app, ["recommend"])
+    rows = [line for line in result.stderr.splitlines() if "A-Model-" in line]
+
+    # Twelve models, each fitting at all three widths.
+    assert len(rows) == 36
+
+
+def test_recommend_prints_a_licence_it_cannot_read(here, monkeypatch):
+    # Null on one open-weight row, a date on another. Nothing branches on it.
+    dated = _listed("A-Dated-Licence-7B", "7B")
+    dated["operational"]["license"] = "Open weights 2026-07-27"
+    absent = _listed("A-Licenceless-7B", "7B")
+    absent["operational"]["license"] = None
+    _leaderboard(monkeypatch, models=[dated, absent])
+
+    result = runner.invoke(app, ["recommend"])
+
+    assert "Open weights 2026-07-27" in result.stderr
+    assert "A-Licenceless-7B" in result.stderr
+
+
+def test_recommend_says_a_machine_nothing_fits_is_not_the_problem(here, monkeypatch):
+    _leaderboard(monkeypatch, models=[_listed("A-Model-400B", "400B")])
+
+    result = runner.invoke(app, ["recommend"])
+
+    assert result.exit_code == 0
+    assert "Nothing on this list fits" in result.stderr
+    assert "offgrid setup" in result.stderr
+
+
+def test_recommend_says_what_stopped_it_rather_than_raising(here, monkeypatch):
+    from offgrid.exceptions import LeaderboardUnavailableError
+
+    def unreachable():
+        raise LeaderboardUnavailableError("could not reach the leaderboard")
+
+    monkeypatch.setattr("offgrid.cli.fetch", unreachable)
+
+    result = runner.invoke(app, ["recommend"])
+
+    assert result.exit_code == 1
+    assert "could not reach the leaderboard" in result.stderr
+
+
+def test_recommend_says_everything_it_says_to_stderr(here, monkeypatch):
+    # stdout belongs to whatever is being piped somewhere, as it does in the
+    # other commands.
+    _leaderboard(monkeypatch, models=[_listed("A-Model-35B", "35B")])
+
+    result = runner.invoke(app, ["recommend"])
+
+    assert result.stdout == ""
+    assert "A-Model-35B" in result.stderr
+
+
+def test_recommend_writes_nothing(here, monkeypatch):
+    # A model worth recommending is one that is not downloaded, and a profile
+    # naming it would make the next `run` ask the runtime for what is absent.
+    runner.invoke(app, ["setup"])
+    before = (here / "profile.yaml").read_text()
+    _leaderboard(monkeypatch, models=[_listed("A-Model-35B", "35B")])
+
+    runner.invoke(app, ["recommend"])
+
+    assert (here / "profile.yaml").read_text() == before

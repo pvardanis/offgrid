@@ -25,6 +25,14 @@ class ModelNotHeldError(ModelUnavailableError):
     """
 
 
+class LeaderboardUnavailableError(OffgridError):
+    """The published list could not be fetched, or held no table.
+
+    Both leave offgrid with nothing to recommend from, and neither says
+    anything about this machine.
+    """
+
+
 class DialectMismatchError(OffgridError):
     """The agent speaks a different API dialect than the runtime serves.
 
