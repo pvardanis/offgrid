@@ -77,6 +77,19 @@ def test_a_model_the_table_scores_at_nothing_carries_no_score(flight: str):
     assert by_name["Kimi K3"].coding_score is None
 
 
+def test_a_score_the_table_writes_as_something_other_than_a_number_is_not_one():
+    # The twenty benchmark keys are the page's own schema and it is already
+    # mid-migration, with two generations of one key side by side. A key that
+    # starts holding a string drops the row from the ranking, rather than
+    # failing arithmetic three modules away.
+    table = parse(
+        '"config":{"models":[{"name":"A-7B","parameters":"7B",'
+        '"benchmarks":{"swe_bench_verified":"73.4"}}]}'
+    )
+
+    assert table.listings[0].coding_score is None
+
+
 def test_the_context_window_is_carried_as_published(flight: str):
     by_name = {listing.name: listing for listing in parse(flight).listings}
 

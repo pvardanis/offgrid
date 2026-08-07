@@ -134,13 +134,31 @@ def _listings(models: list) -> list[Listing]:
                 name=model.get("name") or "unnamed",
                 parameters=parameters,
                 active_parameters=_parameters(model.get("activeParameters")),
-                coding_score=(model.get("benchmarks") or {}).get(CODING),
+                coding_score=_score((model.get("benchmarks") or {}).get(CODING)),
                 context_window=model.get("contextWindow"),
                 license=(model.get("operational") or {}).get("license"),
             )
         )
 
     return listings
+
+
+def _score(published: object) -> float | None:
+    """Read a benchmark score out of what the table states for one.
+
+    :param published: What the row's benchmarks state, which is a number on
+        a populated key and null on the rest.
+
+    :return: The score, or ``None`` where the table publishes none. A score
+        that is not a number is not one: the twenty benchmark keys are the
+        page's own schema and it is mid-migration, so a key that starts
+        holding something else should drop the row from the ranking rather
+        than fail arithmetic several modules away.
+    """
+    if not isinstance(published, int | float):
+        return None
+
+    return float(published)
 
 
 def _parameters(published: str | None) -> float | None:
