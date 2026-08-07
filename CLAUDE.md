@@ -44,8 +44,27 @@ commit to a shape before the implementation has taught anything.
 
 A test that cannot be red is a regression guard, not a slice. Say which it is.
 
+### /mattpocock-skills:code-review
+
+Run it on the branch diff **before opening a pull request**, every time. Not
+after, and not only when the change feels risky — a change that felt safe is
+the one nobody looks at twice.
+
+Give it the fixed point to compare against: `main` for a branch off main. It
+reviews two axes in parallel and reports them separately — whether the code
+follows what this repo documents, and whether it does what the issue asked
+for. Keeping them apart is the point. Code that follows every rule and builds
+the wrong thing passes one axis and fails the other, and a merged report hides
+exactly that.
+
+It needs the spec to have an issue axis at all. Issues live on GitHub, so hand
+it the one the branch implements rather than letting it guess from the branch
+name; `gh issue view <n>` is where the acceptance criteria are, and the parent
+issue is usually worth passing too.
+
 ### /pr-review-toolkit:review-pr
 
+The deeper pass, for a change that warrants one on top of the two axes above.
 Run it on the branch diff **before pushing a pull request**, not after opening
 one. Findings arriving after review has started waste the reviewer's pass.
 
@@ -54,11 +73,11 @@ Which agents apply here: `code-reviewer` and `silent-failure-hunter` always;
 added; `comment-analyzer` when a comment claims something about hardware or a
 runtime's behaviour.
 
-Verify every finding before acting on it. Reviewers state falsehoods with the
-same confidence as truths — one insisted the models in the fixtures did not
-exist when they were captured from a live server an hour earlier. Reproduce the
-failure, then fix it. Report what a finding got wrong alongside what it got
-right.
+Verify every finding from either review before acting on it, whether an agent
+or a person produced it. Reviewers state falsehoods with the same confidence
+as truths — one insisted the models in the fixtures did not exist when they
+were captured from a live server an hour earlier. Reproduce the failure, then
+fix it. Report what a finding got wrong alongside what it got right.
 
 ### /grill-me
 
