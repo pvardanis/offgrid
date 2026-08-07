@@ -125,9 +125,8 @@ def recommend() -> None:
     fits, dropped = _shortlist(table, machine)
     ranked = _ranked(fits, machine)
 
-    _tell("  Models that fit this machine, from the list at")
-    _tell(f"  {LEADERBOARD}, table dated {table.dated or 'undated'}.")
-    _tell("")
+    for line in _preamble(len(ranked), table.dated):
+        _tell(line)
 
     if not ranked:
         for line in _nothing_fits(table, machine):
@@ -254,6 +253,28 @@ def _would_not_start(command: str, error: OSError) -> str:
     }.get(error.errno, "")
 
     return f"  Could not start {command}: {error}. {advice}".rstrip()
+
+
+def _preamble(rows: int, dated: str | None) -> list[str]:
+    """Say what is about to be shown, and where it was read.
+
+    A single row is stated rather than ranked: a list filtered down to one
+    model is not a ranking, and announcing one would say the rows that are
+    missing had been beaten rather than dropped. No row at all promises
+    nothing, since what follows is about the list rather than about models.
+
+    :param rows: How many models at a width there are to show.
+    :param dated: The date the list gives itself.
+
+    :return: The lines to say, ending in a blank one.
+    """
+    openings = {
+        0: "  From the list at",
+        1: "  One model on this list fits this machine. From the list at",
+    }
+    opening = openings.get(rows, "  Models that fit this machine, from the list at")
+
+    return [opening, f"  {LEADERBOARD}, table dated {dated or 'undated'}.", ""]
 
 
 def _shortlist(
