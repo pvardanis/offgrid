@@ -63,23 +63,12 @@ def tokens_per_second(fit: Fit, machine: Machine) -> float | None:
 
     bandwidth = peak * BYTES_PER_GB
 
-    active = _active_bytes(fit)
-    efficiency = DENSE_EFFICIENCY if active == fit.weights_bytes else MIXTURE_EFFICIENCY
+    # What is read per token, as against what is held. One decision, so that
+    # nothing downstream has to work out again whether this is a mixture.
+    active = fit.listing.active_parameters
+    if active is None or active >= fit.listing.parameters:
+        return bandwidth * DENSE_EFFICIENCY / fit.weights_bytes
 
-    return bandwidth * efficiency / active
+    read = fit.weights_bytes * active / fit.listing.parameters
 
-
-def _active_bytes(fit: Fit) -> float:
-    """Work out what is read per token, as against what is held.
-
-    :param fit: The model, at one of the widths this machine holds it at.
-
-    :return: The weights read for one token. All of them for a dense model,
-        and the active share for a mixture.
-    """
-    listing = fit.listing
-    active = listing.active_parameters
-    if active is None or active >= listing.parameters:
-        return fit.weights_bytes
-
-    return fit.weights_bytes * active / listing.parameters
+    return bandwidth * MIXTURE_EFFICIENCY / read
