@@ -42,7 +42,7 @@ HEADING = COLUMNS.format(
 NOTHING = "—"
 
 
-def describe(table: Table, machine: Machine) -> list[str]:
+def summarize_findings(table: Table, machine: Machine) -> list[str]:
     """Say what this machine can hold off a published list, best first.
 
     :param table: The published list, as it was read.
@@ -53,7 +53,7 @@ def describe(table: Table, machine: Machine) -> list[str]:
     shortlisted = shortlist(table, machine)
     ranked = shortlisted.ranked
 
-    said = _introduce(len(ranked), table)
+    said = _introduce_findings(len(ranked), table)
     dropped = _say_what_was_dropped(table, shortlisted.dropped)
 
     if not ranked:
@@ -74,7 +74,7 @@ def describe(table: Table, machine: Machine) -> list[str]:
     )
 
 
-def _introduce(rows: int, table: Table) -> list[str]:
+def _introduce_findings(rows: int, table: Table) -> list[str]:
     """Say what is about to be shown, and where it was read.
 
     A single row is stated rather than ranked: a list filtered down to one
