@@ -53,7 +53,7 @@ def shortlist(table: Table, machine: Machine) -> Shortlist:
     """
     fits, dropped = _apply_the_rules(table, machine)
 
-    return Shortlist(ranked=_rank(fits, machine), dropped=dropped)
+    return Shortlist(ranked=_rank_fits(fits, machine), dropped=dropped)
 
 
 def get_listings_with_coding_score(table: Table) -> list[Listing]:
@@ -69,7 +69,7 @@ def get_listings_with_coding_score(table: Table) -> list[Listing]:
     return [one for one in table.listings if one.coding_score is not None]
 
 
-def _rank(fits: list[Fit], machine: Machine) -> list[tuple[Quality, Fit]]:
+def _rank_fits(fits: list[Fit], machine: Machine) -> list[tuple[Quality, Fit]]:
     """Put the best of what fits first, judging each one once.
 
     :param fits: Every model at every width this machine holds it at.
