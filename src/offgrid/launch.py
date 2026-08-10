@@ -60,7 +60,7 @@ def start(launch: Launch) -> int:
     return code if code >= 0 else 128 - code
 
 
-def would_not_start(command: str, error: OSError) -> str:
+def explain_why_it_would_not_start(command: str, error: OSError) -> str:
     """Say what stopped the agent starting, and what to do about that.
 
     A missing command and a command without the bit that makes it runnable
