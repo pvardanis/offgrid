@@ -112,7 +112,7 @@ class Fit:
         return self.weights_bytes * self.active_parameters / self.listing.parameters
 
 
-def widths_that_fit(listing: Listing, machine: Machine) -> list[Fit]:
+def get_listing_with_feasible_widths(listing: Listing, machine: Machine) -> list[Fit]:
     """Work out which quantization widths a machine holds a listing at.
 
     :param listing: The model as published.

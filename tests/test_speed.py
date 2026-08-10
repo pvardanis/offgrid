@@ -1,6 +1,6 @@
 import pytest
 
-from offgrid.listing import Fit, Listing, widths_that_fit
+from offgrid.listing import Fit, Listing, get_listing_with_feasible_widths
 from offgrid.machine import Machine
 from offgrid.speed import tokens_per_second
 
@@ -26,7 +26,7 @@ def listing(parameters: float, active: float | None = None) -> Listing:
 def at(bits: int, listed: Listing) -> Fit:
     return next(
         fit
-        for fit in widths_that_fit(listed, machine())
+        for fit in get_listing_with_feasible_widths(listed, machine())
         if fit.quantization_bits == bits
     )
 
