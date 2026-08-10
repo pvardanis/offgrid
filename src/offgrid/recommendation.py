@@ -18,7 +18,7 @@ from offgrid.fit import (
 from offgrid.listing import Fit, Table
 from offgrid.machine import Machine, suggest_raising_the_gpu_limit
 from offgrid.quality import Quality
-from offgrid.shortlist import Dropped, keep_listings_with_a_coding_score, shortlist
+from offgrid.shortlist import Dropped, get_listings_with_coding_score, shortlist
 from offgrid.speed import tokens_per_second
 
 # One layout, so the heading and the models under it cannot drift apart.
@@ -162,7 +162,7 @@ def _explain_nothing_fits(table: Table, machine: Machine) -> list[str]:
     # not where the list starts — naming it sends someone after room that
     # would still show them nothing. With none of them scored there is no size
     # to name at all, and room was never what was missing.
-    shown = keep_listings_with_a_coding_score(table)
+    shown = get_listings_with_coding_score(table)
     if not shown:
         return _explain_nothing_ranks()
 

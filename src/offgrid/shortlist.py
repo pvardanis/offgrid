@@ -10,9 +10,9 @@ Nothing here is said to anybody. `recommendation.py` is where that happens.
 
 from dataclasses import dataclass
 
-from offgrid.listing import Fit, Listing, Table, widths_that_fit
+from offgrid.listing import Fit, Listing, Table, get_listing_with_feasible_widths
 from offgrid.machine import Machine
-from offgrid.quality import Quality, quality
+from offgrid.quality import Quality, get_quality
 
 
 @dataclass(frozen=True)
@@ -56,8 +56,8 @@ def shortlist(table: Table, machine: Machine) -> Shortlist:
     return Shortlist(ranked=_rank(fits, machine), dropped=dropped)
 
 
-def keep_listings_with_a_coding_score(table: Table) -> list[Listing]:
-    """Keep the rows carrying the score the ranking sorts on.
+def get_listings_with_coding_score(table: Table) -> list[Listing]:
+    """Keep the rows carrying the score the listings_with_coding_score sorts on.
 
     A row the table scores at nothing is dropped whatever its size, so it is
     not one of these however small it is. Scored nought is scored.
@@ -79,7 +79,7 @@ def _rank(fits: list[Fit], machine: Machine) -> list[tuple[Quality, Fit]]:
         the leaner width first where two are judged the same — the cheaper
         build is the one to read as the default.
     """
-    judged = [(quality(fit, machine), fit) for fit in fits]
+    judged = [(get_quality(fit, machine), fit) for fit in fits]
 
     return sorted(judged, key=lambda pair: (-pair[0].score, pair[1].quantization_bits))
 
@@ -96,16 +96,24 @@ def _apply_the_rules(table: Table, machine: Machine) -> tuple[list[Fit], list[Dr
     :return: Every model at every width that survived, ready to be ranked,
         and how many rows each rule took.
     """
-    ranking = keep_listings_with_a_coding_score(table)
-    widths = [(one, widths_that_fit(one, machine)) for one in ranking]
-    too_large = [one for one, found in widths if not found]
+    listings_with_coding_score = get_listings_with_coding_score(table)
+    listings_with_feasible_widths = [
+        (one, get_listing_with_feasible_widths(one, machine))
+        for one in listings_with_coding_score
+    ]
+    listings_not_fit = [
+        one for one, found in listings_with_feasible_widths if not found
+    ]
 
     taken = (
         Dropped(table.unsized_rows, "published no size"),
-        Dropped(len(table.listings) - len(ranking), "published no coding score"),
-        Dropped(len(too_large), "too large for this machine at every width"),
+        Dropped(
+            len(table.listings) - len(listings_with_coding_score),
+            "published no coding score",
+        ),
+        Dropped(len(listings_not_fit), "too large for this machine at every width"),
     )
 
-    return [fit for _, found in widths for fit in found], [
+    return [fit for _, found in listings_with_feasible_widths for fit in found], [
         one for one in taken if one.count
     ]
