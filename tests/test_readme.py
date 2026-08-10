@@ -18,7 +18,7 @@ import pytest
 from typer.testing import CliRunner
 
 from offgrid.cli import DEFAULT_HOST, app
-from offgrid.machine import Machine
+from tests.doubles import answer_as_a_mac
 
 ROOT = Path(__file__).parent.parent
 README = ROOT / "README.md"
@@ -29,9 +29,6 @@ BADGED = ("ruff", "ty")
 COMMANDS = ("setup", "doctor", "recommend", "run")
 RUNTIME_COMMANDS = ("doctor", "run")
 LOCAL = DEFAULT_HOST.split(":")[0]
-MACHINE = Machine(
-    chip="Apple M1 Max", memory_bytes=64 * 1024**3, wired_limit_bytes=56 * 1024**3
-)
 
 
 def _locked() -> dict[str, str]:
@@ -76,9 +73,7 @@ def _requests_made(command: str, monkeypatch, tmp_path) -> list[httpx.Request]:
         made.append(sent)
         raise httpx.ConnectError("nothing is listening", request=sent)
 
-    monkeypatch.setattr("offgrid.cli.detect", lambda: MACHINE)
-    monkeypatch.setattr("offgrid.cli.DEFAULT_PATH", tmp_path / "profile.yaml")
-    monkeypatch.setattr("offgrid.cli.CONFIG_DIR", tmp_path / "claude-code")
+    answer_as_a_mac(monkeypatch, tmp_path)
     written = CliRunner().invoke(app, ["setup"])
     assert written.exit_code == 0, f"The profile was not written: {written.stderr}"
 
