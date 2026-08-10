@@ -1,18 +1,19 @@
-"""The listings that fit this machine, ranked, and what that reads as.
+"""How a recommendation reads to whoever asked for one.
 
-A recommendation is what offgrid says is worth trying: the models a published
-list names, kept to the ones this machine can hold, judged and ordered. It
-accounts for every row it left out, and says who stands behind every figure
-it shows. Downloading one, and choosing between what is left, stay a person's.
+What is worth trying is `shortlist.py`'s answer. This is the words for it: the
+table of rows, the count against every rule that dropped one, and the line
+saying who stands behind each figure. Downloading a model, and choosing
+between what is left, stay a person's.
 
 Nothing here says anything; it returns the lines and the command line says
 them.
 """
 
 from offgrid.fit import QUANTIZATION_WIDTHS, parameters_that_fit, weights_bytes
-from offgrid.listing import Fit, Table, widths_that_fit
+from offgrid.listing import Fit, Table
 from offgrid.machine import Machine, raising_the_gpu_limit
-from offgrid.quality import Quality, quality
+from offgrid.quality import Quality
+from offgrid.shortlist import shortlist, showable
 from offgrid.speed import tokens_per_second
 
 # One layout, so the heading and the models under it cannot drift apart.
@@ -48,8 +49,7 @@ def recommendation(table: Table, machine: Machine) -> list[str]:
 
     :return: Every line to say, in order.
     """
-    fits, dropped = _shortlist(table, machine)
-    ranked = _ranked(fits, machine)
+    ranked, dropped = shortlist(table, machine)
 
     said = _preamble(len(ranked), table)
 
@@ -94,39 +94,6 @@ def _preamble(rows: int, table: Table) -> list[str]:
         opening,
         f"  {table.source}, table dated {table.dated or 'undated'}.",
         "",
-    ]
-
-
-def _shortlist(
-    table: Table, machine: Machine
-) -> tuple[list[Fit], list[tuple[int, str]]]:
-    """Keep what this machine can hold, and count what each rule dropped.
-
-    The rules run in order and no row is counted twice: one published with
-    no size never reaches the rule about scores.
-
-    :param table: The published list, as it was read.
-    :param machine: The host the models would run on.
-
-    :return: Every fit there is to rank, and one ``(count, rule)`` pair per
-        rule that took something.
-    """
-    unscored = [one for one in table.listings if one.coding_score is None]
-    widths = [
-        (one, widths_that_fit(one, machine))
-        for one in table.listings
-        if one.coding_score is not None
-    ]
-    too_large = [one for one, found in widths if not found]
-
-    counted = (
-        (table.unsized, "published no size"),
-        (len(unscored), "published no coding score"),
-        (len(too_large), "too large for this machine at every width"),
-    )
-
-    return [fit for _, found in widths for fit in found], [
-        pair for pair in counted if pair[0]
     ]
 
 
@@ -194,12 +161,10 @@ def _nothing_fits(table: Table, machine: Machine) -> list[str]:
 
     # A row the table scores at nothing is dropped at any size, so its size is
     # not where the list starts — naming it sends someone after room that
-    # would still show them nothing. Scored nought is scored, as it is to the
-    # rule that keeps a row, or the two disagree about the same listing.
-    showable = [
-        one.parameters for one in table.listings if one.coding_score is not None
-    ]
-    smallest = min(showable or [one.parameters for one in table.listings])
+    # would still show them nothing. The same rule decides both, so the two
+    # cannot disagree about one listing.
+    shown = showable(table) or table.listings
+    smallest = min(one.parameters for one in shown)
 
     return [
         "  Nothing on this list fits this machine.",
@@ -211,21 +176,6 @@ def _nothing_fits(table: Table, machine: Machine) -> list[str]:
         "  That is where this list starts, not where this machine stops.",
         "  Models smaller than any it publishes run here.",
     ]
-
-
-def _ranked(fits: list[Fit], machine: Machine) -> list[tuple[Quality, Fit]]:
-    """Put the best of what fits first, judging each one once.
-
-    :param fits: Every model at every width this machine holds it at.
-    :param machine: The host they would run on.
-
-    :return: Each fit with what it was judged to be worth, best first, and
-        the leaner width first where two are judged the same — the cheaper
-        build is the one to read as the default.
-    """
-    judged = [(quality(fit, machine), fit) for fit in fits]
-
-    return sorted(judged, key=lambda pair: (-pair[0].score, pair[1].quantization_bits))
 
 
 def _row(fit: Fit, judged: Quality, machine: Machine) -> str:
