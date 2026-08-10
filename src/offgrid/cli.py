@@ -12,11 +12,19 @@ import typer
 from offgrid.agents.claude_code import dialect as agent_dialect
 from offgrid.agents.claude_code import plan, prepare
 from offgrid.dialect import require_compatible
-from offgrid.exceptions import OffgridError, ProfileError
+from offgrid.exceptions import (
+    LeaderboardUnavailableError,
+    LeaderboardUnreachableError,
+    LeaderboardUnreadableError,
+    OffgridError,
+    ProfileError,
+)
 from offgrid.fit import BYTES_PER_GB, get_sizes_that_fit
 from offgrid.hold import held, hold, let_go
 from offgrid.launch import start
+from offgrid.leaderboards.cache import Cached, recall, remember
 from offgrid.leaderboards.onyx import fetch, parse
+from offgrid.listing import Table
 from offgrid.machine import detect, suggest_raising_the_gpu_limit
 from offgrid.profile import DEFAULT_PATH, Profile, save
 from offgrid.profile import load as load_profile
@@ -97,7 +105,7 @@ def recommend() -> None:
     machine = detect()
 
     with _reported():
-        table = parse(fetch())
+        table = _table()
 
     for line in summarize_findings(table, machine):
         _tell(line)
@@ -253,6 +261,88 @@ def _stored() -> Profile | None:
         _tell(f"  {error}")
         _tell(f"  What was there is at {kept}. Writing a fresh profile.")
         return None
+
+
+def _table() -> Table:
+    """Read the published list, falling back on the last one that was read.
+
+    :return: The table to recommend from.
+
+    :raise LeaderboardUnavailableError: When nothing answered and there is no
+        table kept from a run that reached one.
+    """
+    try:
+        payload = fetch()
+    except LeaderboardUnreachableError as error:
+        return _last_table(error)
+
+    try:
+        table = parse(payload)
+    except LeaderboardUnreadableError as error:
+        return _last_table(error)
+
+    remember(payload, _cache())
+
+    return table
+
+
+def _last_table(reason: LeaderboardUnavailableError) -> Table:
+    """Read back the last table offgrid fetched, and say how old it is.
+
+    What stopped this run is said either way. A page that has been rewritten
+    has to be loud even where a kept table saves the answer, and a network
+    that is not there has to be named so that nobody goes looking for a fault
+    on this machine.
+
+    :param reason: What stopped this run reading a current one.
+
+    :return: The table as it stood when it was last read.
+
+    :raise LeaderboardUnavailableError: When there is no kept table to fall
+        back on. Nothing was read and nothing was kept, so what is left to
+        say is where numbers measured on this machine already are.
+    """
+    kept = recall(_cache())
+    table = _reparsed(kept)
+
+    if kept is None or table is None:
+        raise LeaderboardUnavailableError(
+            f"{reason} No table was kept by an earlier run either, so there "
+            "is none to fall back on. docs/models.md holds what has been "
+            "measured on this machine by hand."
+        ) from reason
+
+    _tell(f"  {reason}")
+    _tell(f"  This is the table offgrid read on {kept.dated}, not a current one.")
+    _tell("")
+
+    return table
+
+
+def _reparsed(kept: Cached | None) -> Table | None:
+    """Read a kept payload the way the one it was kept from was read.
+
+    :param kept: What was kept, if anything was.
+
+    :return: The table it holds, or ``None`` where it holds none. A payload
+        kept before the parser knew what it knows now is no table, and this
+        run already has a failure to report.
+    """
+    if kept is None:
+        return None
+
+    try:
+        return parse(kept.payload)
+    except LeaderboardUnreadableError:
+        return None
+
+
+def _cache() -> Path:
+    """Where the last table read is kept, beside the profile.
+
+    :return: The path to it.
+    """
+    return DEFAULT_PATH.parent / "leaderboard.json"
 
 
 def _profile() -> Profile:
