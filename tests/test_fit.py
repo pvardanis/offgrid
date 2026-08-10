@@ -2,9 +2,9 @@ import pytest
 
 from offgrid.fit import (
     CACHE_SHARE,
-    parameters_that_fit,
-    sizes_that_fit,
-    weigh,
+    get_params_that_fit,
+    get_sizes_that_fit,
+    weigh_model,
 )
 from offgrid.machine import Machine
 
@@ -21,19 +21,19 @@ def machine(memory_gib: int = 64, wired_gib: int | None = None) -> Machine:
 
 
 def test_four_bit_holds_twice_the_parameters_of_eight():
-    lean = parameters_that_fit(machine(), quantization_bits=4)
-    dense = parameters_that_fit(machine(), quantization_bits=8)
+    lean = get_params_that_fit(machine(), quantization_bits=4)
+    dense = get_params_that_fit(machine(), quantization_bits=8)
     assert lean == pytest.approx(dense * 2)
 
 
 def test_a_bigger_machine_holds_more():
-    assert parameters_that_fit(machine(memory_gib=64), 4) > parameters_that_fit(
+    assert get_params_that_fit(machine(memory_gib=64), 4) > get_params_that_fit(
         machine(memory_gib=16), 4
     )
 
 
 def test_raising_the_wired_limit_holds_more():
-    assert parameters_that_fit(machine(wired_gib=56), 4) > parameters_that_fit(
+    assert get_params_that_fit(machine(wired_gib=56), 4) > get_params_that_fit(
         machine(wired_gib=32), 4
     )
 
@@ -41,35 +41,35 @@ def test_raising_the_wired_limit_holds_more():
 def test_room_is_left_for_the_context_cache():
     # Weights that fill the machine leave nothing for the cache the context
     # grows into, so the answer is smaller than the memory divided by the width.
-    assert parameters_that_fit(machine(), 8) == pytest.approx(
+    assert get_params_that_fit(machine(), 8) == pytest.approx(
         machine().usable_bytes * (1 - CACHE_SHARE)
     )
 
 
 def test_this_mac_holds_a_useful_model():
     # 64GiB with the wired limit raised: about 100 billion parameters at 4-bit.
-    fits = parameters_that_fit(machine(wired_gib=56), 4)
+    fits = get_params_that_fit(machine(wired_gib=56), 4)
     assert 90 * BILLION < fits < 110 * BILLION
 
 
 def test_a_small_mac_is_told_a_smaller_number():
     # 16GiB, wired limit untouched: a handful of billions at 4-bit.
-    fits = parameters_that_fit(machine(memory_gib=16), 4)
+    fits = get_params_that_fit(machine(memory_gib=16), 4)
     assert 10 * BILLION < fits < 25 * BILLION
 
 
 def test_weights_are_the_parameter_count_at_the_width_they_are_stored_at():
     # 35B at 4-bit is 17.5GB, which is what both a listing's fit and the
     # recommendation's arithmetic rest on.
-    assert weigh(35 * BILLION, 4) == 17.5e9
+    assert weigh_model(35 * BILLION, 4) == 17.5e9
 
 
 def test_a_wider_build_of_one_model_weighs_proportionally_more():
-    assert weigh(7 * BILLION, 8) == 2 * weigh(7 * BILLION, 4)
+    assert weigh_model(7 * BILLION, 8) == 2 * weigh_model(7 * BILLION, 4)
 
 
 def test_sizes_are_offered_for_each_common_width():
-    offered = sizes_that_fit(machine())
+    offered = get_sizes_that_fit(machine())
     assert [bits for bits, _ in offered] == [4, 8, 16]
     assert [size for _, size in offered] == sorted(
         (size for _, size in offered), reverse=True
