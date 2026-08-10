@@ -17,31 +17,33 @@ from offgrid.exceptions import (
     LeaderboardUnreachableError,
     LeaderboardUnreadableError,
 )
-from offgrid.leaderboards.cache import Cached, recall, remember
+from offgrid.leaderboards import cache
 from offgrid.leaderboards.onyx import fetch, parse
 from offgrid.listing import Table
 
 
 @dataclass(frozen=True)
 class Reading:
-    """A table to recommend from, and how it was arrived at.
+    """A table to recommend from, and what is not straightforward about it.
 
     :param table: The published list, as it was read.
-    :param said: What to say before showing it, which is nothing at all where
-        it was fetched just now and kept.
+    :param caveats: Lines to say above the table where something about it
+        needs saying: that it is not a current one and how old it is, or that
+        this one could not be kept for next time. Empty where a fetch worked
+        and was kept, which is the ordinary case and needs no words.
     """
 
     table: Table
-    said: list[str]
+    caveats: list[str]
 
 
-def read_table(kept_at: Path) -> Reading:
+def get_reading(file_path: Path) -> Reading:
     """Read the published list, falling back on the last one that was read.
 
     A payload is kept only once it has parsed. Keeping one that did not would
     take the fall back away at the moment it is all the command has left.
 
-    :param kept_at: Where the last table read is kept.
+    :param file_path: Where the last table read is kept.
 
     :return: The table to recommend from, and what to say about it.
 
@@ -51,17 +53,17 @@ def read_table(kept_at: Path) -> Reading:
     try:
         payload = fetch()
     except LeaderboardUnreachableError as error:
-        return _last_table(error, kept_at)
+        return _get_cached_reading(error, file_path)
 
     try:
         table = parse(payload)
     except LeaderboardUnreadableError as error:
-        return _last_table(error, kept_at)
+        return _get_cached_reading(error, file_path)
 
-    return Reading(table=table, said=_keep(payload, kept_at))
+    return Reading(table=table, caveats=_keep(payload, file_path))
 
 
-def _keep(payload: str, kept_at: Path) -> list[str]:
+def _keep(payload: str, file_path: Path) -> list[str]:
     """Keep the payload that parsed, and say so where it cannot be kept.
 
     Nowhere to write is not a reason to throw away a table this run already
@@ -69,15 +71,15 @@ def _keep(payload: str, kept_at: Path) -> list[str]:
     network is the one that will find nothing kept for it either.
 
     :param payload: What the source answered.
-    :param kept_at: Where to keep it.
+    :param file_path: Where to keep it.
 
     :return: The lines to say, or none where it was kept.
     """
     try:
-        remember(payload, kept_at)
+        cache.save(payload, file_path)
     except OSError as error:
         return [
-            f"  This table could not be kept at {kept_at}: {error}.",
+            f"  This table could not be kept at {file_path}: {error}.",
             "  A run that reaches nothing will have none to fall back on until",
             "  that is fixed.",
             "",
@@ -86,7 +88,9 @@ def _keep(payload: str, kept_at: Path) -> list[str]:
     return []
 
 
-def _last_table(reason: LeaderboardUnavailableError, kept_at: Path) -> Reading:
+def _get_cached_reading(
+    reason: LeaderboardUnavailableError, file_path: Path
+) -> Reading:
     """Read back the last table offgrid fetched, and say how old it is.
 
     What stopped this run is said either way. A page that has been rewritten
@@ -95,7 +99,7 @@ def _last_table(reason: LeaderboardUnavailableError, kept_at: Path) -> Reading:
     on this machine.
 
     :param reason: What stopped this run reading a current one.
-    :param kept_at: Where the last table read is kept.
+    :param file_path: Where the last table read is kept.
 
     :return: The table as it stood when it was last read, and the lines
         saying what happened and how old it is.
@@ -104,7 +108,7 @@ def _last_table(reason: LeaderboardUnavailableError, kept_at: Path) -> Reading:
         back on. Nothing was read and nothing was kept, so what is left to
         say is where numbers measured on this machine already are.
     """
-    kept = recall(kept_at)
+    kept = cache.load(file_path)
     table = _reparsed(kept)
 
     # Nothing kept and nothing readable are the same answer here. Both halves
@@ -118,7 +122,7 @@ def _last_table(reason: LeaderboardUnavailableError, kept_at: Path) -> Reading:
 
     return Reading(
         table=table,
-        said=[
+        caveats=[
             f"  {reason}",
             f"  This is the table offgrid read on {kept.dated}, not a current one.",
             "",
@@ -126,7 +130,7 @@ def _last_table(reason: LeaderboardUnavailableError, kept_at: Path) -> Reading:
     )
 
 
-def _reparsed(kept: Cached | None) -> Table | None:
+def _reparsed(kept: cache.Cached | None) -> Table | None:
     """Read a kept payload the way the one it was kept from was read.
 
     :param kept: What was kept, if anything was.

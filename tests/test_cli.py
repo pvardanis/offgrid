@@ -603,7 +603,7 @@ def _kept(
     *,
     models: list[dict],
     dated: str = "2026-07-20",
-    fetched: str = "2026-08-05T09:12:00",
+    fetched_at: str = "2026-08-05T09:12:00",
 ) -> None:
     """Put a table where a run that reaches none will find one.
 
@@ -611,7 +611,7 @@ def _kept(
     fixed date rather than whenever the suite happens to run.
     """
     (here / "leaderboard.json").write_text(
-        json.dumps({"payload": _flight(models, dated), "fetched": fetched})
+        json.dumps({"payload": _flight(models, dated), "fetched_at": fetched_at})
     )
 
 
@@ -1130,7 +1130,7 @@ def test_recommend_answers_from_the_last_table_it_read_when_nothing_answers(
     assert "A-Model-35B" in result.stderr
     # The day printed is the day the run that kept it wrote down, so a
     # timestamp written in a shape nobody reads back is visible here.
-    assert f"read on {kept['fetched'][:10]}" in result.stderr
+    assert f"read on {kept['fetched_at'][:10]}" in result.stderr
 
 
 def test_recommend_still_answers_when_it_cannot_keep_the_table(here, monkeypatch):
@@ -1151,7 +1151,9 @@ def test_recommend_says_how_old_the_table_it_fell_back_to_is(here, monkeypatch):
     # A stale table read as a current one is worse than no table: what it
     # names may have been superseded twice over. And a person deciding
     # whether to go and look for themselves has only the date to decide on.
-    _kept(here, models=[_listed("A-Model-35B", "35B")], fetched="2026-08-05T09:12:00")
+    _kept(
+        here, models=[_listed("A-Model-35B", "35B")], fetched_at="2026-08-05T09:12:00"
+    )
     _unreachable(monkeypatch)
 
     result = runner.invoke(app, ["recommend"])
@@ -1229,7 +1231,7 @@ def test_recommend_keeps_the_table_it_read_beside_the_profile(here, monkeypatch)
     kept = json.loads((here / "leaderboard.json").read_text())
 
     assert "A-Model-35B" in kept["payload"]
-    assert kept["fetched"]
+    assert kept["fetched_at"]
 
 
 def test_recommend_keeps_the_last_table_it_read_when_the_next_will_not_parse(
@@ -1238,7 +1240,9 @@ def test_recommend_keeps_the_last_table_it_read_when_the_next_will_not_parse(
     # The kept table is the last good one, not the last one fetched. A page
     # that has been rewritten overwriting it would take the fall back away at
     # the moment it is what the command has left.
-    _kept(here, models=[_listed("A-Model-35B", "35B")], fetched="2026-08-05T09:12:00")
+    _kept(
+        here, models=[_listed("A-Model-35B", "35B")], fetched_at="2026-08-05T09:12:00"
+    )
     monkeypatch.setattr(
         "offgrid.leaderboards.reading.fetch", lambda: "a page, and not the table"
     )

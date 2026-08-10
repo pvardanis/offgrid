@@ -30,7 +30,7 @@ class _Stderr(logging.StreamHandler):
         super().emit(record)
 
 
-def on_stderr() -> None:
+def say_on_stderr() -> None:
     """Print what offgrid says, as the words and nothing else.
 
     Only the handler this installs is replaced, because a caller that put its

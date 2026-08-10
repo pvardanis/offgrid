@@ -13,14 +13,14 @@ from offgrid.dialect import require_compatible
 from offgrid.exceptions import OffgridError, ProfileError
 from offgrid.fit import BYTES_PER_GB, get_sizes_that_fit
 from offgrid.hold import held, hold, let_go
-from offgrid.launch import start, would_not_start
-from offgrid.leaderboards.reading import read_table
+from offgrid.launch import explain_why_it_would_not_start, start
+from offgrid.leaderboards.reading import get_reading
 from offgrid.machine import detect, suggest_raising_the_gpu_limit
 from offgrid.profile import DEFAULT_PATH, Profile, save
 from offgrid.profile import load as load_profile
 from offgrid.recommendation import summarize_findings
 from offgrid.runtimes.lmstudio import dialect as runtime_dialect
-from offgrid.say import on_stderr, tell
+from offgrid.say import say_on_stderr, tell
 
 CONFIG_DIR = Path.home() / ".offgrid" / "claude-code"
 DEFAULT_HOST = "127.0.0.1:1234"
@@ -38,7 +38,7 @@ def offgrid() -> None:
     # This docstring is the help a person reads, so the rest is said here:
     # the callback runs before every command, and is where the command line
     # attaches its own logging. The modules below it attach none.
-    on_stderr()
+    say_on_stderr()
 
 
 @app.command()
@@ -81,7 +81,7 @@ def doctor() -> None:
     """Check that the runtime is reachable and holding a model."""
     profile = _profile()
 
-    with _reported():
+    with _reporting():
         model = held(profile)
 
     tell(f"  runtime   {profile.host} reachable")
@@ -95,10 +95,10 @@ def recommend() -> None:
     """List the models a published table names that this machine can hold."""
     machine = detect()
 
-    with _reported():
-        reading = read_table(_cache())
+    with _reporting():
+        reading = get_reading(_cache())
 
-    for line in reading.said:
+    for line in reading.caveats:
         tell(line)
 
     for line in summarize_findings(reading.table, machine):
@@ -121,7 +121,7 @@ def run(
     profile = _profile()
     wanted = model_name or profile.model
 
-    with _reported():
+    with _reporting():
         # A dialect that cannot be paired and settings that would undo a
         # guarantee are both knowable before a load, and a load is tens of
         # seconds nobody gets back.
@@ -146,7 +146,7 @@ def run(
         try:
             code = start(launch)
         except OSError as error:
-            tell(would_not_start(launch.argv[0], error))
+            tell(explain_why_it_would_not_start(launch.argv[0], error))
             code = 127
     except KeyboardInterrupt:
         code = 130
@@ -157,7 +157,7 @@ def run(
 
 
 @contextmanager
-def _reported() -> Iterator[None]:
+def _reporting() -> Iterator[None]:
     """Say what went wrong and stop, rather than raising at the terminal.
 
     offgrid's own errors carry the operation, the input and what to do next,
@@ -204,7 +204,7 @@ def _profile() -> Profile:
 
     :return: The stored profile.
     """
-    with _reported():
+    with _reporting():
         return load_profile(DEFAULT_PATH)
 
 
