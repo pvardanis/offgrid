@@ -50,7 +50,7 @@ def test_how_many_rows_stated_no_size_is_carried_off_the_table(flight: str):
     # the count is the only thing left to account for it with.
     table = parse(flight)
 
-    assert table.unsized == 9
+    assert table.unsized_rows == 9
     assert len(table.listings) == 18
 
 
