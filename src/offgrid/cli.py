@@ -1,7 +1,5 @@
 """The four things offgrid does: describe, check, recommend, and launch."""
 
-import errno
-import logging
 import sys
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -12,24 +10,17 @@ import typer
 from offgrid.agents.claude_code import dialect as agent_dialect
 from offgrid.agents.claude_code import plan, prepare
 from offgrid.dialect import require_compatible
-from offgrid.exceptions import (
-    LeaderboardUnavailableError,
-    LeaderboardUnreachableError,
-    LeaderboardUnreadableError,
-    OffgridError,
-    ProfileError,
-)
+from offgrid.exceptions import OffgridError, ProfileError
 from offgrid.fit import BYTES_PER_GB, get_sizes_that_fit
 from offgrid.hold import held, hold, let_go
-from offgrid.launch import start
-from offgrid.leaderboards.cache import Cached, recall, remember
-from offgrid.leaderboards.onyx import fetch, parse
-from offgrid.listing import Table
+from offgrid.launch import start, would_not_start
+from offgrid.leaderboards.reading import read_table
 from offgrid.machine import detect, suggest_raising_the_gpu_limit
 from offgrid.profile import DEFAULT_PATH, Profile, save
 from offgrid.profile import load as load_profile
 from offgrid.recommendation import summarize_findings
 from offgrid.runtimes.lmstudio import dialect as runtime_dialect
+from offgrid.say import on_stderr, tell
 
 CONFIG_DIR = Path.home() / ".offgrid" / "claude-code"
 DEFAULT_HOST = "127.0.0.1:1234"
@@ -47,7 +38,7 @@ def offgrid() -> None:
     # This docstring is the help a person reads, so the rest is said here:
     # the callback runs before every command, and is where the command line
     # attaches its own logging. The modules below it attach none.
-    _say_on_stderr()
+    on_stderr()
 
 
 @app.command()
@@ -64,25 +55,25 @@ def setup(
     )
     save(profile, DEFAULT_PATH)
 
-    _tell(f"  {machine.chip} · {machine.memory_bytes / GIB:.0f}GB unified memory")
+    tell(f"  {machine.chip} · {machine.memory_bytes / GIB:.0f}GB unified memory")
     limit = machine.wired_limit_bytes
-    _tell(
+    tell(
         f"  GPU limit  {limit / GIB:.0f}GB" if limit else "  GPU limit  at its default"
     )
-    _tell(f"  usable     {machine.usable_bytes / BYTES_PER_GB:.0f}GB")
-    _tell("")
-    _tell("  A model of about this size fits, leaving room for context:")
-    _tell("")
+    tell(f"  usable     {machine.usable_bytes / BYTES_PER_GB:.0f}GB")
+    tell("")
+    tell("  A model of about this size fits, leaving room for context:")
+    tell("")
     for bits, parameters in get_sizes_that_fit(machine):
-        _tell(f"    {bits:>2}-bit   {parameters / BILLION:>5.0f}B parameters")
-    _tell("")
-    _tell(f"  Load one in your runtime, then `offgrid run`. Profile: {DEFAULT_PATH}")
+        tell(f"    {bits:>2}-bit   {parameters / BILLION:>5.0f}B parameters")
+    tell("")
+    tell(f"  Load one in your runtime, then `offgrid run`. Profile: {DEFAULT_PATH}")
 
     advice = suggest_raising_the_gpu_limit(machine)
     if advice:
-        _tell("")
+        tell("")
         for line in advice:
-            _tell(line)
+            tell(line)
 
 
 @app.command()
@@ -93,10 +84,10 @@ def doctor() -> None:
     with _reported():
         model = held(profile)
 
-    _tell(f"  runtime   {profile.host} reachable")
-    _tell(f"  model     {model.identifier}")
-    _tell(f"  context   {model.context_limit or 'unstated'}")
-    _tell(f"  agent     {profile.agent}, speaking {agent_dialect().value}")
+    tell(f"  runtime   {profile.host} reachable")
+    tell(f"  model     {model.identifier}")
+    tell(f"  context   {model.context_limit or 'unstated'}")
+    tell(f"  agent     {profile.agent}, speaking {agent_dialect().value}")
 
 
 @app.command()
@@ -105,10 +96,13 @@ def recommend() -> None:
     machine = detect()
 
     with _reported():
-        table = _table()
+        reading = read_table(_cache())
 
-    for line in summarize_findings(table, machine):
-        _tell(line)
+    for line in reading.complaints:
+        tell(line)
+
+    for line in summarize_findings(reading.table, machine):
+        tell(line)
 
 
 @app.command(
@@ -139,7 +133,7 @@ def run(
     # Nothing between here and the agent finishing may leave the model held:
     # from this line on, letting go is owed whatever happens.
     try:
-        _tell(f"  {model.identifier}, context {model.context_limit or 'unstated'}")
+        tell(f"  {model.identifier}, context {model.context_limit or 'unstated'}")
 
         launch = plan(
             model,
@@ -152,7 +146,7 @@ def run(
         try:
             code = start(launch)
         except OSError as error:
-            _tell(_would_not_start(launch.argv[0], error))
+            tell(would_not_start(launch.argv[0], error))
             code = 127
     except KeyboardInterrupt:
         code = 130
@@ -160,72 +154,6 @@ def run(
         let_go(profile.host, model.identifier)
 
     raise typer.Exit(code)
-
-
-class _Stderr(logging.StreamHandler):
-    """A handler that writes to stderr as it is now.
-
-    A handler that captured the stream it was built on writes into a closed
-    buffer once whoever owned that stream is finished with it, and logging
-    reports that as a traceback over whatever is being read at the time.
-    """
-
-    def emit(self, record: logging.LogRecord) -> None:
-        """Write a record to the stream stderr names at this moment.
-
-        :param record: What to write.
-        """
-        self.stream = sys.stderr
-        super().emit(record)
-
-
-def _say_on_stderr() -> None:
-    """Print what offgrid says, as the words and nothing else.
-
-    A library configures no logging; the command line does. It goes to
-    stderr so that stdout carries whatever the agent has to say. Only the
-    handler this installs is replaced, because a caller that put its own
-    there meant it.
-    """
-    logger = logging.getLogger("offgrid")
-
-    for existing in [h for h in logger.handlers if isinstance(h, _Stderr)]:
-        logger.removeHandler(existing)
-
-    handler = _Stderr()
-    handler.setFormatter(logging.Formatter("%(message)s"))
-
-    logger.addHandler(handler)
-    logger.setLevel(logging.INFO)
-    logger.propagate = False
-
-
-def _would_not_start(command: str, error: OSError) -> str:
-    """Say what stopped the agent starting, and what to do about that.
-
-    A missing command and a command without the bit that makes it runnable
-    fail the same way and are fixed differently, so the advice follows the
-    reason rather than the operation.
-
-    :param command: What was being started.
-    :param error: Why it was not.
-
-    :return: What to say.
-    """
-    advice = {
-        errno.ENOENT: "Install it, or put it on PATH.",
-        errno.EACCES: "It is there but not executable.",
-    }.get(error.errno, "")
-
-    return f"  Could not start {command}: {error}. {advice}".rstrip()
-
-
-def _tell(message: str) -> None:
-    """Say something to whoever is running offgrid.
-
-    :param message: What to say.
-    """
-    typer.echo(message, err=True)
 
 
 @contextmanager
@@ -240,7 +168,7 @@ def _reported() -> Iterator[None]:
     try:
         yield
     except OffgridError as error:
-        _tell(f"  {error}")
+        tell(f"  {error}")
         raise typer.Exit(1) from error
 
 
@@ -258,82 +186,8 @@ def _stored() -> Profile | None:
         kept = DEFAULT_PATH.with_suffix(".yaml.rejected")
         kept.write_text(DEFAULT_PATH.read_text())
 
-        _tell(f"  {error}")
-        _tell(f"  What was there is at {kept}. Writing a fresh profile.")
-        return None
-
-
-def _table() -> Table:
-    """Read the published list, falling back on the last one that was read.
-
-    :return: The table to recommend from.
-
-    :raise LeaderboardUnavailableError: When nothing answered and there is no
-        table kept from a run that reached one.
-    """
-    try:
-        payload = fetch()
-    except LeaderboardUnreachableError as error:
-        return _last_table(error)
-
-    try:
-        table = parse(payload)
-    except LeaderboardUnreadableError as error:
-        return _last_table(error)
-
-    remember(payload, _cache())
-
-    return table
-
-
-def _last_table(reason: LeaderboardUnavailableError) -> Table:
-    """Read back the last table offgrid fetched, and say how old it is.
-
-    What stopped this run is said either way. A page that has been rewritten
-    has to be loud even where a kept table saves the answer, and a network
-    that is not there has to be named so that nobody goes looking for a fault
-    on this machine.
-
-    :param reason: What stopped this run reading a current one.
-
-    :return: The table as it stood when it was last read.
-
-    :raise LeaderboardUnavailableError: When there is no kept table to fall
-        back on. Nothing was read and nothing was kept, so what is left to
-        say is where numbers measured on this machine already are.
-    """
-    kept = recall(_cache())
-    table = _reparsed(kept)
-
-    if kept is None or table is None:
-        raise LeaderboardUnavailableError(
-            f"{reason} No table was kept by an earlier run either, so there "
-            "is none to fall back on. docs/models.md holds what has been "
-            "measured on this machine by hand."
-        ) from reason
-
-    _tell(f"  {reason}")
-    _tell(f"  This is the table offgrid read on {kept.dated}, not a current one.")
-    _tell("")
-
-    return table
-
-
-def _reparsed(kept: Cached | None) -> Table | None:
-    """Read a kept payload the way the one it was kept from was read.
-
-    :param kept: What was kept, if anything was.
-
-    :return: The table it holds, or ``None`` where it holds none. A payload
-        kept before the parser knew what it knows now is no table, and this
-        run already has a failure to report.
-    """
-    if kept is None:
-        return None
-
-    try:
-        return parse(kept.payload)
-    except LeaderboardUnreadableError:
+        tell(f"  {error}")
+        tell(f"  What was there is at {kept}. Writing a fresh profile.")
         return None
 
 
@@ -364,5 +218,5 @@ def main() -> None:
     try:
         app()
     except OffgridError as error:
-        _tell(f"  {error}")
+        tell(f"  {error}")
         sys.exit(1)

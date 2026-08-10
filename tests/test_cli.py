@@ -593,7 +593,9 @@ def _flight(models: list[dict], dated: str) -> str:
 
 def _leaderboard(monkeypatch, *, models: list[dict], dated: str = "2026-07-20") -> None:
     """Answer for the published table, without reaching for it."""
-    monkeypatch.setattr("offgrid.cli.fetch", lambda: _flight(models, dated))
+    monkeypatch.setattr(
+        "offgrid.leaderboards.reading.fetch", lambda: _flight(models, dated)
+    )
 
 
 def _kept(
@@ -966,7 +968,7 @@ def test_recommend_reaches_the_shortlist_docs_models_arrived_at_by_hand(
     # by hand that the mixture at 4-bit is the model for this machine, above
     # a dense model with a higher published score. Nothing here read it.
     fixture = pathlib.Path(__file__).parent / "fixtures" / "onyx_leaderboard.txt"
-    monkeypatch.setattr("offgrid.cli.fetch", fixture.read_text)
+    monkeypatch.setattr("offgrid.leaderboards.reading.fetch", fixture.read_text)
 
     result = runner.invoke(app, ["recommend"])
 
@@ -1084,7 +1086,7 @@ def test_recommend_says_what_stopped_it_rather_than_raising(here, monkeypatch):
     def unreachable():
         raise LeaderboardUnavailableError("could not reach the leaderboard")
 
-    monkeypatch.setattr("offgrid.cli.fetch", unreachable)
+    monkeypatch.setattr("offgrid.leaderboards.reading.fetch", unreachable)
 
     result = runner.invoke(app, ["recommend"])
 
@@ -1109,7 +1111,7 @@ def _unreachable(monkeypatch) -> None:
     def refuse():
         raise LeaderboardUnreachableError("Could not reach the table: no route")
 
-    monkeypatch.setattr("offgrid.cli.fetch", refuse)
+    monkeypatch.setattr("offgrid.leaderboards.reading.fetch", refuse)
 
 
 def test_recommend_answers_from_the_last_table_it_read_when_nothing_answers(
@@ -1159,7 +1161,9 @@ def test_recommend_shows_the_last_table_when_the_page_stops_parsing(here, monkey
     # week, and it is every reason to say so: a silent fall back to a table
     # months old is the feature dying without anybody noticing.
     _kept(here, models=[_listed("A-Model-35B", "35B")])
-    monkeypatch.setattr("offgrid.cli.fetch", lambda: "a page, and not the table")
+    monkeypatch.setattr(
+        "offgrid.leaderboards.reading.fetch", lambda: "a page, and not the table"
+    )
 
     result = runner.invoke(app, ["recommend"])
 
@@ -1189,7 +1193,9 @@ def test_recommend_names_the_page_when_it_stops_parsing_and_nothing_was_kept(
     # The same redesign, on a machine that has never reached the page. There
     # is nothing to show, so what is left is what the maintainer needs to tell
     # a redesign from a bug, and where a person can read numbers today.
-    monkeypatch.setattr("offgrid.cli.fetch", lambda: "a page, and not the table")
+    monkeypatch.setattr(
+        "offgrid.leaderboards.reading.fetch", lambda: "a page, and not the table"
+    )
 
     result = runner.invoke(app, ["recommend"])
 
@@ -1215,7 +1221,9 @@ def test_recommend_keeps_the_last_table_it_read_when_the_next_will_not_parse(
     # that has been rewritten overwriting it would take the fall back away at
     # the moment it is what the command has left.
     _kept(here, models=[_listed("A-Model-35B", "35B")], fetched="2026-08-05T09:12:00")
-    monkeypatch.setattr("offgrid.cli.fetch", lambda: "a page, and not the table")
+    monkeypatch.setattr(
+        "offgrid.leaderboards.reading.fetch", lambda: "a page, and not the table"
+    )
     runner.invoke(app, ["recommend"])
 
     _unreachable(monkeypatch)

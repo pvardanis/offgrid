@@ -84,9 +84,10 @@ dialect.py         which API shapes can be paired
 profile.py         what is remembered between runs
 launch.py          an environment and an argument list, and running one
 hold.py            holding the model that answers, and letting it go
+say.py             how offgrid talks to whoever ran it
 runtimes/          one module per runtime
 agents/            one module per agent
-leaderboards/      one module per published list, plus the last one read
+leaderboards/      one module per published list, and which table to answer from
 cli.py             setup, doctor, run, recommend
 ```
 
