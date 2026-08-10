@@ -677,6 +677,16 @@ def test_recommend_prints_a_licence_it_cannot_read(here, monkeypatch):
     assert "A-Licenceless-7B" in result.stderr
 
 
+def test_every_rule_that_drops_a_row_has_words_for_it():
+    # A regression guard rather than a slice. A fourth rule added without
+    # wording raises a KeyError the first time a table trips it, which is a
+    # long way from where the rule was introduced.
+    from offgrid.recommendation import WHY_DROPPED
+    from offgrid.shortlist import Rule
+
+    assert set(WHY_DROPPED) == set(Rule)
+
+
 def test_recommend_accounts_for_every_row_it_did_not_show(here, monkeypatch):
     # A model someone expected to see being absent is explainable from the
     # output alone, which takes a count against each rule that drops one.

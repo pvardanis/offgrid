@@ -18,7 +18,12 @@ from offgrid.fit import (
 from offgrid.listing import Fit, Table
 from offgrid.machine import Machine, suggest_raising_the_gpu_limit
 from offgrid.quality import Quality
-from offgrid.shortlist import Dropped, get_listings_with_coding_score, shortlist
+from offgrid.shortlist import (
+    Dropped,
+    Rule,
+    get_listings_with_coding_score,
+    shortlist,
+)
 from offgrid.speed import tokens_per_second
 
 # One layout, so the heading and the models under it cannot drift apart.
@@ -40,6 +45,14 @@ HEADING = COLUMNS.format(
 # What a column says where offgrid has no figure for it, as against a figure
 # it has and prints.
 NOTHING = "—"
+
+# What each rule that drops a row is called where a person reads it. The rules
+# themselves are `shortlist.py`'s; only the wording is here.
+WHY_DROPPED = {
+    Rule.NO_PARAMETER_COUNT: "published no size",
+    Rule.NO_CODING_SCORE: "published no coding score",
+    Rule.TOO_LARGE_AT_EVERY_WIDTH: "too large for this machine at every width",
+}
 
 
 def summarize_findings(table: Table, machine: Machine) -> list[str]:
@@ -117,7 +130,7 @@ def _say_what_was_dropped(table: Table, dropped: list[Dropped]) -> list[str]:
     figures = max(len(str(one.count)) for one in dropped)
 
     return [f"  Left out of the {rows} row{'' if rows == 1 else 's'} on the table:"] + [
-        f"    {one.count:>{figures}}  {one.rule}" for one in dropped
+        f"    {one.count:>{figures}}  {WHY_DROPPED[one.rule]}" for one in dropped
     ]
 
 
