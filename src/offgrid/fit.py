@@ -19,6 +19,18 @@ CACHE_SHARE = 0.2
 QUANTIZATION_WIDTHS = (4, 8, 16)
 
 
+def weights_bytes(parameters: float, quantization_bits: int) -> float:
+    """Work out what a number of parameters weighs at a width.
+
+    :param parameters: How many there are.
+    :param quantization_bits: Bits per stored parameter, e.g. ``4``.
+
+    :return: What holding them costs. Weights only, with nothing set aside
+        for the cache the context grows into.
+    """
+    return parameters * quantization_bits / BITS_PER_BYTE
+
+
 def parameters_that_fit(machine: Machine, quantization_bits: int) -> float:
     """Work out how many parameters a machine holds at a given width.
 

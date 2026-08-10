@@ -1,6 +1,11 @@
 import pytest
 
-from offgrid.fit import CACHE_SHARE, parameters_that_fit, sizes_that_fit
+from offgrid.fit import (
+    CACHE_SHARE,
+    parameters_that_fit,
+    sizes_that_fit,
+    weights_bytes,
+)
 from offgrid.machine import Machine
 
 GIB = 1024**3
@@ -51,6 +56,16 @@ def test_a_small_mac_is_told_a_smaller_number():
     # 16GiB, wired limit untouched: a handful of billions at 4-bit.
     fits = parameters_that_fit(machine(memory_gib=16), 4)
     assert 10 * BILLION < fits < 25 * BILLION
+
+
+def test_weights_are_the_parameter_count_at_the_width_they_are_stored_at():
+    # 35B at 4-bit is 17.5GB, which is what both a listing's fit and the
+    # recommendation's arithmetic rest on.
+    assert weights_bytes(35 * BILLION, 4) == 17.5e9
+
+
+def test_a_wider_build_of_one_model_weighs_proportionally_more():
+    assert weights_bytes(7 * BILLION, 8) == 2 * weights_bytes(7 * BILLION, 4)
 
 
 def test_sizes_are_offered_for_each_common_width():

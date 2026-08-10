@@ -7,7 +7,7 @@ model has been downloaded. What this machine makes of one is the fit.
 
 from dataclasses import dataclass
 
-from offgrid.fit import BITS_PER_BYTE, sizes_that_fit
+from offgrid.fit import sizes_that_fit, weights_bytes
 from offgrid.machine import Machine
 
 
@@ -122,7 +122,7 @@ def widths_that_fit(listing: Listing, machine: Machine) -> list[Fit]:
         Fit(
             listing=listing,
             quantization_bits=bits,
-            weights_bytes=listing.parameters * bits / BITS_PER_BYTE,
+            weights_bytes=weights_bytes(listing.parameters, bits),
         )
         for bits, parameters in sizes_that_fit(machine)
         if listing.parameters <= parameters
