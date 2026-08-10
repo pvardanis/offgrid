@@ -14,3 +14,6 @@ wheels/
 .ruff_cache/
 .hypothesis/
 .coverage
+
+# Agent settings, and the worktrees agents are given to work in
+.claude/
