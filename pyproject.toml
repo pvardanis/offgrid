@@ -60,6 +60,12 @@ ignore-init-module = true
 # one counts its tests, and the run fails at half the coverage it measured.
 exclude = ["tests", ".claude"]
 
+[tool.ty.src]
+# The same worktrees, for the same reason: each is a checkout at whatever
+# commit its agent was working from, so a name this repo has since changed is
+# reported as an unresolved import against code nobody is editing.
+exclude = [".claude"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 # Live checks are opt-in: they need the runtime and the agent on this machine,
