@@ -9,10 +9,24 @@ Nothing here is said to anybody. `recommendation.py` is where that happens.
 """
 
 from dataclasses import dataclass
+from enum import Enum, auto
 
 from offgrid.listing import Fit, Listing, Table, get_listing_with_feasible_widths
 from offgrid.machine import Machine
 from offgrid.quality import Quality, get_quality_for_fit
+
+
+class Rule(Enum):
+    """Why a published row is not among what offgrid shows.
+
+    There are three and there is no fourth: a row survives all of them or it
+    is accounted for by one. What each is called where a person reads it is
+    `recommendation.py`'s to say.
+    """
+
+    NO_PARAMETER_COUNT = auto()
+    NO_CODING_SCORE = auto()
+    TOO_LARGE_AT_EVERY_WIDTH = auto()
 
 
 @dataclass(frozen=True)
@@ -21,12 +35,11 @@ class Dropped:
 
     :param count: How many it took. Never nought: a rule that took nothing
         explains no absence and is not carried.
-    :param rule: Why they went, as a person reads it, e.g. ``published no
-        size``.
+    :param rule: Which rule took them.
     """
 
     count: int
-    rule: str
+    rule: Rule
 
 
 @dataclass(frozen=True)
@@ -122,12 +135,12 @@ def _apply_the_rules(table: Table, machine: Machine) -> tuple[list[Fit], list[Dr
     ]
 
     taken = (
-        Dropped(table.unsized_rows, "published no size"),
+        Dropped(table.unsized_rows, Rule.NO_PARAMETER_COUNT),
         Dropped(
             len(table.listings) - len(listings_with_coding_score),
-            "published no coding score",
+            Rule.NO_CODING_SCORE,
         ),
-        Dropped(len(listings_not_fit), "too large for this machine at every width"),
+        Dropped(len(listings_not_fit), Rule.TOO_LARGE_AT_EVERY_WIDTH),
     )
 
     return [fit for _, found in listings_with_feasible_widths for fit in found], [
