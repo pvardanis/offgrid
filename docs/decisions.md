@@ -192,3 +192,30 @@ is what their robots.txt permits and names AI crawlers to permit; whether the
 table may be redistributed is stated nowhere, and a copy in a public repository
 is the one form of use that would need it to be. A committed table would also
 be stale on the day it was cloned.
+
+## A kept table answers when a current one cannot, and says how old it is
+
+`recommend` reaches the network every time it runs, and the machine it runs on
+may not have one. So the last payload that parsed is kept beside the profile
+with the day it was read, and answered from when nothing else can. There is no
+expiry and no refresh flag: running the command again is the refresh.
+
+Both failures fall back, both say why, and the reason is what differs. A site
+that did not answer is ordinary, and the sentence names the network so nobody
+goes looking for a fault on a machine whose other three commands need none. A
+page that answered and no longer parses names the URL and what was looked for,
+because that is the maintainer's to fix, and a silent fall back to a table
+months old is the feature dying without anyone noticing. Neither is quiet about
+age: how old what is shown is gets printed either way.
+
+Only a payload that parsed is kept. Keeping one that did not would take the
+fall back away at the moment it is all the command has left. A kept payload
+that no longer parses counts as none, because offgrid's own file failing to
+read back is not a second thing to explain to somebody already being told the
+site is unreachable.
+
+The falling back lives in `cli.py` rather than in the adapter that fetches. It
+is the shape of reading a profile that will not load — read, say what happened,
+carry on with what there is — and saying things is the command line's work.
+The adapter owns fetching and parsing; `leaderboards/cache.py` owns the file
+and names no list, so a second list reuses it as it is.

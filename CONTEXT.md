@@ -64,6 +64,11 @@ against each rule that dropped a row, and who stands behind each figure.
 offgrid says what is worth trying. Downloading it, and choosing between what
 is left, stay a person's.
 
+**the last table read** — the payload a published list answered with, kept
+beside the profile with the day it was read, and answered from when nothing
+answers now. A stale table beats none on a machine with no network, and how
+old it is is said every time it is used.
+
 ## Shape
 
 ```
@@ -81,7 +86,7 @@ launch.py          an environment and an argument list, and running one
 hold.py            holding the model that answers, and letting it go
 runtimes/          one module per runtime
 agents/            one module per agent
-leaderboards/      one module per published list
+leaderboards/      one module per published list, plus the last one read
 cli.py             setup, doctor, run, recommend
 ```
 
