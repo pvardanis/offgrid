@@ -13,7 +13,7 @@ from offgrid.agents.claude_code import dialect as agent_dialect
 from offgrid.agents.claude_code import plan, prepare
 from offgrid.dialect import require_compatible
 from offgrid.exceptions import OffgridError, ProfileError
-from offgrid.fit import sizes_that_fit
+from offgrid.fit import BYTES_PER_GB, sizes_that_fit
 from offgrid.hold import held, hold, let_go
 from offgrid.launch import start
 from offgrid.leaderboards.onyx import fetch, parse
@@ -61,7 +61,7 @@ def setup(
     _tell(
         f"  GPU limit  {limit / GIB:.0f}GB" if limit else "  GPU limit  at its default"
     )
-    _tell(f"  usable     {machine.usable_bytes / 1e9:.0f}GB")
+    _tell(f"  usable     {machine.usable_bytes / BYTES_PER_GB:.0f}GB")
     _tell("")
     _tell("  A model of about this size fits, leaving room for context:")
     _tell("")
