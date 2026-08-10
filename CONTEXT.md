@@ -54,9 +54,15 @@ it. Four terms: the room left after the weights, the published coding score,
 the speed on this machine, and the context window. A composite, not a
 measurement, and what the ranking sorts on.
 
-**recommendation** — the listings that fit this machine, ranked. offgrid says
-what is worth trying. Downloading it, and choosing between what is left,
-stay a person's.
+**shortlist** — what survives the three rules that drop a published row, in
+the order they are worth here. A row is dropped for stating no parameter
+count, for stating no coding score, or for being too large at every width,
+and each rule is counted rather than left silent.
+
+**recommendation** — the shortlist as a person reads it: the table, the count
+against each rule that dropped a row, and who stands behind each figure.
+offgrid says what is worth trying. Downloading it, and choosing between what
+is left, stay a person's.
 
 ## Shape
 
@@ -67,7 +73,8 @@ model.py           a model the runtime describes
 listing.py         a model a published list describes, and which ones fit
 speed.py           how fast this machine reads a model's weights
 quality.py         how good a fit is, as one number and one word
-recommendation.py  what fits, ranked, and what that reads as
+shortlist.py       what fits, ranked, and what each rule dropped
+recommendation.py  how that reads to whoever asked
 dialect.py         which API shapes can be paired
 profile.py         what is remembered between runs
 launch.py          an environment and an argument list, and running one
