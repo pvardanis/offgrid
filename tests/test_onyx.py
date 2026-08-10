@@ -39,6 +39,12 @@ def test_a_model_published_with_no_size_is_not_listed(flight: str):
     assert "DeepSeek-V4-Pro" in names
 
 
+def test_the_table_says_where_it_was_read(flight: str):
+    # Whoever prints it has to credit it, and the list itself is the only
+    # thing that knows which list it is.
+    assert parse(flight).source == "https://onyx.app/best-llm-for-coding"
+
+
 def test_how_many_rows_stated_no_size_is_carried_off_the_table(flight: str):
     # A row dropped here is dropped before anything downstream sees it, so
     # the count is the only thing left to account for it with.

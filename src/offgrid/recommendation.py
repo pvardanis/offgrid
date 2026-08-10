@@ -10,7 +10,6 @@ them.
 """
 
 from offgrid.fit import QUANTIZATION_WIDTHS, parameters_that_fit, weights_bytes
-from offgrid.leaderboards.onyx import URL as LEADERBOARD
 from offgrid.listing import Fit, Table, widths_that_fit
 from offgrid.machine import Machine, raising_the_gpu_limit
 from offgrid.quality import Quality, quality
@@ -52,7 +51,7 @@ def recommendation(table: Table, machine: Machine) -> list[str]:
     fits, dropped = _shortlist(table, machine)
     ranked = _ranked(fits, machine)
 
-    said = _preamble(len(ranked), table.dated)
+    said = _preamble(len(ranked), table)
 
     if not ranked:
         return (
@@ -72,7 +71,7 @@ def recommendation(table: Table, machine: Machine) -> list[str]:
     )
 
 
-def _preamble(rows: int, dated: str | None) -> list[str]:
+def _preamble(rows: int, table: Table) -> list[str]:
     """Say what is about to be shown, and where it was read.
 
     A single row is stated rather than ranked: a list filtered down to one
@@ -81,7 +80,7 @@ def _preamble(rows: int, dated: str | None) -> list[str]:
     nothing, since what follows is about the list rather than about models.
 
     :param rows: How many models at a width there are to show.
-    :param dated: The date the list gives itself.
+    :param table: The published list, as it was read.
 
     :return: The lines to say, ending in a blank one.
     """
@@ -91,7 +90,11 @@ def _preamble(rows: int, dated: str | None) -> list[str]:
     }
     opening = openings.get(rows, "  Models that fit this machine, from the list at")
 
-    return [opening, f"  {LEADERBOARD}, table dated {dated or 'undated'}.", ""]
+    return [
+        opening,
+        f"  {table.source}, table dated {table.dated or 'undated'}.",
+        "",
+    ]
 
 
 def _shortlist(
