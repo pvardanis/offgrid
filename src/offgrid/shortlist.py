@@ -56,7 +56,7 @@ def shortlist(table: Table, machine: Machine) -> Shortlist:
     return Shortlist(ranked=_rank(fits, machine), dropped=dropped)
 
 
-def listings_that_rank(table: Table) -> list[Listing]:
+def keep_listings_with_a_coding_score(table: Table) -> list[Listing]:
     """Keep the rows carrying the score the ranking sorts on.
 
     A row the table scores at nothing is dropped whatever its size, so it is
@@ -96,7 +96,7 @@ def _apply_the_rules(table: Table, machine: Machine) -> tuple[list[Fit], list[Dr
     :return: Every model at every width that survived, ready to be ranked,
         and how many rows each rule took.
     """
-    ranking = listings_that_rank(table)
+    ranking = keep_listings_with_a_coding_score(table)
     widths = [(one, widths_that_fit(one, machine)) for one in ranking]
     too_large = [one for one, found in widths if not found]
 

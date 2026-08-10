@@ -4,7 +4,7 @@ from offgrid.fit import (
     CACHE_SHARE,
     parameters_that_fit,
     sizes_that_fit,
-    weights_bytes,
+    weigh,
 )
 from offgrid.machine import Machine
 
@@ -61,11 +61,11 @@ def test_a_small_mac_is_told_a_smaller_number():
 def test_weights_are_the_parameter_count_at_the_width_they_are_stored_at():
     # 35B at 4-bit is 17.5GB, which is what both a listing's fit and the
     # recommendation's arithmetic rest on.
-    assert weights_bytes(35 * BILLION, 4) == 17.5e9
+    assert weigh(35 * BILLION, 4) == 17.5e9
 
 
 def test_a_wider_build_of_one_model_weighs_proportionally_more():
-    assert weights_bytes(7 * BILLION, 8) == 2 * weights_bytes(7 * BILLION, 4)
+    assert weigh(7 * BILLION, 8) == 2 * weigh(7 * BILLION, 4)
 
 
 def test_sizes_are_offered_for_each_common_width():

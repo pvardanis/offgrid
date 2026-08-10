@@ -13,12 +13,12 @@ from offgrid.fit import (
     BYTES_PER_GB,
     QUANTIZATION_WIDTHS,
     parameters_that_fit,
-    weights_bytes,
+    weigh,
 )
 from offgrid.listing import Fit, Table
-from offgrid.machine import Machine, raising_the_gpu_limit
+from offgrid.machine import Machine, suggest_raising_the_gpu_limit
 from offgrid.quality import Quality
-from offgrid.shortlist import Dropped, listings_that_rank, shortlist
+from offgrid.shortlist import Dropped, keep_listings_with_a_coding_score, shortlist
 from offgrid.speed import tokens_per_second
 
 # One layout, so the heading and the models under it cannot drift apart.
@@ -60,7 +60,7 @@ def describe(table: Table, machine: Machine) -> list[str]:
         return (
             said
             + _explain_nothing_fits(table, machine)
-            + _set_off(raising_the_gpu_limit(machine))
+            + _set_off(suggest_raising_the_gpu_limit(machine))
             + _set_off(dropped)
         )
 
@@ -162,7 +162,7 @@ def _explain_nothing_fits(table: Table, machine: Machine) -> list[str]:
     # not where the list starts — naming it sends someone after room that
     # would still show them nothing. With none of them scored there is no size
     # to name at all, and room was never what was missing.
-    shown = listings_that_rank(table)
+    shown = keep_listings_with_a_coding_score(table)
     if not shown:
         return _explain_nothing_ranks()
 
@@ -174,8 +174,9 @@ def _explain_nothing_fits(table: Table, machine: Machine) -> list[str]:
     return [
         "  Nothing on this list fits this machine.",
         "",
-        f"    the smallest model on it needs {_size_of(smallest, bits)} at {bits}-bit",
-        f"    this machine has room for {_size_of(holds, bits)}",
+        f"    the smallest model on it needs {_write_size(smallest, bits)}"
+        f" at {bits}-bit",
+        f"    this machine has room for {_write_size(holds, bits)}",
         "",
         "  That is where this list starts, not where this machine stops.",
         "  Models smaller than any it publishes run here.",
@@ -219,7 +220,7 @@ def _lay_out(fit: Fit, worth: Quality, machine: Machine) -> str:
         quality=f"{worth.label} {worth.score}",
         score=f"{published:.1f}",
         speed=f"~{speed:.0f}" if speed else NOTHING,
-        weights=_as_gigabytes(fit.weights_bytes),
+        weights=_write_gigabytes(fit.weights_bytes),
         quant=f"{fit.quantization_bits}-bit",
         context=str(fit.listing.context_window or "unstated"),
         # Printed, never read: it is absent on one open-weight row and a
@@ -228,7 +229,7 @@ def _lay_out(fit: Fit, worth: Quality, machine: Machine) -> str:
     )
 
 
-def _size_of(parameters: float, bits: int) -> str:
+def _write_size(parameters: float, bits: int) -> str:
     """Say how much memory a number of parameters takes at a width.
 
     :param parameters: How many there are.
@@ -236,10 +237,10 @@ def _size_of(parameters: float, bits: int) -> str:
 
     :return: The size, as a person reads one.
     """
-    return _as_gigabytes(weights_bytes(parameters, bits))
+    return _write_gigabytes(weigh(parameters, bits))
 
 
-def _as_gigabytes(byte_count: float) -> str:
+def _write_gigabytes(byte_count: float) -> str:
     """Say a number of bytes the way the columns and the sentences both do.
 
     :param byte_count: How many there are.

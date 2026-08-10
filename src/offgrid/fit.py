@@ -23,7 +23,7 @@ CACHE_SHARE = 0.2
 QUANTIZATION_WIDTHS = (4, 8, 16)
 
 
-def weights_bytes(parameters: float, quantization_bits: int) -> float:
+def weigh(parameters: float, quantization_bits: int) -> float:
     """Work out what a number of parameters weighs at a width.
 
     :param parameters: How many there are.
