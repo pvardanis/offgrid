@@ -61,20 +61,21 @@ stay a person's.
 ## Shape
 
 ```
-machine.py     what this Mac is
-fit.py         how much room it has
-model.py       a model the runtime describes
-listing.py     a model a published list describes, and which ones fit
-speed.py       how fast this machine reads a model's weights
-quality.py     how good a fit is, as one number and one word
-dialect.py     which API shapes can be paired
-profile.py     what is remembered between runs
-launch.py      an environment and an argument list, and running one
-hold.py        holding the model that answers, and letting it go
-runtimes/      one module per runtime
-agents/        one module per agent
-leaderboards/  one module per published list
-cli.py         setup, doctor, run, recommend
+machine.py         what this Mac is, and how to give its GPU more room
+fit.py             how much room it has
+model.py           a model the runtime describes
+listing.py         a model a published list describes, and which ones fit
+speed.py           how fast this machine reads a model's weights
+quality.py         how good a fit is, as one number and one word
+recommendation.py  what fits, ranked, and what that reads as
+dialect.py         which API shapes can be paired
+profile.py         what is remembered between runs
+launch.py          an environment and an argument list, and running one
+hold.py            holding the model that answers, and letting it go
+runtimes/          one module per runtime
+agents/            one module per agent
+leaderboards/      one module per published list
+cli.py             setup, doctor, run, recommend
 ```
 
 Dependencies point inwards: adapters know about the domain, the domain knows
