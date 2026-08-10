@@ -72,16 +72,32 @@ def get_listings_with_coding_score(table: Table) -> list[Listing]:
 def _rank_fits(fits: list[Fit], machine: Machine) -> list[tuple[Quality, Fit]]:
     """Put the best of what fits first, judging each one once.
 
+    What a fit costs in memory and what it decodes at are already two of the
+    four terms the composite is built from, so a dead heat means those were
+    equal too. It is still reachable, because the composite is rounded to a
+    whole number — so the order is settled here rather than left to the order
+    the table happened to publish its rows in.
+
     :param fits: Every model at every width this machine holds it at.
     :param machine: The host they would run on.
 
-    :return: Each fit with what it was judged to be worth, best first, and
-        the leaner width first where two are judged the same — the cheaper
-        build is the one to read as the default.
+    :return: Each fit with what it was judged to be worth, best first. Where
+        two are judged the same, the leaner width comes first, then the one
+        costing less memory to hold, then the name — the cheaper build is the
+        one to read as the default, and the name makes the order the same on
+        two machines reading one table.
     """
     judged = [(get_quality(fit, machine), fit) for fit in fits]
 
-    return sorted(judged, key=lambda pair: (-pair[0].score, pair[1].quantization_bits))
+    return sorted(
+        judged,
+        key=lambda pair: (
+            -pair[0].score,
+            pair[1].quantization_bits,
+            pair[1].weights_bytes,
+            pair[1].listing.name,
+        ),
+    )
 
 
 def _apply_the_rules(table: Table, machine: Machine) -> tuple[list[Fit], list[Dropped]]:
