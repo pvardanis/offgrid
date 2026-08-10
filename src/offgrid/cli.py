@@ -17,7 +17,7 @@ from offgrid.fit import BYTES_PER_GB, sizes_that_fit
 from offgrid.hold import held, hold, let_go
 from offgrid.launch import start
 from offgrid.leaderboards.onyx import fetch, parse
-from offgrid.machine import detect, raising_the_gpu_limit
+from offgrid.machine import detect, suggest_raising_the_gpu_limit
 from offgrid.profile import DEFAULT_PATH, Profile, save
 from offgrid.profile import load as load_profile
 from offgrid.recommendation import describe
@@ -70,7 +70,7 @@ def setup(
     _tell("")
     _tell(f"  Load one in your runtime, then `offgrid run`. Profile: {DEFAULT_PATH}")
 
-    advice = raising_the_gpu_limit(machine)
+    advice = suggest_raising_the_gpu_limit(machine)
     if advice:
         _tell("")
         for line in advice:

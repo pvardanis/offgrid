@@ -52,7 +52,7 @@ class Machine:
         return self.memory_bytes * DEFAULT_GPU_SHARE
 
 
-def raising_the_gpu_limit(machine: Machine) -> list[str]:
+def suggest_raising_the_gpu_limit(machine: Machine) -> list[str]:
     """Say how to give the GPU more of the memory, where there is more to give.
 
     This is the one thing offgrid can suggest that changes what fits, so both
