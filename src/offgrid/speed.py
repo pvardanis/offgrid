@@ -8,6 +8,7 @@ The constants here are the weakest numbers offgrid has. Issue #21 measures
 this machine and replaces them.
 """
 
+from offgrid.fit import BYTES_PER_GB
 from offgrid.listing import Fit
 from offgrid.machine import Machine
 
@@ -37,7 +38,6 @@ BANDWIDTH_GB_PER_SECOND = {
     "Apple M5 Max": 614,
 }
 
-BYTES_PER_GB = 1e9
 
 # Peak bandwidth is what the chip can read; efficiency is the share of it a
 # real decode reaches. There are two figures because the two kinds of model

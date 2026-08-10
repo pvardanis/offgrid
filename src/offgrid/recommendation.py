@@ -9,7 +9,12 @@ Nothing here says anything; it returns the lines and the command line says
 them.
 """
 
-from offgrid.fit import QUANTIZATION_WIDTHS, parameters_that_fit, weights_bytes
+from offgrid.fit import (
+    BYTES_PER_GB,
+    QUANTIZATION_WIDTHS,
+    parameters_that_fit,
+    weights_bytes,
+)
 from offgrid.listing import Fit, Table
 from offgrid.machine import Machine, raising_the_gpu_limit
 from offgrid.quality import Quality
@@ -35,10 +40,6 @@ HEADING = COLUMNS.format(
 # What a column says where offgrid has no figure for it, as against a figure
 # it has and prints.
 NOTHING = "—"
-
-# Sizes are said in gigabytes of the kind a disk is sold in, as the rest of
-# offgrid says them.
-BILLION = 1e9
 
 
 def recommendation(table: Table, machine: Machine) -> list[str]:
@@ -224,7 +225,7 @@ def _gigabytes(byte_count: float) -> str:
 
     :return: The size, as a person reads one.
     """
-    return f"{byte_count / BILLION:.1f}GB"
+    return f"{byte_count / BYTES_PER_GB:.1f}GB"
 
 
 def _under(lines: list[str]) -> list[str]:

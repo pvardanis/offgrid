@@ -9,6 +9,10 @@ from offgrid.machine import Machine
 
 BITS_PER_BYTE = 8
 
+# Sizes are said in the gigabytes a disk is sold in, not the ones memory is
+# counted in, because that is what a model card publishes.
+BYTES_PER_GB = 1e9
+
 # Weights are not the whole of it: the cache grows with the context, and a
 # machine filled to the brim with weights stalls on the first long prompt.
 # A fifth is roughly what a long context costs on a hybrid-attention model.
