@@ -20,7 +20,7 @@ from offgrid.leaderboards.onyx import fetch, parse
 from offgrid.machine import detect, raising_the_gpu_limit
 from offgrid.profile import DEFAULT_PATH, Profile, save
 from offgrid.profile import load as load_profile
-from offgrid.recommendation import recommendation
+from offgrid.recommendation import describe
 from offgrid.runtimes.lmstudio import dialect as runtime_dialect
 
 CONFIG_DIR = Path.home() / ".offgrid" / "claude-code"
@@ -99,7 +99,7 @@ def recommend() -> None:
     with _reported():
         table = parse(fetch())
 
-    for line in recommendation(table, machine):
+    for line in describe(table, machine):
         _tell(line)
 
 
