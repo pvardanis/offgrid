@@ -214,8 +214,8 @@ that no longer parses counts as none, because offgrid's own file failing to
 read back is not a second thing to explain to somebody already being told the
 site is unreachable.
 
-The falling back lives in `cli.py` rather than in the adapter that fetches. It
-is the shape of reading a profile that will not load — read, say what happened,
-carry on with what there is — and saying things is the command line's work.
-The adapter owns fetching and parsing; `leaderboards/cache.py` owns the file
-and names no list, so a second list reuses it as it is.
+Which of the two tables is answered from is `leaderboards/reading.py`'s, and it
+returns the lines saying so rather than printing them, as `recommendation.py`
+does. The adapter beneath it owns fetching and parsing one list and knows
+nothing of a fall back; `leaderboards/cache.py` owns the file and names no
+list, so a second list reuses it as it is.

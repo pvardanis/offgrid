@@ -4,6 +4,7 @@ An environment and an argument list. An agent adapter decides what goes in
 one; this runs it, and stays alive until it is done.
 """
 
+import errno
 import os
 import signal
 import subprocess
@@ -57,3 +58,23 @@ def start(launch: Launch) -> int:
             signal.signal(number, handler)
 
     return code if code >= 0 else 128 - code
+
+
+def would_not_start(command: str, error: OSError) -> str:
+    """Say what stopped the agent starting, and what to do about that.
+
+    A missing command and a command without the bit that makes it runnable
+    fail the same way and are fixed differently, so the advice follows the
+    reason rather than the operation.
+
+    :param command: What was being started.
+    :param error: Why it was not.
+
+    :return: What to say.
+    """
+    advice = {
+        errno.ENOENT: "Install it, or put it on PATH.",
+        errno.EACCES: "It is there but not executable.",
+    }.get(error.errno, "")
+
+    return f"  Could not start {command}: {error}. {advice}".rstrip()
