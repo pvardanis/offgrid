@@ -60,10 +60,10 @@ def get_reading(file_path: Path) -> Reading:
     except LeaderboardUnreadableError as error:
         return _get_cached_reading(error, file_path)
 
-    return Reading(table=table, caveats=_keep(payload, file_path))
+    return Reading(table=table, caveats=_cache_payload(payload, file_path))
 
 
-def _keep(payload: str, file_path: Path) -> list[str]:
+def _cache_payload(payload: str, file_path: Path) -> list[str]:
     """Keep the payload that parsed, and say so where it cannot be kept.
 
     Nowhere to write is not a reason to throw away a table this run already
@@ -108,41 +108,43 @@ def _get_cached_reading(
         back on. Nothing was read and nothing was kept, so what is left to
         say is where numbers measured on this machine already are.
     """
-    kept = cache.load(file_path)
-    table = _reparsed(kept)
+    cached_payload = cache.load(file_path)
+    table = _reparsed(cached_payload)
 
     # Nothing kept and nothing readable are the same answer here. Both halves
-    # are stated because the date below is read off `kept`.
-    if kept is None or table is None:
+    # are stated because the date below is read off the record itself.
+    if cached_payload is None or table is None:
         raise LeaderboardUnavailableError(
             f"{reason} No table was kept by an earlier run either, so there "
             "is none to fall back on. docs/models.md holds what has been "
             "measured on this machine by hand."
         ) from reason
 
+    read_on = cached_payload.dated
+
     return Reading(
         table=table,
         caveats=[
             f"  {reason}",
-            f"  This is the table offgrid read on {kept.dated}, not a current one.",
+            f"  This is the table offgrid read on {read_on}, not a current one.",
             "",
         ],
     )
 
 
-def _reparsed(kept: cache.Cached | None) -> Table | None:
+def _reparsed(cached_payload: cache.Cached | None) -> Table | None:
     """Read a kept payload the way the one it was kept from was read.
 
-    :param kept: What was kept, if anything was.
+    :param cached_payload: What was kept, if anything was.
 
     :return: The table it holds, or ``None`` where it holds none. A payload
         kept before the parser knew what it knows now is no table, and this
         run already has a failure to report.
     """
-    if kept is None:
+    if cached_payload is None:
         return None
 
     try:
-        return parse(kept.payload)
+        return parse(cached_payload.payload)
     except LeaderboardUnreadableError:
         return None
