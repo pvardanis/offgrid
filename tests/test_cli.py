@@ -794,6 +794,27 @@ def test_recommend_names_the_smallest_model_it_could_have_shown(here, monkeypatc
     assert "smallest model on it needs 30.0GB at 4-bit" in result.stderr
 
 
+def test_recommend_reads_a_row_scored_zero_as_scored_wherever_it_is_read(
+    here, monkeypatch
+):
+    # Nought is a score the table published, so the row is ranked and would be
+    # shown if it fit. The size named as the list's smallest has to agree, or
+    # the two rules disagree about one row and the figure is the wrong one.
+    _a_16gb_mac(monkeypatch)
+    _leaderboard(
+        monkeypatch,
+        models=[
+            _listed("A-Nought-Scored-27B", "27B", score=0.0),
+            _listed("A-Scored-60B", "60B"),
+        ],
+    )
+
+    result = runner.invoke(app, ["recommend"])
+
+    assert "smallest model on it needs 13.5GB at 4-bit" in result.stderr
+    assert "published no coding score" not in result.stderr
+
+
 def test_recommend_never_says_a_machine_can_run_no_model_at_all(here, monkeypatch):
     # `docs/models.md` measures a 1.2B model at 191 tok/s on this hardware.
     # A person reading "no models fit your hardware" would conclude they can

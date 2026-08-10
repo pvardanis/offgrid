@@ -36,6 +36,10 @@ HEADING = COLUMNS.format(
 # it has and prints.
 NOTHING = "—"
 
+# Sizes are said in gigabytes of the kind a disk is sold in, as the rest of
+# offgrid says them.
+BILLION = 1e9
+
 
 def recommendation(table: Table, machine: Machine) -> list[str]:
     """Say what this machine can hold off a published list, best first.
@@ -187,8 +191,11 @@ def _nothing_fits(table: Table, machine: Machine) -> list[str]:
 
     # A row the table scores at nothing is dropped at any size, so its size is
     # not where the list starts — naming it sends someone after room that
-    # would still show them nothing.
-    showable = [one.parameters for one in table.listings if one.coding_score]
+    # would still show them nothing. Scored nought is scored, as it is to the
+    # rule that keeps a row, or the two disagree about the same listing.
+    showable = [
+        one.parameters for one in table.listings if one.coding_score is not None
+    ]
     smallest = min(showable or [one.parameters for one in table.listings])
 
     return [
@@ -237,7 +244,7 @@ def _row(fit: Fit, judged: Quality, machine: Machine) -> str:
         quality=f"{judged.label} {judged.score}",
         score=f"{published:.1f}",
         speed=f"~{speed:.0f}" if speed else NOTHING,
-        weights=f"{fit.weights_bytes / 1e9:.1f}GB",
+        weights=_gigabytes(fit.weights_bytes),
         quant=f"{fit.quantization_bits}-bit",
         context=str(fit.listing.context_window or "unstated"),
         # Printed, never read: it is absent on one open-weight row and a
@@ -254,7 +261,17 @@ def _memory_for(parameters: float, bits: int) -> str:
 
     :return: The size, as a person reads one.
     """
-    return f"{weights_bytes(parameters, bits) / 1e9:.1f}GB"
+    return _gigabytes(weights_bytes(parameters, bits))
+
+
+def _gigabytes(byte_count: float) -> str:
+    """Say a number of bytes the way the columns and the sentences both do.
+
+    :param byte_count: How many there are.
+
+    :return: The size, as a person reads one.
+    """
+    return f"{byte_count / BILLION:.1f}GB"
 
 
 def _under(lines: list[str]) -> list[str]:
