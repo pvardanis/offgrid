@@ -33,6 +33,23 @@ class LeaderboardUnavailableError(OffgridError):
     """
 
 
+class LeaderboardUnreachableError(LeaderboardUnavailableError):
+    """Nothing answered for the published list.
+
+    Ordinary: a network is the one thing offgrid needs that is not on this
+    machine. A run that has read the list before can go on without it.
+    """
+
+
+class LeaderboardUnreadableError(LeaderboardUnavailableError):
+    """The published list answered, and what came back held no table.
+
+    Which is the page being rewritten, and is worth saying out loud even
+    where a table read earlier saves the answer: a fetch that quietly stops
+    parsing is the feature dying without anyone noticing.
+    """
+
+
 class DialectMismatchError(OffgridError):
     """The agent speaks a different API dialect than the runtime serves.
 

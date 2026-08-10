@@ -10,7 +10,7 @@ import json
 
 import httpx
 
-from offgrid.exceptions import LeaderboardUnavailableError
+from offgrid.exceptions import LeaderboardUnreachableError, LeaderboardUnreadableError
 from offgrid.listing import Listing, Table
 
 URL = "https://onyx.app/best-llm-for-coding"
@@ -40,7 +40,7 @@ def parse(flight: str) -> Table:
 
     :return: The table, holding every model published with a size.
 
-    :raise LeaderboardUnavailableError: When the table is not where it was,
+    :raise LeaderboardUnreadableError: When the table is not where it was,
         or is not shaped like a table. A silent empty list would read as
         "nothing fits this machine", which is a different claim entirely.
     """
@@ -76,7 +76,7 @@ def fetch() -> str:
 
     :return: The flight text, undecoded.
 
-    :raise LeaderboardUnavailableError: When nothing answers, when the answer
+    :raise LeaderboardUnreachableError: When nothing answers, when the answer
         takes too long, or when it is not a page. The machine is measured
         without a network, and a failure here says nothing about it.
     """
@@ -85,18 +85,18 @@ def fetch() -> str:
             URL, headers=FLIGHT, timeout=TIMEOUT_SECONDS, follow_redirects=True
         )
     except httpx.TimeoutException as error:
-        raise LeaderboardUnavailableError(
+        raise LeaderboardUnreachableError(
             f"{URL} did not answer within {TIMEOUT_SECONDS}s. "
             "Try again, or read docs/models.md for what was measured here."
         ) from error
     except httpx.RequestError as error:
-        raise LeaderboardUnavailableError(
+        raise LeaderboardUnreachableError(
             f"Could not reach {URL}: {error}. This is the one command that "
             "needs a network; the rest of offgrid does not."
         ) from error
 
     if response.is_error:
-        raise LeaderboardUnavailableError(
+        raise LeaderboardUnreachableError(
             f"{URL} answered {response.status_code} rather than its table. "
             "Try again later, or read docs/models.md."
         )
@@ -104,7 +104,7 @@ def fetch() -> str:
     return response.text
 
 
-def _unreadable(complaint: str) -> LeaderboardUnavailableError:
+def _unreadable(complaint: str) -> LeaderboardUnreadableError:
     """Say the table could not be read, and where to look instead.
 
     :param complaint: What was wrong with it.
@@ -112,7 +112,7 @@ def _unreadable(complaint: str) -> LeaderboardUnavailableError:
     :return: The error to raise. Every one of these is onyx redesigning a
         page they document to nobody, so each says to go and read it.
     """
-    return LeaderboardUnavailableError(
+    return LeaderboardUnreadableError(
         f"The table at {URL} {complaint}. Read {URL} by hand."
     )
 
