@@ -887,6 +887,38 @@ def test_recommend_ranks_the_best_first_and_not_the_order_it_read_them(
     ]
 
 
+def test_recommend_settles_a_dead_heat_by_its_own_facts_not_the_tables_order(
+    here, monkeypatch
+):
+    # Two models of a size, a score and a width judged exactly alike. The
+    # composite is a rounded whole number, so a dead heat is reachable, and
+    # leaving it to a stable sort hands the order to whoever published the
+    # table. The leaner build, then the name, decide it here.
+    _leaderboard(
+        monkeypatch,
+        models=[_listed("A-Zzz-7B", "7B"), _listed("A-Aaa-7B", "7B")],
+    )
+
+    result = runner.invoke(app, ["recommend"])
+    leanest = [row for row in _printed_order(result.stderr) if row[1] == "4-bit"]
+
+    assert leanest == [("A-Aaa-7B", "4-bit"), ("A-Zzz-7B", "4-bit")]
+
+
+def test_recommend_puts_the_cheaper_of_two_equal_fits_first(here, monkeypatch):
+    # Where the composite cannot separate them, the one costing less memory
+    # to hold is the one to read as the default.
+    _leaderboard(
+        monkeypatch,
+        models=[_listed("A-Larger-8B", "8B", score=71.5), _listed("A-Leaner-7B", "7B")],
+    )
+
+    result = runner.invoke(app, ["recommend"])
+    shown = [row for row in _printed_order(result.stderr) if row[1] == "4-bit"]
+
+    assert shown[0] == ("A-Leaner-7B", "4-bit")
+
+
 def test_recommend_reaches_the_shortlist_docs_models_arrived_at_by_hand(
     here, monkeypatch
 ):
