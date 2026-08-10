@@ -98,7 +98,7 @@ def recommend() -> None:
     with _reported():
         reading = read_table(_cache())
 
-    for line in reading.complaints:
+    for line in reading.said:
         tell(line)
 
     for line in summarize_findings(reading.table, machine):

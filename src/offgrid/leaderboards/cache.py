@@ -48,6 +48,10 @@ def remember(payload: str, path: Path) -> None:
 
     :param payload: What the source answered.
     :param path: Where to keep it.
+
+    :raise OSError: When there is nowhere to write. Whether that is worth
+        stopping for is the caller's: a table already in hand is worth
+        showing even when nothing can be kept for the next run.
     """
     path.parent.mkdir(parents=True, exist_ok=True)
 
