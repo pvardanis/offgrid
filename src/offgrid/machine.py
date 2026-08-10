@@ -15,6 +15,10 @@ DEFAULT_GPU_SHARE = 0.75
 
 BYTES_PER_MB = 1024 * 1024
 
+# What to suggest the GPU be allowed of the machine's memory, leaving the rest
+# for everything that is not the model.
+WIRED_SHARE = 0.875
+
 # Absolute, so a trimmed PATH under launchd or cron is a clear failure rather
 # than a missing command.
 SYSCTL = "/usr/sbin/sysctl"
@@ -46,6 +50,32 @@ class Machine:
             return float(min(self.wired_limit_bytes, self.memory_bytes))
 
         return self.memory_bytes * DEFAULT_GPU_SHARE
+
+
+def raising_the_gpu_limit(machine: Machine) -> list[str]:
+    """Say how to give the GPU more of the memory, where there is more to give.
+
+    This is the one thing offgrid can suggest that changes what fits, so both
+    `setup` and the recommendation say it, and say it the same way.
+
+    Having a limit is not having enough of one: it takes whatever value was
+    typed at it, and one left low is where this is worth most. So what decides
+    is whether the suggestion would raise anything, not whether a limit is set.
+
+    :param machine: The host, as it is set up now.
+
+    :return: The lines to say, or none where the limit already reaches them.
+    """
+    wanted = int(machine.memory_bytes * WIRED_SHARE / BYTES_PER_MB)
+
+    already = machine.wired_limit_bytes
+    if already is not None and wanted * BYTES_PER_MB <= already:
+        return []
+
+    return [
+        "  More fits with the GPU limit raised, which a reboot undoes:",
+        f"    sudo sysctl iogpu.wired_limit_mb={wanted}",
+    ]
 
 
 def require_apple_silicon(system: str, architecture: str) -> None:
