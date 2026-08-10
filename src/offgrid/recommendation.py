@@ -156,15 +156,17 @@ def _nothing_fits(table: Table, machine: Machine) -> list[str]:
 
     :return: The lines to say.
     """
+    # A row the table scores at nothing is dropped at any size, so its size is
+    # not where the list starts — naming it sends someone after room that
+    # would still show them nothing. With none of them scored there is no size
+    # to name at all, and room was never what was missing.
+    shown = showable(table)
+    if not shown:
+        return _nothing_to_rank()
+
     # The leanest width, where the smallest of everything is.
     bits = min(QUANTIZATION_WIDTHS)
     holds = parameters_that_fit(machine, bits)
-
-    # A row the table scores at nothing is dropped at any size, so its size is
-    # not where the list starts — naming it sends someone after room that
-    # would still show them nothing. The same rule decides both, so the two
-    # cannot disagree about one listing.
-    shown = showable(table) or table.listings
     smallest = min(one.parameters for one in shown)
 
     return [
@@ -176,6 +178,24 @@ def _nothing_fits(table: Table, machine: Machine) -> list[str]:
         "",
         "  That is where this list starts, not where this machine stops.",
         "  Models smaller than any it publishes run here.",
+    ]
+
+
+def _nothing_to_rank() -> list[str]:
+    """Say the list gave nothing to order, which is not about room.
+
+    Every row unscored is what the table's benchmark key migrating looks
+    like, and `leaderboards/onyx.py` is written expecting it. Saying nothing
+    fits would blame the memory of a machine that may hold all of them.
+
+    :return: The lines to say.
+    """
+    return [
+        "  Nothing on this list can be ranked for this machine.",
+        "",
+        "  Not one row it publishes carries the coding score the ranking",
+        "  sorts on, so there is nothing to rank. That is this list, and it",
+        "  says nothing about the room here.",
     ]
 
 

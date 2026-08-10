@@ -794,6 +794,27 @@ def test_recommend_names_the_smallest_model_it_could_have_shown(here, monkeypatc
     assert "smallest model on it needs 30.0GB at 4-bit" in result.stderr
 
 
+def test_recommend_blames_the_scores_when_no_row_can_be_ranked(here, monkeypatch):
+    # Every row unscored is what the benchmark key migrating looks like, and
+    # `onyx.py` expects it. Those rows were unrankable, not too large: this
+    # machine holds the smallest of them many times over, so quoting a size
+    # would contradict the count printed two lines under it.
+    _leaderboard(
+        monkeypatch,
+        models=[
+            _listed("An-Unscored-27B", "27B", score=None),
+            _listed("An-Unscored-60B", "60B", score=None),
+        ],
+    )
+
+    result = runner.invoke(app, ["recommend"])
+
+    assert result.exit_code == 0
+    assert "nothing to rank" in result.stderr
+    assert "needs 13.5GB" not in result.stderr
+    assert "published no coding score" in result.stderr
+
+
 def test_recommend_reads_a_row_scored_zero_as_scored_wherever_it_is_read(
     here, monkeypatch
 ):
