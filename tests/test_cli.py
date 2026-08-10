@@ -1,3 +1,4 @@
+import json
 import logging
 import pathlib
 
@@ -5,6 +6,7 @@ import pytest
 from typer.testing import CliRunner
 
 from offgrid.cli import app
+from offgrid.exceptions import LeaderboardUnreachableError
 from offgrid.machine import Machine
 
 GIB = 1024**3
@@ -579,20 +581,36 @@ def _listed(
     }
 
 
-def _leaderboard(monkeypatch, *, models: list[dict], dated: str = "2026-07-20") -> None:
-    """Answer for the published table, without reaching for it.
+def _flight(models: list[dict], dated: str) -> str:
+    """Write the table the way the page's own React payload carries it.
 
-    The payload is the page's own React flight text, so what is served here
-    is the shape that carries it: compact JSON with the table under the prop
-    name the parser locates.
+    Compact JSON with the table under the prop name the parser locates.
     """
-    import json
-
-    flight = '0:["$","div",null,' + json.dumps(
+    return '0:["$","div",null,' + json.dumps(
         {"config": {"lastUpdated": dated, "models": models}}, separators=(",", ":")
     )
 
-    monkeypatch.setattr("offgrid.cli.fetch", lambda: flight)
+
+def _leaderboard(monkeypatch, *, models: list[dict], dated: str = "2026-07-20") -> None:
+    """Answer for the published table, without reaching for it."""
+    monkeypatch.setattr("offgrid.cli.fetch", lambda: _flight(models, dated))
+
+
+def _kept(
+    here: pathlib.Path,
+    *,
+    models: list[dict],
+    dated: str = "2026-07-20",
+    fetched: str = "2026-08-05T09:12:00",
+) -> None:
+    """Put a table where a run that reaches none will find one.
+
+    Written as a file rather than fetched, so that when it was read is a
+    fixed date rather than whenever the suite happens to run.
+    """
+    (here / "leaderboard.json").write_text(
+        json.dumps({"payload": _flight(models, dated), "fetched": fetched})
+    )
 
 
 def test_recommend_lists_a_model_once_for_each_width_it_fits_at(here, monkeypatch):
@@ -1085,7 +1103,141 @@ def test_recommend_says_everything_it_says_to_stderr(here, monkeypatch):
     assert "A-Model-35B" in result.stderr
 
 
-def test_recommend_writes_nothing(here, monkeypatch):
+def _unreachable(monkeypatch) -> None:
+    """Answer for a network that is not there."""
+
+    def refuse():
+        raise LeaderboardUnreachableError("Could not reach the table: no route")
+
+    monkeypatch.setattr("offgrid.cli.fetch", refuse)
+
+
+def test_recommend_answers_from_the_last_table_it_read_when_nothing_answers(
+    here, monkeypatch
+):
+    # The table is somebody else's site and a plane is where a person most
+    # needs to know what fits. A stale answer beats none.
+    _leaderboard(monkeypatch, models=[_listed("A-Model-35B", "35B")])
+    runner.invoke(app, ["recommend"])
+
+    _unreachable(monkeypatch)
+    result = runner.invoke(app, ["recommend"])
+
+    assert result.exit_code == 0
+    assert "A-Model-35B" in result.stderr
+
+
+def test_recommend_says_how_old_the_table_it_fell_back_to_is(here, monkeypatch):
+    # A stale table read as a current one is worse than no table: what it
+    # names may have been superseded twice over. And a person deciding
+    # whether to go and look for themselves has only the date to decide on.
+    _kept(here, models=[_listed("A-Model-35B", "35B")], fetched="2026-08-05T09:12:00")
+    _unreachable(monkeypatch)
+
+    result = runner.invoke(app, ["recommend"])
+
+    assert result.exit_code == 0
+    assert "read on 2026-08-05" in result.stderr
+    assert "A-Model-35B" in result.stderr
+
+
+def test_recommend_blames_the_network_for_a_table_it_could_not_refresh(
+    here, monkeypatch
+):
+    # The other three commands need no network, so a person seeing a stale
+    # answer should not go looking for a fault on this machine.
+    _kept(here, models=[_listed("A-Model-35B", "35B")])
+    _unreachable(monkeypatch)
+
+    result = runner.invoke(app, ["recommend"])
+
+    assert "Could not reach the table: no route" in result.stderr
+
+
+def test_recommend_shows_the_last_table_when_the_page_stops_parsing(here, monkeypatch):
+    # A redesign is not a reason to answer nothing when a table was read last
+    # week, and it is every reason to say so: a silent fall back to a table
+    # months old is the feature dying without anybody noticing.
+    _kept(here, models=[_listed("A-Model-35B", "35B")])
+    monkeypatch.setattr("offgrid.cli.fetch", lambda: "a page, and not the table")
+
+    result = runner.invoke(app, ["recommend"])
+
+    assert result.exit_code == 0
+    assert "A-Model-35B" in result.stderr
+    assert '"config":{' in result.stderr
+    assert "onyx.app/best-llm-for-coding" in result.stderr
+
+
+def test_recommend_says_where_else_to_look_when_it_has_no_table_at_all(
+    here, monkeypatch
+):
+    # Nothing fetched and nothing kept. The one thing left worth saying is
+    # where numbers measured on this machine already are.
+    _unreachable(monkeypatch)
+
+    result = runner.invoke(app, ["recommend"])
+
+    assert result.exit_code == 1
+    assert "Could not reach the table: no route" in result.stderr
+    assert "docs/models.md" in result.stderr
+
+
+def test_recommend_names_the_page_when_it_stops_parsing_and_nothing_was_kept(
+    here, monkeypatch
+):
+    # The same redesign, on a machine that has never reached the page. There
+    # is nothing to show, so what is left is what the maintainer needs to tell
+    # a redesign from a bug, and where a person can read numbers today.
+    monkeypatch.setattr("offgrid.cli.fetch", lambda: "a page, and not the table")
+
+    result = runner.invoke(app, ["recommend"])
+
+    assert result.exit_code == 1
+    assert '"config":{' in result.stderr
+    assert "docs/models.md" in result.stderr
+
+
+def test_recommend_keeps_the_table_it_read_beside_the_profile(here, monkeypatch):
+    _leaderboard(monkeypatch, models=[_listed("A-Model-35B", "35B")])
+
+    runner.invoke(app, ["recommend"])
+    kept = json.loads((here / "leaderboard.json").read_text())
+
+    assert "A-Model-35B" in kept["payload"]
+    assert kept["fetched"]
+
+
+def test_recommend_keeps_the_last_table_it_read_when_the_next_will_not_parse(
+    here, monkeypatch
+):
+    # The kept table is the last good one, not the last one fetched. A page
+    # that has been rewritten overwriting it would take the fall back away at
+    # the moment it is what the command has left.
+    _kept(here, models=[_listed("A-Model-35B", "35B")], fetched="2026-08-05T09:12:00")
+    monkeypatch.setattr("offgrid.cli.fetch", lambda: "a page, and not the table")
+    runner.invoke(app, ["recommend"])
+
+    _unreachable(monkeypatch)
+    result = runner.invoke(app, ["recommend"])
+
+    assert "A-Model-35B" in result.stderr
+    assert "read on 2026-08-05" in result.stderr
+
+
+def test_recommend_treats_a_kept_table_it_can_no_longer_read_as_none(here, monkeypatch):
+    # Kept before the page moved, and no longer a table. offgrid's own file
+    # failing to read back is not a second thing to explain to anybody.
+    _kept(here, models=[{"name": "A-Model-35B"}])
+    _unreachable(monkeypatch)
+
+    result = runner.invoke(app, ["recommend"])
+
+    assert result.exit_code == 1
+    assert "docs/models.md" in result.stderr
+
+
+def test_recommend_writes_nothing_into_the_profile(here, monkeypatch):
     # A model worth recommending is one that is not downloaded, and a profile
     # naming it would make the next `run` ask the runtime for what is absent.
     runner.invoke(app, ["setup"])
