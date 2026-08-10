@@ -26,10 +26,10 @@ def shortlist(
     """
     kept, dropped = _kept(table, machine)
 
-    return ranked(kept, machine), dropped
+    return _ranked(kept, machine), dropped
 
 
-def ranked(fits: list[Fit], machine: Machine) -> list[tuple[Quality, Fit]]:
+def _ranked(fits: list[Fit], machine: Machine) -> list[tuple[Quality, Fit]]:
     """Put the best of what fits first, judging each one once.
 
     :param fits: Every model at every width this machine holds it at.
