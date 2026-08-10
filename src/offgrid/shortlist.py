@@ -2,8 +2,8 @@
 
 Three rules take a row off the list, and each is counted rather than left
 silent: no parameter count, so it cannot be sized; no coding score, so it
-cannot be ranked; too large at every width. What survives is ordered by what
-it is worth here.
+cannot be ranked; fits at no width this machine offers. What survives is
+ordered by what it is worth here.
 
 Nothing here is said to anybody. `recommendation.py` is where that happens.
 """
@@ -19,14 +19,17 @@ from offgrid.quality import Quality, get_quality_for_fit
 class Rule(Enum):
     """Why a published row is not among what offgrid shows.
 
-    There are three and there is no fourth: a row survives all of them or it
-    is accounted for by one. What each is called where a person reads it is
-    `recommendation.py`'s to say.
+    A row survives all of these or is accounted for by one. What each is
+    called where a person reads it is `recommendation.py`'s to say.
+
+    ``FITS_AT_NO_WIDTH`` takes a listing this machine cannot hold at any
+    width offgrid offers. One it can hold at some but not all of them is not
+    dropped: it is shown at each width that works, and only there.
     """
 
     NO_PARAMETER_COUNT = auto()
     NO_CODING_SCORE = auto()
-    TOO_LARGE_AT_EVERY_WIDTH = auto()
+    FITS_AT_NO_WIDTH = auto()
 
 
 @dataclass(frozen=True)
@@ -70,7 +73,7 @@ def shortlist(table: Table, machine: Machine) -> Shortlist:
 
 
 def get_listings_with_coding_score(table: Table) -> list[Listing]:
-    """Keep the rows carrying the score the listings_with_coding_score sorts on.
+    """Keep the rows carrying the score the ranking sorts on.
 
     A row the table scores at nothing is dropped whatever its size, so it is
     not one of these however small it is. Scored nought is scored.
@@ -140,7 +143,7 @@ def _apply_the_rules(table: Table, machine: Machine) -> tuple[list[Fit], list[Dr
             len(table.listings) - len(listings_with_coding_score),
             Rule.NO_CODING_SCORE,
         ),
-        Dropped(len(listings_not_fit), Rule.TOO_LARGE_AT_EVERY_WIDTH),
+        Dropped(len(listings_not_fit), Rule.FITS_AT_NO_WIDTH),
     )
 
     return [fit for _, found in listings_with_feasible_widths for fit in found], [

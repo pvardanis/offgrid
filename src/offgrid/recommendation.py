@@ -51,7 +51,7 @@ NOTHING = "—"
 WHY_DROPPED = {
     Rule.NO_PARAMETER_COUNT: "published no size",
     Rule.NO_CODING_SCORE: "published no coding score",
-    Rule.TOO_LARGE_AT_EVERY_WIDTH: "too large for this machine at every width",
+    Rule.FITS_AT_NO_WIDTH: "too large for this machine at every width",
 }
 
 

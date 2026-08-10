@@ -711,6 +711,18 @@ def test_recommend_accounts_for_every_row_it_did_not_show(here, monkeypatch):
     ]
 
 
+def test_recommend_drops_nothing_that_fits_at_some_width_but_not_all(here, monkeypatch):
+    # A 60B fits at 4-bit and at neither width above it. The rule takes a row
+    # this machine cannot hold at any width, not one it cannot hold at all of
+    # them, so this is shown once and accounted for nowhere.
+    _leaderboard(monkeypatch, models=[_listed("A-Model-60B", "60B")])
+
+    result = runner.invoke(app, ["recommend"])
+
+    assert _printed_order(result.stderr) == [("A-Model-60B", "4-bit")]
+    assert "Left out" not in result.stderr
+
+
 def test_recommend_counts_no_rule_that_dropped_nothing(here, monkeypatch):
     # A rule reporting zero accounts for no absence and is noise under a
     # table that has none.
