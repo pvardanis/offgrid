@@ -1,9 +1,28 @@
-"""Stand-ins for the things offgrid talks to: a server, and a runtime's tool."""
+"""Stand-ins for what offgrid talks to: a server, a runtime's tool, a Mac."""
 
 import subprocess
+from pathlib import Path
 
 import httpx
 import pytest
+
+from offgrid.machine import Machine
+
+GIB = 1024**3
+MACHINE = Machine(
+    chip="Apple M1 Max", memory_bytes=64 * GIB, wired_limit_bytes=56 * GIB
+)
+
+
+def answer_as_a_mac(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Answer with a fixed machine, and write nowhere real.
+
+    :param monkeypatch: The test's patcher.
+    :param tmp_path: Where the profile and the agent's directory go.
+    """
+    monkeypatch.setattr("offgrid.cli.detect", lambda: MACHINE)
+    monkeypatch.setattr("offgrid.cli.DEFAULT_PATH", tmp_path / "profile.yaml")
+    monkeypatch.setattr("offgrid.cli.CONFIG_DIR", tmp_path / "claude-code")
 
 
 def serve_get(monkeypatch: pytest.MonkeyPatch, handler) -> None:

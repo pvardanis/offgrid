@@ -8,6 +8,7 @@ from typer.testing import CliRunner
 from offgrid.cli import app
 from offgrid.exceptions import LeaderboardUnreachableError
 from offgrid.machine import Machine
+from tests.doubles import answer_as_a_mac
 
 GIB = 1024**3
 CEILING = 262144
@@ -100,12 +101,7 @@ def runtime(monkeypatch):
 @pytest.fixture
 def here(monkeypatch, tmp_path, runtime):
     """Answer with a fixed machine, and write nowhere real."""
-    machine = Machine(
-        chip="Apple M1 Max", memory_bytes=64 * GIB, wired_limit_bytes=56 * GIB
-    )
-    monkeypatch.setattr("offgrid.cli.detect", lambda: machine)
-    monkeypatch.setattr("offgrid.cli.DEFAULT_PATH", tmp_path / "profile.yaml")
-    monkeypatch.setattr("offgrid.cli.CONFIG_DIR", tmp_path / "claude-code")
+    answer_as_a_mac(monkeypatch, tmp_path)
     return tmp_path
 
 
