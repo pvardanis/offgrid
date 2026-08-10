@@ -67,6 +67,7 @@ def setup(
     for bits, parameters in get_sizes_that_fit(machine):
         tell(f"    {bits:>2}-bit   {parameters / BILLION:>5.0f}B parameters")
     tell("")
+    tell("  `offgrid recommend` names the published models that fit.")
     tell(f"  Load one in your runtime, then `offgrid run`. Profile: {DEFAULT_PATH}")
 
     advice = suggest_raising_the_gpu_limit(machine)

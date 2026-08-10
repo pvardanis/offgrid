@@ -148,6 +148,7 @@ $ offgrid setup
      8-bit      48B parameters
     16-bit      24B parameters
 
+  `offgrid recommend` names the published models that fit.
   Load one in your runtime, then `offgrid run`. Profile: /Users/you/.offgrid/profile.yaml
 ```
 

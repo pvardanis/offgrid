@@ -167,6 +167,15 @@ def test_setup_names_no_model(here):
     assert "qwen" not in result.stderr
 
 
+def test_setup_names_the_command_that_says_which_models_fit(here):
+    # A size in parameters is not a model to download. `recommend` is what
+    # turns one into the other, and this is the moment it is useful.
+    result = runner.invoke(app, ["setup"])
+
+    assert "offgrid recommend" in result.stderr
+    assert "offgrid run" in result.stderr
+
+
 def test_setup_writes_a_profile_that_can_be_read_back(here):
     from offgrid.profile import load
 
