@@ -27,6 +27,7 @@ LOCK = ROOT / "uv.lock"
 BADGED = ("ruff", "ty")
 
 COMMANDS = ("setup", "doctor", "recommend", "run")
+RUNTIME_COMMANDS = ("doctor", "run")
 LOCAL = DEFAULT_HOST.split(":")[0]
 MACHINE = Machine(
     chip="Apple M1 Max", memory_bytes=64 * 1024**3, wired_limit_bytes=56 * 1024**3
@@ -56,27 +57,35 @@ def _named_as_reaching_the_network() -> str | None:
     return found.group(1) if found else None
 
 
-def _hosts_asked(command: str, monkeypatch, tmp_path) -> set[str]:
-    """Every host a command asks for, with nothing answering any of them.
+def _requests_made(command: str, monkeypatch, tmp_path) -> list[httpx.Request]:
+    """Every request a command makes, with nothing answering any of them.
 
-    The profile is written first, since three of the four commands refuse
-    before asking anything without one.
+    A profile is written first, since `doctor` and `run` refuse before asking
+    anything without one, and a command that refused asks for nothing at all —
+    which is what every claim below would read as kept.
+
+    :param command: The one to run.
+    :param monkeypatch: The test's patcher.
+    :param tmp_path: Where the profile and the agent's directory go.
+
+    :return: The requests, in the order they were made.
     """
-    asked: set[str] = set()
+    made: list[httpx.Request] = []
 
     def record(self: httpx.HTTPTransport, sent: httpx.Request) -> httpx.Response:
-        asked.add(sent.url.host)
+        made.append(sent)
         raise httpx.ConnectError("nothing is listening", request=sent)
 
     monkeypatch.setattr("offgrid.cli.detect", lambda: MACHINE)
     monkeypatch.setattr("offgrid.cli.DEFAULT_PATH", tmp_path / "profile.yaml")
     monkeypatch.setattr("offgrid.cli.CONFIG_DIR", tmp_path / "claude-code")
-    CliRunner().invoke(app, ["setup"])
+    written = CliRunner().invoke(app, ["setup"])
+    assert written.exit_code == 0, f"The profile was not written: {written.stderr}"
 
     monkeypatch.setattr(httpx.HTTPTransport, "handle_request", record)
     CliRunner().invoke(app, [command])
 
-    return asked
+    return made
 
 
 @pytest.mark.parametrize("command", COMMANDS)
@@ -88,9 +97,8 @@ def test_only_the_command_the_readme_names_reaches_the_network(
     named = _named_as_reaching_the_network()
     assert named in COMMANDS, "The README names no command as the one that reaches out"
 
-    beyond = {
-        host for host in _hosts_asked(command, monkeypatch, tmp_path) if host != LOCAL
-    }
+    asked = {sent.url.host for sent in _requests_made(command, monkeypatch, tmp_path)}
+    beyond = asked - {LOCAL}
 
     if command == named:
         assert beyond, f"`offgrid {command}` asked for nothing beyond {LOCAL}"
@@ -99,6 +107,30 @@ def test_only_the_command_the_readme_names_reaches_the_network(
             f"`offgrid {command}` reached {sorted(beyond)}, and the README says "
             f"`{named}` is the only command that does."
         )
+
+    # A command that asked for nothing keeps every claim there is, so the two
+    # that talk to the runtime have to be seen doing it.
+    if command in RUNTIME_COMMANDS:
+        assert LOCAL in asked, f"`offgrid {command}` never reached the runtime"
+
+
+def test_the_request_that_reaches_the_network_carries_nothing_about_this_machine(
+    monkeypatch, tmp_path
+):
+    # The README says what is sent, and "nothing about you" is the half of it
+    # a person cannot check for themselves.
+    command = _named_as_reaching_the_network()
+    assert command is not None
+
+    sent = _requests_made(command, monkeypatch, tmp_path)[0]
+    with httpx.Client() as client:
+        default = client.build_request("GET", sent.url)
+
+    assert sent.method == "GET"
+    assert not sent.url.query
+    assert set(sent.headers) - set(default.headers) == {"rsc"}
+    assert "cookie" not in sent.headers
+    assert not sent.content
 
 
 @pytest.mark.parametrize("tool", BADGED)
