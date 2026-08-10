@@ -1,7 +1,10 @@
 import httpx
 import pytest
 
-from offgrid.exceptions import LeaderboardUnavailableError
+from offgrid.exceptions import (
+    LeaderboardUnreachableError,
+    LeaderboardUnreadableError,
+)
 from offgrid.leaderboards.onyx import TIMEOUT_SECONDS, URL, fetch, parse
 from tests.doubles import serve_get
 
@@ -41,7 +44,7 @@ def test_a_leaderboard_nothing_can_reach_says_so_and_says_it_is_the_network(
 
     serve_get(monkeypatch, refuse)
 
-    with pytest.raises(LeaderboardUnavailableError) as raised:
+    with pytest.raises(LeaderboardUnreachableError) as raised:
         fetch()
 
     assert URL in str(raised.value)
@@ -53,7 +56,7 @@ def test_a_leaderboard_that_answers_an_error_is_not_read_as_a_table(
 ):
     serve_get(monkeypatch, lambda request: httpx.Response(503, text="unavailable"))
 
-    with pytest.raises(LeaderboardUnavailableError) as raised:
+    with pytest.raises(LeaderboardUnreachableError) as raised:
         fetch()
 
     assert "503" in str(raised.value)
@@ -62,7 +65,7 @@ def test_a_leaderboard_that_answers_an_error_is_not_read_as_a_table(
 def test_a_page_the_table_has_moved_out_of_names_what_was_looked_for():
     # A redesign and a bug look identical from here, and the difference is
     # worth the maintainer's time rather than a shrug.
-    with pytest.raises(LeaderboardUnavailableError) as raised:
+    with pytest.raises(LeaderboardUnreadableError) as raised:
         parse('0:["$","div",null,{"children":"nothing of the sort"}]')
 
     assert URL in str(raised.value)
@@ -72,14 +75,14 @@ def test_a_page_the_table_has_moved_out_of_names_what_was_looked_for():
 def test_a_table_holding_no_models_is_a_failure_not_an_empty_shortlist():
     # An empty list would print as "nothing fits this machine", which is a
     # statement about the machine and would be a lie.
-    with pytest.raises(LeaderboardUnavailableError) as raised:
+    with pytest.raises(LeaderboardUnreadableError) as raised:
         parse('{"config":{"lastUpdated":"2026-07-20","benchmarks":{}}}')
 
     assert "no list of models" in str(raised.value)
 
 
 def test_a_table_that_is_not_json_where_it_should_be_says_so():
-    with pytest.raises(LeaderboardUnavailableError) as raised:
+    with pytest.raises(LeaderboardUnreadableError) as raised:
         parse('"config":{"models": [oops}')
 
     assert URL in str(raised.value)
@@ -102,7 +105,7 @@ def test_a_leaderboard_that_takes_too_long_says_how_long_it_waited(
 
     serve_get(monkeypatch, stall)
 
-    with pytest.raises(LeaderboardUnavailableError) as raised:
+    with pytest.raises(LeaderboardUnreachableError) as raised:
         fetch()
 
     assert f"{TIMEOUT_SECONDS}s" in str(raised.value)
@@ -124,7 +127,7 @@ def test_a_table_whose_rows_cannot_be_read_is_a_failure_not_an_empty_shortlist()
     # Rows that carry none of the keys they carried is what a schema change
     # looks like from here, and printing "nothing fits this machine" from it
     # would be a statement about the machine rather than about the table.
-    with pytest.raises(LeaderboardUnavailableError) as raised:
+    with pytest.raises(LeaderboardUnreadableError) as raised:
         parse('"config":{"lastUpdated":"2026-07-20","models":[{"model":"A"},"B"]}')
 
     assert URL in str(raised.value)
@@ -168,7 +171,7 @@ def test_a_row_with_no_name_is_still_printable():
 def test_a_table_that_lists_no_models_at_all_is_a_failure():
     # A page that rendered its table empty is a broken page, not a verdict
     # on this machine.
-    with pytest.raises(LeaderboardUnavailableError) as raised:
+    with pytest.raises(LeaderboardUnreadableError) as raised:
         parse('"config":{"lastUpdated":"2026-07-20","models":[]}')
 
     assert URL in str(raised.value)
@@ -185,7 +188,7 @@ def test_a_redirect_that_never_settles_is_reported_as_the_network(
 
     serve_get(monkeypatch, bounce)
 
-    with pytest.raises(LeaderboardUnavailableError) as raised:
+    with pytest.raises(LeaderboardUnreachableError) as raised:
         fetch()
 
     assert "network" in str(raised.value)

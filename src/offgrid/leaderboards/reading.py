@@ -27,12 +27,12 @@ class Reading:
     """A table to recommend from, and how it was arrived at.
 
     :param table: The published list, as it was read.
-    :param complaints: What to say before showing it, which is nothing at all
-        where it was fetched just now.
+    :param said: What to say before showing it, which is nothing at all where
+        it was fetched just now and kept.
     """
 
     table: Table
-    complaints: list[str]
+    said: list[str]
 
 
 def read_table(kept_at: Path) -> Reading:
@@ -58,9 +58,32 @@ def read_table(kept_at: Path) -> Reading:
     except LeaderboardUnreadableError as error:
         return _last_table(error, kept_at)
 
-    remember(payload, kept_at)
+    return Reading(table=table, said=_keep(payload, kept_at))
 
-    return Reading(table=table, complaints=[])
+
+def _keep(payload: str, kept_at: Path) -> list[str]:
+    """Keep the payload that parsed, and say so where it cannot be kept.
+
+    Nowhere to write is not a reason to throw away a table this run already
+    has in hand. It is a reason to say so, because the run that finds no
+    network is the one that will find nothing kept for it either.
+
+    :param payload: What the source answered.
+    :param kept_at: Where to keep it.
+
+    :return: The lines to say, or none where it was kept.
+    """
+    try:
+        remember(payload, kept_at)
+    except OSError as error:
+        return [
+            f"  This table could not be kept at {kept_at}: {error}.",
+            "  A run that reaches nothing will have none to fall back on until",
+            "  that is fixed.",
+            "",
+        ]
+
+    return []
 
 
 def _last_table(reason: LeaderboardUnavailableError, kept_at: Path) -> Reading:
@@ -84,6 +107,8 @@ def _last_table(reason: LeaderboardUnavailableError, kept_at: Path) -> Reading:
     kept = recall(kept_at)
     table = _reparsed(kept)
 
+    # Nothing kept and nothing readable are the same answer here. Both halves
+    # are stated because the date below is read off `kept`.
     if kept is None or table is None:
         raise LeaderboardUnavailableError(
             f"{reason} No table was kept by an earlier run either, so there "
@@ -93,7 +118,7 @@ def _last_table(reason: LeaderboardUnavailableError, kept_at: Path) -> Reading:
 
     return Reading(
         table=table,
-        complaints=[
+        said=[
             f"  {reason}",
             f"  This is the table offgrid read on {kept.dated}, not a current one.",
             "",

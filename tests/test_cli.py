@@ -1124,9 +1124,27 @@ def test_recommend_answers_from_the_last_table_it_read_when_nothing_answers(
 
     _unreachable(monkeypatch)
     result = runner.invoke(app, ["recommend"])
+    kept = json.loads((here / "leaderboard.json").read_text())
 
     assert result.exit_code == 0
     assert "A-Model-35B" in result.stderr
+    # The day printed is the day the run that kept it wrote down, so a
+    # timestamp written in a shape nobody reads back is visible here.
+    assert f"read on {kept['fetched'][:10]}" in result.stderr
+
+
+def test_recommend_still_answers_when_it_cannot_keep_the_table(here, monkeypatch):
+    # The table was fetched and it parsed. Nowhere to keep it is worth saying,
+    # because the next run with no network has nothing to fall back on — but
+    # it is no reason to throw away the answer this run already has.
+    _leaderboard(monkeypatch, models=[_listed("A-Model-35B", "35B")])
+    (here / "leaderboard.json").mkdir()
+
+    result = runner.invoke(app, ["recommend"])
+
+    assert result.exit_code == 0
+    assert "A-Model-35B" in result.stderr
+    assert "could not be kept" in result.stderr
 
 
 def test_recommend_says_how_old_the_table_it_fell_back_to_is(here, monkeypatch):
