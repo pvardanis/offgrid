@@ -43,6 +43,8 @@ class Listing:
 class Table:
     """A published list, as it stood when it was fetched.
 
+    :param source: Where it was read, so that whatever prints it can credit
+        it without knowing which list it came from.
     :param dated: The date the list states it was last updated, or ``None``
         when it states none. What it says about itself, not when it was
         fetched.
@@ -52,6 +54,7 @@ class Table:
         what is left to account for someone's missing model with.
     """
 
+    source: str
     dated: str | None
     listings: list[Listing]
     unsized: int

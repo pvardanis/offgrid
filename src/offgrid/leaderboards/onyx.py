@@ -64,6 +64,7 @@ def parse(flight: str) -> Table:
         )
 
     return Table(
+        source=URL,
         dated=config.get("lastUpdated"),
         listings=listings,
         unsized=len(models) - len(listings),
