@@ -12,8 +12,8 @@ them.
 from offgrid.fit import (
     BYTES_PER_GB,
     QUANTIZATION_WIDTHS,
-    parameters_that_fit,
-    weigh,
+    get_params_that_fit,
+    weigh_model,
 )
 from offgrid.listing import Fit, Table
 from offgrid.machine import Machine, suggest_raising_the_gpu_limit
@@ -168,7 +168,7 @@ def _explain_nothing_fits(table: Table, machine: Machine) -> list[str]:
 
     # The leanest width, where the smallest of everything is.
     bits = min(QUANTIZATION_WIDTHS)
-    holds = parameters_that_fit(machine, bits)
+    holds = get_params_that_fit(machine, bits)
     smallest = min(one.parameters for one in shown)
 
     return [
@@ -237,7 +237,7 @@ def _write_size(parameters: float, bits: int) -> str:
 
     :return: The size, as a person reads one.
     """
-    return _write_gigabytes(weigh(parameters, bits))
+    return _write_gigabytes(weigh_model(parameters, bits))
 
 
 def _write_gigabytes(byte_count: float) -> str:

@@ -23,7 +23,7 @@ CACHE_SHARE = 0.2
 QUANTIZATION_WIDTHS = (4, 8, 16)
 
 
-def weigh(parameters: float, quantization_bits: int) -> float:
+def weigh_model(parameters: float, quantization_bits: int) -> float:
     """Work out what a number of parameters weighs at a width.
 
     :param parameters: How many there are.
@@ -35,7 +35,7 @@ def weigh(parameters: float, quantization_bits: int) -> float:
     return parameters * quantization_bits / BITS_PER_BYTE
 
 
-def parameters_that_fit(machine: Machine, quantization_bits: int) -> float:
+def get_params_that_fit(machine: Machine, quantization_bits: int) -> float:
     """Work out how many parameters a machine holds at a given width.
 
     :param machine: The host the model would run on.
@@ -48,11 +48,11 @@ def parameters_that_fit(machine: Machine, quantization_bits: int) -> float:
     return for_weights * BITS_PER_BYTE / quantization_bits
 
 
-def sizes_that_fit(machine: Machine) -> list[tuple[int, float]]:
+def get_sizes_that_fit(machine: Machine) -> list[tuple[int, float]]:
     """List what a machine holds at each width models are published at.
 
     :param machine: The host the model would run on.
 
     :return: ``(bits, parameters)`` pairs, largest model first.
     """
-    return [(bits, parameters_that_fit(machine, bits)) for bits in QUANTIZATION_WIDTHS]
+    return [(bits, get_params_that_fit(machine, bits)) for bits in QUANTIZATION_WIDTHS]

@@ -13,7 +13,7 @@ from offgrid.agents.claude_code import dialect as agent_dialect
 from offgrid.agents.claude_code import plan, prepare
 from offgrid.dialect import require_compatible
 from offgrid.exceptions import OffgridError, ProfileError
-from offgrid.fit import BYTES_PER_GB, sizes_that_fit
+from offgrid.fit import BYTES_PER_GB, get_sizes_that_fit
 from offgrid.hold import held, hold, let_go
 from offgrid.launch import start
 from offgrid.leaderboards.onyx import fetch, parse
@@ -65,7 +65,7 @@ def setup(
     _tell("")
     _tell("  A model of about this size fits, leaving room for context:")
     _tell("")
-    for bits, parameters in sizes_that_fit(machine):
+    for bits, parameters in get_sizes_that_fit(machine):
         _tell(f"    {bits:>2}-bit   {parameters / BILLION:>5.0f}B parameters")
     _tell("")
     _tell(f"  Load one in your runtime, then `offgrid run`. Profile: {DEFAULT_PATH}")

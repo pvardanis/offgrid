@@ -57,7 +57,7 @@ class Quality:
     label: str
 
 
-def get_quality(fit: Fit, machine: Machine) -> Quality:
+def get_quality_for_fit(fit: Fit, machine: Machine) -> Quality:
     """Judge a fit on room, published score, speed here, and window.
 
     :param fit: The model, at one of the widths this machine holds it at.

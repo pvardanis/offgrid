@@ -12,7 +12,7 @@ from dataclasses import dataclass
 
 from offgrid.listing import Fit, Listing, Table, get_listing_with_feasible_widths
 from offgrid.machine import Machine
-from offgrid.quality import Quality, get_quality
+from offgrid.quality import Quality, get_quality_for_fit
 
 
 @dataclass(frozen=True)
@@ -87,7 +87,7 @@ def _rank_fits(fits: list[Fit], machine: Machine) -> list[tuple[Quality, Fit]]:
         one to read as the default, and the name makes the order the same on
         two machines reading one table.
     """
-    judged = [(get_quality(fit, machine), fit) for fit in fits]
+    judged = [(get_quality_for_fit(fit, machine), fit) for fit in fits]
 
     return sorted(
         judged,
