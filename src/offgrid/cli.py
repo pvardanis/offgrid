@@ -127,7 +127,7 @@ def run(
         require_compatible(runtime.dialect, agent_dialect())
         prepare(CONFIG_DIR)
 
-        model = hold(runtime, wanted) if wanted else get_resident(runtime)
+        model = hold(runtime, wanted)
 
     # Nothing between here and the agent finishing may leave the model held:
     # from this line on, letting go is owed whatever happens.

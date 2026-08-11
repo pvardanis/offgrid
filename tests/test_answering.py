@@ -36,6 +36,21 @@ def test_the_model_that_would_answer_is_the_one_being_held(monkeypatch):
     assert get_resident(connect(HOST)).identifier == RESIDENT
 
 
+def test_naming_no_model_answers_with_the_one_already_there(monkeypatch):
+    # A run names a model or it does not, and where it does not the resident
+    # one answers: no load, and the prefix cached against it survives. The
+    # rule is the domain's rather than the command line's.
+    asked = answer_as_lm_studio(
+        monkeypatch, holding={RESIDENT: 8192}, cold={"a/other-7b": 8192}
+    )
+
+    model = hold(connect(HOST), None)
+
+    assert model.identifier == RESIDENT
+    assert asked["loaded"] is None
+    assert asked["let_go"] == []
+
+
 def test_the_model_asked_for_is_held_alone(monkeypatch):
     asked = answer_as_lm_studio(
         monkeypatch, holding={RESIDENT: 8192}, cold={"a/other-7b": 32768}
