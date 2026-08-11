@@ -3,7 +3,7 @@
 import logging
 import subprocess
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import httpx
 
@@ -66,8 +66,8 @@ class LMStudio:
     """
 
     host: str
-    dialect: Dialect = Dialect.ANTHROPIC
-    capabilities: Capabilities = CAPABILITIES
+    dialect: Dialect = field(init=False, default=Dialect.ANTHROPIC)
+    capabilities: Capabilities = field(init=False, default=CAPABILITIES)
 
     def read_catalogue(self) -> list[Model]:
         """List every model LM Studio has, held or not.
