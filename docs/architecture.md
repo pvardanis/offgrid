@@ -203,7 +203,10 @@ it is holding and prints it beside the agent's dialect.
 ## The runtime seam — designed
 
 A runtime adapter is a module exposing one factory. The factory binds an
-address once and answers with something satisfying `Runtime`.
+address once and answers with something satisfying `Runtime` — a frozen
+dataclass holding the host, with methods, inheriting nothing. The Protocol is
+a class and so is what satisfies it; neither is a base of the other, and `ty`
+checks the match structurally.
 
 ```python
 Connect = Callable[[str], Runtime]

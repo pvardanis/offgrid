@@ -269,8 +269,19 @@ The factory binds what does not change. `connect(host)` and `prepare(dir)`
 return something satisfying a Protocol, so an address stops appearing in five
 signatures and an adapter has somewhere to keep what a connection needs — LM
 Studio's `instance_id`, which its unload endpoint wants and a model key does
-not give. Modules of functions rather than classes: `ty` checks a module
-against a Protocol, so nothing is bought by a class here.
+not give.
+
+Nothing inherits. A `Protocol` is itself a class, and what it describes is one
+too, but neither is a base of the other: `ty` checks the match structurally, so
+what is absent is the class hierarchy rather than the class. A connection has
+identity — which server — which is the case that warrants one.
+
+A frozen dataclass holding the host, with methods, is the shape that satisfies
+it. A record of closures does not: a bare `Callable` takes its parameters
+positionally and a protocol method permits them by name, so the check fails
+with `parameter ... must accept keyword arguments`. Worth writing down, because
+a record of closures is what gets reached for first here and the error does not
+explain itself.
 
 `Dialect` stays and `Capabilities` joins it. All four candidates serve both
 dialects, so the pairing check no longer discriminates between runtimes — it
