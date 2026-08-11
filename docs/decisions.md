@@ -249,3 +249,60 @@ one, and one drawn from none fits nothing. Two parts of what is written down
 are marked as LM Studio's own — the catalogue payload crossing the boundary,
 and `unload` being an operation at all when a runtime that evicts for itself
 would undo it.
+
+## A port states what is wanted; the adapter owns how it is reached
+
+`_let_go_of_the_rest` is offgrid unloading every model but the one being asked
+for, one call at a time, from outside the runtime. `docs/research/adapter-surfaces.md`
+read four candidates and found four different ways to reach that state: LM
+Studio unloads per instance over HTTP, Ollama takes an empty request with
+`keep_alive: 0`, oMLX awaits an unload and also evicts on its own against a
+ceiling, and a single-model `llama-server` cannot be asked at all because the
+model is the process. Orchestrating from outside works against one of the
+four.
+
+So the runtime port takes `ensure_only(identifier)` and each adapter reaches it
+as it can. `let_go` stays beside it, because the end of a run is a different
+question: `run` owes a release in its `finally`, by name, whatever happened.
+
+The factory binds what does not change. `connect(host)` and `prepare(dir)`
+return something satisfying a Protocol, so an address stops appearing in five
+signatures and an adapter has somewhere to keep what a connection needs — LM
+Studio's `instance_id`, which its unload endpoint wants and a model key does
+not give. Modules of functions rather than classes: `ty` checks a module
+against a Protocol, so nothing is bought by a class here.
+
+`Dialect` stays and `Capabilities` joins it. All four candidates serve both
+dialects, so the pairing check no longer discriminates between runtimes — it
+still does between agents, where Codex CLI accepts only the Responses API. What
+a dialect cannot say is that LM Studio answers `200` to `count_tokens` while
+logging that the endpoint does not exist. Three capabilities are carried, and
+each changes what offgrid does rather than what it reports.
+
+Adapters raise the domain's exceptions. The alternative makes the domain import
+adapter modules, which the layer rule forbids and the linter catches — and
+translating inside the adapter is where it belongs anyway, since Claude Code's
+retry logic matches on the upstream's error wording.
+
+A dict for the registry, not entry points and not an importable path from the
+profile. The audience clones and runs, so plugin discovery serves nobody who
+exists, and a dotted path in a hand-edited YAML file is an import statement in
+a config file.
+
+## Denying hosted tools is correctness; privacy is a feature that is not built
+
+These were one thing and are now two.
+
+WebSearch runs on Anthropic's servers. Against a model held here nothing
+executes it, so the model emits the call, no executor answers, and the agent
+renders the call as a result: an invented answer with no error anywhere. That
+is a wrong answer, not a disclosure, and it stays denied by default. It is a
+class rather than a case — Codex carries `supports_standalone_web_search` — so
+the agent port answers for it, because a failure this silent will not be
+noticed missing from a second adapter.
+
+Everything else filed under privacy — nonessential traffic, telemetry, the
+attribution header, the WebFetch domain check that still calls home despite
+`CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` — becomes a feature behind a flag,
+later. Naming it that way is more honest than the alternative, which is
+claiming a guarantee with a known hole in it.
