@@ -3,8 +3,9 @@
 Runs a coding agent against a model held by a runtime on this machine. macOS on
 Apple Silicon only. Python, managed with `uv`.
 
-Domain language and module shape: `CONTEXT.md`. What was decided and why:
-`docs/decisions.md`.
+Domain language: `CONTEXT.md`. The modules, what may import what, and where a
+second runtime or agent attaches: `docs/architecture.md`. What was decided and
+why: `docs/decisions.md`.
 
 ## Commands
 

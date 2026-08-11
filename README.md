@@ -438,24 +438,12 @@ then tests code that is no longer on disk.
 
 Commits follow [Conventional Commits](https://www.conventionalcommits.org/)
 with the modules as scopes. What was decided and why lives in
-`docs/decisions.md`; the domain language and module shape in `CONTEXT.md`.
+`docs/decisions.md`; the domain language in `CONTEXT.md`.
 
 ## Layout
 
-```
-machine.py      what this Mac is
-fit.py          how much room it has
-model.py        a model the runtime describes
-listing.py      a model a published list describes, and which ones fit
-dialect.py      which API shapes can be paired
-profile.py      what is remembered between runs
-launch.py       an environment and an argument list, and running one
-hold.py         holding the model that answers, and letting it go
-runtimes/       one module per runtime
-agents/         one module per agent
-leaderboards/   one module per published list
-cli.py          setup, doctor, recommend, run
-```
+The modules, the layers, the two flows worth drawing, and where a second
+runtime or agent attaches are in [`docs/architecture.md`](docs/architecture.md).
 
 Dependencies point inwards: adapters know about the domain, the domain knows
 nothing about adapters.

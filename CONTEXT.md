@@ -3,6 +3,9 @@
 offgrid runs a coding agent against a model held on this machine. macOS on
 Apple Silicon only.
 
+This is the language. The modules, the layers and the flows are in
+`docs/architecture.md`.
+
 ## Language
 
 Use these words in code, tests, commits and issues. They are what the modules
@@ -68,28 +71,3 @@ is left, stay a person's.
 beside the profile with the day it was read, and answered from when nothing
 answers now. A stale table beats none on a machine with no network, and how
 old it is is said every time it is used.
-
-## Shape
-
-```
-machine.py         what this Mac is, and how to give its GPU more room
-fit.py             how much room it has
-model.py           a model the runtime describes
-listing.py         a model a published list describes, and which ones fit
-speed.py           how fast this machine reads a model's weights
-quality.py         how good a fit is, as one number and one word
-shortlist.py       what fits, ranked, and what each rule dropped
-recommendation.py  how that reads to whoever asked
-dialect.py         which API shapes can be paired
-profile.py         what is remembered between runs
-launch.py          an environment and an argument list, and running one
-hold.py            holding the model that answers, and letting it go
-say.py             how offgrid talks to whoever ran it
-runtimes/          one module per runtime
-agents/            one module per agent
-leaderboards/      one module per published list, and which table to answer from
-cli.py             setup, doctor, run, recommend
-```
-
-Dependencies point inwards: adapters know about the domain, the domain knows
-nothing about adapters.
