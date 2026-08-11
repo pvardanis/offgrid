@@ -17,6 +17,13 @@ Studio today; Ollama is a candidate. Not "backend", not "server".
 **agent** — the coding tool being launched. Claude Code today; OpenCode is a
 candidate. Not "client".
 
+**hosted tool** — a tool whose work happens on the vendor's servers rather
+than on this machine, and which therefore cannot run at all against a model
+held here. WebSearch is one: asked to search, the model emits the call, no
+server-side executor answers it, and the agent renders the call as a result.
+An invented answer, with no error. An agent is launched with its hosted tools
+denied.
+
 **dialect** — the HTTP API shape a runtime serves and an agent expects,
 `anthropic` or `openai`. A runtime and an agent may only be paired when their
 dialects match; offgrid refuses the pair rather than translating between them.
