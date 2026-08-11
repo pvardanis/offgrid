@@ -9,64 +9,12 @@ from typer.testing import CliRunner
 from offgrid.cli import app
 from offgrid.exceptions import LeaderboardUnreachableError
 from offgrid.machine import Machine
-from tests.doubles import answer_as_a_mac
+from tests.doubles import answer_as_a_mac, answer_as_lm_studio, refuse_to_let_go
 
 GIB = 1024**3
 CEILING = 262144
 RESIDENT = "qwen/qwen3.6-35b-a3b"
 runner = CliRunner()
-
-
-def _entry(identifier: str, *, served: int, ceiling: int, in_memory: bool) -> dict:
-    """Describe one model the way LM Studio's catalogue does."""
-    entry = {
-        "id": identifier,
-        "type": "llm",
-        "state": "loaded" if in_memory else "not-loaded",
-        "max_context_length": ceiling,
-    }
-    if in_memory:
-        entry["loaded_context_length"] = served
-
-    return entry
-
-
-def _runtime(monkeypatch, *, holding=None, cold=None, ceiling=CEILING) -> dict:
-    """Stand in for the model server, answering as what it holds changes.
-
-    Each mapping is a model against the context it is served at. A cold model
-    states only its ceiling until something loads it, which is what makes the
-    difference between the two numbers visible.
-
-    :return: What the runtime was asked to load and let go of.
-    """
-    served = {**(holding or {}), **(cold or {})}
-    in_memory = dict.fromkeys(holding or {}, True) | dict.fromkeys(cold or {}, False)
-    asked: dict = {"loaded": None, "let_go": [], "order": []}
-
-    def catalogue(host: str) -> dict:
-        return {
-            "data": [
-                _entry(name, served=served[name], ceiling=ceiling, in_memory=held)
-                for name, held in in_memory.items()
-            ]
-        }
-
-    def load(host: str, identifier: str, **kwargs) -> None:
-        in_memory[identifier] = True
-        asked["loaded"] = identifier
-        asked["order"].append(("loaded", identifier))
-
-    def unload(host: str, identifier: str) -> None:
-        in_memory[identifier] = False
-        asked["let_go"].append(identifier)
-        asked["order"].append(("let_go", identifier))
-
-    monkeypatch.setattr("offgrid.hold.catalogue", catalogue)
-    monkeypatch.setattr("offgrid.hold.load_model", load)
-    monkeypatch.setattr("offgrid.hold.unload", unload)
-
-    return asked
 
 
 def _launched(monkeypatch, code: int = 0, order: list | None = None) -> dict:
@@ -96,7 +44,7 @@ def _launched(monkeypatch, code: int = 0, order: list | None = None) -> dict:
 @pytest.fixture
 def runtime(monkeypatch):
     """A model server holding one model, served below its ceiling."""
-    return _runtime(monkeypatch, holding={RESIDENT: 212224})
+    return answer_as_lm_studio(monkeypatch, holding={RESIDENT: 212224})
 
 
 @pytest.fixture
@@ -241,6 +189,16 @@ def test_doctor_needs_a_profile_first(here):
     assert "offgrid setup" in result.stderr
 
 
+def test_doctor_reports_the_runtime_the_profile_names(here):
+    # Which runtime answers is the profile's to say, and `doctor` is where
+    # someone checks what a run will do before making one.
+    runner.invoke(app, ["setup"])
+
+    result = runner.invoke(app, ["doctor"])
+
+    assert "lmstudio" in result.stderr
+
+
 def test_doctor_reports_the_model_that_would_answer(here):
     runner.invoke(app, ["setup"])
     result = runner.invoke(app, ["doctor"])
@@ -250,7 +208,7 @@ def test_doctor_reports_the_model_that_would_answer(here):
 
 def test_doctor_says_when_the_runtime_holds_nothing(here, monkeypatch):
     runner.invoke(app, ["setup"])
-    _runtime(monkeypatch, cold={"a/cold-7b": 8192})
+    answer_as_lm_studio(monkeypatch, cold={"a/cold-7b": 8192})
 
     result = runner.invoke(app, ["doctor"])
     assert result.exit_code == 1
@@ -277,7 +235,7 @@ def test_run_passes_the_rest_of_the_line_to_the_agent(here, monkeypatch):
 
 def test_run_refuses_when_nothing_is_loaded(here, monkeypatch):
     runner.invoke(app, ["setup"])
-    _runtime(monkeypatch, cold={"a/cold-7b": 8192})
+    answer_as_lm_studio(monkeypatch, cold={"a/cold-7b": 8192})
 
     result = runner.invoke(app, ["run"])
     assert result.exit_code == 1
@@ -286,7 +244,9 @@ def test_run_refuses_when_nothing_is_loaded(here, monkeypatch):
 
 def test_run_loads_a_named_model_that_is_not_resident(here, monkeypatch):
     runner.invoke(app, ["setup"])
-    asked = _runtime(monkeypatch, holding={RESIDENT: 212224}, cold={"a/other-7b": 8192})
+    asked = answer_as_lm_studio(
+        monkeypatch, holding={RESIDENT: 212224}, cold={"a/other-7b": 8192}
+    )
     _launched(monkeypatch)
 
     result = runner.invoke(app, ["run", "--model", "a/other-7b"])
@@ -307,7 +267,9 @@ def test_a_resident_model_is_not_loaded_again(here, monkeypatch, runtime):
 
 def test_swapping_models_says_what_it_costs(here, monkeypatch):
     runner.invoke(app, ["setup"])
-    _runtime(monkeypatch, holding={RESIDENT: 212224}, cold={"a/other-7b": 8192})
+    answer_as_lm_studio(
+        monkeypatch, holding={RESIDENT: 212224}, cold={"a/other-7b": 8192}
+    )
     _launched(monkeypatch)
 
     result = runner.invoke(app, ["run", "--model", "a/other-7b"])
@@ -326,7 +288,9 @@ def test_a_model_the_runtime_does_not_have_is_refused(here, monkeypatch):
 
 def test_run_lets_go_of_models_it_did_not_ask_for(here, monkeypatch):
     runner.invoke(app, ["setup"])
-    asked = _runtime(monkeypatch, holding={RESIDENT: 212224}, cold={"a/other-7b": 8192})
+    asked = answer_as_lm_studio(
+        monkeypatch, holding={RESIDENT: 212224}, cold={"a/other-7b": 8192}
+    )
     _launched(monkeypatch)
 
     runner.invoke(app, ["run", "--model", "a/other-7b"])
@@ -337,7 +301,7 @@ def test_every_model_held_is_let_go_not_only_the_first(here, monkeypatch):
     # LM Studio holds several at once. One left behind is memory nothing on
     # the machine can use for the whole session.
     runner.invoke(app, ["setup"])
-    asked = _runtime(
+    asked = answer_as_lm_studio(
         monkeypatch,
         holding={RESIDENT: 212224, "a/also-held-7b": 8192},
         cold={"a/other-7b": 8192},
@@ -353,7 +317,9 @@ def test_a_model_already_held_is_not_let_go_of_and_loaded_again(here, monkeypatc
     # wanted model that is held but not first is one `continue` away from
     # being evicted and reloaded — the whole wait, for no change.
     runner.invoke(app, ["setup"])
-    asked = _runtime(monkeypatch, holding={RESIDENT: 212224, "a/wanted-7b": 8192})
+    asked = answer_as_lm_studio(
+        monkeypatch, holding={RESIDENT: 212224, "a/wanted-7b": 8192}
+    )
     _launched(monkeypatch)
 
     runner.invoke(app, ["run", "-m", "a/wanted-7b"])
@@ -365,7 +331,9 @@ def test_the_model_is_held_only_for_as_long_as_the_agent_runs(here, monkeypatch)
     # What is already held goes first, the wanted model is loaded next, and
     # it is let go after the agent and not before it.
     runner.invoke(app, ["setup"])
-    asked = _runtime(monkeypatch, holding={RESIDENT: 212224}, cold={"a/other-7b": 8192})
+    asked = answer_as_lm_studio(
+        monkeypatch, holding={RESIDENT: 212224}, cold={"a/other-7b": 8192}
+    )
     _launched(monkeypatch, order=asked["order"])
 
     runner.invoke(app, ["run", "-m", "a/other-7b"])
@@ -385,7 +353,7 @@ def test_an_agent_that_cannot_talk_to_the_runtime_is_refused_before_the_wait(
     from offgrid.dialect import Dialect
 
     runner.invoke(app, ["setup"])
-    asked = _runtime(monkeypatch, cold={"a/other-7b": 8192})
+    asked = answer_as_lm_studio(monkeypatch, cold={"a/other-7b": 8192})
     _launched(monkeypatch)
     monkeypatch.setattr("offgrid.cli.agent_dialect", lambda: Dialect.OPENAI)
 
@@ -426,7 +394,7 @@ def test_the_model_is_let_go_even_when_the_agent_is_interrupted(
 
 def test_settings_that_would_let_the_agent_search_stop_the_run(here, monkeypatch):
     runner.invoke(app, ["setup"])
-    asked = _runtime(monkeypatch, cold={"a/other-7b": 8192})
+    asked = answer_as_lm_studio(monkeypatch, cold={"a/other-7b": 8192})
     _launched(monkeypatch)
     config = here / "claude-code"
     config.mkdir()
@@ -491,14 +459,8 @@ def test_an_agent_that_is_there_but_not_executable_is_not_called_missing(
 
 
 def test_a_runtime_that_will_not_let_go_is_reported_not_hidden(here, monkeypatch):
-    from offgrid.exceptions import RuntimeUnreachableError
-
     runner.invoke(app, ["setup"])
-
-    def refuse(host, name):
-        raise RuntimeUnreachableError("lms would not unload it")
-
-    monkeypatch.setattr("offgrid.hold.unload", refuse)
+    refuse_to_let_go(monkeypatch, "lms would not unload it")
     _launched(monkeypatch)
 
     result = runner.invoke(app, ["run"])
@@ -508,7 +470,9 @@ def test_a_runtime_that_will_not_let_go_is_reported_not_hidden(here, monkeypatch
 def test_the_profile_names_the_model_when_the_command_line_does_not(here, monkeypatch):
     runner.invoke(app, ["setup"])
     _name_in_profile(here, "a/other-7b")
-    asked = _runtime(monkeypatch, holding={RESIDENT: 212224}, cold={"a/other-7b": 8192})
+    asked = answer_as_lm_studio(
+        monkeypatch, holding={RESIDENT: 212224}, cold={"a/other-7b": 8192}
+    )
     _launched(monkeypatch)
 
     result = runner.invoke(app, ["run"])
@@ -521,7 +485,7 @@ def test_compaction_is_sized_from_what_the_runtime_serves(here, monkeypatch):
     # serves a smaller window than that, and compacting against the ceiling
     # means never compacting: the server truncates the prefix instead.
     runner.invoke(app, ["setup"])
-    _runtime(monkeypatch, cold={"a/big-7b": 32768}, ceiling=262144)
+    answer_as_lm_studio(monkeypatch, cold={"a/big-7b": 32768}, ceiling=262144)
     started = _launched(monkeypatch)
 
     runner.invoke(app, ["run", "-m", "a/big-7b"])
@@ -531,7 +495,7 @@ def test_compaction_is_sized_from_what_the_runtime_serves(here, monkeypatch):
 def test_the_command_line_beats_the_profile(here, monkeypatch):
     runner.invoke(app, ["setup"])
     _name_in_profile(here, "a/from-profile-7b")
-    asked = _runtime(
+    asked = answer_as_lm_studio(
         monkeypatch, cold={"a/from-profile-7b": 8192, "a/asked-for-7b": 8192}
     )
     started = _launched(monkeypatch)
@@ -550,7 +514,7 @@ def test_saying_something_after_a_command_does_not_write_to_a_closed_stream(
     runner.invoke(app, ["setup"])
     capsys.readouterr()
 
-    logging.getLogger("offgrid.hold").info("something after the fact")
+    logging.getLogger("offgrid.runtimes.lmstudio").info("something after the fact")
 
     assert "Logging error" not in capsys.readouterr().err
 

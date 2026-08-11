@@ -12,14 +12,15 @@ from offgrid.agents.claude_code import plan, prepare
 from offgrid.dialect import require_compatible
 from offgrid.exceptions import OffgridError, ProfileError
 from offgrid.fit import BYTES_PER_GB, get_sizes_that_fit
-from offgrid.hold import held, hold, let_go
+from offgrid.hold import held, hold
 from offgrid.launch import explain_why_it_would_not_start, start
 from offgrid.leaderboards.reading import get_reading
 from offgrid.machine import detect, suggest_raising_the_gpu_limit
 from offgrid.profile import DEFAULT_PATH, Profile, save
 from offgrid.profile import load as load_profile
 from offgrid.recommendation import summarize_findings
-from offgrid.runtimes.lmstudio import dialect as runtime_dialect
+from offgrid.runtime import Runtime
+from offgrid.runtimes import RUNTIMES
 from offgrid.say import say_on_stderr, tell
 
 CONFIG_DIR = Path.home() / ".offgrid" / "claude-code"
@@ -76,11 +77,12 @@ def setup(
 def doctor() -> None:
     """Check that the runtime is reachable and holding a model."""
     profile = _profile()
+    runtime = _connect(profile)
 
     with _reporting():
-        model = held(profile)
+        model = held(runtime)
 
-    tell(f"  runtime   {profile.host} reachable")
+    tell(f"  runtime   {profile.runtime.value} at {profile.host}, reachable")
     tell(f"  model     {model.identifier}")
     tell(f"  context   {model.context_limit or 'unstated'}")
     tell(f"  agent     {profile.agent}, speaking {agent_dialect().value}")
@@ -115,16 +117,17 @@ def run(
 ) -> None:
     """Start the agent against a model the runtime is holding."""
     profile = _profile()
+    runtime = _connect(profile)
     wanted = model_name or profile.model
 
     with _reporting():
         # A dialect that cannot be paired and settings that would undo a
         # guarantee are both knowable before a load, and a load is tens of
         # seconds nobody gets back.
-        require_compatible(runtime_dialect(), agent_dialect())
+        require_compatible(runtime.dialect, agent_dialect())
         prepare(CONFIG_DIR)
 
-        model = hold(profile, wanted) if wanted else held(profile)
+        model = hold(runtime, wanted) if wanted else held(runtime)
 
     # Nothing between here and the agent finishing may leave the model held:
     # from this line on, letting go is owed whatever happens.
@@ -147,7 +150,7 @@ def run(
     except KeyboardInterrupt:
         code = 130
     finally:
-        let_go(profile.host, model.identifier)
+        runtime.let_go(model.identifier)
 
     raise typer.Exit(code)
 
@@ -185,6 +188,19 @@ def _stored() -> Profile | None:
         tell(f"  {error}")
         tell(f"  What was there is at {kept}. Writing a fresh profile.")
         return None
+
+
+def _connect(profile: Profile) -> Runtime:
+    """Reach the runtime the profile names.
+
+    The one place a name becomes an adapter: everything downstream holds a
+    connection and knows nothing about which runtime it is.
+
+    :param profile: What the runtime is called, and where it listens.
+
+    :return: A connection to it.
+    """
+    return RUNTIMES[profile.runtime](profile.host)
 
 
 def _cache() -> Path:

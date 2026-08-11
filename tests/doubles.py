@@ -1,6 +1,8 @@
 """Stand-ins for what offgrid talks to: a server, a runtime's tool, a Mac."""
 
+import json
 import subprocess
+from collections.abc import Sequence
 from pathlib import Path
 
 import httpx
@@ -12,6 +14,7 @@ GIB = 1024**3
 MACHINE = Machine(
     chip="Apple M1 Max", memory_bytes=64 * GIB, wired_limit_bytes=56 * GIB
 )
+CEILING = 262144
 
 
 def answer_as_a_mac(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -63,6 +66,102 @@ def serve_post(monkeypatch: pytest.MonkeyPatch, handler) -> None:
             return client.post(url, json=json, timeout=timeout)
 
     monkeypatch.setattr(httpx, "post", post)
+
+
+def _entry(identifier: str, *, served: int, ceiling: int, in_memory: bool) -> dict:
+    """Describe one model the way LM Studio's catalogue does.
+
+    :param identifier: The model's id.
+    :param served: The context it is served at once it is loaded.
+    :param ceiling: The context it states before anything loads it.
+    :param in_memory: Whether it is held.
+
+    :return: One catalogue entry.
+    """
+    entry = {
+        "id": identifier,
+        "type": "llm",
+        "state": "loaded" if in_memory else "not-loaded",
+        "max_context_length": ceiling,
+    }
+    if in_memory:
+        entry["loaded_context_length"] = served
+
+    return entry
+
+
+def answer_as_lm_studio(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    holding: dict[str, int] | None = None,
+    cold: dict[str, int] | None = None,
+    ceiling: int = CEILING,
+) -> dict:
+    """Answer for LM Studio, as what it holds changes.
+
+    Its catalogue and its loads come over HTTP and it lets go through its own
+    tool, so all three are answered for here. Each mapping is a model against
+    the context it is served at; a cold model states only its ceiling until
+    something loads it, which is what makes the two numbers differ.
+
+    :param monkeypatch: The test's patcher.
+    :param holding: Models in memory, against the context each is served at.
+    :param cold: Models it has and is not holding.
+    :param ceiling: The context every model states before it is loaded.
+
+    :return: What it was asked to load and let go of, and in what order.
+    """
+    served = {**(holding or {}), **(cold or {})}
+    in_memory = dict.fromkeys(holding or {}, True) | dict.fromkeys(cold or {}, False)
+    asked: dict = {"loaded": None, "let_go": [], "order": []}
+
+    def catalogue(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "data": [
+                    _entry(name, served=served[name], ceiling=ceiling, in_memory=state)
+                    for name, state in in_memory.items()
+                ]
+            },
+        )
+
+    def load(request: httpx.Request) -> httpx.Response:
+        identifier = json.loads(request.content)["model"]
+        in_memory[identifier] = True
+        asked["loaded"] = identifier
+        asked["order"].append(("loaded", identifier))
+
+        return httpx.Response(200, json={"model": identifier, "content": []})
+
+    def tool(argv: Sequence[str], **kwargs) -> subprocess.CompletedProcess:
+        identifier = argv[2]
+        in_memory[identifier] = False
+        asked["let_go"].append(identifier)
+        asked["order"].append(("let_go", identifier))
+
+        return subprocess.CompletedProcess(list(argv), 0, "", "")
+
+    serve_get(monkeypatch, catalogue)
+    serve_post(monkeypatch, load)
+    monkeypatch.setattr(subprocess, "run", tool)
+
+    return asked
+
+
+def refuse_to_let_go(monkeypatch: pytest.MonkeyPatch, complaint: str) -> None:
+    """Answer as a runtime whose tool will not let go of anything.
+
+    :param monkeypatch: The test's patcher.
+    :param complaint: What the tool says about it.
+    """
+    monkeypatch.setattr(
+        subprocess,
+        "run",
+        lambda argv, **kwargs: subprocess.CompletedProcess(
+            list(argv), 1, "", complaint
+        ),
+    )
 
 
 def run_tool(
