@@ -106,6 +106,37 @@ def test_a_swap_that_freed_nothing_does_not_load_on_top_of_it(monkeypatch):
     assert asked["loaded"] is None
 
 
+def test_a_model_already_held_answers_even_where_another_will_not_go(monkeypatch):
+    # No load is being asked for, so there is nothing to refuse: the reason a
+    # cold model is refused here is the wait and the swap it would pay into a
+    # full pool, and a warm one pays neither. What the stuck model costs is
+    # said out loud instead, which is what a person can act on.
+    answer_as_lm_studio(monkeypatch, holding={"a/wanted-7b": 8192, "a/stuck-7b": 8192})
+    refuse_to_let_go(monkeypatch, "it would not go")
+
+    model = connect(HOST).ensure_only("a/wanted-7b")
+
+    assert model.identifier == "a/wanted-7b"
+    assert [held.identifier for held in connect(HOST).read_held()] == [
+        "a/wanted-7b",
+        "a/stuck-7b",
+    ]
+
+
+def test_what_a_model_that_will_not_go_costs_is_said_where_the_run_goes_on(
+    monkeypatch, caplog
+):
+    answer_as_lm_studio(monkeypatch, holding={"a/wanted-7b": 8192, "a/stuck-7b": 8192})
+    refuse_to_let_go(monkeypatch, "it would not go")
+
+    with caplog.at_level(logging.WARNING, logger="offgrid.runtimes.lmstudio"):
+        connect(HOST).ensure_only("a/wanted-7b")
+
+    assert any(
+        "still holding a/stuck-7b" in record.getMessage() for record in caplog.records
+    )
+
+
 def test_a_model_that_will_not_stay_held_is_reported(monkeypatch):
     # The runtime took the load and is holding nothing, which the catalogue
     # is the only way to find out.
