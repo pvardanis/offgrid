@@ -93,10 +93,6 @@ forbidden_modules = [
     "offgrid.leaderboards",
     "offgrid.runtimes",
 ]
-# The one place the rule does not hold, and the seam a second runtime attaches
-# at: `hold.py` names LM Studio because there is no port to name instead. The
-# commit that builds one deletes this line, so the check says when it is done.
-ignore_imports = ["offgrid.hold -> offgrid.runtimes.lmstudio"]
 
 [[tool.importlinter.contracts]]
 name = "One adapter never reaches for another"

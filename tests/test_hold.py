@@ -1,226 +1,48 @@
-"""What holding a model raises, and what it says while it works.
+"""Which model answers, and which error a caller importing offgrid gets.
 
-The command line covers what a person sees. These cover the two things it
-cannot reach cleanly: which error a caller importing offgrid gets, and the
-progress that travels by logging rather than by return value.
+The command line covers what a person sees, and the adapter covers what
+reaching a state costs. What is left here is the domain's own question: the
+model that answers is the one asked for, or the one already held, and a
+runtime holding nothing is not a runtime that could not be reached.
+
+The runtime is a real connection with the server stood in for, not a fake
+satisfying the port: a fake would answer whatever this file told it to, which
+is not evidence about anything.
 """
-
-import logging
-import subprocess
-import sys
-from collections.abc import Sequence
 
 import pytest
 
-from offgrid.exceptions import (
-    ModelNotHeldError,
-    ModelUnavailableError,
-    RuntimeUnreachableError,
-)
-from offgrid.hold import held, hold, let_go
-from offgrid.profile import Profile
+from offgrid.exceptions import ModelUnavailableError
+from offgrid.hold import held, hold
+from offgrid.runtimes.lmstudio import connect
+from tests.doubles import answer_as_lm_studio
 
+HOST = "127.0.0.1:1234"
 RESIDENT = "a/held-7b"
 
 
-@pytest.fixture
-def profile() -> Profile:
-    """A profile pointing at a runtime that the fakes stand in for."""
-    return Profile(host="127.0.0.1:1234")
-
-
-def _entry(identifier: str, *, in_memory: bool) -> dict:
-    """Describe one model the way a catalogue does."""
-    entry = {
-        "id": identifier,
-        "type": "llm",
-        "state": "loaded" if in_memory else "not-loaded",
-        "max_context_length": 262144,
-    }
-    if in_memory:
-        entry["loaded_context_length"] = 8192
-
-    return entry
-
-
-def _catalogue(
-    monkeypatch, *, holding: Sequence[str] = (), cold: Sequence[str] = ()
-) -> dict:
-    """Stand in for the runtime, answering as what it holds changes."""
-    in_memory = dict.fromkeys(holding, True) | dict.fromkeys(cold, False)
-    asked: dict = {"loaded": None, "let_go": []}
-
-    monkeypatch.setattr(
-        "offgrid.hold.catalogue",
-        lambda host: {
-            "data": [_entry(name, in_memory=state) for name, state in in_memory.items()]
-        },
-    )
-
-    def load(host: str, identifier: str) -> None:
-        in_memory[identifier] = True
-        asked["loaded"] = identifier
-
-    def unload(host: str, identifier: str) -> None:
-        in_memory[identifier] = False
-        asked["let_go"].append(identifier)
-
-    monkeypatch.setattr("offgrid.hold.load_model", load)
-    monkeypatch.setattr("offgrid.hold.unload", unload)
-
-    return asked
-
-
-def test_a_runtime_holding_nothing_is_not_a_runtime_that_is_unreachable(
-    profile, monkeypatch
-):
+def test_a_runtime_holding_nothing_is_not_a_runtime_that_is_unreachable(monkeypatch):
     # The difference decides where someone looks next, so it is carried by
     # the type and not only by the wording.
-    _catalogue(monkeypatch, cold=["a/cold-7b"])
+    answer_as_lm_studio(monkeypatch, cold={"a/cold-7b": 8192})
 
     with pytest.raises(ModelUnavailableError, match="holding no model"):
-        held(profile)
+        held(connect(HOST))
 
 
-def test_a_model_the_runtime_does_not_have_names_what_lists_them(profile, monkeypatch):
-    _catalogue(monkeypatch, holding=[RESIDENT])
+def test_the_model_that_would_answer_is_the_one_being_held(monkeypatch):
+    answer_as_lm_studio(monkeypatch, holding={RESIDENT: 8192}, cold={"a/cold-7b": 8192})
 
-    with pytest.raises(ModelUnavailableError, match="offgrid doctor"):
-        hold(profile, "a/absent-7b")
-
-
-def test_a_model_that_will_not_stay_held_is_reported(profile, monkeypatch):
-    # The runtime took the load and is holding nothing, which the catalogue
-    # is the only way to find out.
-    _catalogue(monkeypatch, cold=["a/other-7b"])
-    monkeypatch.setattr("offgrid.hold.load_model", lambda host, identifier: None)
-
-    with pytest.raises(ModelNotHeldError, match="accepted"):
-        hold(profile, "a/other-7b")
+    assert held(connect(HOST)).identifier == RESIDENT
 
 
-def test_a_model_that_did_not_stay_held_is_let_go_of_before_the_error(
-    profile, monkeypatch
-):
-    # The runtime may have taken the weights even though the catalogue does
-    # not say so, and nothing downstream knows to let them go.
-    asked = _catalogue(monkeypatch, cold=["a/other-7b"])
-    monkeypatch.setattr("offgrid.hold.load_model", lambda host, identifier: None)
-
-    with pytest.raises(ModelNotHeldError):
-        hold(profile, "a/other-7b")
-
-    assert "a/other-7b" in asked["let_go"]
-
-
-def test_a_load_that_is_interrupted_lets_go_of_what_it_started(profile, monkeypatch):
-    asked = _catalogue(monkeypatch, cold=["a/other-7b"])
-
-    def interrupted(host: str, identifier: str) -> None:
-        raise KeyboardInterrupt
-
-    monkeypatch.setattr("offgrid.hold.load_model", interrupted)
-
-    with pytest.raises(KeyboardInterrupt):
-        hold(profile, "a/other-7b")
-
-    assert "a/other-7b" in asked["let_go"]
-
-
-def test_the_wait_for_a_load_is_said_while_it_is_waited_for(
-    profile, monkeypatch, caplog
-):
-    _catalogue(monkeypatch, holding=[RESIDENT], cold=["a/other-7b"])
-
-    with caplog.at_level(logging.INFO, logger="offgrid.hold"):
-        hold(profile, "a/other-7b")
-
-    said = [record.getMessage() for record in caplog.records]
-    assert any("Loading a/other-7b" in line for line in said)
-    assert any("ready in" in line for line in said)
-
-
-def test_what_a_swap_costs_is_said_before_it_is_paid(profile, monkeypatch, caplog):
-    _catalogue(monkeypatch, holding=[RESIDENT], cold=["a/other-7b"])
-
-    with caplog.at_level(logging.INFO, logger="offgrid.hold"):
-        hold(profile, "a/other-7b")
-
-    assert any(
-        f"Letting go of {RESIDENT}" in record.getMessage()
-        and "cached prefix" in record.getMessage()
-        for record in caplog.records
+def test_the_model_asked_for_is_held_alone(monkeypatch):
+    asked = answer_as_lm_studio(
+        monkeypatch, holding={RESIDENT: 8192}, cold={"a/other-7b": 32768}
     )
 
+    model = hold(connect(HOST), "a/other-7b")
 
-def test_a_swap_that_freed_nothing_does_not_load_on_top_of_it(profile, monkeypatch):
-    # The model that would not go is still holding its memory. Asking the
-    # runtime for another one either fails the load or starts the machine
-    # swapping, and the wait for both is paid before either is found out.
-    asked = _catalogue(monkeypatch, holding=[RESIDENT], cold=["a/other-7b"])
-
-    def refuse(host: str, identifier: str) -> None:
-        raise RuntimeUnreachableError("lms exited 0 and freed nothing")
-
-    monkeypatch.setattr("offgrid.hold.unload", refuse)
-
-    with pytest.raises(RuntimeUnreachableError, match="still holding"):
-        hold(profile, "a/other-7b")
-
-    assert asked["loaded"] is None
-
-
-def test_letting_go_says_whether_the_memory_came_back(profile, monkeypatch):
-    # A log record is for a person. A caller embedding offgrid needs an
-    # answer it can branch on.
-    _catalogue(monkeypatch, holding=[RESIDENT])
-
-    assert let_go("127.0.0.1:1234", RESIDENT) is True
-
-
-def test_letting_go_says_when_the_memory_did_not_come_back(profile, monkeypatch):
-    def refuse(host: str, identifier: str) -> None:
-        raise RuntimeUnreachableError("lms exited 0 and freed nothing")
-
-    monkeypatch.setattr("offgrid.hold.unload", refuse)
-
-    assert let_go("127.0.0.1:1234", RESIDENT) is False
-
-
-def test_a_runtime_that_will_not_let_go_is_said_rather_than_raised(
-    profile, monkeypatch, caplog
-):
-    # A run that has already finished is not worth failing over, but memory
-    # still held is worth saying out loud.
-    def refuse(host: str, identifier: str) -> None:
-        raise RuntimeUnreachableError("lms would not unload it")
-
-    monkeypatch.setattr("offgrid.hold.unload", refuse)
-
-    with caplog.at_level(logging.WARNING, logger="offgrid.hold"):
-        let_go("127.0.0.1:1234", RESIDENT)
-
-    assert any("still holding" in record.getMessage() for record in caplog.records)
-
-
-def test_progress_is_silent_for_a_caller_that_configured_nothing():
-    # A library that prints without being asked is a library that cannot be
-    # embedded. In this process pytest has already attached a handler, so
-    # the claim is only testable somewhere that has not.
-    finished = subprocess.run(
-        [
-            sys.executable,
-            "-c",
-            "import offgrid.hold as hold; hold.log.info('progress'); "
-            "hold.log.warning('memory that did not come back')",
-        ],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-
-    assert finished.stdout == ""
-    assert "progress" not in finished.stderr
-    # A warning is different: memory still held is worth surfacing even to a
-    # caller that asked for nothing, and Python's last resort handler shows it.
-    assert "memory that did not come back" in finished.stderr
+    assert model.identifier == "a/other-7b"
+    assert model.context_limit == 32768
+    assert asked["let_go"] == [RESIDENT]
