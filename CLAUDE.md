@@ -27,7 +27,7 @@ agreed. Anything else needs a new agreement.
 | Seam | What is tested there |
 |---|---|
 | `offgrid setup`, `doctor`, `recommend`, `run` | what a person sees and what gets launched |
-| the profile file | that a hand-edited profile loads, and that older ones still do |
+| the profile file | that a hand-edited profile loads, and which ones are refused |
 | a runtime adapter's parsing | a payload captured from a live server |
 | a leaderboard adapter's parsing | a payload captured from the live page |
 | a listing's fit | which widths a machine holds it at |
