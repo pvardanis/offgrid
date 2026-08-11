@@ -22,6 +22,7 @@ flowchart TD
     end
     subgraph domain [domain]
         hold[hold.py]
+        ports["runtime.py"]
         rest["machine · fit · listing · speed · quality ·<br/>shortlist · recommendation · dialect ·<br/>profile · launch · model"]
     end
     subgraph shared [shared]
@@ -33,15 +34,17 @@ flowchart TD
     adapters --> domain
     domain --> shared
     adapters --> shared
-    hold -. the port that is not built yet .-> rt
+    hold --> ports
 ```
 
 Dependencies point inwards: adapters know about the domain, the domain knows
 nothing about adapters. The command line is outermost and may reach anything;
 `shared` is innermost and reaches nothing of offgrid's.
 
-The dotted edge is the exception, and closing it is what the seams below are
-for.
+`hold.py` reaches `runtime.py`, which is a port and not an adapter: what
+satisfies it is bound to a name in `runtimes/`, and `cli.py` is where the two
+meet. Two seams are still folders rather than ports — `agents/` and
+`leaderboards/` — and the sections below say what each becomes.
 
 ### What checks this — built
 
@@ -53,16 +56,18 @@ The first contract is the rule above. The second is that no adapter reaches
 for another: `runtimes/`, `agents/` and `leaderboards/` do not know each other
 exists.
 
-The first carries one exemption — `offgrid.hold -> offgrid.runtimes.lmstudio`,
-the dotted edge — which the commit that builds the port deletes. So the check
-is also the answer to whether that work is finished.
+The first carried one exemption — `offgrid.hold -> offgrid.runtimes.lmstudio`
+— which the commit that built the runtime port deleted. It is stated without
+exemptions now.
 
 ### What it tightens to — designed
 
-Once `cli.py` and `hold.py` see only a Protocol and a registry, the rule stops
-being "the domain may not import adapters" and becomes **nothing may import a
-concrete adapter except its own registry**. The exemption disappears rather
-than moving, and `runtimes/lmstudio.py` gains exactly one importer.
+The rule the domain is held to says nothing about `cli.py`, which is outermost
+and may import anything. Once the agent and the leaderboard have registries
+too, it becomes **nothing may import a concrete adapter except its own
+registry**, the command line included, and each adapter module gains exactly
+one importer. `runtimes/lmstudio.py` already has one; a contract cannot be
+stated over all three until the other two do.
 
 ## The modules — built
 
@@ -103,9 +108,9 @@ launch.py          an environment and an argument list, and running one
 hold.py            holding the model that answers, and letting it go
 ```
 
-Three more join them when the seams are built — `runtime.py`, `agent.py` and
+Two more join them when the remaining seams are built — `agent.py` and
 `leaderboard.py`, each holding what offgrid asks of that kind of adapter and
-which ones there are.
+which ones there are, as `runtime.py` does today.
 
 **shared**
 
@@ -123,28 +128,34 @@ a module that outgrows the limit is usually two ideas rather than one long one.
 sequenceDiagram
     actor P as person
     participant C as cli.py
+    participant F as profile.py
+    participant G as RUNTIMES
     participant D as dialect.py
     participant A as agents/claude_code.py
     participant H as hold.py
-    participant R as runtimes/lmstudio.py
+    participant R as Runtime
     participant L as launch.py
 
     P->>C: offgrid run [--model X]
-    C->>D: require_compatible(served, expected)
+    C->>F: load(path)
+    Note over F: an unknown runtime is refused here,<br/>naming the field, before anything else runs
+    F-->>C: Profile — host, RuntimeName, agent, model
+    C->>G: RUNTIMES[profile.runtime](profile.host)
+    G-->>C: Runtime
+    Note over C,G: the only place a name becomes an adapter
+    C->>D: require_compatible(runtime.dialect, expected)
     C->>A: prepare(config_dir)
     Note over C,A: both can fail before a load, and a load is tens of seconds
-    C->>H: hold(profile, wanted) — or held(profile)
-    H->>R: catalogue(host)
-    H->>R: unload(host, each other held model)
-    H->>R: load(host, wanted)
-    H->>R: catalogue(host)
-    Note over H,R: read back — a catalogue states a ceiling,<br/>a loaded model states the window it is served at
+    C->>H: hold(runtime, wanted) — or held(runtime)
+    H->>R: ensure_only(wanted) — or read_held()
+    Note over R: what "only this one" costs here is the adapter's<br/>problem: let go of the rest, load, read back
+    R-->>H: Model, as served
     H-->>C: Model
     C->>A: plan(model, host, config_dir, token, passthrough)
     A-->>C: Launch
     C->>L: start(launch)
     L-->>C: exit code
-    C->>H: let_go(host, identifier)
+    C->>R: let_go(identifier)
 ```
 
 The order is the design here, not an accident of how the code was written.
@@ -163,6 +174,12 @@ instead, which is the failure compacting exists to avoid.
 
 Every model but the one being asked for is let go first: one machine, one pool
 of memory, and what is held is memory the rest of the machine cannot use.
+That is one arrow here and four calls inside the adapter, which is the only
+thing that knows whether its runtime needs four, one, or none.
+
+The profile is parsed once, at the top, and everything downstream holds types
+rather than strings: a hand-edited typo fails at `load` with the field named,
+not at a registry lookup halfway through a run.
 
 ## What happens on `offgrid recommend` — built
 
@@ -222,7 +239,7 @@ value.
 This settles #42 for every runtime rather than one: a limit read at the point
 of use is right even when a runtime moves it at startup, which oMLX does.
 
-## Where a port lives — designed
+## Where a port lives — built for the runtime, designed for the other two
 
 `Runtime`, `Agent`, `Capabilities` and `Leaderboard` are domain types. They sit
 beside the code that needs them, and never inside `runtimes/`, `agents/` or
@@ -231,8 +248,7 @@ beside the code that needs them, and never inside `runtimes/`, `agents/` or
 That is the layer rule rather than a preference. The contract forbids
 `offgrid.hold -> offgrid.runtimes`, and a forbidden module covers everything
 beneath it, so a `Runtime` declared in `runtimes/__init__.py` is one the domain
-cannot import without committing the violation the exemption exists for today
-— which is the thing this design deletes.
+could not import at all.
 
 Each gets its own module, holding everything the domain says about that kind of
 adapter and nothing else:
@@ -251,15 +267,13 @@ each concrete adapter becomes importable from exactly one place: that registry.
 Their own modules rather than declared inside the code that calls them. A
 contract nobody can find is one a second adapter is written without: the module
 map is how this repo says where things are, and a `Runtime` inside `hold.py`
-has no line in it. `hold.py` is also already over the 150-line limit, and
-whether `ensure_only` shrinks it far enough to take a Protocol as well is not
-something to bet on in advance.
+has no line in it.
 
 The cost is that `offgrid/runtime.py` sits one letter from
 `offgrid/runtimes/`, and `cli.py` imports both — the port for its types, the
 registry to build one. Worth it for being findable, but worth knowing about.
 
-## The runtime seam — designed
+## The runtime seam — built
 
 A runtime adapter is a module exposing one factory. The factory binds an
 address once and answers with something satisfying `Runtime` — a frozen
@@ -272,8 +286,10 @@ Connect = Callable[[str], Runtime]
 
 
 class Runtime(Protocol):
-    dialect: Dialect
-    capabilities: Capabilities
+    @property
+    def dialect(self) -> Dialect: ...
+    @property
+    def capabilities(self) -> Capabilities: ...
 
     def read_catalogue(self) -> list[Model]: ...
     def read_held(self) -> list[Model]: ...
@@ -281,8 +297,8 @@ class Runtime(Protocol):
     def let_go(self, identifier: str) -> bool: ...
 ```
 
-Six members, each with a caller today. No payload crosses it, and nothing
-about the order of calls is knowledge the caller has to hold.
+Six members. No payload crosses it, and nothing about the order of calls is
+knowledge the caller has to hold.
 
 **Two are attributes and four are actions, and the split says something.** An
 attribute is settled when the connection opens: reading it is free and cannot
@@ -290,6 +306,12 @@ fail. A method reaches the server, so it costs time and can raise. Naming a
 method for what it does — `read_held`, not `held` — is the difference between
 an interface that says which of its members touch the network and one that
 leaves a caller to find out.
+
+The two attributes are declared as properties because that is what makes them
+read-only. Written `dialect: Dialect`, a protocol attribute is one a caller may
+also assign to, and what satisfies it here is frozen: `ty` refuses the pair
+with `protocol member capabilities is incompatible — the member does not accept
+writes`. A caller reads `runtime.dialect` either way.
 
 A Protocol rather than typed callables because a connection carries state —
 the host, LM Studio's `instance_id`, the capabilities probed when it opened —
@@ -304,22 +326,26 @@ Ollama takes an empty request with `keep_alive: 0`, which hits a branch calling
 `expireRunner` synchronously; oMLX takes `POST /v1/models/{id}/unload` and
 awaits it, and *also* evicts on its own against a memory ceiling; a
 single-model `llama-server` cannot be asked at all, because the model is the
-process. `_let_go_of_the_rest` works against exactly one of those four.
+process. Letting go of each other model in turn, from outside, works against
+exactly one of those four, which is why it now sits inside the one it works
+for.
 
 **`let_go` stays**, because the end of a run is a different question from the
 start of one: `run` owes a release in its `finally` whatever happened, and that
 is one model by name rather than an intent about the whole pool.
 
-**`models()` and `held()` are separate** because for three of the four they are
-separate requests — Ollama answers `/api/tags` and `/api/ps`, oMLX answers
-`/v1/models` and `/v1/models/status`. LM Studio answers both from one payload,
-which is why today's interface hands that payload around. That is LM Studio's
-efficiency, and an adapter that wants it can hold the payload behind the seam.
+**`read_catalogue` and `read_held` are separate** because for three of the four
+they are separate requests — Ollama answers `/api/tags` and `/api/ps`, oMLX
+answers `/v1/models` and `/v1/models/status`. LM Studio answers both from one
+payload, and now holds that payload behind the seam rather than handing it
+around.
 
-**`capabilities()` hangs off the connection, not the module**, because one of
-the three varies by how the server was started: a `llama-server` in router mode
+**`capabilities` hangs off the connection, not the module**, because one of the
+three varies by how the server was started: a `llama-server` in router mode
 exposes `POST /models/unload` and the same binary started with a model does
-not. It costs one call at connect.
+not. LM Studio's are the same however it was started, so its connection states
+them without asking; one that varies costs a call at connect. Nothing reads
+them yet — #43 is where the first caller is.
 
 ```python
 @dataclass(frozen=True)
@@ -345,7 +371,8 @@ Prepare = Callable[[Path], Agent]
 
 
 class Agent(Protocol):
-    dialect: Dialect
+    @property
+    def dialect(self) -> Dialect: ...
 
     def configure(self) -> None: ...
     def require_hosted_tools_denied(self) -> None: ...
@@ -409,7 +436,7 @@ Protocol whose members are methods, because a bare `Callable` takes its
 parameters positionally where a method permits them by name. Each seam is one
 or the other.
 
-## Choosing an adapter — designed
+## Choosing an adapter — built for runtimes, designed for the rest
 
 The names are enums in the domain, beside the other enum offgrid already has.
 
@@ -452,15 +479,17 @@ Re-exports earn their place in a library with an API to curate.
 so the submodule layout is not a detail to hide — it is what the contract is
 stated over.
 
-A test asserts the rule directly: the only module in `src/` importing
-`offgrid.runtimes.<something>` is `offgrid/runtimes/__init__.py`, and likewise
-for the other two packages. That covers a new adapter automatically, where
-naming each concrete module in a contract would need editing every time one is
-added.
+A test asserts the rule directly once all three have registries: the only
+module in `src/` importing `offgrid.runtimes.<something>` is
+`offgrid/runtimes/__init__.py`, and likewise for the other two packages. That
+covers a new adapter automatically, where naming each concrete module in a
+contract would need editing every time one is added. `runtimes/` holds to it
+today; `cli.py` still names `claude_code` and `reading.py` still names `onyx`,
+so the test comes with the seam that makes it pass.
 
-This is what finally makes `profile.runtime` and `profile.agent`
-load-bearing: today they are validated and then ignored, and `cli.py` imports
-both adapters by name.
+This is what makes `profile.runtime` load-bearing: it used to be validated and
+then ignored, and offgrid spoke to LM Studio whatever the file said.
+`profile.agent` is still in that position.
 
 **Two places, and a test that makes them agree.** The enum is the domain's
 statement of what exists; the registry is the adapter layer binding a name to
@@ -484,8 +513,9 @@ place `rg` finds.
 
 ## What a run will look like — designed
 
-The built diagram above draws the flow being replaced. This is the same run
-once the seams exist, from the file on disk to the process starting.
+The built diagram above draws the run as it is, with the runtime behind a port
+and the agent still reached by name. This is the same run once the agent seam
+exists too, from the file on disk to the process starting.
 
 ```mermaid
 sequenceDiagram
@@ -525,24 +555,20 @@ sequenceDiagram
     Note over C,R: owed from the moment the model was held
 ```
 
-Three things read off it that the prose says separately.
+What is left to build is on the agent's side of it. `cli.py` touches a registry
+twice and never again: after those two lines it holds a `Runtime` and an
+`Agent` and knows nothing about which ones they are. Today the first of those
+lines exists and the second is `prepare(CONFIG_DIR)` against a module named in
+an import.
 
-The profile is parsed once, at the top, and everything downstream holds types
-rather than strings — `profile.runtime` is a `RuntimeName`, so the failure for
-a hand-edited typo happens at `load` with the field named, not at a registry
-lookup halfway through a run.
-
-`cli.py` touches a registry twice and never again. After those two lines it
-holds a `Runtime` and an `Agent` and knows nothing about which ones they are.
-
-`ensure_only` is one arrow. The four calls it replaces — read the catalogue,
-unload each other model, load, read back — are inside the adapter, which is
-the only thing that knows whether its runtime needs four calls, one, or none.
+`configure` and `require_hosted_tools_denied` are two calls where `prepare` is
+one, and `plan` becomes a method on the agent rather than a function taking the
+configuration directory again.
 
 `recommend` changes less: `LEADERBOARDS[…]` replaces `reading.py` naming
 `onyx`, and the rest of that diagram stands.
 
-## What crosses a seam — designed
+## What crosses a seam — built for the runtime, designed for the other two
 
 `Model`, `Dialect`, `Capabilities`, `Launch`, `Table` — domain types, all of
 them. No vendor payload, no `dict`, no HTTP object.
@@ -569,28 +595,28 @@ on a kept one, and the sentence saying how old it is.
 `summarize_findings(table, machine)` hides the whole chain from listing through
 fit, speed and quality down to a ranked table.
 
-The runtime's is the shallow one. `catalogue(host)` answers with the runtime's
-payload, and `parse_models`, `loaded` and `resident` are functions over that
-payload. Fetching once and asking three times is not something the interface
-does; it is something the caller has to know to do. That knowledge is part of
-the interface even though no signature carries it.
+The runtime's was the shallow one. `catalogue(host)` answered with the
+runtime's payload, and `parse_models`, `loaded` and `resident` were functions
+over that payload. Fetching once and asking three times was not something the
+interface did; it was something the caller had to know to do. That knowledge
+is part of an interface even though no signature carries it.
 
-Imagine deleting that interface. `hold.py` would gain HTTP and JSON parsing,
-and lose almost nothing else — the three payload functions collapse into asking
-the runtime what it has. An interface whose removal costs that little is not
-hiding much.
+Imagine deleting that interface. `hold.py` would have gained HTTP and JSON
+parsing and lost almost nothing else — the three payload functions collapse
+into asking the runtime what it has. An interface whose removal costs that
+little is not hiding much.
 
 Which says the payload crossing the boundary better than calling it a leak.
-`hold.py` presents a deep interface of its own — `held`, `hold`, `let_go` — and
-it is deep by absorbing the shallowness underneath it. The dict is what
-absorbing looks like from outside, and the designed `Runtime` above is that
-absorption moved to the side of the seam that owns it.
+`hold.py` presented a deep interface of its own — `held`, `hold`, `let_go` —
+and it was deep by absorbing the shallowness underneath it. The dict was what
+absorbing looked like from outside, and `Runtime` is that absorption moved to
+the side of the seam that owns it: the payload now stays inside the adapter
+that speaks LM Studio's shape of it.
 
-`leaderboards/reading.py` is the counter-example in this repo. It composes two
-narrow modules — `onyx.py` for one list, `cache.py` for the file — into one
-deep call, and no payload reaches whoever asked. `hold.py` composes one module
-into an equally deep call and wears the payload anyway. Same job, same
-coupling, one hiding what the other carries.
+`leaderboards/reading.py` is the counter-example in this repo, and the one
+still standing. It composes two narrow modules — `onyx.py` for one list,
+`cache.py` for the file — into one deep call, and no payload reaches whoever
+asked. It names `onyx` directly to do it, which is what its own seam is for.
 
 ## The candidates the design answers to — built
 
@@ -618,12 +644,12 @@ What `Dialect` cannot express is that LM Studio answers `200` to
 which is worse than a `404` because a caller cannot tell "counted zero" from
 "not implemented". That is what `Capabilities` is for (#43).
 
-## What follows outside the ports — designed
+## What follows outside the ports — built for the runtime, designed for the rest
 
-**The profile carries a name, not a string.** `runtime` and `agent` become the
-enums above, so a hand-edited typo is refused when the profile is read and
-`profile.runtime` is a type at every call site. `save` writes with
-`model_dump(mode="json")`, since YAML cannot represent an enum member.
+**The profile carries a name, not a string.** `runtime` is the enum above, so a
+hand-edited typo is refused when the profile is read and `profile.runtime` is a
+type at every call site. `save` writes with `model_dump(mode="json")`, since
+YAML cannot represent an enum member. `agent` follows with the agent seam.
 
 **`cli.py` is where a name becomes an adapter, and the only thing that knows
 one exists.** It reads the profile, asks a registry for a `Runtime` and an
@@ -631,7 +657,8 @@ one exists.** It reads the profile, asks a registry for a `Runtime` and an
 and the Protocols and never `lmstudio` or `claude_code`, which is what makes
 the rule statable: **only a registry may import a concrete adapter**, the
 command line included. "Outermost, so it may import anything" is not something
-a contract can check.
+a contract can check. It holds for the runtime today and not yet for the other
+two.
 
 It keeps the commands, the reporting and the exit codes, and it keeps the
 order of a run — the checks before the load, the `try`/`finally` that owes the
@@ -640,24 +667,28 @@ in a domain module instead is #12's question, and it is answerable once the
 adapter imports have gone and `cli.py`'s real size is known rather than
 guessed. There is one caller today.
 
-## How this is tested — designed
+## How this is tested — built, apart from the conformance suite
 
 Three different things, and conflating them is how a suite ends up testing
 itself.
 
 **Through the command, standing in below the adapter.** This is what the suite
-already does and what most tests should keep doing: `tests/doubles.py` answers
-`httpx.get` from a `MockTransport` carrying a captured payload, and stands in
-for `subprocess.run` and `subprocess.Popen`. One test then covers the ordering
-*and* the adapter's parsing, against a real payload. A fake satisfying
-`Runtime` would skip the parsing, which is the half most likely to be wrong.
+does and what most tests should keep doing: `tests/doubles.py` answers
+`httpx.get` and `httpx.post` from a `MockTransport` and stands in for
+`subprocess.run` and `subprocess.Popen`, so one stand-in serves the command
+line, `hold.py` and the adapter alike. Each test then covers the ordering *and*
+the adapter's parsing. A fake satisfying `Runtime` would skip the parsing,
+which is the half most likely to be wrong.
 
 **Each adapter, against a conformance suite.** One suite states what being a
 runtime means behaviourally — that `ensure_only` answers with the model as
 *served* rather than as catalogued, that `read_held` reflects reality after a
 `let_go`, which error arrives when the host is unreachable — and every adapter
 runs it against payloads captured from that runtime, live. An adapter is done
-when it passes.
+when it passes. `tests/test_lmstudio_holding.py` asks those questions of the
+one adapter there is; making them a suite every adapter runs waits for the
+second one, which is what would say which of them are LM Studio's and which
+are a runtime's.
 
 **A fake `Runtime` only where the socket cannot reach.** It is the exception,
 not the default: something satisfying the Protocol proves how the domain

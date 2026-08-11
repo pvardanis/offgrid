@@ -351,6 +351,31 @@ profile still carrying the fields is refused by name rather than migrated,
 because the message already says to run `setup` again and thirty seconds of
 re-running beats a shim that outlives the files it was written for.
 
+## What building the runtime port settled
+
+Three things the design could not have known, found while it was built.
+
+**A protocol attribute is declared as a property, or nothing frozen satisfies
+it.** Written `dialect: Dialect`, the member is one a caller may also assign
+to, and `ty` refuses the pair: `protocol member capabilities is incompatible —
+the member does not accept writes`. Declared with `@property` it is read-only,
+a frozen dataclass field satisfies it, and a caller still reads
+`runtime.dialect`. The agent seam's `Agent` will hit this the same way.
+
+**The release owed after a failed load lives in the adapter.** The domain
+cannot see whether a load was attempted, so a `hold` that let go of whatever it
+was asked for would fire `lms unload` at a name the runtime does not have —
+noise on the likeliest mistake there is, a typo in a model name. The adapter
+knows which of its own calls may have taken weights, and wraps that one.
+
+**`held` no longer names the address it could not reach.** The port carries a
+dialect and capabilities and not a host, on purpose: what a connection is bound
+to is its own business. So "The runtime at 127.0.0.1:1234 is holding no model"
+became "The runtime is holding no model", and the address stays in the errors
+the adapter raises, which is every other one. `doctor` prints it on the line
+above. Adding `host` to the port to keep one sentence intact would have made
+every future adapter expose an address for a message.
+
 ## Denying hosted tools is correctness; privacy is a feature that is not built
 
 These were one thing and are now two.
