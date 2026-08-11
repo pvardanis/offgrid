@@ -219,3 +219,33 @@ returns the lines saying so rather than printing them, as `recommendation.py`
 does. The adapter beneath it owns fetching and parsing one list and knows
 nothing of a fall back; `leaderboards/cache.py` owns the file and names no
 list, so a second list reuses it as it is.
+
+## The module map has one home, and the rule it states is checked
+
+The map was in two places, `CONTEXT.md` and the README, and the README's had
+drifted past `speed.py`, `quality.py`, `shortlist.py` and `recommendation.py`
+without anyone noticing. Two copies of a list is one copy and one lie, so it
+moved to `docs/architecture.md` and `CONTEXT.md` went back to being the
+glossary it says it is.
+
+"Dependencies point inwards" had been written down since the first commit and
+checked by nobody. `import-linter` states it, the hooks run it, and CI has it
+through `prek run --all-files`. It is stated as two `forbidden` and
+`independence` contracts rather than `layers`, because the modules are flat:
+a `layers` contract needs every module named and lets a new one sit outside
+every layer, which is a rule with a hole in it. A test closes the same hole
+from the other side, since a module missing from `source_modules` is outside
+the rule rather than passing it and `lint-imports` says nothing about it.
+
+The one exemption, `offgrid.hold -> offgrid.runtimes.lmstudio`, is the port
+that was deferred until a second adapter could show its shape. Naming it in
+`pyproject.toml` makes the deferral a line that the commit building the port
+deletes, rather than a paragraph nobody re-reads.
+
+The doc describes what `hold.py` and `cli.py` consume today; it does not
+declare a contract a second runtime must satisfy. That is the same reasoning
+that deferred the port: an interface drawn from one implementation fits that
+one, and one drawn from none fits nothing. Two parts of what is written down
+are marked as LM Studio's own — the catalogue payload crossing the boundary,
+and `unload` being an operation at all when a runtime that evicts for itself
+would undo it.
