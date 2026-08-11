@@ -175,7 +175,7 @@ one command that reaches the network — see [Commands](#commands).
 
 ```console
 $ offgrid doctor
-  runtime   127.0.0.1:1234 reachable
+  runtime   lmstudio at 127.0.0.1:1234, reachable
   model     qwen/qwen3.6-35b-a3b
   context   262144
   agent     claude-code, speaking anthropic
@@ -248,9 +248,11 @@ downloaded, and nothing is written.
 | [LM Studio](https://lmstudio.ai/) | `anthropic` | ✅ |
 | [Ollama](https://ollama.com/) | `openai` | ❌ |
 
-Adding one is a module in `runtimes/`: report a dialect, parse a catalogue, say
-which models are held, load one, unload one. Nothing above knows which runtime
-is answering.
+Adding one is a module in `runtimes/` exposing a `connect(host)`, and one line
+in the registry beside it. What that answers with satisfies `Runtime`: it
+reports a dialect and what it can be asked to do, lists what it has and what it
+holds, holds one model alone, and lets one go. How it reaches that state is its
+own business, and nothing above knows which runtime is answering.
 
 Ollama serving the `openai` dialect is the interesting part: pairing it with an
 agent that expects `anthropic` would be refused rather than translated, so it
