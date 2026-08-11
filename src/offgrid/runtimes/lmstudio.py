@@ -24,13 +24,19 @@ TIMEOUT_SECONDS = 5
 # seconds and a cold cache takes longer.
 LOAD_TIMEOUT_SECONDS = 300
 
-# Letting go of a model is not part of the HTTP API; LM Studio's own tool is
-# what does it, and it talks to the copy running on this machine.
+# LM Studio has an HTTP unload and has since 0.4.0, but it takes an
+# `instance_id` that the `/api/v0` catalogue this adapter reads does not carry.
+# Its own tool takes a model name, and talks to the copy running on this
+# machine.
 TOOL = "lms"
 
+# What LM Studio's API can be asked, rather than what this machine can reach:
+# a release commanded through `lms` needs the tool on PATH, which `unload`
+# reports when it is not.
+#
 # `/v1/messages/count_tokens` answers 200 while the server logs `Unexpected
 # endpoint or method`, so a caller cannot tell a count of zero from an endpoint
-# that is not there. `lms unload` is what lets go.
+# that is not there.
 #
 # Memory it manages itself: loading through the messages endpoint is a JIT
 # load, and `docs/research/adapter-surfaces.md` records what that carries — the
@@ -59,10 +65,10 @@ def connect(host: str) -> Runtime:
 class LMStudio:
     """A running copy of LM Studio, at the address it was reached on.
 
+    `dialect` and `capabilities` are facts about LM Studio rather than about
+    one connection to it, so they are settled here and not passed in.
+
     :param host: Address it listens on.
-    :param dialect: The API shape it serves, which needs no translation for
-        Claude Code.
-    :param capabilities: What it can be asked to do.
     """
 
     host: str
@@ -89,6 +95,11 @@ class LMStudio:
 
     def ensure_only(self, identifier: str) -> Model:
         """Hold the named model, whatever the runtime is holding now.
+
+        A model that will not go is said out loud and this answers anyway
+        where the wanted one is already in memory: nothing is being loaded, so
+        there is nothing to refuse. Where a load is needed, it is refused
+        rather than paid into a pool that is still full.
 
         :param identifier: The model that will answer.
 
