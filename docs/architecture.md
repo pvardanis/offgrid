@@ -41,6 +41,20 @@ nothing about adapters. The command line is outermost and may reach anything;
 
 The dotted edge is the exception, and it is the subject of the last section.
 
+### What checks this
+
+`import-linter` states the rule as two contracts in `pyproject.toml`, and the
+hooks run them on every commit, so a broken layer fails rather than waiting to
+be spotted in review. `uv run lint-imports` runs them by hand.
+
+The first contract is the rule above. The second is that no adapter reaches
+for another: `runtimes/`, `agents/` and `leaderboards/` do not know each other
+exists.
+
+The first carries one exemption — `offgrid.hold -> offgrid.runtimes.lmstudio`,
+the dotted edge — which the commit that builds the port deletes. So the check
+is also the answer to whether that work is finished.
+
 ## The modules
 
 **command line**
