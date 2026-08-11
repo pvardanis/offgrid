@@ -12,8 +12,8 @@ is not evidence about anything.
 
 import pytest
 
+from offgrid.answering import get_resident, hold
 from offgrid.exceptions import ModelUnavailableError
-from offgrid.hold import held, hold
 from offgrid.runtimes.lmstudio import connect
 from tests.doubles import answer_as_lm_studio
 
@@ -27,13 +27,13 @@ def test_a_runtime_holding_nothing_is_not_a_runtime_that_is_unreachable(monkeypa
     answer_as_lm_studio(monkeypatch, cold={"a/cold-7b": 8192})
 
     with pytest.raises(ModelUnavailableError, match="holding no model"):
-        held(connect(HOST))
+        get_resident(connect(HOST))
 
 
 def test_the_model_that_would_answer_is_the_one_being_held(monkeypatch):
     answer_as_lm_studio(monkeypatch, holding={RESIDENT: 8192}, cold={"a/cold-7b": 8192})
 
-    assert held(connect(HOST)).identifier == RESIDENT
+    assert get_resident(connect(HOST)).identifier == RESIDENT
 
 
 def test_the_model_asked_for_is_held_alone(monkeypatch):
