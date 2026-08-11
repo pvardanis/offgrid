@@ -328,6 +328,13 @@ rather than raising a `KeyError` at somebody's terminal. What this buys over a
 is that the profile must be written with `model_dump(mode="json")`, because
 YAML cannot represent an enum member.
 
+The registry sits in the package's `__init__.py` and nothing else is exported
+beside it. A re-exported `LMStudio` would read the same to `import-linter` as
+the `RUNTIMES` import `cli.py` legitimately makes, since it reads statements as
+written — so the rule that only a registry may import a concrete adapter would
+stop being checkable. Re-exports curate an API, and there is no published one
+here to curate.
+
 A dict for the registry, not entry points and not an importable path from the
 profile. The audience clones and runs, so plugin discovery serves nobody who
 exists, and a dotted path in a hand-edited YAML file is an import statement in
