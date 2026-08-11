@@ -105,7 +105,7 @@ dialect.py         which API shapes can be paired
 runtime.py         what offgrid asks of a runtime, and which ones there are
 profile.py         what is remembered between runs
 launch.py          an environment and an argument list, and running one
-hold.py            holding the model that answers, and letting it go
+hold.py            which model the runtime is asked to hold
 ```
 
 Two more join them when the remaining seams are built — `agent.py` and
