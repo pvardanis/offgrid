@@ -204,6 +204,23 @@ it is all the command has left.
 machine, writes the profile and says what fits. `doctor` asks the runtime what
 it is holding and prints it beside the agent's dialect.
 
+## What the profile carries — built
+
+`host`, `runtime`, `agent` and `model`. Nothing measured: `setup` and
+`recommend` each call `detect()` where they need it, so a chip, a memory size
+and a GPU limit recorded here would be a second answer to a question the
+machine answers for itself — and a stale one from the first reboot, or from a
+runtime that raises the limit as it starts. A profile written while it carried
+them is refused, naming each field and saying to run `setup` again. No
+compatibility shim.
+
+`setup` still measures, still prints what fits at each quantization width and
+still suggests raising the GPU limit. That is what it is for; the advice is its
+value.
+
+This settles #42 for every runtime rather than one: a limit read at the point
+of use is right even when a runtime moves it at startup, which oMLX does.
+
 ## Where a port lives — designed
 
 `Runtime`, `Agent`, `Capabilities` and `Leaderboard` are domain types. They sit
@@ -606,16 +623,6 @@ which is worse than a `404` because a caller cannot tell "counted zero" from
 enums above, so a hand-edited typo is refused when the profile is read and
 `profile.runtime` is a type at every call site. `save` writes with
 `model_dump(mode="json")`, since YAML cannot represent an enum member.
-
-**The profile stops carrying a machine.** `Profile.machine()` has no callers,
-and `setup` and `recommend` both call `detect()` fresh, so `chip`,
-`memory_bytes` and `wired_limit_bytes` are written and never read. They go.
-`setup` keeps measuring and printing — that is its job, and the GPU advice is
-its value. Old profiles fail to load and the error already says to run `setup`
-again; no compatibility shim.
-
-This also settles #42 for every runtime rather than one: a limit read at the
-point of use is right even when a runtime moves it at startup, which oMLX does.
 
 **`cli.py` is where a name becomes an adapter, and the only thing that knows
 one exists.** It reads the profile, asks a registry for a `Runtime` and an

@@ -54,8 +54,8 @@ Five words carry the whole design, and the modules are named after them.
   dialects match. offgrid refuses the pair rather than translating between them.
 - **held**, **resident** — a model the runtime currently has in memory. A held
   model answers immediately; anything else costs a load first.
-- **profile** — what offgrid remembers between runs: the machine it measured,
-  where the runtime listens, and which runtime and agent to use.
+- **profile** — what offgrid remembers between runs: where the runtime listens,
+  which runtime and agent to use, and which model to run.
 
 ## Why
 
@@ -351,9 +351,6 @@ error anywhere. `WebFetch` is genuinely local and stays enabled.
 host: 127.0.0.1:1234
 runtime: lmstudio
 agent: claude-code
-chip: Apple M1 Max
-memory_bytes: 68719476736
-wired_limit_bytes: 60129542144
 model: qwen/qwen3.6-35b-a3b
 ```
 
@@ -361,11 +358,14 @@ model: qwen/qwen3.6-35b-a3b
 |---|---|
 | `host` | where the runtime listens |
 | `runtime`, `agent` | which adapters to use. A name offgrid has no adapter for is refused rather than recorded |
-| `chip`, `memory_bytes`, `wired_limit_bytes` | measured, refreshed by `setup` |
 | `model` | what `run` uses when the command line names nothing |
 
 A typo is an error rather than a shrug: `modle:` is reported, not read as "no
 model named".
+
+Nothing measured is kept here. `setup` reads the chip, the memory and the GPU
+limit and prints them; every command that needs them reads them again, so a
+raised limit counts from the moment it is raised.
 
 ## What offgrid does not do
 
