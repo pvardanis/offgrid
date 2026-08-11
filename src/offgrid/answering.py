@@ -35,19 +35,26 @@ def get_resident(runtime: Runtime) -> Model:
     return in_memory[0]
 
 
-def hold(runtime: Runtime, identifier: str) -> Model:
-    """Hold the named model, whatever the runtime is holding now.
+def hold(runtime: Runtime, identifier: str | None) -> Model:
+    """Hold the model that will answer: the one named, or the one already there.
+
+    Naming none is how a run says it wants whatever is resident, which costs
+    no load and keeps the prompt prefix cached against it.
 
     :param runtime: The runtime to ask.
-    :param identifier: The model asked for.
+    :param identifier: The model asked for, or ``None`` for the resident one.
 
     :return: The model that will answer, described by the context the runtime
         serves it at.
 
-    :raise ModelUnavailableError: When the runtime does not have it.
+    :raise ModelUnavailableError: When the runtime does not have it, or when
+        none was named and it is holding nothing.
     :raise ModelNotHeldError: When it took the load and is not holding it.
     :raise RuntimeUnreachableError: When the runtime cannot be reached, when
         the load fails, when another model answers, or when what is already
         held will not go and this one would be loaded on top of it.
     """
+    if identifier is None:
+        return get_resident(runtime)
+
     return runtime.ensure_only(identifier)
