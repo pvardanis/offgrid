@@ -1,4 +1,4 @@
-"""What offgrid remembers about a machine between runs.
+"""What offgrid remembers between runs.
 
 Reading a machine is cheap; agreeing on which runtime and agent to use is a
 decision. The profile holds the decision, so a later run is one word.
