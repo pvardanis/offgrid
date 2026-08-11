@@ -224,6 +224,11 @@ class Runtime(Protocol):
 Six operations, each with a caller today. No payload crosses it, and nothing
 about the order of calls is knowledge the caller has to hold.
 
+A Protocol rather than typed callables because a connection carries state —
+the host, LM Studio's `instance_id`, the capabilities probed when it opened —
+and because six related members read better named than positional. The
+leaderboard seam below carries neither and is shaped differently for it.
+
 **`ensure_only` states an intent, not a mechanism.** The domain wants one model
 in memory on a machine with one pool; how a runtime reaches that differs
 enough that it cannot be orchestrated from outside. `docs/research/adapter-surfaces.md`
@@ -309,16 +314,32 @@ smuggled into `plan` as a side effect.
 
 ## The leaderboard seam — designed
 
-Already nearly this shape, and the least urgent of the three.
+Not a Protocol, and the difference is the point. A published list holds no
+state and answers two questions, so it is two typed callables kept together
+rather than an object.
 
 ```python
-class Leaderboard(Protocol):
-    def fetch(self) -> str: ...
-    def parse(self, payload: str) -> Table: ...
+Fetch = Callable[[], str]
+Parse = Callable[[str], Table]
+
+
+@dataclass(frozen=True)
+class Leaderboard:
+    fetch: Fetch
+    parse: Parse
 ```
+
+Paired in a record rather than registered separately, because parsing one
+list's payload with another list's parser is nonsense and nothing else would
+stop it.
 
 `leaderboards/reading.py` composes one of these with `cache.py` and answers
 with a `Reading`. It reaches the registry rather than naming `onyx` directly.
+
+The two shapes cannot be mixed: a record of callables does not satisfy a
+Protocol whose members are methods, because a bare `Callable` takes its
+parameters positionally where a method permits them by name. Each seam is one
+or the other.
 
 ## Choosing an adapter — designed
 

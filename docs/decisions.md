@@ -276,8 +276,14 @@ too, but neither is a base of the other: `ty` checks the match structurally, so
 what is absent is the class hierarchy rather than the class. A connection has
 identity — which server — which is the case that warrants one.
 
+Not every seam is a Protocol. A runtime and an agent each carry state and
+several related members, so both are. A published list carries none and
+answers two questions, so it is two typed callables kept in a record — paired
+rather than registered apart, because parsing one list's payload with
+another's parser is nonsense and nothing else would stop it.
+
 A frozen dataclass holding the host, with methods, is the shape that satisfies
-it. A record of closures does not: a bare `Callable` takes its parameters
+a Protocol here. A record of closures does not: a bare `Callable` takes its parameters
 positionally and a protocol method permits them by name, so the check fails
 with `parameter ... must accept keyword arguments`. Worth writing down, because
 a record of closures is what gets reached for first here and the error does not
