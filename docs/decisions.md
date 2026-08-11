@@ -372,9 +372,11 @@ knows which of its own calls may have taken weights, and wraps that one.
 dialect and capabilities and not a host, on purpose: what a connection is bound
 to is its own business. So "The runtime at 127.0.0.1:1234 is holding no model"
 became "The runtime is holding no model", and the address stays in the errors
-the adapter raises, which is every other one. `doctor` prints it on the line
-above. Adding `host` to the port to keep one sentence intact would have made
-every future adapter expose an address for a message.
+the adapter raises, which is every other one. What it costs is real: this
+message is the one `doctor` prints when nothing is held, and `doctor` fails
+before it prints the address, so on that path the address is nowhere. What it
+buys is that a `Runtime` is not made to expose an address for a sentence, which
+every adapter after this one would have paid for.
 
 ## Denying hosted tools is correctness; privacy is a feature that is not built
 
