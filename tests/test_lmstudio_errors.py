@@ -8,6 +8,7 @@ from offgrid.runtimes.lmstudio import (
     LOAD_TIMEOUT_SECONDS,
     TIMEOUT_SECONDS,
     catalogue,
+    loaded,
     parse_models,
 )
 from tests.doubles import serve_get, serve_post
@@ -110,6 +111,13 @@ def test_an_answer_that_cannot_be_read_is_offgrids_error_not_httpxs(
         catalogue(HOST)
 
     assert HOST in str(raised.value)
+
+
+def test_an_entry_without_an_identifier_is_named_as_such_when_reading_what_is_held():
+    # `loaded` reads ids before `parse_models` gets to check them, so an
+    # entry with no id at all arrived as a `KeyError` from inside offgrid.
+    with pytest.raises(RuntimeUnreachableError, match="no id"):
+        loaded({"data": [{"type": "llm", "state": "loaded"}]})
 
 
 def test_a_body_without_a_catalogue_is_not_an_empty_catalogue():
