@@ -9,6 +9,11 @@ Two of the members are attributes and four are methods, and the split says
 which is which: an attribute settles when the connection opens, so reading it
 is free and cannot fail, while a method reaches the server, costs time, and
 can raise.
+
+The two attributes are declared as properties because that is what makes them
+read-only. Annotated as `dialect: Dialect`, a protocol attribute is one a
+caller may also assign to, and what satisfies it here is a frozen dataclass:
+`ty` refuses the pair with `the member does not accept writes`.
 """
 
 from collections.abc import Callable
@@ -53,14 +58,23 @@ class Capabilities:
 
 
 class Runtime(Protocol):
-    """A connection to a runtime holding models on this machine.
+    """A connection to a runtime holding models on this machine."""
 
-    :param dialect: The API shape it serves.
-    :param capabilities: What it can be asked to do.
-    """
+    @property
+    def dialect(self) -> Dialect:
+        """The API shape the runtime serves.
 
-    dialect: Dialect
-    capabilities: Capabilities
+        :return: The dialect an agent has to speak to talk to it.
+        """
+        ...
+
+    @property
+    def capabilities(self) -> Capabilities:
+        """What this connection can be asked to do.
+
+        :return: What was settled when it opened.
+        """
+        ...
 
     def read_catalogue(self) -> list[Model]:
         """List every model the runtime has, held or not.
