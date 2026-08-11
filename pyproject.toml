@@ -84,6 +84,7 @@ source_modules = [
     "offgrid.profile",
     "offgrid.quality",
     "offgrid.recommendation",
+    "offgrid.runtime",
     "offgrid.shortlist",
     "offgrid.speed",
 ]
