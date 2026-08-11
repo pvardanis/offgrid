@@ -37,6 +37,12 @@ model answers immediately; anything else costs a load first.
 **load**, **let go** — putting a model into memory and taking it out again.
 Loading is tens of seconds and evicts whatever prompt prefix was cached.
 
+**hold** — to make a named model the resident one, letting go of whatever else
+the runtime has. What it costs is the runtime's business: one machine has one
+pool of memory, and how a runtime reaches that state differs enough that it
+cannot be directed from outside. Naming no model is asking for whatever is
+resident, which costs no load.
+
 **launch** — an environment and an argument list, built before anything runs,
 so it can be shown rather than guessed at.
 

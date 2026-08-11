@@ -62,8 +62,10 @@ arrive with it.
 
 ## The run lifecycle is not the command line's work
 
-`hold.py` holds the model that will answer, lets go of the rest, reads back
-what the runtime serves, and lets go afterwards. `launch.py` carries the launch
+`answering.py` decides which model will answer and asks the runtime to hold it.
+Letting go of the rest, reading back what the runtime serves, and letting go
+afterwards moved behind the runtime port with the rest of the mechanism — what
+stays here is the decision. `launch.py` carries the launch
 and starts it, passing signals on. `cli.py` keeps the commands, the arguments,
 the reporting and the exit codes.
 
@@ -242,7 +244,7 @@ that was deferred until a second adapter could show its shape. Naming it in
 `pyproject.toml` makes the deferral a line that the commit building the port
 deletes, rather than a paragraph nobody re-reads.
 
-The doc describes what `hold.py` and `cli.py` consume today; it does not
+The doc describes what `answering.py` and `cli.py` consume today; it does not
 declare a contract a second runtime must satisfy. That is the same reasoning
 that deferred the port: an interface drawn from one implementation fits that
 one, and one drawn from none fits nothing. Two parts of what is written down
@@ -278,7 +280,7 @@ identity — which server — which is the case that warrants one.
 
 A port is a domain type and never lives in the adapter package it describes.
 The contract forbids the domain importing `runtimes/`, and that covers what is
-inside it, so a `Runtime` declared there could not be imported by `hold.py`
+inside it, so a `Runtime` declared there could not be imported by `answering.py`
 without the violation this design exists to remove.
 
 Each port gets its own module — `runtime.py`, `agent.py`, `leaderboard.py` —
@@ -377,6 +379,27 @@ message is the one `doctor` prints when nothing is held, and `doctor` fails
 before it prints the address, so on that path the address is nowhere. What it
 buys is that a `Runtime` is not made to expose an address for a sentence, which
 every adapter after this one would have paid for.
+
+## The module that decides is named for the decision, not for the mechanism
+
+`hold.py` was named for what it did before the port: hold a model, let go of
+the rest, read back, let go afterwards. Three of those four moved behind
+`Runtime`, and what was left was the decision — which model answers — under a
+name that promised the mechanism.
+
+It also held `hold` and `held`, two letters apart, one asking and one acting,
+and the command line put both in one expression. `CONTEXT.md` already carries
+`resident` as the word for a model in memory, so the asking one takes it and
+says it fetches: `get_resident`.
+
+`hold` stays, and is now in the glossary. It was a word the README used and the
+language never defined, which is how it ended up naming a module that had
+handed its mechanism away. Defined, it is the act this project needs a word
+for — make this the resident model, whatever that costs the runtime.
+
+The rule that a run naming no model wants whatever is resident moved out of
+`cli.py` and into `hold`. It is a domain rule, it was a ternary, and moving it
+gives the function something to decide rather than a call to forward.
 
 ## Denying hosted tools is correctness; privacy is a feature that is not built
 
