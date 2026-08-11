@@ -21,7 +21,7 @@ flowchart TD
         lb["leaderboards/"]
     end
     subgraph domain [domain]
-        hold[hold.py]
+        answering[answering.py]
         ports["runtime.py"]
         rest["machine · fit · listing · speed · quality ·<br/>shortlist · recommendation · dialect ·<br/>profile · launch · model"]
     end
@@ -34,14 +34,14 @@ flowchart TD
     adapters --> domain
     domain --> shared
     adapters --> shared
-    hold --> ports
+    answering --> ports
 ```
 
 Dependencies point inwards: adapters know about the domain, the domain knows
 nothing about adapters. The command line is outermost and may reach anything;
 `shared` is innermost and reaches nothing of offgrid's.
 
-`hold.py` reaches `runtime.py`, which is a port and not an adapter: what
+`answering.py` reaches `runtime.py`, which is a port and not an adapter: what
 satisfies it is bound to a name in `runtimes/`, and `cli.py` is where the two
 meet. Two seams are still folders rather than ports — `agents/` and
 `leaderboards/` — and the sections below say what each becomes.
@@ -105,7 +105,7 @@ dialect.py         which API shapes can be paired
 runtime.py         what offgrid asks of a runtime, and which ones there are
 profile.py         what is remembered between runs
 launch.py          an environment and an argument list, and running one
-hold.py            which model the runtime is asked to hold
+answering.py       which model answers, and making it the one that does
 ```
 
 Two more join them when the remaining seams are built — `agent.py` and
@@ -132,7 +132,7 @@ sequenceDiagram
     participant G as RUNTIMES
     participant D as dialect.py
     participant A as agents/claude_code.py
-    participant H as hold.py
+    participant H as answering.py
     participant R as Runtime
     participant L as launch.py
 
@@ -266,7 +266,7 @@ each concrete adapter becomes importable from exactly one place: that registry.
 
 Their own modules rather than declared inside the code that calls them. A
 contract nobody can find is one a second adapter is written without: the module
-map is how this repo says where things are, and a `Runtime` inside `hold.py`
+map is how this repo says where things are, and a `Runtime` inside `answering.py`
 has no line in it.
 
 The cost is that `offgrid/runtime.py` sits one letter from
@@ -525,7 +525,7 @@ sequenceDiagram
     participant G as registries
     participant D as dialect.py
     participant A as Agent
-    participant H as hold.py
+    participant H as answering.py
     participant R as Runtime
     participant L as launch.py
 
@@ -601,13 +601,14 @@ over that payload. Fetching once and asking three times was not something the
 interface did; it was something the caller had to know to do. That knowledge
 is part of an interface even though no signature carries it.
 
-Imagine deleting that interface. `hold.py` would have gained HTTP and JSON
+Imagine deleting that interface. `answering.py` would have gained HTTP and JSON
 parsing and lost almost nothing else — the three payload functions collapse
 into asking the runtime what it has. An interface whose removal costs that
 little is not hiding much.
 
 Which says the payload crossing the boundary better than calling it a leak.
-`hold.py` presented a deep interface of its own — `held`, `hold`, `let_go` —
+What is now `answering.py` presented a deep interface of its own —
+`held`, `hold` and `let_go` —
 and it was deep by absorbing the shallowness underneath it. The dict was what
 absorbing looked like from outside, and `Runtime` is that absorption moved to
 the side of the seam that owns it: the payload now stays inside the adapter
@@ -676,7 +677,7 @@ itself.
 does and what most tests should keep doing: `tests/doubles.py` answers
 `httpx.get` and `httpx.post` from a `MockTransport` and stands in for
 `subprocess.run` and `subprocess.Popen`, so one stand-in serves the command
-line, `hold.py` and the adapter alike. Each test then covers the ordering *and*
+line, `answering.py` and the adapter alike. Each test then covers the ordering *and*
 the adapter's parsing. A fake satisfying `Runtime` would skip the parsing,
 which is the half most likely to be wrong.
 
@@ -712,7 +713,7 @@ structural conformance needs no test at all.
   environment and whatever server-side default a runtime takes. Out of the
   ports, possibly a `doctor` warning.
 - Whether `leaderboards/reading.py` belongs in the adapter package or beside
-  `hold.py` in the domain (#48). Nothing forces it while there is one list;
+  `answering.py` in the domain (#48). Nothing forces it while there is one list;
   the registry makes it live, since a module that dispatches over one is
   policy rather than an adapter.
 - Whether a cold prefill outlasts the agent's stream watchdog (#45), and what

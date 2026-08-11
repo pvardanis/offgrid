@@ -13,7 +13,7 @@ from offgrid.model import Model
 from offgrid.runtime import Runtime
 
 
-def held(runtime: Runtime) -> Model:
+def get_resident(runtime: Runtime) -> Model:
     """Find the model the runtime is already holding.
 
     :param runtime: The runtime to ask.
