@@ -374,20 +374,49 @@ or the other.
 
 ## Choosing an adapter — designed
 
-Each adapter package holds a dict and a lookup.
+The names are enums in the domain, beside the other enum offgrid already has.
 
 ```python
-RUNTIMES: dict[str, Connect] = {"lmstudio": lmstudio.connect}
-AGENTS: dict[str, Prepare] = {"claude-code": claude_code.prepare}
-LEADERBOARDS: dict[str, Leaderboard] = {"onyx": onyx.board()}
+class RuntimeName(Enum):
+    LMSTUDIO = "lmstudio"
+
+
+class AgentName(Enum):
+    CLAUDE_CODE = "claude-code"
 ```
 
-A lookup that does not find a name raises saying which names there are. This
-is what finally makes `profile.runtime` and `profile.agent` load-bearing:
-today they are validated and then ignored, and `cli.py` imports both adapters
-by name.
+`profile.runtime` is then a `RuntimeName` rather than a string, and pydantic
+refuses an unknown one when the profile is read — `Input should be
+'lmstudio'`, naming the field, before anything else runs. That is what the
+profile is for: it is hand-edited, and a name offgrid does not have is a
+mistake to report rather than a preference to record.
 
-A dict rather than entry points or an importable path from the profile. The
+Each adapter package holds a dict keyed by that enum, and a lookup.
+
+```python
+RUNTIMES: dict[RuntimeName, Connect] = {RuntimeName.LMSTUDIO: lmstudio.connect}
+AGENTS: dict[AgentName, Prepare] = {AgentName.CLAUDE_CODE: claude_code.prepare}
+```
+
+This is what finally makes `profile.runtime` and `profile.agent`
+load-bearing: today they are validated and then ignored, and `cli.py` imports
+both adapters by name.
+
+**Two places, and a test that makes them agree.** The enum is the domain's
+statement of what exists; the registry is the adapter layer binding a name to
+an implementation. They cannot be one place — an enum that carried its own
+factory would be a domain type importing an adapter, which is the violation
+this design removes. So a test asserts `set(RUNTIMES) == set(RuntimeName)`,
+the same guard as the module map, and adding an adapter that forgets its
+registry entry fails rather than raising a `KeyError` at someone's terminal.
+
+**The profile is written with `model_dump(mode="json")`.** A plain
+`model_dump()` answers with the enum member, and `yaml.safe_dump` cannot
+represent one — `RepresenterError: cannot represent an object`. The round-trip
+tests in `tests/test_profile.py` catch it, but the type does not say so.
+
+A dict keyed by an enum, rather than entry points or an importable path from
+the profile. The
 audience clones and runs, so plugin discovery buys extensibility for people who
 do not exist, and a dotted path in a hand-edited YAML file is an import
 statement in a config file. Adding an adapter is a module and one line, in a
@@ -470,6 +499,11 @@ which is worse than a `404` because a caller cannot tell "counted zero" from
 "not implemented". That is what `Capabilities` is for (#43).
 
 ## What follows outside the ports — designed
+
+**The profile carries a name, not a string.** `runtime` and `agent` become the
+enums above, so a hand-edited typo is refused when the profile is read and
+`profile.runtime` is a type at every call site. `save` writes with
+`model_dump(mode="json")`, since YAML cannot represent an enum member.
 
 **The profile stops carrying a machine.** `Profile.machine()` has no callers,
 and `setup` and `recommend` both call `detect()` fresh, so `chip`,

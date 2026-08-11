@@ -312,6 +312,16 @@ adapter modules, which the layer rule forbids and the linter catches — and
 translating inside the adapter is where it belongs anyway, since Claude Code's
 retry logic matches on the upstream's error wording.
 
+Which adapters exist is an enum in the domain, beside `Dialect`, and the
+registry is a dict keyed by it. Not one place, and it cannot be: an enum
+carrying its own factory would be a domain type importing an adapter. So the
+enum says what exists, the registry binds each name to an implementation, and
+a test asserts the two agree — a forgotten registry entry fails the suite
+rather than raising a `KeyError` at somebody's terminal. What this buys over a
+`Literal` is that `profile.runtime` is a type at every call site; what it costs
+is that the profile must be written with `model_dump(mode="json")`, because
+YAML cannot represent an enum member.
+
 A dict for the registry, not entry points and not an importable path from the
 profile. The audience clones and runs, so plugin discovery serves nobody who
 exists, and a dotted path in a hand-edited YAML file is an import statement in
