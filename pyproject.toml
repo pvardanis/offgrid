@@ -24,6 +24,7 @@ build-backend = "uv_build"
 [dependency-groups]
 dev = [
     "hypothesis>=6.140",
+    "import-linter>=2.13",
     "interrogate>=1.7",
     "prek>=0.4.12",
     "pytest>=8.4",
@@ -65,6 +66,45 @@ exclude = ["tests", ".claude"]
 # commit its agent was working from, so a name this repo has since changed is
 # reported as an unresolved import against code nobody is editing.
 exclude = [".claude"]
+
+[tool.importlinter]
+root_package = "offgrid"
+
+[[tool.importlinter.contracts]]
+name = "The domain knows nothing about adapters"
+type = "forbidden"
+source_modules = [
+    "offgrid.dialect",
+    "offgrid.fit",
+    "offgrid.hold",
+    "offgrid.launch",
+    "offgrid.listing",
+    "offgrid.machine",
+    "offgrid.model",
+    "offgrid.profile",
+    "offgrid.quality",
+    "offgrid.recommendation",
+    "offgrid.shortlist",
+    "offgrid.speed",
+]
+forbidden_modules = [
+    "offgrid.agents",
+    "offgrid.leaderboards",
+    "offgrid.runtimes",
+]
+# The one place the rule does not hold, and the seam a second runtime attaches
+# at: `hold.py` names LM Studio because there is no port to name instead. The
+# commit that builds one deletes this line, so the check says when it is done.
+ignore_imports = ["offgrid.hold -> offgrid.runtimes.lmstudio"]
+
+[[tool.importlinter.contracts]]
+name = "One adapter never reaches for another"
+type = "independence"
+modules = [
+    "offgrid.agents",
+    "offgrid.leaderboards",
+    "offgrid.runtimes",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
