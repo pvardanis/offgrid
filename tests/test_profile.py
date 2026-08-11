@@ -3,6 +3,7 @@ import yaml
 
 from offgrid.exceptions import ProfileError
 from offgrid.profile import Profile, load, save
+from offgrid.runtime import RuntimeName
 
 
 def test_a_saved_profile_reads_back_the_same(tmp_path):
@@ -32,9 +33,19 @@ def test_a_profile_typed_by_hand_loads(tmp_path):
     profile = load(path)
 
     assert profile.host == "10.0.0.5:4321"
-    assert profile.runtime == "lmstudio"
+    assert profile.runtime is RuntimeName.LMSTUDIO
     assert profile.agent == "claude-code"
     assert profile.model is None
+
+
+def test_the_runtime_a_profile_names_is_a_name_offgrid_has(tmp_path):
+    # A string is validated once and then compared against a literal wherever
+    # it is read. The name is what picks the adapter, so it is a type from the
+    # moment the file is read.
+    path = tmp_path / "profile.yaml"
+    path.write_text("host: 10.0.0.5:4321\n")
+
+    assert load(path).runtime is RuntimeName.LMSTUDIO
 
 
 def test_a_missing_profile_says_how_to_make_one(tmp_path):

@@ -11,6 +11,7 @@ import yaml
 from pydantic import BaseModel, ConfigDict, ValidationError
 
 from offgrid.exceptions import ProfileError
+from offgrid.runtime import RuntimeName
 
 DEFAULT_PATH = Path.home() / ".offgrid" / "profile.yaml"
 
@@ -35,7 +36,7 @@ class Profile(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     host: str
-    runtime: Literal["lmstudio"] = "lmstudio"
+    runtime: RuntimeName = RuntimeName.LMSTUDIO
     agent: Literal["claude-code"] = "claude-code"
     model: str | None = None
 
@@ -47,7 +48,12 @@ def save(profile: Profile, path: Path = DEFAULT_PATH) -> None:
     :param path: Where to write it.
     """
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(yaml.safe_dump(profile.model_dump(), sort_keys=False))
+
+    # Dumped as what YAML can carry: a plain dump answers with the enum member
+    # itself, which `safe_dump` refuses with `cannot represent an object`.
+    written = profile.model_dump(mode="json")
+
+    path.write_text(yaml.safe_dump(written, sort_keys=False))
 
 
 def load(path: Path = DEFAULT_PATH) -> Profile:
