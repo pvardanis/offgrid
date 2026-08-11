@@ -3,6 +3,7 @@ import logging
 import pathlib
 
 import pytest
+import yaml
 from typer.testing import CliRunner
 
 from offgrid.cli import app
@@ -176,7 +177,17 @@ def test_setup_writes_a_profile_that_can_be_read_back(here):
     from offgrid.profile import load
 
     runner.invoke(app, ["setup"])
-    assert load(here / "profile.yaml").chip == "Apple M1 Max"
+    assert load(here / "profile.yaml").host == "127.0.0.1:1234"
+
+
+def test_setup_writes_nothing_it_measured_into_the_profile(here):
+    # What was measured is read again wherever it is used, so a limit stored
+    # here would be a second answer, wrong from the next reboot onwards.
+    runner.invoke(app, ["setup"])
+
+    written = yaml.safe_load((here / "profile.yaml").read_text())
+
+    assert set(written) == {"host", "runtime", "agent", "model"}
 
 
 def test_setup_run_again_keeps_what_was_edited_by_hand(here):

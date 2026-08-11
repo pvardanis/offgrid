@@ -48,10 +48,9 @@ def setup(
     """Measure this machine and record how to reach the runtime."""
     machine = detect()
     stored = _stored()
+    where = host or (stored.host if stored else DEFAULT_HOST)
     profile = (
-        stored.remeasured(machine, host=host)
-        if stored
-        else Profile.describing(machine, host=host or DEFAULT_HOST)
+        stored.model_copy(update={"host": where}) if stored else Profile(host=where)
     )
     save(profile, DEFAULT_PATH)
 
