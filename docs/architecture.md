@@ -410,12 +410,35 @@ refuses an unknown one when the profile is read — `Input should be
 profile is for: it is hand-edited, and a name offgrid does not have is a
 mistake to report rather than a preference to record.
 
-Each adapter package holds a dict keyed by that enum, and a lookup.
+Each adapter package holds a dict keyed by that enum, and a lookup, in its
+`__init__.py` — so `from offgrid.runtimes import RUNTIMES` is the package's
+whole public face.
 
 ```python
 RUNTIMES: dict[RuntimeName, Connect] = {RuntimeName.LMSTUDIO: lmstudio.connect}
 AGENTS: dict[AgentName, Prepare] = {AgentName.CLAUDE_CODE: claude_code.prepare}
 ```
+
+**Nothing else is re-exported there.** No `from offgrid.runtimes import
+LMStudio`. Partly because nobody would write it — callers hold a `Runtime` they
+got from the registry, and the concrete name is wanted in one place, which is
+the registry itself. Mostly because it would take the rule away: `import-linter`
+reads import statements as written, so `from offgrid.runtimes.lmstudio import
+...` is catchable while `from offgrid.runtimes import LMStudio` is an import of
+`offgrid.runtimes` — indistinguishable from the one `cli.py` legitimately makes
+to get `RUNTIMES`. Re-exporting the name would make "only a registry may import
+a concrete adapter" unverifiable.
+
+Re-exports earn their place in a library with an API to curate.
+`docs/decisions.md` says offgrid is cloned and run, with no published package,
+so the submodule layout is not a detail to hide — it is what the contract is
+stated over.
+
+A test asserts the rule directly: the only module in `src/` importing
+`offgrid.runtimes.<something>` is `offgrid/runtimes/__init__.py`, and likewise
+for the other two packages. That covers a new adapter automatically, where
+naming each concrete module in a contract would need editing every time one is
+added.
 
 This is what finally makes `profile.runtime` and `profile.agent`
 load-bearing: today they are validated and then ignored, and `cli.py` imports
