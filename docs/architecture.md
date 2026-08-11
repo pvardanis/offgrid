@@ -487,7 +487,9 @@ structural conformance needs no test at all.
   environment and whatever server-side default a runtime takes. Out of the
   ports, possibly a `doctor` warning.
 - Whether `leaderboards/reading.py` belongs in the adapter package or beside
-  `hold.py` in the domain. Nothing forces it while there is one list.
+  `hold.py` in the domain (#48). Nothing forces it while there is one list;
+  the registry makes it live, since a module that dispatches over one is
+  policy rather than an adapter.
 - Whether a cold prefill outlasts the agent's stream watchdog (#45), and what
   the auto-compact window should be when the agent clamps it above what the
   runtime serves (#46). Both are launch-time facts about a pairing, and both
