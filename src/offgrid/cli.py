@@ -47,12 +47,8 @@ def setup(
 ) -> None:
     """Measure this machine and record how to reach the runtime."""
     machine = detect()
-    stored = _stored()
-    where = host or (stored.host if stored else DEFAULT_HOST)
-    profile = (
-        stored.model_copy(update={"host": where}) if stored else Profile(host=where)
-    )
-    save(profile, DEFAULT_PATH)
+    profile = _stored() or Profile(host=DEFAULT_HOST)
+    save(profile.model_copy(update={"host": host or profile.host}), DEFAULT_PATH)
 
     tell(f"  {machine.chip} · {machine.memory_bytes / GIB:.0f}GB unified memory")
     limit = machine.wired_limit_bytes
