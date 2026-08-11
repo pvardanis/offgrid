@@ -102,6 +102,10 @@ launch.py          an environment and an argument list, and running one
 hold.py            holding the model that answers, and letting it go
 ```
 
+Three more join them when the seams are built — `runtime.py`, `agent.py` and
+`leaderboard.py`, each holding what offgrid asks of that kind of adapter and
+which ones there are.
+
 **shared**
 
 ```
@@ -212,15 +216,30 @@ beneath it, so a `Runtime` declared in `runtimes/__init__.py` is one the domain
 cannot import without committing the violation the exemption exists for today
 — which is the thing this design deletes.
 
-So the consumer declares what it needs. `Runtime` and `Capabilities` beside
-`hold.py`, its only caller; `Agent` beside `launch.py`, which already owns the
-`Launch` that `plan` answers with. The adapter packages hold implementations
-and nothing else, and each becomes importable from exactly one place: its
-registry.
+Each gets its own module, holding everything the domain says about that kind of
+adapter and nothing else:
 
-The alternative is a pair of domain modules called `runtime.py` and `agent.py`,
-which is easier to find and puts `offgrid/runtime.py` one letter from
-`offgrid/runtimes/` in every import line that mentions either.
+```
+runtime.py         what offgrid needs of a runtime, and which ones there are
+agent.py           what offgrid needs of an agent, and which ones there are
+leaderboard.py     what offgrid needs of a published list
+```
+
+`runtime.py` holds `Runtime`, `Capabilities` and `RuntimeName`; `agent.py`
+holds `Agent` and `AgentName`; `leaderboard.py` holds `Leaderboard`, `Fetch`
+and `Parse`. The adapter packages hold implementations and their registry, and
+each concrete adapter becomes importable from exactly one place: that registry.
+
+Their own modules rather than declared inside the code that calls them. A
+contract nobody can find is one a second adapter is written without: the module
+map is how this repo says where things are, and a `Runtime` inside `hold.py`
+has no line in it. `hold.py` is also already over the 150-line limit, and
+whether `ensure_only` shrinks it far enough to take a Protocol as well is not
+something to bet on in advance.
+
+The cost is that `offgrid/runtime.py` sits one letter from
+`offgrid/runtimes/`, and `cli.py` imports both — the port for its types, the
+registry to build one. Worth it for being findable, but worth knowing about.
 
 ## The runtime seam — designed
 

@@ -276,10 +276,16 @@ too, but neither is a base of the other: `ty` checks the match structurally, so
 what is absent is the class hierarchy rather than the class. A connection has
 identity — which server — which is the case that warrants one.
 
-A port is a domain type and lives beside its consumer, never in the adapter
-package it describes. The contract forbids the domain importing `runtimes/`,
-and that covers what is inside it, so a `Runtime` declared there could not be
-imported by `hold.py` without the violation this design exists to remove.
+A port is a domain type and never lives in the adapter package it describes.
+The contract forbids the domain importing `runtimes/`, and that covers what is
+inside it, so a `Runtime` declared there could not be imported by `hold.py`
+without the violation this design exists to remove.
+
+Each port gets its own module — `runtime.py`, `agent.py`, `leaderboard.py` —
+rather than being declared inside whatever calls it. A contract nobody can find
+is one the second adapter gets written without, and the module map is how this
+repo says where things are. It costs a `runtime.py` one letter from
+`runtimes/`, in the one file that imports both.
 
 What is an attribute and what is a method is not cosmetic either. `dialect` and
 `capabilities` settle when the connection opens, so they are attributes and
