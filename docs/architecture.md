@@ -97,6 +97,7 @@ quality.py         how good a fit is, as one number and one word
 shortlist.py       what fits, ranked, and what each rule dropped
 recommendation.py  how that reads to whoever asked
 dialect.py         which API shapes can be paired
+runtime.py         what offgrid asks of a runtime, and which ones there are
 profile.py         what is remembered between runs
 launch.py          an environment and an argument list, and running one
 hold.py            holding the model that answers, and letting it go
