@@ -300,6 +300,11 @@ def catalogue(host: str) -> dict:
             f"No model server answered at http://{host}. "
             "Start LM Studio, or point offgrid elsewhere with --host."
         ) from error
+    except httpx.RequestError as error:
+        raise RuntimeUnreachableError(
+            f"The answer from {url} could not be read: {error}. Something is "
+            f"listening at http://{host}; check it is LM Studio's local server."
+        ) from error
 
     if response.is_error:
         raise RuntimeUnreachableError(
@@ -350,6 +355,11 @@ def load(host: str, identifier: str, timeout: float = LOAD_TIMEOUT_SECONDS) -> N
         raise RuntimeUnreachableError(
             f"No model server answered at http://{host}. "
             "Start LM Studio, or point offgrid elsewhere with --host."
+        ) from error
+    except httpx.RequestError as error:
+        raise RuntimeUnreachableError(
+            f"The answer to loading {identifier} could not be read: {error}. "
+            f"Check what is listening at http://{host}."
         ) from error
 
     if response.is_error:

@@ -94,6 +94,24 @@ def test_a_page_that_is_not_json_names_what_came_back(monkeypatch: pytest.Monkey
     assert HOST in str(raised.value)
 
 
+def test_an_answer_that_cannot_be_read_is_offgrids_error_not_httpxs(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    # A body announcing an encoding it is not in raises `DecodingError`,
+    # which is not a `TransportError` and so travelled as itself. It reaches
+    # `let_go` in a `finally`, where anything raised replaces what the run
+    # was about to report.
+    def mangled(request: httpx.Request) -> httpx.Response:
+        raise httpx.DecodingError("bad gzip", request=request)
+
+    serve_get(monkeypatch, mangled)
+
+    with pytest.raises(RuntimeUnreachableError, match="could not be read") as raised:
+        catalogue(HOST)
+
+    assert HOST in str(raised.value)
+
+
 def test_a_body_without_a_catalogue_is_not_an_empty_catalogue():
     with pytest.raises(RuntimeUnreachableError, match="catalogue"):
         parse_models({"error": {"message": "model loading failed"}})
@@ -171,6 +189,20 @@ def test_a_load_that_never_finishes_says_so(monkeypatch: pytest.MonkeyPatch):
 
     serve_post(monkeypatch, stall)
     with pytest.raises(RuntimeUnreachableError, match="did not finish loading"):
+        load(HOST, "a/model-7b", timeout=5)
+
+
+def test_a_load_whose_answer_cannot_be_read_is_offgrids_error_too(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    from offgrid.runtimes.lmstudio import load
+
+    def mangled(request: httpx.Request) -> httpx.Response:
+        raise httpx.DecodingError("bad gzip", request=request)
+
+    serve_post(monkeypatch, mangled)
+
+    with pytest.raises(RuntimeUnreachableError, match="could not be read"):
         load(HOST, "a/model-7b", timeout=5)
 
 
