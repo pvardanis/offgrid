@@ -265,13 +265,15 @@ def loaded(payload: dict) -> list[Model]:
     :return: Every loaded model, in catalogue order, described by the context
         the runtime serves it at rather than its ceiling.
     """
-    in_memory = {
-        entry["id"]
+    # Read through `parse_models` rather than the payload, so an entry with
+    # no id is the error it names rather than a `KeyError` from in here.
+    held = {
+        entry.get("id")
         for entry in payload.get("data", [])
         if entry.get("state") == "loaded"
     }
 
-    return [model for model in parse_models(payload) if model.identifier in in_memory]
+    return [model for model in parse_models(payload) if model.identifier in held]
 
 
 def catalogue(host: str) -> dict:
