@@ -85,6 +85,16 @@ def test_every_module_is_covered_by_the_layer_rule():
     )
 
 
+def test_every_runtime_offgrid_names_has_an_adapter_bound_to_it():
+    # Two places that cannot be one: an enum carrying its own factory would
+    # be a domain type importing an adapter. A name with no entry raises a
+    # KeyError at somebody's terminal, halfway through a run.
+    from offgrid.runtime import RuntimeName
+    from offgrid.runtimes import RUNTIMES
+
+    assert set(RUNTIMES) == set(RuntimeName)
+
+
 def test_the_layer_rule_names_no_module_that_is_gone():
     stale = sorted(_domain_in_the_contract() - _modules())
 
