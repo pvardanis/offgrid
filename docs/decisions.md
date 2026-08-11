@@ -276,6 +276,17 @@ too, but neither is a base of the other: `ty` checks the match structurally, so
 what is absent is the class hierarchy rather than the class. A connection has
 identity — which server — which is the case that warrants one.
 
+A port is a domain type and lives beside its consumer, never in the adapter
+package it describes. The contract forbids the domain importing `runtimes/`,
+and that covers what is inside it, so a `Runtime` declared there could not be
+imported by `hold.py` without the violation this design exists to remove.
+
+What is an attribute and what is a method is not cosmetic either. `dialect` and
+`capabilities` settle when the connection opens, so they are attributes and
+reading one is free. Everything that reaches the server is a method named for
+what it does, so an interface says which of its members can be slow and can
+raise rather than leaving that to be discovered.
+
 Not every seam is a Protocol. A runtime and an agent each carry state and
 several related members, so both are. A published list carries none and
 answers two questions, so it is two typed callables kept in a record — paired

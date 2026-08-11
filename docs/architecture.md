@@ -22,7 +22,7 @@ flowchart TD
     end
     subgraph domain [domain]
         hold[hold.py]
-        rest["machine · fit · listing · speed · quality<br/>shortlist · recommendation · dialect<br/>profile · launch · model"]
+        rest["machine · fit · listing · speed · quality ·<br/>shortlist · recommendation · dialect ·<br/>profile · launch · model"]
     end
     subgraph shared [shared]
         sh["exceptions.py · say.py"]
@@ -200,6 +200,28 @@ it is all the command has left.
 machine, writes the profile and says what fits. `doctor` asks the runtime what
 it is holding and prints it beside the agent's dialect.
 
+## Where a port lives — designed
+
+`Runtime`, `Agent`, `Capabilities` and `Leaderboard` are domain types. They sit
+beside the code that needs them, and never inside `runtimes/`, `agents/` or
+`leaderboards/`.
+
+That is the layer rule rather than a preference. The contract forbids
+`offgrid.hold -> offgrid.runtimes`, and a forbidden module covers everything
+beneath it, so a `Runtime` declared in `runtimes/__init__.py` is one the domain
+cannot import without committing the violation the exemption exists for today
+— which is the thing this design deletes.
+
+So the consumer declares what it needs. `Runtime` and `Capabilities` beside
+`hold.py`, its only caller; `Agent` beside `launch.py`, which already owns the
+`Launch` that `plan` answers with. The adapter packages hold implementations
+and nothing else, and each becomes importable from exactly one place: its
+registry.
+
+The alternative is a pair of domain modules called `runtime.py` and `agent.py`,
+which is easier to find and puts `offgrid/runtime.py` one letter from
+`offgrid/runtimes/` in every import line that mentions either.
+
 ## The runtime seam — designed
 
 A runtime adapter is a module exposing one factory. The factory binds an
@@ -213,16 +235,24 @@ Connect = Callable[[str], Runtime]
 
 
 class Runtime(Protocol):
-    def dialect(self) -> Dialect: ...
-    def capabilities(self) -> Capabilities: ...
-    def models(self) -> list[Model]: ...
-    def held(self) -> list[Model]: ...
+    dialect: Dialect
+    capabilities: Capabilities
+
+    def read_catalogue(self) -> list[Model]: ...
+    def read_held(self) -> list[Model]: ...
     def ensure_only(self, identifier: str) -> Model: ...
     def let_go(self, identifier: str) -> bool: ...
 ```
 
-Six operations, each with a caller today. No payload crosses it, and nothing
+Six members, each with a caller today. No payload crosses it, and nothing
 about the order of calls is knowledge the caller has to hold.
+
+**Two are attributes and four are actions, and the split says something.** An
+attribute is settled when the connection opens: reading it is free and cannot
+fail. A method reaches the server, so it costs time and can raise. Naming a
+method for what it does — `read_held`, not `held` — is the difference between
+an interface that says which of its members touch the network and one that
+leaves a caller to find out.
 
 A Protocol rather than typed callables because a connection carries state —
 the host, LM Studio's `instance_id`, the capabilities probed when it opened —
@@ -278,7 +308,8 @@ Prepare = Callable[[Path], Agent]
 
 
 class Agent(Protocol):
-    def dialect(self) -> Dialect: ...
+    dialect: Dialect
+
     def configure(self) -> None: ...
     def require_hosted_tools_denied(self) -> None: ...
     def plan(
