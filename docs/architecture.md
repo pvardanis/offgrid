@@ -481,26 +481,45 @@ again; no compatibility shim.
 This also settles #42 for every runtime rather than one: a limit read at the
 point of use is right even when a runtime moves it at startup, which oMLX does.
 
-**`cli.py` keeps the commands, the reporting and the exit codes**, and loses
-the two adapter imports and the resolution of a name to an adapter (#12). What
-is left of `run` is the `try`/`finally` that owes the release, which is command
-work — it is what has to survive Ctrl-C (#11).
+**`cli.py` is where a name becomes an adapter, and the only thing that knows
+one exists.** It reads the profile, asks a registry for a `Runtime` and an
+`Agent`, and hands them to the code that uses them. It imports the registries
+and the Protocols and never `lmstudio` or `claude_code`, which is what makes
+the rule statable: **only a registry may import a concrete adapter**, the
+command line included. "Outermost, so it may import anything" is not something
+a contract can check.
+
+It keeps the commands, the reporting and the exit codes, and it keeps the
+order of a run — the checks before the load, the `try`/`finally` that owes the
+release, which is what has to survive Ctrl-C (#11). Whether that order belongs
+in a domain module instead is #12's question, and it is answerable once the
+adapter imports have gone and `cli.py`'s real size is known rather than
+guessed. There is one caller today.
 
 ## How this is tested — designed
 
 Three different things, and conflating them is how a suite ends up testing
 itself.
 
-**The domain, against a fake.** Something satisfying `Runtime` with no server
-behind it proves `hold.py` orchestrates correctly. It proves nothing about any
-adapter.
+**Through the command, standing in below the adapter.** This is what the suite
+already does and what most tests should keep doing: `tests/doubles.py` answers
+`httpx.get` from a `MockTransport` carrying a captured payload, and stands in
+for `subprocess.run` and `subprocess.Popen`. One test then covers the ordering
+*and* the adapter's parsing, against a real payload. A fake satisfying
+`Runtime` would skip the parsing, which is the half most likely to be wrong.
 
-**Each adapter, against captured payloads.** One conformance suite states what
-being a runtime means behaviourally — that `ensure_only` answers with the model
-as *served* rather than as catalogued, that `held` reflects reality after a
+**Each adapter, against a conformance suite.** One suite states what being a
+runtime means behaviourally — that `ensure_only` answers with the model as
+*served* rather than as catalogued, that `read_held` reflects reality after a
 `let_go`, which error arrives when the host is unreachable — and every adapter
 runs it against payloads captured from that runtime, live. An adapter is done
 when it passes.
+
+**A fake `Runtime` only where the socket cannot reach.** It is the exception,
+not the default: something satisfying the Protocol proves how the domain
+behaves when a runtime does something awkward to arrange for real. It proves
+nothing about any adapter, and reaching for it first is how a suite ends up
+testing itself.
 
 Fixtures stay captured, never transcribed from documentation. The research is
 exactly the tempting source, and it also found that LM Studio's docs describe
