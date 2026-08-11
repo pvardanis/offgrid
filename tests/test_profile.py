@@ -22,6 +22,21 @@ def test_a_profile_is_readable_yaml(tmp_path):
     assert on_disk["runtime"] == "lmstudio"
 
 
+def test_a_profile_typed_by_hand_loads(tmp_path):
+    # A regression guard, not a slice. The file is meant to be typed into,
+    # and everything but the host has a default, so naming the host is a
+    # whole profile — which nothing else here reads without `save` writing it.
+    path = tmp_path / "profile.yaml"
+    path.write_text("host: 10.0.0.5:4321\n")
+
+    profile = load(path)
+
+    assert profile.host == "10.0.0.5:4321"
+    assert profile.runtime == "lmstudio"
+    assert profile.agent == "claude-code"
+    assert profile.model is None
+
+
 def test_a_missing_profile_says_how_to_make_one(tmp_path):
     with pytest.raises(ProfileError, match="offgrid setup"):
         load(tmp_path / "absent.yaml")
@@ -92,9 +107,9 @@ def test_an_agent_offgrid_cannot_start_is_refused(tmp_path):
 
 
 def test_a_profile_carrying_a_measured_machine_is_refused(tmp_path):
-    # Exactly what `offgrid setup` wrote while the profile held a machine. A
-    # limit recorded weeks ago is wrong the moment a runtime moves it at
-    # startup, so the file is refused rather than read past.
+    # A file `setup` wrote, and one that is still on disks. A limit recorded
+    # weeks ago is wrong the moment a runtime moves it at startup, so the file
+    # is refused rather than read past.
     path = tmp_path / "profile.yaml"
     path.write_text(
         "host: 127.0.0.1:1234\n"
