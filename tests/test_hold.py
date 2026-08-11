@@ -18,21 +18,15 @@ from offgrid.exceptions import (
     RuntimeUnreachableError,
 )
 from offgrid.hold import held, hold, let_go
-from offgrid.machine import Machine
 from offgrid.profile import Profile
 
-GIB = 1024**3
 RESIDENT = "a/held-7b"
 
 
 @pytest.fixture
 def profile() -> Profile:
     """A profile pointing at a runtime that the fakes stand in for."""
-    machine = Machine(
-        chip="Apple M1 Max", memory_bytes=64 * GIB, wired_limit_bytes=56 * GIB
-    )
-
-    return Profile.describing(machine, host="127.0.0.1:1234")
+    return Profile(host="127.0.0.1:1234")
 
 
 def _entry(identifier: str, *, in_memory: bool) -> dict:
