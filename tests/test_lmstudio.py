@@ -3,7 +3,7 @@ import pathlib
 
 import pytest
 
-from offgrid.runtimes.lmstudio import Dialect, dialect, loaded, parse_models, resident
+from offgrid.runtimes.lmstudio import Dialect, connect, loaded, parse_models
 
 FIXTURE = pathlib.Path(__file__).parent / "fixtures" / "lmstudio_models.json"
 
@@ -43,9 +43,8 @@ def test_the_loaded_context_wins_over_the_maximum():
     assert model.context_limit == 32768
 
 
-def test_the_resident_model_is_the_loaded_one(payload: dict):
-    found = resident(payload)
-    assert found is not None
+def test_the_model_held_is_the_loaded_one(payload: dict):
+    (found,) = loaded(payload)
     assert found.identifier == "qwen/qwen3.6-35b-a3b"
 
 
@@ -70,11 +69,6 @@ def test_no_model_is_in_memory_when_none_is_loaded():
     assert loaded(cold) == []
 
 
-def test_nothing_is_resident_when_nothing_is_loaded():
-    cold = {"data": [{"id": "a/b-7b", "type": "llm", "state": "not-loaded"}]}
-    assert resident(cold) is None
-
-
 def test_a_model_the_api_describes_sparsely_still_parses():
     sparse = {"data": [{"id": "a/mystery", "type": "llm", "state": "not-loaded"}]}
     (model,) = parse_models(sparse)
@@ -83,4 +77,4 @@ def test_a_model_the_api_describes_sparsely_still_parses():
 
 
 def test_lm_studio_serves_the_anthropic_dialect():
-    assert dialect() is Dialect.ANTHROPIC
+    assert connect("127.0.0.1:1234").dialect is Dialect.ANTHROPIC

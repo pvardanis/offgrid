@@ -209,14 +209,6 @@ class LMStudio:
         return stuck
 
 
-def dialect() -> Dialect:
-    """Report the API shape LM Studio serves.
-
-    :return: The Anthropic dialect, which needs no translation for Claude Code.
-    """
-    return Dialect.ANTHROPIC
-
-
 def parse_models(payload: dict) -> list[Model]:
     """Read the catalogue into models that can be sized and ranked.
 
@@ -276,22 +268,6 @@ def loaded(payload: dict) -> list[Model]:
     }
 
     return [model for model in parse_models(payload) if model.identifier in in_memory]
-
-
-def resident(payload: dict) -> Model | None:
-    """Find a model already held in memory.
-
-    Loading a model costs the wait for its weights and the prompt prefix
-    cached against whatever was there before, so a resident model is the
-    cheap choice.
-
-    :param payload: A decoded response from the catalogue endpoint.
-
-    :return: The first loaded model in catalogue order, or ``None`` when the
-        server holds none. LM Studio can hold several at once; which of them
-        answers is decided by the request, not by this.
-    """
-    return next(iter(loaded(payload)), None)
 
 
 def catalogue(host: str) -> dict:
