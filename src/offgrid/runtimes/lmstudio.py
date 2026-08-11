@@ -30,12 +30,16 @@ TOOL = "lms"
 
 # `/v1/messages/count_tokens` answers 200 while the server logs `Unexpected
 # endpoint or method`, so a caller cannot tell a count of zero from an endpoint
-# that is not there. `lms unload` is what lets go, and nothing is evicted
-# except when it is asked for.
+# that is not there. `lms unload` is what lets go.
+#
+# Memory it manages itself: loading through the messages endpoint is a JIT
+# load, and `docs/research/adapter-surfaces.md` records what that carries — the
+# app-default 60-minute TTL, and Auto-Evict keeping at most one JIT-loaded
+# model. So this runtime lets go of things nobody asked it to.
 CAPABILITIES = Capabilities(
     counts_tokens=False,
     release_can_be_commanded=True,
-    manages_its_own_memory=False,
+    manages_its_own_memory=True,
 )
 
 log = logging.getLogger(__name__)
