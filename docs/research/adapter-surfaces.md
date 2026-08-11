@@ -2,7 +2,9 @@
 
 Primary-source research, gathered 2026-08-11. Everything below records what a
 vendor documents, what its OpenAPI spec declares, or what its source says when
-the documentation is silent. It is **not** a recommendation about offgrid's
+the documentation is silent. Nothing recorded here has been revised since;
+where it points at offgrid's own code it names modules and functions rather
+than lines, so that the pointers survive the code moving. It is **not** a recommendation about offgrid's
 design: there is no proposed port shape here, no method signatures, and no
 union-of-features table saying every capability should be supported. The four
 questions are answered so that someone else can decide which operations belong
@@ -138,9 +140,11 @@ curl http://localhost:1234/api/v1/models/unload \
 It takes an `instance_id`, not a model key — the distinction matters because
 `GET /api/v1/models` returns a `loaded_instances` array per model, each entry
 with its own `id`. The response echoes the `instance_id` back. This is worth
-stating flatly because `src/offgrid/runtimes/lmstudio.py:19-21` carries the
-comment "Letting go of a model is not part of the HTTP API; LM Studio's own
-tool is what does it", and that has not been true since 0.4.0. The companion
+stating flatly because the comment above `lmstudio.TOOL` used to read "Letting
+go of a model is not part of the HTTP API; LM Studio's own tool is what does
+it", and that has not been true since 0.4.0. It now says why the tool is used
+anyway: the endpoint wants an `instance_id`, and the `/api/v0` catalogue this
+adapter reads does not carry one. The companion
 `POST /api/v1/models/load` documents `model`, `context_length`,
 `eval_batch_size`, `flash_attention`, `num_experts`, `offload_kv_cache_to_gpu`
 and `echo_load_config` — and notably **no `ttl` field**, so a model loaded
@@ -393,11 +397,12 @@ and a `config` with the `context_length`, `eval_batch_size`, `parallel`,
 was loaded with. An empty array means downloaded but not held. Alongside it
 each model carries `max_context_length`, so the ceiling and the served window
 are both present and separately named — which is the distinction
-`hold.py::_now_holding` exists to make. The older `/api/v0/models` instead
+`lmstudio.LMStudio._now_holding` exists to make. The older `/api/v0/models`
+instead
 carries a flat `"state"` field per model, documented as taking `"not-loaded"`
 and, implicitly, `"loaded"`
 ([rest endpoints](https://lmstudio.ai/docs/developer/rest/endpoints)). That is
-the field `src/offgrid/runtimes/lmstudio.py:87` reads.
+the field `lmstudio.loaded` reads.
 
 **Ollama splits them across two endpoints.** `GET /api/ps` is summarised as
 "Retrieve a list of models that are currently running" and its documented
