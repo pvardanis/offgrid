@@ -422,6 +422,66 @@ do not exist, and a dotted path in a hand-edited YAML file is an import
 statement in a config file. Adding an adapter is a module and one line, in a
 place `rg` finds.
 
+## What a run will look like — designed
+
+The built diagram above draws the flow being replaced. This is the same run
+once the seams exist, from the file on disk to the process starting.
+
+```mermaid
+sequenceDiagram
+    actor P as person
+    participant C as cli.py
+    participant F as profile.py
+    participant G as registries
+    participant D as dialect.py
+    participant A as Agent
+    participant H as hold.py
+    participant R as Runtime
+    participant L as launch.py
+
+    P->>C: offgrid run [--model X]
+    C->>F: load(path)
+    Note over F: YAML read once — an unknown runtime<br/>is refused here, naming the field
+    F-->>C: Profile — host, RuntimeName, AgentName
+    C->>G: RUNTIMES[profile.runtime].connect(profile.host)
+    G-->>C: Runtime
+    C->>G: AGENTS[profile.agent].prepare(config_dir)
+    G-->>C: Agent
+    Note over C,G: the only place a name becomes an adapter
+    C->>D: require_compatible(runtime.dialect, agent.dialect)
+    C->>A: configure()
+    C->>A: require_hosted_tools_denied()
+    Note over C,A: everything knowable before a load, before the load
+    C->>H: hold(runtime, wanted)
+    H->>R: ensure_only(wanted)
+    Note over R: what "only this one" costs here<br/>is the adapter's problem
+    R-->>H: Model, as served
+    H-->>C: Model
+    C->>A: plan(model, host=…, token=…, passthrough=…)
+    A-->>C: Launch
+    C->>L: start(launch)
+    L-->>C: exit code
+    C->>R: let_go(identifier)
+    Note over C,R: owed from the moment the model was held
+```
+
+Three things read off it that the prose says separately.
+
+The profile is parsed once, at the top, and everything downstream holds types
+rather than strings — `profile.runtime` is a `RuntimeName`, so the failure for
+a hand-edited typo happens at `load` with the field named, not at a registry
+lookup halfway through a run.
+
+`cli.py` touches a registry twice and never again. After those two lines it
+holds a `Runtime` and an `Agent` and knows nothing about which ones they are.
+
+`ensure_only` is one arrow. The four calls it replaces — read the catalogue,
+unload each other model, load, read back — are inside the adapter, which is
+the only thing that knows whether its runtime needs four calls, one, or none.
+
+`recommend` changes less: `LEADERBOARDS[…]` replaces `reading.py` naming
+`onyx`, and the rest of that diagram stands.
+
 ## What crosses a seam — designed
 
 `Model`, `Dialect`, `Capabilities`, `Launch`, `Table` — domain types, all of
