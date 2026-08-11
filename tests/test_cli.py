@@ -12,7 +12,6 @@ from offgrid.machine import Machine
 from tests.doubles import answer_as_a_mac, answer_as_lm_studio, refuse_to_let_go
 
 GIB = 1024**3
-CEILING = 262144
 RESIDENT = "qwen/qwen3.6-35b-a3b"
 runner = CliRunner()
 
