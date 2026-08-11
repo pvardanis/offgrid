@@ -222,6 +222,43 @@ why it was deferred until there is a second to draw it from.
 | `prepare(config_dir)` | `-> None` | `cli.py` |
 | `plan(model, host, config_dir, token, passthrough)` | `-> Launch` | `cli.py` |
 
+### How deep each of these is
+
+Depth is leverage at an interface: how much behaviour a caller gets for each
+thing it has to learn. It is a property of the interface rather than of what
+is behind it, and it is what decides whether a seam is worth having.
+
+There are three deep interfaces here to measure against.
+`plan(model, host, config_dir, token, passthrough)` hides the environment, the
+argument list, the settings file and the context sizing behind one call and
+answers with a `Launch`. `get_reading(path)` hides fetching, parsing, keeping
+the payload, falling back on a kept one, and the sentence saying how old it
+is. `summarize_findings(table, machine)` hides the whole chain from listing
+through fit, speed and quality down to a ranked table.
+
+The runtime's is the shallow one. `catalogue(host)` answers with the runtime's
+payload, and `parse_models`, `loaded` and `resident` are functions over that
+payload. Fetching once and asking three times is not something the interface
+does; it is something the caller has to know to do. That knowledge is part of
+the interface even though no signature carries it.
+
+Imagine deleting that interface. `hold.py` would gain HTTP and JSON parsing,
+and lose almost nothing else — the three payload functions collapse into
+asking the runtime what it has. An interface whose removal costs that little
+is not hiding much.
+
+Which says the payload crossing the boundary better than calling it a leak.
+`hold.py` presents a deep interface of its own — `held`, `hold`, `let_go` —
+and it is deep by absorbing the shallowness underneath it. The dict is what
+absorbing looks like from outside.
+
+The agent's interface sits between the two. `dialect()` and
+`prepare(config_dir)` are thin, and `prepare` is a check rather than a step;
+`plan` carries the depth on its own.
+
+None of this proposes a shape. It separates the parts of the current one that
+are structure from the parts that are accident.
+
 ### Two parts of this are LM Studio's, and may be nobody else's
 
 **The payload crosses the boundary.** Four of the seven runtime functions take
@@ -256,6 +293,12 @@ name. `leaderboards/reading.py` decides which table answers and imports
 `leaderboards/onyx.py` by name. Same job, same coupling — but `reading.py`
 lives inside the adapter package and `hold.py` lives outside it, so only one of
 the two is visible as a layer violation.
+
+They differ in more than placement. `reading.py` composes two narrow modules —
+`onyx.py` for one list, `cache.py` for the file — into one deep call, and no
+payload reaches whoever asked. `hold.py` composes one module into an equally
+deep call and wears the payload anyway. Same job, same coupling, one of them
+hiding what the other carries.
 
 Whether `reading.py` belongs where it is, or beside `hold.py` in the domain, is
 open. Nothing forces it today, because there is one published list.
