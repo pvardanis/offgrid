@@ -88,6 +88,10 @@ class Runtime(Protocol):
     def read_held(self) -> list[Model]:
         """List the models the runtime has in memory.
 
+        In a stable order, and the first of them is the model offgrid names as
+        the one that would answer. A runtime that answers in the order of a
+        set names a different model between two calls with nothing changed.
+
         :return: What is held, described by the context each is served at.
 
         :raise RuntimeUnreachableError: When it cannot be reached.
@@ -95,11 +99,20 @@ class Runtime(Protocol):
         ...
 
     def ensure_only(self, identifier: str) -> Model:
-        """Hold the named model and nothing else.
+        """Hold the named model, and let go of what else is held.
 
         An intent rather than a mechanism: one machine has one pool of memory,
         and what reaching that state costs differs enough between runtimes
         that it cannot be orchestrated from outside.
+
+        What it promises is the named model held, not an empty pool beside it.
+        A model that will not go is said out loud rather than raised where the
+        named one is already in memory: there is no load to refuse, and a
+        warm model is not worth failing a run over. Where a load *would* be
+        needed, it is refused rather than paid into a pool that is still full.
+
+        How long the state lasts is `capabilities` business: a runtime that
+        manages its own memory can undo it a second after this returns.
 
         :param identifier: The model that will answer.
 
@@ -108,8 +121,8 @@ class Runtime(Protocol):
 
         :raise ModelUnavailableError: When the runtime does not have it.
         :raise ModelNotHeldError: When it took the model and is not holding it.
-        :raise RuntimeUnreachableError: When it cannot be reached, or when what
-            is already held will not go.
+        :raise RuntimeUnreachableError: When it cannot be reached, or when a
+            load would be needed and what is held will not go.
         """
         ...
 
@@ -120,9 +133,15 @@ class Runtime(Protocol):
         owes a release whatever happened, and that is one model by name rather
         than an intent about the whole pool.
 
+        It answers rather than raises, and an adapter owes that: both callers
+        are cleanup — a `finally` at the end of a run, and the release after a
+        load that failed — so anything raised here replaces the outcome the
+        caller was about to report with the failure of tidying up after it.
+
         :param identifier: The model to let go of.
 
-        :return: Whether the memory came back.
+        :return: Whether the memory came back. ``False`` is said at warning by
+            whoever found out, not raised.
         """
         ...
 
