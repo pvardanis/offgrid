@@ -238,6 +238,12 @@ a runtime that will undo it. If a runtime cannot be commanded to release a
 model, "hold one model" stops being something the port exposes and becomes
 something the domain asks for and a runtime honours as it can.
 
+Reading the candidates narrows this rather than settling it. Three of the four
+can be commanded, and the fourth can only in router mode — so an operation is
+not the wrong shape everywhere. But oMLX evicts on its own initiative
+regardless of being asked, and a single-model `llama-server` releases only on
+a timer, so a caller that assumes it decides what is held is wrong on both.
+
 A third finding of #19 is not a port question at all: oMLX raises the Metal
 wired limit at startup and enforces its own ceiling, so `machine.py` reads a
 number it treats as a property of the machine and which is, against that
@@ -258,12 +264,26 @@ open. Nothing forces it today, because there is one published list.
 
 `CONTEXT.md` names Ollama as a candidate runtime and OpenCode as a candidate
 agent; issue #19 weighs oMLX and records what was measured on this machine.
+`docs/research/adapter-surfaces.md` records what each documents, and what its
+source says where the documentation is silent.
 
-Ollama serves the `openai` dialect. Both current adapters speak `anthropic`,
-so `require_compatible` cannot fail today and the refusal it exists for has
-never run against a real pair. A runtime serving a different dialect is what
-makes that path reachable, and refusing the pair — rather than translating
-between them — is the intended behaviour.
+| | dialects served | told to let go by | what is held |
+|---|---|---|---|
+| LM Studio | both | `POST /api/v1/models/unload`, or `lms unload` | `loaded_instances`, per model |
+| Ollama | both | an empty request with `keep_alive: 0` | `GET /api/ps`, apart from `/api/tags` |
+| oMLX | both | `POST /v1/models/{id}/unload`, awaited | `GET /v1/models/status` |
+| llama.cpp | both | router mode only; a timer otherwise | router mode only |
+
+**Every candidate serves both dialects.** All four expose `POST /v1/messages`
+and `POST /v1/chat/completions`. So "a runtime serves one dialect" is not what
+any of them is, and `require_compatible` may have no real pair left to refuse.
+What differs is how much of a dialect is behind the endpoint:
+`/v1/messages/count_tokens` exists on oMLX and llama.cpp and on neither of the
+others, and Claude Code answers a missing one by counting context through the
+messages endpoint instead — which on this machine spends the model it is
+holding.
+
+Whether `dialect()` returning one `Dialect` is the right shape is open (#43).
 
 Issue #12 records what arrives with the second adapter: the ports, a
 name-to-adapter registry, and `profile.runtime` and `profile.agent` finally
