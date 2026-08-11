@@ -340,6 +340,17 @@ profile. The audience clones and runs, so plugin discovery serves nobody who
 exists, and a dotted path in a hand-edited YAML file is an import statement in
 a config file.
 
+The profile stops carrying the machine it was written on. `chip`,
+`memory_bytes` and `wired_limit_bytes` were written by `setup` and read by
+nothing, since `setup` and `recommend` each measure where they need it, and
+keeping them invites sizing from a number recorded weeks ago. A GPU limit is
+not stable: a reboot drops it back to its default and a runtime may raise it as
+it starts, so read at the point of use it is right for every runtime rather
+than one. `setup` keeps measuring and printing — that is what it is for. A
+profile still carrying the fields is refused by name rather than migrated,
+because the message already says to run `setup` again and thirty seconds of
+re-running beats a shim that outlives the files it was written for.
+
 ## Denying hosted tools is correctness; privacy is a feature that is not built
 
 These were one thing and are now two.
