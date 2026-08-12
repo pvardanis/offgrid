@@ -10,7 +10,6 @@ import subprocess
 import httpx
 
 from offgrid.exceptions import RuntimeUnreachableError
-from offgrid.runtimes.lmstudio.catalogue import get_catalogue_payload, get_loaded_models
 
 MESSAGES = "/v1/messages"
 
@@ -81,20 +80,22 @@ def load(host: str, identifier: str, timeout: float = LOAD_TIMEOUT_SECONDS) -> N
         )
 
 
-def unload(host: str, identifier: str) -> None:
-    """Let go of a model, and confirm the memory it held came back.
+def unload(identifier: str) -> str:
+    """Ask LM Studio's own tool to let go of a model.
 
-    The tool exits 0 for a name it does not know, printing ``Model Not
-    Found`` and freeing nothing, so its exit code alone cannot say whether
-    anything was let go. The catalogue is what settles it.
+    The tool talks to the copy running on this machine, so this is the one
+    call offgrid makes to LM Studio that does not go over the network.
 
-    :param host: Address the runtime listens on.
+    Its exit code cannot say whether anything was freed: it exits 0 for a name
+    it does not know, printing ``Model Not Found``. So what it said comes back
+    for whoever asked, and confirming the memory came back is theirs to do.
+
     :param identifier: The model to unload.
 
-    :raise RuntimeUnreachableError: When the runtime's tool is missing, when
-        it refuses, or when the model is still held afterwards. Memory that
-        stays held is worth saying out loud, since the machine has one pool
-        and everything else on it shares it.
+    :return: What the tool printed, which is what it has to say about a
+        release that freed nothing.
+
+    :raise RuntimeUnreachableError: When the tool is missing, or refuses.
     """
     try:
         finished = subprocess.run(
@@ -117,15 +118,7 @@ def unload(host: str, identifier: str) -> None:
             f"{TOOL} would not unload {identifier}: {complaint}"
         )
 
-    if any(
-        model.identifier == identifier
-        for model in get_loaded_models(get_catalogue_payload(host))
-    ):
-        raise RuntimeUnreachableError(
-            f"{TOOL} exited cleanly, but http://{host} is still holding "
-            f"{identifier}: {finished.stdout.strip() or 'it said nothing'}. "
-            "Let it go in LM Studio directly."
-        )
+    return finished.stdout.strip()
 
 
 def _explain_why_the_load_did_not_arrive(
