@@ -30,7 +30,12 @@ def answer_as_a_mac(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         it.
     """
     monkeypatch.setattr("offgrid.cli.detect", lambda: MACHINE)
+
+    # Both, because each module holds its own name for it: the command line
+    # reads and writes the profile, and the agent registry puts a directory
+    # beside it. A test that patched one would reach the real other.
     monkeypatch.setattr("offgrid.cli.DEFAULT_PATH", tmp_path / "profile.yaml")
+    monkeypatch.setattr("offgrid.agents.DEFAULT_PATH", tmp_path / "profile.yaml")
 
 
 @dataclass(frozen=True)
@@ -91,7 +96,7 @@ def answer_as_an_agent(monkeypatch: pytest.MonkeyPatch, agent: StandInAgent) -> 
     # about.
     agents: dict[AgentName, Prepare] = {AgentName.CLAUDE_CODE: lambda _: agent}
 
-    monkeypatch.setattr("offgrid.cli.AGENTS", agents)
+    monkeypatch.setattr("offgrid.agents.AGENTS", agents)
 
 
 def serve_get(monkeypatch: pytest.MonkeyPatch, handler) -> None:
