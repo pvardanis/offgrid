@@ -264,9 +264,9 @@ def test_progress_is_silent_for_a_caller_that_configured_nothing():
         [
             sys.executable,
             "-c",
-            "from offgrid.runtimes.lmstudio import connection; "
-            "connection.log.info('progress'); "
-            "connection.log.warning('memory that did not come back')",
+            "from offgrid.runtimes.lmstudio import lmstudio; "
+            "lmstudio.log.info('progress'); "
+            "lmstudio.log.warning('memory that did not come back')",
         ],
         capture_output=True,
         text=True,
