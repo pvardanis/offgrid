@@ -9,7 +9,7 @@ import typer
 
 from offgrid.agents.claude_code import dialect as agent_dialect
 from offgrid.agents.claude_code import plan, prepare
-from offgrid.answering import get_resident, hold
+from offgrid.answering import get_resident_model, hold_model
 from offgrid.dialect import require_compatible
 from offgrid.exceptions import OffgridError, ProfileError
 from offgrid.fit import BYTES_PER_GB, get_sizes_that_fit
@@ -80,7 +80,7 @@ def doctor() -> None:
     runtime = _connect(profile)
 
     with _reporting():
-        model = get_resident(runtime)
+        model = get_resident_model(runtime)
 
     tell(f"  runtime   {profile.runtime.value} at {profile.host}, reachable")
     tell(f"  model     {model.identifier}")
@@ -127,7 +127,7 @@ def run(
         require_compatible(runtime.dialect, agent_dialect())
         prepare(CONFIG_DIR)
 
-        model = hold(runtime, wanted)
+        model = hold_model(runtime, wanted)
 
     # Nothing between here and the agent finishing may leave the model held:
     # from this line on, letting go is owed whatever happens.
