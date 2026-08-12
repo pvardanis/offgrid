@@ -365,7 +365,7 @@ a frozen dataclass field satisfies it, and a caller still reads
 `runtime.dialect`. The agent seam's `Agent` will hit this the same way.
 
 **The release owed after a failed load lives in the adapter.** The domain
-cannot see whether a load was attempted, so a `hold` that let go of whatever it
+cannot see whether a load was attempted, so a `hold_model` that let go of what it
 was asked for would fire `lms unload` at a name the runtime does not have —
 noise on the likeliest mistake there is, a typo in a model name. The adapter
 knows which of its own calls may have taken weights, and wraps that one.
@@ -390,15 +390,17 @@ name that promised the mechanism.
 It also held `hold` and `held`, two letters apart, one asking and one acting,
 and the command line put both in one expression. `CONTEXT.md` already carries
 `resident` as the word for a model in memory, so the asking one takes it and
-says it fetches: `get_resident`.
+says it fetches: `get_resident_model`.
 
-`hold` stays, and is now in the glossary. It was a word the README used and the
-language never defined, which is how it ended up naming a module that had
-handed its mechanism away. Defined, it is the act this project needs a word
-for — make this the resident model, whatever that costs the runtime.
+`hold` stays as the domain's word, in the glossary and in `hold_model`. It was
+a word the README used and the language never defined, which is how it ended up
+naming a module that had handed its mechanism away. Defined, it is the act this
+project needs a word for — make this the resident model, whatever that costs
+the runtime. Both functions say what they act on, so a call site reads as an
+action rather than as a value.
 
 The rule that a run naming no model wants whatever is resident moved out of
-`cli.py` and into `hold`. It is a domain rule, it was a ternary, and moving it
+`cli.py` and into `hold_model`. It is a domain rule, it was a ternary, and moving it
 gives the function something to decide rather than a call to forward.
 
 ## Denying hosted tools is correctness; privacy is a feature that is not built
