@@ -362,7 +362,7 @@ it.** Written `dialect: Dialect`, the member is one a caller may also assign
 to, and `ty` refuses the pair: `protocol member capabilities is incompatible —
 the member does not accept writes`. Declared with `@property` it is read-only,
 a frozen dataclass field satisfies it, and a caller still reads
-`runtime.dialect`. The agent seam's `Agent` will hit this the same way.
+`runtime.dialect`. `Agent` is declared the same way for the same reason.
 
 **The release owed after a failed load lives in the adapter.** The domain
 cannot see whether a load was attempted, so a `hold_model` that let go of what it
@@ -379,6 +379,20 @@ message is the one `doctor` prints when nothing is held, and `doctor` fails
 before it prints the address, so on that path the address is nowhere. What it
 buys is that a `Runtime` is not made to expose an address for a sentence, which
 every adapter after this one would have paid for.
+
+## What building the agent port settled
+
+**The guard answers for a configuration that is not there.** Splitting the
+write from the check leaves a caller free to ask the check on its own, and a
+directory with no settings file in it denies nothing. So absent settings are
+refused in the guard's own words, naming the file, rather than surfacing as a
+traceback from a read that assumed `configure` had run.
+
+**Where an agent keeps its configuration follows the name it was looked up
+by.** A directory named for one adapter, reached through a registry keyed by
+name, is a directory the second adapter inherits. It sits beside the profile,
+under the name the profile carries, which is where `recommend` already keeps
+the table it cached.
 
 ## The module that decides is named for the decision, not for the mechanism
 
