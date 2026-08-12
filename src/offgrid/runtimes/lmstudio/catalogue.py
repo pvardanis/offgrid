@@ -4,8 +4,8 @@ One payload answers both, which is LM Studio's own efficiency: the fetch
 below gets it and the two readers say what it means. A runtime that answered
 the two questions from two endpoints would fetch twice.
 
-What a server that is not running has to say sits here too, said once and
-used by both callers, because it is the same sentence whatever was asked.
+Why a call did not arrive is a table per call, so the three sentences read
+beside each other rather than down a ladder of `except` branches.
 """
 
 import httpx
@@ -15,19 +15,6 @@ from offgrid.model import Model
 
 CATALOGUE = "/api/v0/models"
 TIMEOUT_SECONDS = 5
-
-
-def nothing_answered_at(host: str) -> str:
-    """Say that no server is listening, and what to do about it.
-
-    :param host: Address the runtime was expected on.
-
-    :return: What to tell whoever ran offgrid.
-    """
-    return (
-        f"No model server answered at http://{host}. "
-        "Start LM Studio, or point offgrid elsewhere with --host."
-    )
 
 
 def get_catalogue_payload(host: str) -> dict:
@@ -46,17 +33,9 @@ def get_catalogue_payload(host: str) -> dict:
 
     try:
         response = httpx.get(url, timeout=TIMEOUT_SECONDS)
-    except httpx.TimeoutException as error:
-        raise RuntimeUnreachableError(
-            f"http://{host} did not answer within {TIMEOUT_SECONDS}s. "
-            "It may be loading a model; try again once it settles."
-        ) from error
-    except httpx.TransportError as error:
-        raise RuntimeUnreachableError(nothing_answered_at(host)) from error
     except httpx.RequestError as error:
         raise RuntimeUnreachableError(
-            f"The answer from {url} could not be read: {error}. Something is "
-            f"listening at http://{host}; check it is LM Studio's local server."
+            _explain_why_the_catalogue_did_not_arrive(error, host=host, url=url)
         ) from error
 
     if response.is_error:
@@ -139,3 +118,34 @@ def get_loaded_models(payload: dict) -> list[Model]:
         for model in parse_models_from_payload(payload)
         if model.identifier in held
     ]
+
+
+def _explain_why_the_catalogue_did_not_arrive(
+    error: httpx.RequestError, *, host: str, url: str
+) -> str:
+    """Say which way the call failed, and what to do about that one.
+
+    :param error: What httpx raised.
+    :param host: Address the runtime was expected on.
+    :param url: What was asked for.
+
+    :return: What to tell whoever ran offgrid.
+    """
+    # Most specific first: a `TimeoutException` is a `TransportError`, which is
+    # a `RequestError`, so the first that matches is the one that fits.
+    said = {
+        httpx.TimeoutException: (
+            f"http://{host} did not answer within {TIMEOUT_SECONDS}s. "
+            "It may be loading a model; try again once it settles."
+        ),
+        httpx.TransportError: (
+            f"No model server answered at http://{host}. "
+            "Start LM Studio, or point offgrid elsewhere with --host."
+        ),
+        httpx.RequestError: (
+            f"The answer from {url} could not be read: {error}. Something is "
+            f"listening at http://{host}; check it is LM Studio's local server."
+        ),
+    }
+
+    return next(sentence for kind, sentence in said.items() if isinstance(error, kind))
