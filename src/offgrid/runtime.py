@@ -1,19 +1,11 @@
 """What offgrid needs of a runtime, and which ones there are.
 
-A runtime adapter is a module exposing one factory. The factory binds an
-address once and answers with something satisfying ``Runtime``, so an address
-appears in one signature rather than in five and a connection has somewhere to
-keep what it needs.
+An adapter binds an address once and answers with something satisfying
+``Runtime``. Two of its members are attributes, settled when the connection
+opens; four are methods, which reach the server.
 
-Two of the members are attributes and four are methods, and the split says
-which is which: an attribute settles when the connection opens, so reading it
-is free and cannot fail, while a method reaches the server, costs time, and
-can raise.
-
-The two attributes are declared as properties because that is what makes them
-read-only. Annotated as `dialect: Dialect`, a protocol attribute is one a
-caller may also assign to, and what satisfies it here is a frozen dataclass:
-`ty` refuses the pair with `the member does not accept writes`.
+Why it is shaped this way, and why the attributes are properties, is in
+`docs/architecture.md` under "The runtime seam".
 """
 
 from collections.abc import Callable
