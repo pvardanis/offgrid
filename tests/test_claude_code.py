@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from offgrid.agents.claude_code import prepare
+from offgrid.agents.claude_code import FALLBACK_CONTEXT, prepare
 from offgrid.dialect import Dialect
 from offgrid.exceptions import AgentSettingsError
 from offgrid.model import Model
@@ -76,7 +76,7 @@ def test_a_model_with_no_stated_context_gets_a_workable_default(agent):
     unstated = Model(identifier="a/b", context_limit=0)
     launch = agent.plan(unstated, host=HOST, token="t", passthrough=[])
 
-    assert int(launch.env["CLAUDE_CODE_AUTO_COMPACT_WINDOW"]) > 0
+    assert launch.env["CLAUDE_CODE_AUTO_COMPACT_WINDOW"] == str(FALLBACK_CONTEXT)
 
 
 def test_planning_a_launch_writes_nothing(agent, tmp_path):
@@ -180,7 +180,29 @@ def test_settings_that_would_let_the_agent_search_are_refused(agent, tmp_path):
 def test_settings_that_are_not_readable_json_are_refused(agent, tmp_path):
     (tmp_path / "settings.json").write_text('{"permissions": ')
 
-    with pytest.raises(AgentSettingsError, match=r"settings\.json"):
+    with pytest.raises(AgentSettingsError, match="not readable as JSON"):
+        agent.require_hosted_tools_denied()
+
+
+@pytest.mark.parametrize(
+    "written",
+    [
+        '{"permissions": {"deny": "WebSearch"}}',
+        '{"permissions": ["deny"]}',
+        '["permissions"]',
+    ],
+    ids=["deny is a word", "permissions is a list", "the file is a list"],
+)
+def test_settings_shaped_so_nothing_denies_anything_are_refused(
+    agent, tmp_path, written
+):
+    # Regression guards, not slices: they pass as written. A settings file is
+    # typed by hand into a schema nobody memorises, and each of these is a
+    # shape the agent itself ignores — so reading a deny out of one and
+    # calling the run safe is the invented answer the guard exists to stop.
+    (tmp_path / "settings.json").write_text(written)
+
+    with pytest.raises(AgentSettingsError, match="does not deny WebSearch"):
         agent.require_hosted_tools_denied()
 
 
