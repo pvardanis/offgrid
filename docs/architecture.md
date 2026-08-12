@@ -86,8 +86,11 @@ runtimes/          one package per runtime
     connection.py  what a runtime is asked, in LM Studio's terms
     catalogue.py   what it has, and what it is holding
     holding.py     taking a model into memory, and letting one go
-agents/            one module per agent
-  claude_code.py   the environment and arguments that point it at the runtime
+agents/            one package per agent
+  claude_code/
+    agent.py       what an agent is asked, in Claude Code's terms
+    configuring.py what offgrid writes into its directory, and refuses
+    launching.py   the arguments and the sizes it is started with
 leaderboards/      one module per published list
   onyx.py          fetching and parsing the page
   cache.py         keeping the last payload that parsed

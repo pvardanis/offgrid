@@ -2,7 +2,8 @@ import json
 
 import pytest
 
-from offgrid.agents.claude_code import FALLBACK_CONTEXT, prepare
+from offgrid.agents.claude_code import prepare
+from offgrid.agents.claude_code.launching import FALLBACK_CONTEXT
 from offgrid.dialect import Dialect
 from offgrid.exceptions import AgentSettingsError
 from offgrid.model import Model
