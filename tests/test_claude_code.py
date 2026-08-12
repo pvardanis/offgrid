@@ -191,6 +191,17 @@ def test_settings_that_are_not_there_at_all_are_refused(agent, tmp_path):
         agent.require_hosted_tools_denied()
 
 
+def test_settings_that_are_not_text_are_not_called_bad_json(agent, tmp_path):
+    # A file whose bytes are not text never reached the parser, so naming
+    # JSON sends someone looking for a bracket in a file that has none.
+    (tmp_path / "settings.json").write_bytes(b'{"permissions": \xff}')
+
+    with pytest.raises(AgentSettingsError, match="cannot be read") as refused:
+        agent.require_hosted_tools_denied()
+
+    assert "JSON" not in str(refused.value)
+
+
 def test_settings_that_are_there_and_unreadable_are_not_called_missing(agent, tmp_path):
     # "It is not there" sends someone to write a file that is already there.
     # What stopped the read is what they need, whatever it was.
