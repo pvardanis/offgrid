@@ -10,8 +10,11 @@ import subprocess
 import httpx
 
 from offgrid.exceptions import RuntimeUnreachableError
-from offgrid.runtimes.lmstudio.asking import nothing_answered_at
-from offgrid.runtimes.lmstudio.catalogue import get_catalogue_payload, get_loaded_models
+from offgrid.runtimes.lmstudio.catalogue import (
+    get_catalogue_payload,
+    get_loaded_models,
+    nothing_answered_at,
+)
 
 MESSAGES = "/v1/messages"
 

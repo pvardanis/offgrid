@@ -92,7 +92,6 @@ runtimes/          one package per runtime
     connection.py  what a runtime is asked, in LM Studio's terms
     catalogue.py   what it has, and what it is holding
     holding.py     taking a model into memory, and letting one go
-    asking.py      what every call says when nothing answers
 agents/            one package per agent
   claude_code/
     agent.py       what an agent is asked, in Claude Code's terms

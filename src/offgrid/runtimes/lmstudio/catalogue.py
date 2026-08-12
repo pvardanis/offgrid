@@ -1,18 +1,33 @@
 """What LM Studio has, and what it is holding.
 
-One payload answers both, which is LM Studio's own efficiency: `catalogue`
-fetches it and the two readers below say what it means. A runtime that
-answered the two questions from two endpoints would fetch twice.
+One payload answers both, which is LM Studio's own efficiency: the fetch
+below gets it and the two readers say what it means. A runtime that answered
+the two questions from two endpoints would fetch twice.
+
+What a server that is not running has to say sits here too, said once and
+used by both callers, because it is the same sentence whatever was asked.
 """
 
 import httpx
 
 from offgrid.exceptions import RuntimeUnreachableError
 from offgrid.model import Model
-from offgrid.runtimes.lmstudio.asking import nothing_answered_at
 
 CATALOGUE = "/api/v0/models"
 TIMEOUT_SECONDS = 5
+
+
+def nothing_answered_at(host: str) -> str:
+    """Say that no server is listening, and what to do about it.
+
+    :param host: Address the runtime was expected on.
+
+    :return: What to tell whoever ran offgrid.
+    """
+    return (
+        f"No model server answered at http://{host}. "
+        "Start LM Studio, or point offgrid elsewhere with --host."
+    )
 
 
 def get_catalogue_payload(host: str) -> dict:
