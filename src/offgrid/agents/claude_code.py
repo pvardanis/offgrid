@@ -52,6 +52,55 @@ could not be looked up rather than answering from memory.
 """
 
 
+def _environment(
+    model: Model, *, host: str, token: str, config: Path
+) -> dict[str, str]:
+    """Settle everything Claude Code reads out of its environment.
+
+    :param model: The model that will answer.
+    :param host: Address the runtime listens on.
+    :param token: Credential the local server ignores but the agent requires.
+    :param config: Where the agent's own configuration is kept.
+
+    :return: What to add to the environment offgrid was started with.
+    """
+    context = model.context_limit or FALLBACK_CONTEXT
+
+    return {
+        "CLAUDE_CONFIG_DIR": str(config),
+        "ANTHROPIC_BASE_URL": f"http://{host}",
+        "ANTHROPIC_AUTH_TOKEN": token,
+        "ANTHROPIC_MODEL": model.identifier,
+        "ANTHROPIC_DEFAULT_OPUS_MODEL": model.identifier,
+        "ANTHROPIC_DEFAULT_SONNET_MODEL": model.identifier,
+        "ANTHROPIC_DEFAULT_HAIKU_MODEL": model.identifier,
+        "MAX_THINKING_TOKENS": "0",
+        "CLAUDE_CODE_MAX_OUTPUT_TOKENS": str(MAX_OUTPUT_TOKENS),
+        # Compact before the server truncates the prefix and voids its cache.
+        "CLAUDE_CODE_AUTO_COMPACT_WINDOW": str(context),
+        "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
+        "CLAUDE_CODE_DISABLE_1M_CONTEXT": "1",
+    }
+
+
+def _arguments(passthrough: list[str]) -> list[str]:
+    """Settle the command line Claude Code is started with.
+
+    :param passthrough: Arguments handed to the agent unchanged.
+
+    :return: The command and its arguments.
+    """
+    return [
+        "claude",
+        # No --mcp-config alongside it, so no servers load at all.
+        "--strict-mcp-config",
+        # Volatile sections move into the first message, leaving the cached
+        # prefix identical between turns.
+        "--exclude-dynamic-system-prompt-sections",
+        *passthrough,
+    ]
+
+
 def _what_is_denied(stored: object) -> Sequence[object]:
     """List what a settings file denies the agent.
 
@@ -208,33 +257,7 @@ class ClaudeCode:
 
         :return: The environment and command to run.
         """
-        context = model.context_limit or FALLBACK_CONTEXT
-
-        env = {
-            "CLAUDE_CONFIG_DIR": str(self.config_dir),
-            "ANTHROPIC_BASE_URL": f"http://{host}",
-            "ANTHROPIC_AUTH_TOKEN": token,
-            "ANTHROPIC_MODEL": model.identifier,
-            "ANTHROPIC_DEFAULT_OPUS_MODEL": model.identifier,
-            "ANTHROPIC_DEFAULT_SONNET_MODEL": model.identifier,
-            "ANTHROPIC_DEFAULT_HAIKU_MODEL": model.identifier,
-            "MAX_THINKING_TOKENS": "0",
-            "CLAUDE_CODE_MAX_OUTPUT_TOKENS": str(MAX_OUTPUT_TOKENS),
-            # Compact before the server truncates the prefix and voids its
-            # cache.
-            "CLAUDE_CODE_AUTO_COMPACT_WINDOW": str(context),
-            "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
-            "CLAUDE_CODE_DISABLE_1M_CONTEXT": "1",
-        }
-
-        argv = [
-            "claude",
-            # No --mcp-config alongside it, so no servers load at all.
-            "--strict-mcp-config",
-            # Volatile sections move into the first message, leaving the
-            # cached prefix identical between turns.
-            "--exclude-dynamic-system-prompt-sections",
-            *passthrough,
-        ]
-
-        return Launch(env=env, argv=argv)
+        return Launch(
+            env=_environment(model, host=host, token=token, config=self.config_dir),
+            argv=_arguments(passthrough),
+        )
