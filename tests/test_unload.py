@@ -4,7 +4,7 @@ import httpx
 import pytest
 
 from offgrid.exceptions import RuntimeUnreachableError
-from offgrid.runtimes.lmstudio import unload
+from offgrid.runtimes.lmstudio.holding import unload
 from tests.doubles import run_tool, serve_get
 
 HOST = "127.0.0.1:1234"

@@ -81,8 +81,11 @@ cli.py             setup, doctor, recommend, run
 **adapters**
 
 ```
-runtimes/          one module per runtime
-  lmstudio.py      the catalogue, what is held, loading and letting go
+runtimes/          one package per runtime
+  lmstudio/
+    connection.py  what a runtime is asked, in LM Studio's terms
+    catalogue.py   what it has, and what it is holding
+    holding.py     taking a model into memory, and letting one go
 agents/            one module per agent
   claude_code.py   the environment and arguments that point it at the runtime
 leaderboards/      one module per published list

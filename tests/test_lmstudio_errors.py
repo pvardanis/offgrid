@@ -4,13 +4,13 @@ import httpx
 import pytest
 
 from offgrid.exceptions import RuntimeUnreachableError
-from offgrid.runtimes.lmstudio import (
-    LOAD_TIMEOUT_SECONDS,
+from offgrid.runtimes.lmstudio.catalogue import (
     TIMEOUT_SECONDS,
     catalogue,
     loaded,
     parse_models,
 )
+from offgrid.runtimes.lmstudio.holding import LOAD_TIMEOUT_SECONDS
 from tests.doubles import serve_get, serve_post
 
 HOST = "127.0.0.1:1234"
@@ -44,7 +44,7 @@ def test_a_load_is_waited_on_for_as_long_as_it_is_given(
 ):
     # Weights come off disk at gigabytes a second: the catalogue's few
     # seconds would give up on a load that is going fine.
-    from offgrid.runtimes.lmstudio import load
+    from offgrid.runtimes.lmstudio.holding import load
 
     asked = {}
 
@@ -131,7 +131,7 @@ def test_an_entry_without_an_identifier_is_named_as_such():
 
 
 def test_loading_a_model_asks_it_for_one_token(monkeypatch: pytest.MonkeyPatch):
-    from offgrid.runtimes.lmstudio import load
+    from offgrid.runtimes.lmstudio.holding import load
 
     asked = {}
 
@@ -151,7 +151,7 @@ def test_loading_a_model_asks_it_for_one_token(monkeypatch: pytest.MonkeyPatch):
 def test_a_load_another_model_answers_is_refused(monkeypatch: pytest.MonkeyPatch):
     # Captured from the live server: asked for a name it does not have while
     # google/gemma-4-e4b was loaded, it answered 200 as gemma.
-    from offgrid.runtimes.lmstudio import load
+    from offgrid.runtimes.lmstudio.holding import load
 
     answered_as = {
         "id": "msg_7awwpgbekenxou8epgv27q",
@@ -170,7 +170,7 @@ def test_a_load_another_model_answers_is_refused(monkeypatch: pytest.MonkeyPatch
 
 
 def test_a_load_the_right_model_answers_is_accepted(monkeypatch: pytest.MonkeyPatch):
-    from offgrid.runtimes.lmstudio import load
+    from offgrid.runtimes.lmstudio.holding import load
 
     served = {"content": [], "model": "a/model-7b"}
     serve_post(monkeypatch, lambda request: httpx.Response(200, json=served))
@@ -181,7 +181,7 @@ def test_a_load_the_right_model_answers_is_accepted(monkeypatch: pytest.MonkeyPa
 def test_a_load_answered_with_something_other_than_json_says_so(
     monkeypatch: pytest.MonkeyPatch,
 ):
-    from offgrid.runtimes.lmstudio import load
+    from offgrid.runtimes.lmstudio.holding import load
 
     serve_post(monkeypatch, lambda request: httpx.Response(200, html="<h1>hello</h1>"))
 
@@ -190,7 +190,7 @@ def test_a_load_answered_with_something_other_than_json_says_so(
 
 
 def test_a_load_that_never_finishes_says_so(monkeypatch: pytest.MonkeyPatch):
-    from offgrid.runtimes.lmstudio import load
+    from offgrid.runtimes.lmstudio.holding import load
 
     def stall(request: httpx.Request) -> httpx.Response:
         raise httpx.ReadTimeout("still loading", request=request)
@@ -203,7 +203,7 @@ def test_a_load_that_never_finishes_says_so(monkeypatch: pytest.MonkeyPatch):
 def test_a_load_whose_answer_cannot_be_read_is_offgrids_error_too(
     monkeypatch: pytest.MonkeyPatch,
 ):
-    from offgrid.runtimes.lmstudio import load
+    from offgrid.runtimes.lmstudio.holding import load
 
     def mangled(request: httpx.Request) -> httpx.Response:
         raise httpx.DecodingError("bad gzip", request=request)
@@ -215,7 +215,7 @@ def test_a_load_whose_answer_cannot_be_read_is_offgrids_error_too(
 
 
 def test_a_refused_load_reports_what_the_server_said(monkeypatch: pytest.MonkeyPatch):
-    from offgrid.runtimes.lmstudio import load
+    from offgrid.runtimes.lmstudio.holding import load
 
     serve_post(monkeypatch, lambda request: httpx.Response(400, text="no such model"))
     with pytest.raises(RuntimeUnreachableError, match="400"):

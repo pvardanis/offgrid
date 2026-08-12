@@ -14,7 +14,7 @@ import pytest
 
 from offgrid.exceptions import OffgridError
 from offgrid.profile import load as load_profile
-from offgrid.runtimes.lmstudio import catalogue, loaded, parse_models
+from offgrid.runtimes.lmstudio.catalogue import catalogue, loaded, parse_models
 
 pytestmark = pytest.mark.live
 
