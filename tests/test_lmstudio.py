@@ -3,7 +3,9 @@ import pathlib
 
 import pytest
 
-from offgrid.runtimes.lmstudio import Dialect, connect, loaded, parse_models
+from offgrid.dialect import Dialect
+from offgrid.runtimes.lmstudio import connect
+from offgrid.runtimes.lmstudio.catalogue import loaded, parse_models
 
 FIXTURE = pathlib.Path(__file__).parent / "fixtures" / "lmstudio_models.json"
 
