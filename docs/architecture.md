@@ -146,7 +146,7 @@ sequenceDiagram
     C->>D: require_compatible(runtime.dialect, expected)
     C->>A: prepare(config_dir)
     Note over C,A: both can fail before a load, and a load is tens of seconds
-    C->>H: hold(runtime, wanted)
+    C->>H: hold_model(runtime, wanted)
     Note over H: wanted may be none, which asks for<br/>whatever the runtime is already holding
     H->>R: ensure_only(wanted) — or read_held()
     Note over R: what "only this one" costs here is the adapter's<br/>problem: let go of the rest, load, read back
@@ -543,7 +543,7 @@ sequenceDiagram
     C->>A: configure()
     C->>A: require_hosted_tools_denied()
     Note over C,A: everything knowable before a load, before the load
-    C->>H: hold(runtime, wanted)
+    C->>H: hold_model(runtime, wanted)
     H->>R: ensure_only(wanted)
     Note over R: what "only this one" costs here<br/>is the adapter's problem
     R-->>H: Model, as served
