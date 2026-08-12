@@ -6,6 +6,7 @@ before anything runs.
 """
 
 import json
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -51,6 +52,24 @@ could not be looked up rather than answering from memory.
 """
 
 
+def _what_is_denied(stored: object) -> Sequence[object]:
+    """List what a settings file denies the agent.
+
+    A shape the agent itself does not read denies nothing: `deny` typed as a
+    word rather than a list is not a rule Claude Code honours, so it is not
+    one offgrid may count.
+
+    :param stored: What the settings file held.
+
+    :return: The entries it denies, whatever they turned out to be, and none
+        where its shape says nothing.
+    """
+    permissions = stored.get("permissions") if isinstance(stored, dict) else None
+    denied = permissions.get("deny") if isinstance(permissions, dict) else None
+
+    return denied if isinstance(denied, list) else []
+
+
 def prepare(config_dir: Path) -> Agent:
     """Bind the directory Claude Code keeps its configuration in.
 
@@ -87,13 +106,8 @@ class ClaudeCode:
         try:
             self.config_dir.mkdir(parents=True, exist_ok=True)
 
-            notes = self.config_dir / NOTES
-            if not notes.exists():
-                notes.write_text(INSTRUCTIONS)
-
-            settings = self.config_dir / SETTINGS
-            if not settings.exists():
-                settings.write_text(json.dumps(SLIM_SETTINGS, indent=2) + "\n")
+            self._write_missing(NOTES, INSTRUCTIONS)
+            self._write_missing(SETTINGS, json.dumps(SLIM_SETTINGS, indent=2) + "\n")
         except OSError as error:
             raise AgentSettingsError(
                 f"{self.config_dir} cannot be written: {error}. Fix what is "
@@ -108,15 +122,58 @@ class ClaudeCode:
         """
         settings = self.config_dir / SETTINGS
 
+        if "WebSearch" not in _what_is_denied(self._read_settings()):
+            raise AgentSettingsError(
+                f"{settings} does not deny WebSearch, which runs on Anthropic's "
+                "servers: against a local model there is nothing to run it, so the "
+                "model invents a result and the agent returns it as an answer. Add "
+                "it to permissions.deny, or delete the file and offgrid writes one."
+            )
+
+    def _write_missing(self, name: str, content: str) -> None:
+        """Write one file of the configuration, unless it is already there.
+
+        :param name: What the file is called inside the directory.
+        :param content: What to write where there is nothing.
+
+        :raise OSError: When it cannot be written.
+        """
+        written = self.config_dir / name
+
+        if not written.exists():
+            written.write_text(content)
+
+    def _require_settings_file(self) -> Path:
+        """Answer with the settings file, which has to be there to deny.
+
+        :return: The path to it.
+
+        :raise AgentSettingsError: When it is not there.
+        """
+        settings = self.config_dir / SETTINGS
+
         if not settings.exists():
             raise AgentSettingsError(
                 f"{settings} is not there, so nothing denies WebSearch. "
                 "`offgrid run` writes it before it starts the agent."
             )
 
-        # Read apart from parsed, because bytes that are not text never reach
-        # the parser and calling that bad JSON sends someone looking for a
-        # bracket. `UnicodeDecodeError` is a `ValueError`, so it would.
+        return settings
+
+    def _read_settings(self) -> object:
+        """Read the settings file as whatever it holds.
+
+        Reading is apart from parsing because bytes that are not text never
+        reach the parser, and calling that bad JSON sends someone looking for
+        a bracket. `UnicodeDecodeError` is a `ValueError`, so it would.
+
+        :return: What the file holds, in whatever shape it was written.
+
+        :raise AgentSettingsError: When it is absent, cannot be read, or is
+            not JSON.
+        """
+        settings = self._require_settings_file()
+
         try:
             body = settings.read_text()
         except (OSError, UnicodeDecodeError) as error:
@@ -126,23 +183,12 @@ class ClaudeCode:
             ) from error
 
         try:
-            stored = json.loads(body)
+            return json.loads(body)
         except ValueError as error:
             raise AgentSettingsError(
                 f"{settings} is not readable as JSON: {error}. Fix it, or delete it "
                 "and offgrid writes one."
             ) from error
-
-        permissions = stored.get("permissions") if isinstance(stored, dict) else None
-        denied = permissions.get("deny") if isinstance(permissions, dict) else None
-
-        if not isinstance(denied, list) or "WebSearch" not in denied:
-            raise AgentSettingsError(
-                f"{settings} does not deny WebSearch, which runs on Anthropic's "
-                "servers: against a local model there is nothing to run it, so the "
-                "model invents a result and the agent returns it as an answer. Add "
-                "it to permissions.deny, or delete the file and offgrid writes one."
-            )
 
     def plan(
         self,
