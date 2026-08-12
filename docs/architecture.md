@@ -71,7 +71,7 @@ outside it. `runtimes/lmstudio/` and `agents/claude_code/` already have one; a
 contract cannot be stated over all three until `leaderboards/` does.
 
 The unit is the package rather than the module, because an adapter's own files
-import each other: `lmstudio/connection.py` reaches `lmstudio/catalogue.py` for
+import each other: `lmstudio/lmstudio.py` reaches `lmstudio/catalogue.py` for
 the payload it reads. What the rule forbids is reaching *into* an adapter from
 outside it, which is what a second adapter, the domain, or the command line
 would be doing.
@@ -89,12 +89,12 @@ cli.py             setup, doctor, recommend, run
 ```
 runtimes/          one package per runtime
   lmstudio/
-    connection.py  what a runtime is asked, in LM Studio's terms
+    lmstudio.py    what a runtime is asked, in LM Studio's terms
     catalogue.py   what it has, and what it is holding
     holding.py     taking a model into memory, and letting one go
 agents/            one package per agent
   claude_code/
-    agent.py       what an agent is asked, in Claude Code's terms
+    claude_code.py what an agent is asked, in Claude Code's terms
     configuring.py what offgrid writes into its directory, and refuses
     launching.py   the arguments and the sizes it is started with
 leaderboards/      one module per published list

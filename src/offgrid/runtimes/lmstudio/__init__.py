@@ -1,11 +1,11 @@
 """LM Studio, which serves Anthropic's message API alongside OpenAI's.
 
 `connect` is the whole of what the registry asks for. What it answers with is
-in `connection.py`, and what that reaches for is beside it.
+in `lmstudio.py`, and what that reaches for is beside it.
 """
 
 from offgrid.runtime import Runtime
-from offgrid.runtimes.lmstudio.connection import LMStudio
+from offgrid.runtimes.lmstudio.lmstudio import LMStudio
 
 
 def connect(host: str) -> Runtime:
