@@ -14,7 +14,11 @@ import pytest
 
 from offgrid.exceptions import OffgridError
 from offgrid.profile import load as load_profile
-from offgrid.runtimes.lmstudio.catalogue import catalogue, loaded, parse_models
+from offgrid.runtimes.lmstudio.catalogue import (
+    get_catalogue_payload,
+    get_loaded_models,
+    parse_models_from_payload,
+)
 
 pytestmark = pytest.mark.live
 
@@ -43,11 +47,13 @@ def known(host: str, smoke_model: str) -> str:
     :return: The model identifier.
     """
     try:
-        payload = catalogue(host)
+        payload = get_catalogue_payload(host)
     except OffgridError as error:
         pytest.skip(f"no runtime answering: {error}")
 
-    if smoke_model not in {model.identifier for model in parse_models(payload)}:
+    if smoke_model not in {
+        model.identifier for model in parse_models_from_payload(payload)
+    }:
         pytest.skip(f"{smoke_model} is not downloaded: `lms get {smoke_model}`")
 
     return smoke_model
@@ -67,9 +73,9 @@ def test_a_run_lets_go_of_the_model_it_held(host: str, known: str):
     # never reached the runtime — a usage error exits 2 and leaves nothing
     # loaded, which would satisfy the rest of this on its own.
     assert known in finished.stderr
-    assert [model.identifier for model in loaded(catalogue(host))] == [], (
-        finished.stderr
-    )
+    assert [
+        model.identifier for model in get_loaded_models(get_catalogue_payload(host))
+    ] == [], finished.stderr
 
 
 def test_a_run_says_which_model_answers_and_at_what_context(host: str, known: str):
@@ -86,7 +92,9 @@ def test_a_model_the_runtime_does_not_have_is_refused_before_any_wait(host: str)
 
     assert finished.returncode == 1
     assert "does not have" in finished.stderr
-    assert [model.identifier for model in loaded(catalogue(host))] == []
+    assert [
+        model.identifier for model in get_loaded_models(get_catalogue_payload(host))
+    ] == []
 
 
 def _run(identifier: str) -> subprocess.CompletedProcess:

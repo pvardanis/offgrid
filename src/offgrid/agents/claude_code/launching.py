@@ -9,7 +9,7 @@ MAX_OUTPUT_TOKENS = 8192
 FALLBACK_CONTEXT = 32768
 
 
-def get_args(passthrough: list[str]) -> list[str]:
+def get_claude_args(passthrough: list[str]) -> list[str]:
     """Settle the command line Claude Code is started with.
 
     :param passthrough: Arguments handed to the agent unchanged.

@@ -12,7 +12,11 @@ from offgrid.exceptions import (
 )
 from offgrid.model import Model
 from offgrid.runtime import Capabilities
-from offgrid.runtimes.lmstudio.catalogue import catalogue, loaded, parse_models
+from offgrid.runtimes.lmstudio.catalogue import (
+    get_catalogue_payload,
+    get_loaded_models,
+    parse_models_from_payload,
+)
 from offgrid.runtimes.lmstudio.holding import load, unload
 
 # What LM Studio's API can be asked, rather than what this machine can reach:
@@ -57,7 +61,7 @@ class LMStudio:
 
         :raise RuntimeUnreachableError: When it cannot be reached.
         """
-        return parse_models(catalogue(self.host))
+        return parse_models_from_payload(get_catalogue_payload(self.host))
 
     def read_held(self) -> list[Model]:
         """List the models LM Studio has in memory.
@@ -66,7 +70,7 @@ class LMStudio:
 
         :raise RuntimeUnreachableError: When it cannot be reached.
         """
-        return loaded(catalogue(self.host))
+        return get_loaded_models(get_catalogue_payload(self.host))
 
     def ensure_only(self, identifier: str) -> Model:
         """Hold the named model, whatever the runtime is holding now.
@@ -86,8 +90,10 @@ class LMStudio:
             load fails, when another model answers, or when what is already
             held will not go and this one would be loaded on top of it.
         """
-        payload = catalogue(self.host)
-        known = {model.identifier: model for model in parse_models(payload)}
+        payload = get_catalogue_payload(self.host)
+        known = {
+            model.identifier: model for model in parse_models_from_payload(payload)
+        }
 
         if identifier not in known:
             raise ModelUnavailableError(
@@ -100,7 +106,7 @@ class LMStudio:
         # `loaded` answers in catalogue order and LM Studio can hold several:
         # what matters is whether this one is among them, not whether it
         # happens to be first.
-        in_memory = {model.identifier: model for model in loaded(payload)}
+        in_memory = {model.identifier: model for model in get_loaded_models(payload)}
         if identifier in in_memory:
             return in_memory[identifier]
 
@@ -185,7 +191,7 @@ class LMStudio:
         """
         stuck = []
 
-        for model in loaded(payload):
+        for model in get_loaded_models(payload):
             if model.identifier == wanted:
                 continue
 
