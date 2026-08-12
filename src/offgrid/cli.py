@@ -7,7 +7,8 @@ from pathlib import Path
 
 import typer
 
-from offgrid.agents.claude_code import prepare
+from offgrid.agent import Agent
+from offgrid.agents import AGENTS
 from offgrid.answering import get_resident_model, hold_model
 from offgrid.dialect import require_compatible
 from offgrid.exceptions import OffgridError, ProfileError
@@ -22,7 +23,6 @@ from offgrid.runtime import Runtime
 from offgrid.runtimes import RUNTIMES
 from offgrid.say import say_on_stderr, tell
 
-CONFIG_DIR = Path.home() / ".offgrid" / "claude-code"
 DEFAULT_HOST = "127.0.0.1:1234"
 # The local server ignores it; the agent refuses to start without one.
 TOKEN = "local"
@@ -77,7 +77,7 @@ def doctor() -> None:
     """Check that the runtime is reachable and holding a model."""
     profile = _profile()
     runtime = _connect(profile)
-    agent = prepare(CONFIG_DIR)
+    agent = _prepare(profile)
 
     with _reporting():
         model = get_resident_model(runtime)
@@ -118,7 +118,7 @@ def run(
     """Start the agent against a model the runtime is holding."""
     profile = _profile()
     runtime = _connect(profile)
-    agent = prepare(CONFIG_DIR)
+    agent = _prepare(profile)
     wanted = model_name or profile.model
 
     with _reporting():
@@ -202,6 +202,20 @@ def _connect(profile: Profile) -> Runtime:
     :return: A connection to it.
     """
     return RUNTIMES[profile.runtime](profile.host)
+
+
+def _prepare(profile: Profile) -> Agent:
+    """Bind the directory the agent the profile names is configured out of.
+
+    The one place a name becomes an agent: everything downstream holds one
+    and knows nothing about which it is. Each gets its own directory, beside
+    the profile, because an agent's configuration is its own.
+
+    :param profile: What the agent is called.
+
+    :return: An agent offgrid can configure and start.
+    """
+    return AGENTS[profile.agent](DEFAULT_PATH.parent / profile.agent.value)
 
 
 def _cache() -> Path:

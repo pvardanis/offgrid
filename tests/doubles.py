@@ -21,11 +21,11 @@ def answer_as_a_mac(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """Answer with a fixed machine, and write nowhere real.
 
     :param monkeypatch: The test's patcher.
-    :param tmp_path: Where the profile and the agent's directory go.
+    :param tmp_path: Where the profile goes, and the agent's directory beside
+        it.
     """
     monkeypatch.setattr("offgrid.cli.detect", lambda: MACHINE)
     monkeypatch.setattr("offgrid.cli.DEFAULT_PATH", tmp_path / "profile.yaml")
-    monkeypatch.setattr("offgrid.cli.CONFIG_DIR", tmp_path / "claude-code")
 
 
 def serve_get(monkeypatch: pytest.MonkeyPatch, handler) -> None:
