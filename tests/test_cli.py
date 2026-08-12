@@ -198,6 +198,16 @@ def test_doctor_reports_the_runtime_the_profile_names(here):
     assert "lmstudio" in result.stderr
 
 
+def test_doctor_reports_the_agent_the_profile_names_and_what_it_speaks(here):
+    # What a run would launch, and the dialect the pairing turns on.
+    runner.invoke(app, ["setup"])
+
+    result = runner.invoke(app, ["doctor"])
+
+    assert "claude-code" in result.stderr
+    assert "anthropic" in result.stderr
+
+
 def test_doctor_reports_the_model_that_would_answer(here):
     runner.invoke(app, ["setup"])
     result = runner.invoke(app, ["doctor"])

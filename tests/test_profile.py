@@ -1,6 +1,7 @@
 import pytest
 import yaml
 
+from offgrid.agent import AgentName
 from offgrid.exceptions import ProfileError
 from offgrid.profile import Profile, load, save
 from offgrid.runtime import RuntimeName
@@ -34,7 +35,7 @@ def test_a_profile_typed_by_hand_loads(tmp_path):
 
     assert profile.host == "10.0.0.5:4321"
     assert profile.runtime is RuntimeName.LMSTUDIO
-    assert profile.agent == "claude-code"
+    assert profile.agent is AgentName.CLAUDE_CODE
     assert profile.model is None
 
 
@@ -46,6 +47,15 @@ def test_the_runtime_a_profile_names_is_a_name_offgrid_has(tmp_path):
     path.write_text("host: 10.0.0.5:4321\n")
 
     assert load(path).runtime is RuntimeName.LMSTUDIO
+
+
+def test_the_agent_a_profile_names_is_a_name_offgrid_has(tmp_path):
+    # The name is what picks the adapter offgrid launches, so it is a type
+    # from the moment the file is read rather than a string checked once.
+    path = tmp_path / "profile.yaml"
+    path.write_text("host: 10.0.0.5:4321\n")
+
+    assert load(path).agent is AgentName.CLAUDE_CODE
 
 
 def test_a_missing_profile_says_how_to_make_one(tmp_path):

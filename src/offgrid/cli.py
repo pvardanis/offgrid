@@ -85,7 +85,7 @@ def doctor() -> None:
     tell(f"  runtime   {profile.runtime.value} at {profile.host}, reachable")
     tell(f"  model     {model.identifier}")
     tell(f"  context   {model.context_limit or 'unstated'}")
-    tell(f"  agent     {profile.agent}, speaking {agent.dialect.value}")
+    tell(f"  agent     {profile.agent.value}, speaking {agent.dialect.value}")
 
 
 @app.command()
