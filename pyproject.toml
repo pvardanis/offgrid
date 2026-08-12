@@ -74,6 +74,7 @@ root_package = "offgrid"
 name = "The domain knows nothing about adapters"
 type = "forbidden"
 source_modules = [
+    "offgrid.agent",
     "offgrid.dialect",
     "offgrid.answering",
     "offgrid.fit",
