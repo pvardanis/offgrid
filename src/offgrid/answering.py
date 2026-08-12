@@ -13,7 +13,7 @@ from offgrid.model import Model
 from offgrid.runtime import Runtime
 
 
-def get_resident(runtime: Runtime) -> Model:
+def get_resident_model(runtime: Runtime) -> Model:
     """Find the model the runtime is already holding.
 
     :param runtime: The runtime to ask.
@@ -35,7 +35,7 @@ def get_resident(runtime: Runtime) -> Model:
     return in_memory[0]
 
 
-def hold(runtime: Runtime, identifier: str | None) -> Model:
+def hold_model(runtime: Runtime, identifier: str | None) -> Model:
     """Hold the model that will answer: the one named, or the one already there.
 
     Naming none is how a run says it wants whatever is resident, which costs
@@ -55,6 +55,6 @@ def hold(runtime: Runtime, identifier: str | None) -> Model:
         held will not go and this one would be loaded on top of it.
     """
     if identifier is None:
-        return get_resident(runtime)
+        return get_resident_model(runtime)
 
     return runtime.ensure_only(identifier)
