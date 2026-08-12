@@ -142,9 +142,9 @@ sequenceDiagram
     C->>F: load(path)
     Note over F: an unknown runtime or agent is refused here,<br/>naming the field, before anything else runs
     F-->>C: Profile — host, RuntimeName, AgentName, model
-    C->>G: RUNTIMES[profile.runtime](profile.host)
+    C->>G: connect_runtime(profile)
     G-->>C: Runtime
-    C->>G: AGENTS[profile.agent](config_dir)
+    C->>G: prepare_agent(profile)
     G-->>C: Agent
     Note over C,G: the only place a name becomes an adapter
     C->>D: require_compatible(runtime.dialect, agent.dialect)
@@ -465,14 +465,26 @@ anything else runs. That is what the profile is for: it is hand-edited, and a
 name offgrid does not have is a mistake to report rather than a preference to
 record.
 
-Each adapter package holds a dict keyed by that enum, and a lookup, in its
-`__init__.py` — so `from offgrid.runtimes import RUNTIMES` is the package's
-whole public face.
+Each adapter package holds a dict keyed by that enum in its `__init__.py`, and
+the one function that reads it — which is the package's whole public face.
 
 ```python
 RUNTIMES: dict[RuntimeName, Connect] = {RuntimeName.LMSTUDIO: lmstudio.connect}
-AGENTS: dict[AgentName, Prepare] = {AgentName.CLAUDE_CODE: claude_code.prepare}
+
+
+def connect_runtime(profile: Profile) -> Runtime:
+    return RUNTIMES[profile.runtime](profile.host)
 ```
+
+A caller asks for the adapter a profile names rather than indexing a registry
+with a field of it, so what the profile carries stays a type nothing outside
+has to spell. The agent's is the same shape, and settles where an agent keeps
+its configuration: beside the profile, under the name it was looked up by.
+
+This is the only layer that can hold those two functions. A port is a domain
+module, and a domain module reaching a registry is the violation these seams
+remove — `lint-imports` reports it directly, and a port that took a `Profile`
+would import the module that imports it back.
 
 **Nothing else is re-exported there.** No `from offgrid.runtimes import
 LMStudio`. Partly because nobody would write it — callers hold a `Runtime` they
@@ -481,8 +493,8 @@ the registry itself. Mostly because it would take the rule away: `import-linter`
 reads import statements as written, so `from offgrid.runtimes.lmstudio import
 ...` is catchable while `from offgrid.runtimes import LMStudio` is an import of
 `offgrid.runtimes` — indistinguishable from the one `cli.py` legitimately makes
-to get `RUNTIMES`. Re-exporting the name would make "only a registry may import
-a concrete adapter" unverifiable.
+to get `connect_runtime`. Re-exporting the name would make "only a registry may
+import a concrete adapter" unverifiable.
 
 Re-exports earn their place in a library with an API to curate.
 `docs/decisions.md` says offgrid is cloned and run, with no published package,
@@ -607,12 +619,11 @@ enums above, so a hand-edited typo is refused when the profile is read and each
 is a type at every call site. `save` writes with `model_dump(mode="json")`,
 since YAML cannot represent an enum member.
 
-**`cli.py` is where a name becomes an adapter, and the only thing that knows
-one exists.** It reads the profile, asks a registry for a `Runtime` and an
-`Agent`, and hands them to the code that uses them. It imports the registries
-and the Protocols and never `lmstudio` or `claude_code`, which is what makes
-the rule statable: **only a registry may import a concrete adapter**, the
-command line included. "Outermost, so it may import anything" is not something
+**`cli.py` asks for an adapter and never names one.** It reads the profile,
+asks each registry package for the `Runtime` and the `Agent` that profile
+names, and hands them to the code that uses them. It imports two functions and
+never `lmstudio` or `claude_code`, which is what makes the rule statable:
+**only a registry may import a concrete adapter**, the command line included. "Outermost, so it may import anything" is not something
 a contract can check. It holds for the runtime and the agent today, and not yet
 for the leaderboard.
 
