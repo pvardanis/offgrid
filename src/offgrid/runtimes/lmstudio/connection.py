@@ -17,7 +17,7 @@ from offgrid.runtimes.lmstudio.catalogue import (
     get_loaded_models,
     parse_models_from_payload,
 )
-from offgrid.runtimes.lmstudio.holding import load, unload
+from offgrid.runtimes.lmstudio.holding import TOOL, load, unload
 
 # What LM Studio's API can be asked, rather than what this machine can reach:
 # a release commanded through `lms` needs the tool on PATH, which `unload`
@@ -122,18 +122,32 @@ class LMStudio:
     def let_go(self, identifier: str) -> bool:
         """Let go of a model, saying so if the runtime will not.
 
-        Memory that stays held is worth saying out loud, and worth answering
-        for: the log record is for whoever is watching, the answer is for
-        whoever has to decide what to do next.
+        The tool exits 0 for a name it does not know, freeing nothing, so
+        what it said is not what settles this — the catalogue is. Memory that
+        stays held is worth saying out loud, and worth answering for: the log
+        record is for whoever is watching, the answer is for whoever has to
+        decide what to do next.
 
         :param identifier: The model to let go of.
 
         :return: Whether the memory came back.
         """
         try:
-            unload(self.host, identifier)
+            said = unload(identifier)
         except RuntimeUnreachableError as error:
             log.warning("  The runtime is still holding %s: %s", identifier, error)
+            return False
+
+        if any(model.identifier == identifier for model in self.read_held()):
+            log.warning(
+                "  The runtime is still holding %s: %s exited cleanly, but "
+                "http://%s has it loaded — it said %s. Let it go in LM Studio "
+                "directly.",
+                identifier,
+                TOOL,
+                self.host,
+                said or "nothing",
+            )
             return False
 
         return True

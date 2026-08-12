@@ -19,7 +19,12 @@ from offgrid.exceptions import (
     RuntimeUnreachableError,
 )
 from offgrid.runtimes.lmstudio import connect
-from tests.doubles import answer_as_lm_studio, refuse_to_let_go, serve_post
+from tests.doubles import (
+    answer_as_lm_studio,
+    refuse_to_let_go,
+    run_tool,
+    serve_post,
+)
 
 HOST = "127.0.0.1:1234"
 
@@ -207,6 +212,20 @@ def test_a_runtime_that_will_not_let_go_is_said_rather_than_raised(monkeypatch, 
     with caplog.at_level(logging.WARNING, logger="offgrid.runtimes.lmstudio"):
         connect(HOST).let_go("a/held-7b")
 
+    assert any("still holding" in record.getMessage() for record in caplog.records)
+
+
+def test_a_tool_that_freed_nothing_is_not_taken_at_its_word(monkeypatch, caplog):
+    # `lms unload` exits 0 for a name it does not know, printing "Model Not
+    # Found" and freeing nothing. The catalogue is what settles it, and the
+    # answer a caller branches on has to reflect that.
+    answer_as_lm_studio(monkeypatch, holding={"a/held-7b": 8192})
+    run_tool(monkeypatch, returncode=0, stdout="Model Not Found")
+
+    with caplog.at_level(logging.WARNING, logger="offgrid.runtimes.lmstudio"):
+        came_back = connect(HOST).let_go("a/held-7b")
+
+    assert came_back is False
     assert any("still holding" in record.getMessage() for record in caplog.records)
 
 
