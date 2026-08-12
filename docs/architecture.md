@@ -66,9 +66,15 @@ exemptions now.
 The rule the domain is held to says nothing about `cli.py`, which is outermost
 and may import anything. Once the leaderboard has a registry too, it becomes
 **nothing may import a concrete adapter except its own registry**, the command
-line included, and each adapter module gains exactly one importer.
-`runtimes/lmstudio.py` and `agents/claude_code.py` already have one; a contract
-cannot be stated over all three until `leaderboards/` does.
+line included, and each adapter package gains exactly one importer from
+outside it. `runtimes/lmstudio/` and `agents/claude_code/` already have one; a
+contract cannot be stated over all three until `leaderboards/` does.
+
+The unit is the package rather than the module, because an adapter's own files
+import each other: `lmstudio/connection.py` reaches `lmstudio/catalogue.py` for
+the payload it reads. What the rule forbids is reaching *into* an adapter from
+outside it, which is what a second adapter, the domain, or the command line
+would be doing.
 
 ## The modules — built
 
@@ -508,7 +514,7 @@ so the submodule layout is not a detail to hide — it is what the contract is
 stated over.
 
 A test asserts the rule directly once all three have registries: the only
-module in `src/` importing `offgrid.runtimes.<something>` is
+module outside `offgrid/runtimes/lmstudio/` importing anything under it is
 `offgrid/runtimes/__init__.py`, and likewise for the other two packages. That
 covers a new adapter automatically, where naming each concrete module in a
 contract would need editing every time one is added. `runtimes/` and `agents/`
