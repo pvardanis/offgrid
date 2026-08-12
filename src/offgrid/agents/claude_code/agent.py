@@ -19,7 +19,7 @@ from offgrid.agents.claude_code.configuring import (
 from offgrid.agents.claude_code.launching import (
     FALLBACK_CONTEXT,
     MAX_OUTPUT_TOKENS,
-    get_args,
+    get_claude_args,
 )
 from offgrid.dialect import Dialect
 from offgrid.exceptions import AgentSettingsError
@@ -113,7 +113,7 @@ class ClaudeCode:
             "CLAUDE_CODE_DISABLE_1M_CONTEXT": "1",
         }
 
-        return Launch(env=env, argv=get_args(passthrough))
+        return Launch(env=env, argv=get_claude_args(passthrough))
 
     def _write_missing(self, name: str, content: str) -> None:
         """Write one file of the configuration, unless it is already there.

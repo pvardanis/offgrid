@@ -10,7 +10,8 @@ import subprocess
 import httpx
 
 from offgrid.exceptions import RuntimeUnreachableError
-from offgrid.runtimes.lmstudio.catalogue import catalogue, loaded
+from offgrid.runtimes.lmstudio.asking import nothing_answered_at
+from offgrid.runtimes.lmstudio.catalogue import get_catalogue_payload, get_loaded_models
 
 MESSAGES = "/v1/messages"
 
@@ -56,10 +57,7 @@ def load(host: str, identifier: str, timeout: float = LOAD_TIMEOUT_SECONDS) -> N
             "Load it in the runtime directly, or allow longer."
         ) from error
     except httpx.TransportError as error:
-        raise RuntimeUnreachableError(
-            f"No model server answered at http://{host}. "
-            "Start LM Studio, or point offgrid elsewhere with --host."
-        ) from error
+        raise RuntimeUnreachableError(nothing_answered_at(host)) from error
     except httpx.RequestError as error:
         raise RuntimeUnreachableError(
             f"The answer to loading {identifier} could not be read: {error}. "
@@ -126,7 +124,10 @@ def unload(host: str, identifier: str) -> None:
             f"{TOOL} would not unload {identifier}: {complaint}"
         )
 
-    if any(model.identifier == identifier for model in loaded(catalogue(host))):
+    if any(
+        model.identifier == identifier
+        for model in get_loaded_models(get_catalogue_payload(host))
+    ):
         raise RuntimeUnreachableError(
             f"{TOOL} exited cleanly, but http://{host} is still holding "
             f"{identifier}: {finished.stdout.strip() or 'it said nothing'}. "

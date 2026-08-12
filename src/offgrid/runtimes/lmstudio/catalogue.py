@@ -9,12 +9,13 @@ import httpx
 
 from offgrid.exceptions import RuntimeUnreachableError
 from offgrid.model import Model
+from offgrid.runtimes.lmstudio.asking import nothing_answered_at
 
 CATALOGUE = "/api/v0/models"
 TIMEOUT_SECONDS = 5
 
 
-def catalogue(host: str) -> dict:
+def get_catalogue_payload(host: str) -> dict:
     """Fetch the runtime's catalogue.
 
     :param host: Address the runtime listens on, e.g. ``127.0.0.1:1234``.
@@ -36,10 +37,7 @@ def catalogue(host: str) -> dict:
             "It may be loading a model; try again once it settles."
         ) from error
     except httpx.TransportError as error:
-        raise RuntimeUnreachableError(
-            f"No model server answered at http://{host}. "
-            "Start LM Studio, or point offgrid elsewhere with --host."
-        ) from error
+        raise RuntimeUnreachableError(nothing_answered_at(host)) from error
     except httpx.RequestError as error:
         raise RuntimeUnreachableError(
             f"The answer from {url} could not be read: {error}. Something is "
@@ -61,7 +59,7 @@ def catalogue(host: str) -> dict:
         ) from error
 
 
-def parse_models(payload: dict) -> list[Model]:
+def parse_models_from_payload(payload: dict) -> list[Model]:
     """Read the catalogue into models that can be sized and ranked.
 
     :param payload: A decoded response from the catalogue endpoint.
@@ -102,7 +100,7 @@ def parse_models(payload: dict) -> list[Model]:
     return models
 
 
-def loaded(payload: dict) -> list[Model]:
+def get_loaded_models(payload: dict) -> list[Model]:
     """Find every model held in memory.
 
     The machine has one pool of memory, and LM Studio can hold several models
@@ -121,4 +119,8 @@ def loaded(payload: dict) -> list[Model]:
         if entry.get("state") == "loaded"
     }
 
-    return [model for model in parse_models(payload) if model.identifier in held]
+    return [
+        model
+        for model in parse_models_from_payload(payload)
+        if model.identifier in held
+    ]
