@@ -1,4 +1,4 @@
-"""Claude Code, which speaks Anthropic's message API.
+"""Claude Code as an agent: what an agent is asked, in its terms.
 
 Its settings are environment variables, so a launch is an environment and an
 argument list. Both are built rather than exported, so a caller can show them
@@ -9,57 +9,22 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from offgrid.agent import Agent
+from offgrid.agents.claude_code.configuring import (
+    INSTRUCTIONS,
+    NOTES,
+    SETTINGS,
+    SLIM_SETTINGS,
+    get_denied_tools,
+)
+from offgrid.agents.claude_code.launching import (
+    FALLBACK_CONTEXT,
+    MAX_OUTPUT_TOKENS,
+    get_args,
+)
 from offgrid.dialect import Dialect
 from offgrid.exceptions import AgentSettingsError
 from offgrid.launch import Launch
 from offgrid.model import Model
-
-SETTINGS = "settings.json"
-NOTES = "CLAUDE.md"
-
-# Decode runs at tens of tokens per second, so thinking and long replies cost
-# wall time directly.
-MAX_OUTPUT_TOKENS = 8192
-
-# Used when the runtime states no context for a model. Small enough to be
-# served by anything, large enough to hold a conversation.
-FALLBACK_CONTEXT = 32768
-
-# WebSearch runs on Anthropic's servers. Pointed at a local model there is
-# nothing to run it, so the model emits a tool call as prose and the agent
-# returns it as a result: an invented answer, with no error.
-SLIM_SETTINGS = {
-    "$schema": "https://json.schemastore.org/claude-code-settings.json",
-    "permissions": {"deny": ["WebSearch"]},
-    "enableAllProjectMcpServers": False,
-    "enabledPlugins": {},
-    "alwaysThinkingEnabled": False,
-}
-
-
-# Said once in the profile rather than discovered by calling the tool, which
-# costs a turn — and locally a turn is tens of seconds.
-INSTRUCTIONS = """# Answering from a model on this machine
-
-WebSearch is denied here. It runs on Anthropic's servers, and this session
-answers from a model held on this machine, so the call comes back as invented
-results rather than as an error. Nothing replaces it yet.
-
-WebFetch does work: use it whenever a URL is known. Where one is not, say what
-could not be looked up rather than answering from memory.
-"""
-
-
-def prepare(config_dir: Path) -> Agent:
-    """Bind the directory Claude Code keeps its configuration in.
-
-    :param config_dir: Profile directory to use instead of the caller's own,
-        which keeps their plugins and servers out of the cached prefix.
-
-    :return: An agent offgrid can configure and start.
-    """
-    return ClaudeCode(config_dir=config_dir)
 
 
 @dataclass(frozen=True)
@@ -103,7 +68,7 @@ class ClaudeCode:
         """
         settings = self.config_dir / SETTINGS
 
-        if "WebSearch" not in _get_denied_tools(self._read_settings()):
+        if "WebSearch" not in get_denied_tools(self._read_settings()):
             raise AgentSettingsError(
                 f"{settings} does not deny WebSearch, which runs on Anthropic's "
                 "servers: against a local model there is nothing to run it, so the "
@@ -148,7 +113,7 @@ class ClaudeCode:
             "CLAUDE_CODE_DISABLE_1M_CONTEXT": "1",
         }
 
-        return Launch(env=env, argv=_get_args(passthrough))
+        return Launch(env=env, argv=get_args(passthrough))
 
     def _write_missing(self, name: str, content: str) -> None:
         """Write one file of the configuration, unless it is already there.
@@ -209,42 +174,3 @@ class ClaudeCode:
                 f"{settings} is not readable as JSON: {error}. Fix it, or delete it "
                 "and offgrid writes one."
             ) from error
-
-
-def _get_args(passthrough: list[str]) -> list[str]:
-    """Settle the command line Claude Code is started with.
-
-    :param passthrough: Arguments handed to the agent unchanged.
-
-    :return: The command and its arguments.
-    """
-    return [
-        "claude",
-        # No --mcp-config alongside it, so no servers load at all.
-        "--strict-mcp-config",
-        # Volatile sections move into the first message, leaving the cached
-        # prefix identical between turns.
-        "--exclude-dynamic-system-prompt-sections",
-        *passthrough,
-    ]
-
-
-def _get_denied_tools(stored: object) -> list[str]:
-    """List the tools a settings file denies the agent.
-
-    A shape the agent itself does not read denies nothing, and each of these
-    is one: `deny` typed as a word rather than a list, a mapping where a list
-    belongs, an entry that is not the name of a tool. None of them is a rule
-    Claude Code honours, so none is one offgrid may count.
-
-    :param stored: What the settings file held, in whatever shape it holds it.
-
-    :return: The tools it denies, which is none where its shape says nothing.
-    """
-    permissions = stored.get("permissions") if isinstance(stored, dict) else None
-    denied = permissions.get("deny") if isinstance(permissions, dict) else None
-
-    if not isinstance(denied, list):
-        return []
-
-    return [tool for tool in denied if isinstance(tool, str)]
