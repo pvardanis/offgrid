@@ -178,3 +178,14 @@ def test_settings_that_are_not_there_at_all_are_refused(agent, tmp_path):
     # file is missing sends someone to `configure` rather than to an editor.
     with pytest.raises(AgentSettingsError, match="offgrid run"):
         agent.require_hosted_tools_denied()
+
+
+def test_settings_that_are_there_and_unreadable_are_not_called_missing(agent, tmp_path):
+    # "It is not there" sends someone to write a file that is already there.
+    # What stopped the read is what they need, whatever it was.
+    (tmp_path / "settings.json").mkdir()
+
+    with pytest.raises(AgentSettingsError, match="cannot be read") as refused:
+        agent.require_hosted_tools_denied()
+
+    assert "is not there" not in str(refused.value)

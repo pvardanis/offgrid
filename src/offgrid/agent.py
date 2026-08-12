@@ -56,8 +56,8 @@ class Agent(Protocol):
         the call as prose and the agent returns that as a result — an invented
         answer, with no error anywhere.
 
-        :raise AgentSettingsError: When the configuration permits one, or
-            cannot be read.
+        :raise AgentSettingsError: When the configuration permits one, is not
+            there to say otherwise, or cannot be read.
         """
         ...
 
