@@ -6,7 +6,6 @@ before anything runs.
 """
 
 import json
-from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -50,73 +49,6 @@ results rather than as an error. Nothing replaces it yet.
 WebFetch does work: use it whenever a URL is known. Where one is not, say what
 could not be looked up rather than answering from memory.
 """
-
-
-def _environment(
-    model: Model, *, host: str, token: str, config: Path
-) -> dict[str, str]:
-    """Settle everything Claude Code reads out of its environment.
-
-    :param model: The model that will answer.
-    :param host: Address the runtime listens on.
-    :param token: Credential the local server ignores but the agent requires.
-    :param config: Where the agent's own configuration is kept.
-
-    :return: What to add to the environment offgrid was started with.
-    """
-    context = model.context_limit or FALLBACK_CONTEXT
-
-    return {
-        "CLAUDE_CONFIG_DIR": str(config),
-        "ANTHROPIC_BASE_URL": f"http://{host}",
-        "ANTHROPIC_AUTH_TOKEN": token,
-        "ANTHROPIC_MODEL": model.identifier,
-        "ANTHROPIC_DEFAULT_OPUS_MODEL": model.identifier,
-        "ANTHROPIC_DEFAULT_SONNET_MODEL": model.identifier,
-        "ANTHROPIC_DEFAULT_HAIKU_MODEL": model.identifier,
-        "MAX_THINKING_TOKENS": "0",
-        "CLAUDE_CODE_MAX_OUTPUT_TOKENS": str(MAX_OUTPUT_TOKENS),
-        # Compact before the server truncates the prefix and voids its cache.
-        "CLAUDE_CODE_AUTO_COMPACT_WINDOW": str(context),
-        "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
-        "CLAUDE_CODE_DISABLE_1M_CONTEXT": "1",
-    }
-
-
-def _arguments(passthrough: list[str]) -> list[str]:
-    """Settle the command line Claude Code is started with.
-
-    :param passthrough: Arguments handed to the agent unchanged.
-
-    :return: The command and its arguments.
-    """
-    return [
-        "claude",
-        # No --mcp-config alongside it, so no servers load at all.
-        "--strict-mcp-config",
-        # Volatile sections move into the first message, leaving the cached
-        # prefix identical between turns.
-        "--exclude-dynamic-system-prompt-sections",
-        *passthrough,
-    ]
-
-
-def _what_is_denied(stored: object) -> Sequence[object]:
-    """List what a settings file denies the agent.
-
-    A shape the agent itself does not read denies nothing: `deny` typed as a
-    word rather than a list is not a rule Claude Code honours, so it is not
-    one offgrid may count.
-
-    :param stored: What the settings file held.
-
-    :return: The entries it denies, whatever they turned out to be, and none
-        where its shape says nothing.
-    """
-    permissions = stored.get("permissions") if isinstance(stored, dict) else None
-    denied = permissions.get("deny") if isinstance(permissions, dict) else None
-
-    return denied if isinstance(denied, list) else []
 
 
 def prepare(config_dir: Path) -> Agent:
@@ -171,13 +103,52 @@ class ClaudeCode:
         """
         settings = self.config_dir / SETTINGS
 
-        if "WebSearch" not in _what_is_denied(self._read_settings()):
+        if "WebSearch" not in _get_denied_tools(self._read_settings()):
             raise AgentSettingsError(
                 f"{settings} does not deny WebSearch, which runs on Anthropic's "
                 "servers: against a local model there is nothing to run it, so the "
                 "model invents a result and the agent returns it as an answer. Add "
                 "it to permissions.deny, or delete the file and offgrid writes one."
             )
+
+    def plan(
+        self,
+        model: Model,
+        *,
+        host: str,
+        token: str,
+        passthrough: list[str],
+    ) -> Launch:
+        """Work out how to start Claude Code against a local runtime.
+
+        :param model: The model that will answer.
+        :param host: Address the runtime listens on, e.g. ``127.0.0.1:1234``.
+        :param token: Credential the local server ignores but the agent
+            requires.
+        :param passthrough: Arguments handed to the agent unchanged.
+
+        :return: The environment and command to run.
+        """
+        context = model.context_limit or FALLBACK_CONTEXT
+
+        env = {
+            "CLAUDE_CONFIG_DIR": str(self.config_dir),
+            "ANTHROPIC_BASE_URL": f"http://{host}",
+            "ANTHROPIC_AUTH_TOKEN": token,
+            "ANTHROPIC_MODEL": model.identifier,
+            "ANTHROPIC_DEFAULT_OPUS_MODEL": model.identifier,
+            "ANTHROPIC_DEFAULT_SONNET_MODEL": model.identifier,
+            "ANTHROPIC_DEFAULT_HAIKU_MODEL": model.identifier,
+            "MAX_THINKING_TOKENS": "0",
+            "CLAUDE_CODE_MAX_OUTPUT_TOKENS": str(MAX_OUTPUT_TOKENS),
+            # Compact before the server truncates the prefix and voids its
+            # cache.
+            "CLAUDE_CODE_AUTO_COMPACT_WINDOW": str(context),
+            "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
+            "CLAUDE_CODE_DISABLE_1M_CONTEXT": "1",
+        }
+
+        return Launch(env=env, argv=_get_args(passthrough))
 
     def _write_missing(self, name: str, content: str) -> None:
         """Write one file of the configuration, unless it is already there.
@@ -239,25 +210,41 @@ class ClaudeCode:
                 "and offgrid writes one."
             ) from error
 
-    def plan(
-        self,
-        model: Model,
-        *,
-        host: str,
-        token: str,
-        passthrough: list[str],
-    ) -> Launch:
-        """Work out how to start Claude Code against a local runtime.
 
-        :param model: The model that will answer.
-        :param host: Address the runtime listens on, e.g. ``127.0.0.1:1234``.
-        :param token: Credential the local server ignores but the agent
-            requires.
-        :param passthrough: Arguments handed to the agent unchanged.
+def _get_args(passthrough: list[str]) -> list[str]:
+    """Settle the command line Claude Code is started with.
 
-        :return: The environment and command to run.
-        """
-        return Launch(
-            env=_environment(model, host=host, token=token, config=self.config_dir),
-            argv=_arguments(passthrough),
-        )
+    :param passthrough: Arguments handed to the agent unchanged.
+
+    :return: The command and its arguments.
+    """
+    return [
+        "claude",
+        # No --mcp-config alongside it, so no servers load at all.
+        "--strict-mcp-config",
+        # Volatile sections move into the first message, leaving the cached
+        # prefix identical between turns.
+        "--exclude-dynamic-system-prompt-sections",
+        *passthrough,
+    ]
+
+
+def _get_denied_tools(stored: object) -> list[str]:
+    """List the tools a settings file denies the agent.
+
+    A shape the agent itself does not read denies nothing, and each of these
+    is one: `deny` typed as a word rather than a list, a mapping where a list
+    belongs, an entry that is not the name of a tool. None of them is a rule
+    Claude Code honours, so none is one offgrid may count.
+
+    :param stored: What the settings file held, in whatever shape it holds it.
+
+    :return: The tools it denies, which is none where its shape says nothing.
+    """
+    permissions = stored.get("permissions") if isinstance(stored, dict) else None
+    denied = permissions.get("deny") if isinstance(permissions, dict) else None
+
+    if not isinstance(denied, list):
+        return []
+
+    return [tool for tool in denied if isinstance(tool, str)]
