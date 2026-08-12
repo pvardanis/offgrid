@@ -7,8 +7,7 @@ from pathlib import Path
 
 import typer
 
-from offgrid.agent import Agent
-from offgrid.agents import AGENTS
+from offgrid.agents import prepare_agent
 from offgrid.answering import get_resident_model, hold_model
 from offgrid.dialect import require_compatible
 from offgrid.exceptions import OffgridError, ProfileError
@@ -19,8 +18,7 @@ from offgrid.machine import detect, suggest_raising_the_gpu_limit
 from offgrid.profile import DEFAULT_PATH, Profile, save
 from offgrid.profile import load as load_profile
 from offgrid.recommendation import summarize_findings
-from offgrid.runtime import Runtime
-from offgrid.runtimes import RUNTIMES
+from offgrid.runtimes import connect_runtime
 from offgrid.say import say_on_stderr, tell
 
 DEFAULT_HOST = "127.0.0.1:1234"
@@ -76,8 +74,8 @@ def setup(
 def doctor() -> None:
     """Check that the runtime is reachable and holding a model."""
     profile = _profile()
-    runtime = _connect(profile)
-    agent = _prepare_agent(profile)
+    runtime = connect_runtime(profile)
+    agent = prepare_agent(profile)
 
     with _reporting():
         model = get_resident_model(runtime)
@@ -117,8 +115,8 @@ def run(
 ) -> None:
     """Start the agent against a model the runtime is holding."""
     profile = _profile()
-    runtime = _connect(profile)
-    agent = _prepare_agent(profile)
+    runtime = connect_runtime(profile)
+    agent = prepare_agent(profile)
     wanted = model_name or profile.model
 
     with _reporting():
@@ -189,33 +187,6 @@ def _stored() -> Profile | None:
         tell(f"  {error}")
         tell(f"  What was there is at {kept}. Writing a fresh profile.")
         return None
-
-
-def _connect(profile: Profile) -> Runtime:
-    """Reach the runtime the profile names.
-
-    The one place a name becomes an adapter: everything downstream holds a
-    connection and knows nothing about which runtime it is.
-
-    :param profile: What the runtime is called, and where it listens.
-
-    :return: A connection to it.
-    """
-    return RUNTIMES[profile.runtime](profile.host)
-
-
-def _prepare_agent(profile: Profile) -> Agent:
-    """Bind the directory the agent the profile names is configured out of.
-
-    The one place a name becomes an agent: everything downstream holds one
-    and knows nothing about which it is. Each gets its own directory, beside
-    the profile, because an agent's configuration is its own.
-
-    :param profile: What the agent is called.
-
-    :return: An agent offgrid can configure and start.
-    """
-    return AGENTS[profile.agent](DEFAULT_PATH.parent / profile.agent.value)
 
 
 def _cache() -> Path:
