@@ -114,13 +114,19 @@ class ClaudeCode:
                 "`offgrid run` writes it before it starts the agent."
             )
 
+        # Read apart from parsed, because bytes that are not text never reach
+        # the parser and calling that bad JSON sends someone looking for a
+        # bracket. `UnicodeDecodeError` is a `ValueError`, so it would.
         try:
-            stored = json.loads(settings.read_text())
-        except OSError as error:
+            body = settings.read_text()
+        except (OSError, UnicodeDecodeError) as error:
             raise AgentSettingsError(
                 f"{settings} cannot be read: {error}. Fix what it is or what "
                 "owns it, or delete it and offgrid writes one."
             ) from error
+
+        try:
+            stored = json.loads(body)
         except ValueError as error:
             raise AgentSettingsError(
                 f"{settings} is not readable as JSON: {error}. Fix it, or delete it "
