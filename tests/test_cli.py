@@ -214,6 +214,16 @@ def test_doctor_reports_the_agent_the_profile_names_and_what_it_speaks(here):
     assert "anthropic" in result.stderr
 
 
+def test_doctor_writes_no_configuration(here):
+    # It reports what a run would do. Reaching the registry to ask the agent
+    # what it speaks binds a directory and nothing more.
+    runner.invoke(app, ["setup"])
+
+    runner.invoke(app, ["doctor"])
+
+    assert not (here / "claude-code").exists()
+
+
 def test_doctor_reports_the_model_that_would_answer(here):
     runner.invoke(app, ["setup"])
     result = runner.invoke(app, ["doctor"])

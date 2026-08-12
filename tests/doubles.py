@@ -9,7 +9,7 @@ from pathlib import Path
 import httpx
 import pytest
 
-from offgrid.agent import AgentName
+from offgrid.agent import AgentName, Prepare
 from offgrid.dialect import Dialect
 from offgrid.launch import Launch
 from offgrid.machine import Machine
@@ -86,9 +86,12 @@ def answer_as_an_agent(monkeypatch: pytest.MonkeyPatch, agent: StandInAgent) -> 
     :param monkeypatch: The test's patcher.
     :param agent: What the registry should answer with.
     """
-    monkeypatch.setattr(
-        "offgrid.cli.AGENTS", {AgentName.CLAUDE_CODE: lambda config_dir: agent}
-    )
+    # Typed, so that a stand-in that has stopped satisfying the port is what
+    # the type checker says rather than what a test quietly proves nothing
+    # about.
+    agents: dict[AgentName, Prepare] = {AgentName.CLAUDE_CODE: lambda _: agent}
+
+    monkeypatch.setattr("offgrid.cli.AGENTS", agents)
 
 
 def serve_get(monkeypatch: pytest.MonkeyPatch, handler) -> None:
