@@ -7,22 +7,14 @@ Domain language: `CONTEXT.md`. The modules, what may import what, and where a
 second runtime or agent attaches: `docs/architecture.md`. What was decided and
 why: `docs/decisions.md`.
 
-## Commands
-
-```sh
-uv run pytest                 # the suite
-uv run ruff check . && uv run ruff format .
-uv run ty check               # types
-uv run interrogate            # docstring coverage, enforced at 100%
-prek run --all-files          # everything the hooks run
-```
+`just` lists every command. `just check` is what a commit and CI both run, and
+`just mutate` is the suite writing no `.pyc`, which hand mutation testing needs.
 
 ## Agent skills
 
-### /tdd
-
-Seams are agreed before a test is written, and these are the ones already
-agreed. Anything else needs a new agreement.
+**`/tdd`** — one slice at a time: one test, one implementation, then the next.
+A test that cannot be red is a regression guard rather than a slice; say which
+it is. These seams are agreed, and anything else needs a new agreement:
 
 | Seam | What is tested there |
 |---|---|
@@ -32,74 +24,35 @@ agreed. Anything else needs a new agreement.
 | a leaderboard adapter's parsing | a payload captured from the live page |
 | a listing's fit | which widths a machine holds it at |
 | a machine's sizing | what fits, at each quantization width |
-| a live run | that a real run holds a model and lets it go — `pytest -m live` |
+| a live run | that a real run holds a model and lets it go — `just live` |
 | `answering.py` | which error a caller gets, and what is said while it waits |
 
-Not seams: anything private. `_now_holding`, `_let_go_of_the_rest` and their
-kind are structure, and a test against them breaks on a refactor that changed
-nothing.
+Private names are structure, not seams: a test against `_now_holding` breaks on
+a refactor that changed nothing.
 
-Work one slice at a time — one test, one implementation, then the next. Not all
-the tests, then all the code: bulk tests describe imagined behaviour, and they
-commit to a shape before the implementation has taught anything.
+**`/mattpocock-skills:code-review`** — on the branch diff before opening a pull
+request, every time. It needs both axes: the fixed point (`main` for a branch
+off main) and the issue the branch implements (`gh issue view <n>`, and usually
+the parent).
 
-A test that cannot be red is a regression guard, not a slice. Say which it is.
+**`/pr-review-toolkit:review-pr`** — the deeper pass, before pushing. Always
+`code-reviewer` and `silent-failure-hunter`; add `pr-test-analyzer` when tests
+changed, `type-design-analyzer` when a type was added, `comment-analyzer` when
+a comment claims something about hardware or a runtime.
 
-### /mattpocock-skills:code-review
+**`/grill-me`** — before building anything whose shape is not obvious. Record
+what was settled in `docs/decisions.md`, and look facts up in the environment:
+the runtime is running and the machine can be measured.
 
-Run it on the branch diff **before opening a pull request**, every time. Not
-after, and not only when the change feels risky — a change that felt safe is
-the one nobody looks at twice.
-
-Give it the fixed point to compare against: `main` for a branch off main. It
-reviews two axes in parallel and reports them separately — whether the code
-follows what this repo documents, and whether it does what the issue asked
-for. Keeping them apart is the point. Code that follows every rule and builds
-the wrong thing passes one axis and fails the other, and a merged report hides
-exactly that.
-
-It needs the spec to have an issue axis at all. Issues live on GitHub, so hand
-it the one the branch implements rather than letting it guess from the branch
-name; `gh issue view <n>` is where the acceptance criteria are, and the parent
-issue is usually worth passing too.
-
-### /pr-review-toolkit:review-pr
-
-The deeper pass, for a change that warrants one on top of the two axes above.
-Run it on the branch diff **before pushing a pull request**, not after opening
-one. Findings arriving after review has started waste the reviewer's pass.
-
-Which agents apply here: `code-reviewer` and `silent-failure-hunter` always;
-`pr-test-analyzer` when tests changed; `type-design-analyzer` when a type was
-added; `comment-analyzer` when a comment claims something about hardware or a
-runtime's behaviour.
-
-Verify every finding from either review before acting on it, whether an agent
-or a person produced it. Reviewers state falsehoods with the same confidence
-as truths — one insisted the models in the fixtures did not exist when they
-were captured from a live server an hour earlier. Reproduce the failure, then
-fix it. Report what a finding got wrong alongside what it got right.
-
-### /grill-me
-
-Grill before building anything whose shape is not obvious, and record what was
-settled in `docs/decisions.md` — the reasoning is the part that gets lost, and
-without it a decision gets remade from memory six weeks later.
-
-Look facts up in the environment rather than asking for them. The runtime is
-running, the machine can be measured, and the git history is right there.
+Verify every review finding before acting on it — one reviewer insisted the
+fixtures' models did not exist, an hour after they were captured from a live
+server. Report what a finding got wrong beside what it got right.
 
 ## Testing
 
-- Fixtures are captured from a live runtime, never invented. A test asserting
-  behaviour against a fake payload tests the fake.
-- A test that passes with the guard it names deleted is worse than no test.
-  Check by removing the guard and watching it fail.
+- Fixtures are captured from a live runtime, never invented.
+- A guard is proven by deleting it and watching the test fail.
 - Errors are behaviour: assert on the message a person would read.
-
-When mutation-testing by hand, set `PYTHONDONTWRITEBYTECODE=1`. Edits made
-within the same second as a restore leave stale `.pyc` files, and the suite
-then runs against code that is no longer on disk.
 
 ## Style
 
@@ -111,37 +64,13 @@ then runs against code that is no longer on disk.
 - Comments explain why something is there. Never what it replaced.
 - Fail fast, and name the operation, the input, and what to do next.
 
-## Where the work is tracked
-
-GitHub issues on `pvardanis/offgrid`, read with `gh issue list`. What is
-deferred and why belongs in one, alongside the evidence that would settle it —
-a decision recorded nowhere outlives the session that made it.
-
-`docs/decisions.md` is for what was settled. Issues are for what was not.
-
 ## Pull requests
 
-Around 500 lines of diff. Not a count to hit exactly, but a change that runs
-well past it is usually several changes, and every part of it gets the
-attention the least interesting part earns. Split by what each piece would be
-reverted for on its own: a port, an adapter that satisfies it, and the callers
-moved onto it are three pieces, not one.
-
-One kind of change per pull request. Code, prose docs, CI, and build or
-dependency changes each get their own, because each is read by a different
-question — does this work, is this true, does this run, is this pinned — and a
-mixed diff gets one pass instead of four.
-
-Two things travel with the code rather than apart from it, because the suite
-enforces them: a docstring, and any doc a test checks — the module map in
-`docs/architecture.md` and the `source_modules` list in `pyproject.toml`, both
-guarded by `tests/test_architecture.py`. A commit that renames a module and
-leaves those behind fails on its own, which is the rule that outranks this one.
-Everything else in prose — `decisions.md`, `CONTEXT.md`, the README — goes in
-its own commit, and its own pull request where it stands alone.
-
-Say the split before building it. A branch that has already grown past this is
-a rebase to fix, and the person who has to read it is the one who asked.
+Around 500 lines of diff, and one kind of change each: code, prose docs, CI,
+build. What the suite enforces travels with the code — a docstring, the module
+map in `docs/architecture.md`, and `source_modules` in `pyproject.toml`, the
+last two guarded by `tests/test_architecture.py`. Say the split before building
+it.
 
 ## Commits
 
@@ -152,26 +81,26 @@ Types: `feat`, `fix`, `refactor`, `perf`, `docs`, `test`, `chore`, `build`,
 `ci`, `style`, `revert`. Scopes are the modules — `machine`, `fit`, `model`,
 `dialect`, `profile`, `lmstudio`, `claude-code`, `cli` — plus `ci` and `deps`.
 
+One change per commit: if the subject needs an "and", it is two. Each leaves
+the suite green on its own, so a bisect lands somewhere that runs and a revert
+takes back one thing. Tests go in the commit with the behaviour they cover.
+
 A body only where the diff does not already say it: why the change was made,
 and for a fix, what was reproduced. Wrap at 72, `-` for bullets. A breaking
 change takes `!` before the colon and a `BREAKING CHANGE:` paragraph.
 
-One change per commit. If the subject needs an "and", or the type is not
-obvious from the diff, it is two commits: a fix and the housekeeping it sat
-next to, a refactor and the defect found while moving the code. Each one
-leaves the suite green on its own, so a bisect lands somewhere that runs and
-a revert takes back one thing.
-
-Tests go in the commit with the behaviour they cover, not in a commit of
-their own.
-
 Never in a commit: what the diff states, "I" or "we", or AI attribution in the
 prose. The `Co-Authored-By:` trailer stays.
+
+## Where the work is tracked
+
+GitHub issues on `pvardanis/offgrid`, read with `gh issue list`.
+`docs/decisions.md` is for what was settled; an issue is for what was not, with
+the evidence that would settle it.
 
 ## Scope
 
 v0.1 connects one runtime to one agent and gets out of the way. Which model to
-run stays a manual choice: offgrid says how much room the machine has, and
-names what a published list says fits it, ranked. It downloads nothing and
-writes no model into the profile. A model catalogue, more runtimes, more
-agents, and a verified private mode are all later.
+run stays a manual choice: offgrid says how much room the machine has and names
+what a published list says fits it, ranked. A model catalogue, more runtimes,
+more agents and a verified private mode are all later.
