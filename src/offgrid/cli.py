@@ -77,7 +77,7 @@ def doctor() -> None:
     """Check that the runtime is reachable and holding a model."""
     profile = _profile()
     runtime = _connect(profile)
-    agent = _prepare(profile)
+    agent = _prepare_agent(profile)
 
     with _reporting():
         model = get_resident_model(runtime)
@@ -118,7 +118,7 @@ def run(
     """Start the agent against a model the runtime is holding."""
     profile = _profile()
     runtime = _connect(profile)
-    agent = _prepare(profile)
+    agent = _prepare_agent(profile)
     wanted = model_name or profile.model
 
     with _reporting():
@@ -204,7 +204,7 @@ def _connect(profile: Profile) -> Runtime:
     return RUNTIMES[profile.runtime](profile.host)
 
 
-def _prepare(profile: Profile) -> Agent:
+def _prepare_agent(profile: Profile) -> Agent:
     """Bind the directory the agent the profile names is configured out of.
 
     The one place a name becomes an agent: everything downstream holds one
