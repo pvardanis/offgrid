@@ -100,12 +100,18 @@ class ClaudeCode:
         """
         settings = self.config_dir / SETTINGS
 
+        if not settings.exists():
+            raise AgentSettingsError(
+                f"{settings} is not there, so nothing denies WebSearch. "
+                "`offgrid run` writes it before it starts the agent."
+            )
+
         try:
             stored = json.loads(settings.read_text())
         except OSError as error:
             raise AgentSettingsError(
-                f"{settings} is not there, so nothing denies WebSearch. "
-                "`offgrid run` writes it before it starts the agent."
+                f"{settings} cannot be read: {error}. Fix what it is or what "
+                "owns it, or delete it and offgrid writes one."
             ) from error
         except ValueError as error:
             raise AgentSettingsError(
