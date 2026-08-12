@@ -140,6 +140,17 @@ def test_configuring_twice_changes_nothing_the_second_time(agent, tmp_path):
     assert {path.name: path.read_text() for path in tmp_path.iterdir()} == written
 
 
+def test_a_configuration_that_cannot_be_written_says_what_stopped_it(tmp_path):
+    # The command line reports offgrid's own errors and lets everything else
+    # reach the terminal as a traceback, which is no use to whoever owns the
+    # directory that would not take the file.
+    in_the_way = tmp_path / "not-a-directory"
+    in_the_way.write_text("")
+
+    with pytest.raises(AgentSettingsError, match="cannot be written"):
+        prepare(in_the_way / "claude-code").configure()
+
+
 def test_what_the_agent_writes_for_itself_passes_its_own_guard(agent):
     agent.configure()
 

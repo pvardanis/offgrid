@@ -81,16 +81,24 @@ class ClaudeCode:
         Both are meant to be edited, so what is already there is left as it
         is — including settings the guard would refuse, which are still an
         edit rather than something to write over.
+
+        :raise AgentSettingsError: When what is missing cannot be written.
         """
-        self.config_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            self.config_dir.mkdir(parents=True, exist_ok=True)
 
-        notes = self.config_dir / NOTES
-        if not notes.exists():
-            notes.write_text(INSTRUCTIONS)
+            notes = self.config_dir / NOTES
+            if not notes.exists():
+                notes.write_text(INSTRUCTIONS)
 
-        settings = self.config_dir / SETTINGS
-        if not settings.exists():
-            settings.write_text(json.dumps(SLIM_SETTINGS, indent=2) + "\n")
+            settings = self.config_dir / SETTINGS
+            if not settings.exists():
+                settings.write_text(json.dumps(SLIM_SETTINGS, indent=2) + "\n")
+        except OSError as error:
+            raise AgentSettingsError(
+                f"{self.config_dir} cannot be written: {error}. Fix what is "
+                "there or what owns it, and run again."
+            ) from error
 
     def require_hosted_tools_denied(self) -> None:
         """Refuse settings that would let the agent reach for WebSearch.

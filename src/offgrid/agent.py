@@ -44,6 +44,8 @@ class Agent(Protocol):
         What is already there is left alone: a configuration is meant to be
         edited, and a run is no place to lose those edits — including an edit
         the guard below refuses, which is that call's to report.
+
+        :raise AgentSettingsError: When what is missing cannot be written.
         """
         ...
 
