@@ -3,12 +3,17 @@
 import json
 import subprocess
 from collections.abc import Sequence
+from dataclasses import dataclass
 from pathlib import Path
 
 import httpx
 import pytest
 
+from offgrid.agent import AgentName
+from offgrid.dialect import Dialect
+from offgrid.launch import Launch
 from offgrid.machine import Machine
+from offgrid.model import Model
 
 GIB = 1024**3
 MACHINE = Machine(
@@ -26,6 +31,64 @@ def answer_as_a_mac(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """
     monkeypatch.setattr("offgrid.cli.detect", lambda: MACHINE)
     monkeypatch.setattr("offgrid.cli.DEFAULT_PATH", tmp_path / "profile.yaml")
+
+
+@dataclass(frozen=True)
+class StandInAgent:
+    """An agent offgrid has no adapter for, doing what a test needs.
+
+    :param dialect: What it speaks.
+    :param refusal: What planning a launch raises, where a test wants that.
+    """
+
+    dialect: Dialect
+    refusal: Exception | None = None
+
+    def configure(self) -> None:
+        """Write nothing, having nothing to write."""
+
+    def require_hosted_tools_denied(self) -> None:
+        """Deny nothing, having no configuration to deny it in."""
+
+    def plan(
+        self,
+        model: Model,
+        *,
+        host: str,
+        token: str,
+        passthrough: list[str],
+    ) -> Launch:
+        """Answer with a launch, or refuse to build one.
+
+        :param model: The model that would answer.
+        :param host: Where the runtime listens.
+        :param token: What the agent would be given.
+        :param passthrough: What would be handed on.
+
+        :return: A launch that starts nothing.
+
+        :raise Exception: Whatever the test asked to be refused with.
+        """
+        if self.refusal:
+            raise self.refusal
+
+        return Launch(env={}, argv=["claude"])
+
+
+def answer_as_an_agent(monkeypatch: pytest.MonkeyPatch, agent: StandInAgent) -> None:
+    """Answer for an agent nothing on this machine can be made to be.
+
+    The registry is where a name becomes an adapter, so it is where a test
+    stands one in. Both of the things this arranges — an agent speaking a
+    dialect no runtime here serves, and a launch that cannot be built — have
+    nothing below the adapter to arrange them with.
+
+    :param monkeypatch: The test's patcher.
+    :param agent: What the registry should answer with.
+    """
+    monkeypatch.setattr(
+        "offgrid.cli.AGENTS", {AgentName.CLAUDE_CODE: lambda config_dir: agent}
+    )
 
 
 def serve_get(monkeypatch: pytest.MonkeyPatch, handler) -> None:

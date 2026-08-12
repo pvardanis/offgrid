@@ -9,7 +9,13 @@ from typer.testing import CliRunner
 from offgrid.cli import app
 from offgrid.exceptions import LeaderboardUnreachableError
 from offgrid.machine import Machine
-from tests.doubles import answer_as_a_mac, answer_as_lm_studio, refuse_to_let_go
+from tests.doubles import (
+    StandInAgent,
+    answer_as_a_mac,
+    answer_as_an_agent,
+    answer_as_lm_studio,
+    refuse_to_let_go,
+)
 
 GIB = 1024**3
 RESIDENT = "qwen/qwen3.6-35b-a3b"
@@ -359,13 +365,12 @@ def test_an_agent_that_cannot_talk_to_the_runtime_is_refused_before_the_wait(
 ):
     # Checking after the load spends a minute of someone's time to arrive at
     # an answer that was knowable before it started.
-    from offgrid.agents.claude_code import ClaudeCode
     from offgrid.dialect import Dialect
 
     runner.invoke(app, ["setup"])
     asked = answer_as_lm_studio(monkeypatch, cold={"a/other-7b": 8192})
     _launched(monkeypatch)
-    monkeypatch.setattr(ClaudeCode, "dialect", Dialect.OPENAI)
+    answer_as_an_agent(monkeypatch, StandInAgent(dialect=Dialect.OPENAI))
 
     result = runner.invoke(app, ["run", "-m", "a/other-7b"])
     assert result.exit_code == 1
@@ -422,14 +427,16 @@ def test_the_model_is_let_go_when_the_launch_cannot_be_built(
     # Between holding a model and starting the agent there is nothing a
     # person waits for, but it is the second after the longest wait in the
     # program, which is when a hand reaches for Ctrl-C.
-    from offgrid.agents.claude_code import ClaudeCode
+    from offgrid.dialect import Dialect
 
     runner.invoke(app, ["setup"])
-
-    def broken(*args, **kwargs):
-        raise RuntimeError("the launch could not be built")
-
-    monkeypatch.setattr(ClaudeCode, "plan", broken)
+    answer_as_an_agent(
+        monkeypatch,
+        StandInAgent(
+            dialect=Dialect.ANTHROPIC,
+            refusal=RuntimeError("the launch could not be built"),
+        ),
+    )
 
     runner.invoke(app, ["run"])
     assert runtime["let_go"] == [RESIDENT]
