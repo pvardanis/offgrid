@@ -119,6 +119,30 @@ a decision recorded nowhere outlives the session that made it.
 
 `docs/decisions.md` is for what was settled. Issues are for what was not.
 
+## Pull requests
+
+Around 500 lines of diff. Not a count to hit exactly, but a change that runs
+well past it is usually several changes, and every part of it gets the
+attention the least interesting part earns. Split by what each piece would be
+reverted for on its own: a port, an adapter that satisfies it, and the callers
+moved onto it are three pieces, not one.
+
+One kind of change per pull request. Code, prose docs, CI, and build or
+dependency changes each get their own, because each is read by a different
+question — does this work, is this true, does this run, is this pinned — and a
+mixed diff gets one pass instead of four.
+
+Two things travel with the code rather than apart from it, because the suite
+enforces them: a docstring, and any doc a test checks — the module map in
+`docs/architecture.md` and the `source_modules` list in `pyproject.toml`, both
+guarded by `tests/test_architecture.py`. A commit that renames a module and
+leaves those behind fails on its own, which is the rule that outranks this one.
+Everything else in prose — `decisions.md`, `CONTEXT.md`, the README — goes in
+its own commit, and its own pull request where it stands alone.
+
+Say the split before building it. A branch that has already grown past this is
+a rebase to fix, and the person who has to read it is the one who asked.
+
 ## Commits
 
 Conventional Commits: `<type>(<scope>): <imperative summary>`. Subject in the
