@@ -90,6 +90,11 @@ class LMStudio:
             load fails, when another model answers, or when what is already
             held will not go and this one would be loaded on top of it.
         """
+        # One payload read twice, rather than `read_catalogue` and `read_held`,
+        # which fetch one each. Two fetches are two moments: a model can be let
+        # go of between them, and then what the runtime has and what it holds
+        # describe different states of the same machine. What is decided below
+        # turns on both at once.
         payload = get_catalogue_payload(self.host)
         known = {
             model.identifier: model for model in parse_models_from_payload(payload)
