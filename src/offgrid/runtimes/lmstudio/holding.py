@@ -10,11 +10,7 @@ import subprocess
 import httpx
 
 from offgrid.exceptions import RuntimeUnreachableError
-from offgrid.runtimes.lmstudio.catalogue import (
-    get_catalogue_payload,
-    get_loaded_models,
-    nothing_answered_at,
-)
+from offgrid.runtimes.lmstudio.catalogue import get_catalogue_payload, get_loaded_models
 
 MESSAGES = "/v1/messages"
 
@@ -54,17 +50,11 @@ def load(host: str, identifier: str, timeout: float = LOAD_TIMEOUT_SECONDS) -> N
 
     try:
         response = httpx.post(url, json=body, timeout=timeout)
-    except httpx.TimeoutException as error:
-        raise RuntimeUnreachableError(
-            f"{identifier} did not finish loading within {timeout:.0f}s. "
-            "Load it in the runtime directly, or allow longer."
-        ) from error
-    except httpx.TransportError as error:
-        raise RuntimeUnreachableError(nothing_answered_at(host)) from error
     except httpx.RequestError as error:
         raise RuntimeUnreachableError(
-            f"The answer to loading {identifier} could not be read: {error}. "
-            f"Check what is listening at http://{host}."
+            _explain_why_the_load_did_not_arrive(
+                error, host=host, identifier=identifier, timeout=timeout
+            )
         ) from error
 
     if response.is_error:
@@ -136,3 +126,35 @@ def unload(host: str, identifier: str) -> None:
             f"{identifier}: {finished.stdout.strip() or 'it said nothing'}. "
             "Let it go in LM Studio directly."
         )
+
+
+def _explain_why_the_load_did_not_arrive(
+    error: httpx.RequestError, *, host: str, identifier: str, timeout: float
+) -> str:
+    """Say which way the load failed, and what to do about that one.
+
+    :param error: What httpx raised.
+    :param host: Address the runtime was expected on.
+    :param identifier: The model being loaded.
+    :param timeout: How long it was given.
+
+    :return: What to tell whoever ran offgrid.
+    """
+    # Most specific first: a `TimeoutException` is a `TransportError`, which is
+    # a `RequestError`, so the first that matches is the one that fits.
+    said = {
+        httpx.TimeoutException: (
+            f"{identifier} did not finish loading within {timeout:.0f}s. "
+            "Load it in the runtime directly, or allow longer."
+        ),
+        httpx.TransportError: (
+            f"No model server answered at http://{host}. "
+            "Start LM Studio, or point offgrid elsewhere with --host."
+        ),
+        httpx.RequestError: (
+            f"The answer to loading {identifier} could not be read: {error}. "
+            f"Check what is listening at http://{host}."
+        ),
+    }
+
+    return next(sentence for kind, sentence in said.items() if isinstance(error, kind))
