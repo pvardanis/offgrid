@@ -5,11 +5,11 @@ decision. The profile holds the decision, so a later run is one word.
 """
 
 from pathlib import Path
-from typing import Literal
 
 import yaml
 from pydantic import BaseModel, ConfigDict, ValidationError
 
+from offgrid.agent import AgentName
 from offgrid.exceptions import ProfileError
 from offgrid.runtime import RuntimeName
 
@@ -37,7 +37,7 @@ class Profile(BaseModel):
 
     host: str
     runtime: RuntimeName = RuntimeName.LMSTUDIO
-    agent: Literal["claude-code"] = "claude-code"
+    agent: AgentName = AgentName.CLAUDE_CODE
     model: str | None = None
 
 
