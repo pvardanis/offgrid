@@ -103,14 +103,15 @@ shortlist.py       what fits, ranked, and what each rule dropped
 recommendation.py  how that reads to whoever asked
 dialect.py         which API shapes can be paired
 runtime.py         what offgrid asks of a runtime, and which ones there are
+agent.py           what offgrid asks of an agent, and which ones there are
 profile.py         what is remembered between runs
 launch.py          an environment and an argument list, and running one
 answering.py       which model answers, and making it the one that does
 ```
 
-Two more join them when the remaining seams are built — `agent.py` and
-`leaderboard.py`, each holding what offgrid asks of that kind of adapter and
-which ones there are, as `runtime.py` does today.
+One more joins them when the leaderboard seam is built — `leaderboard.py`,
+holding what offgrid asks of a published list, as the two beside it do for a
+runtime and an agent.
 
 **shared**
 
