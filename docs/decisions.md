@@ -394,6 +394,18 @@ name, is a directory the second adapter inherits. It sits beside the profile,
 under the name the profile carries, which is where `recommend` already keeps
 the table it cached.
 
+**Turning a profile into an adapter belongs to the registry package.** Review
+asked for it in `runtime.py` and `agent.py`, beside the ports, so the command
+line would hold two functions rather than two registry lookups. The functions
+are right and the address is not: a port is a domain module, and a domain
+module reaching a registry is the violation these seams exist to remove.
+`lint-imports` reports it as `offgrid.runtime is not allowed to import
+offgrid.runtimes`, and it spreads — `profile.py` imports the port for its enum,
+so it fails too. A port taking a `Profile` is also a cycle, since `profile.py`
+imports the port back. So `connect_runtime` and `prepare_agent` sit in
+`runtimes/__init__.py` and `agents/__init__.py`, one layer out, where reaching
+the domain is what an adapter is allowed to do.
+
 ## The module that decides is named for the decision, not for the mechanism
 
 `hold.py` was named for what it did before the port: hold a model, let go of
