@@ -42,9 +42,8 @@ class Agent(Protocol):
         """Write what the agent needs and does not have.
 
         What is already there is left alone: a configuration is meant to be
-        edited, and a run is no place to lose those edits.
-
-        :raise AgentSettingsError: When what is there cannot be read.
+        edited, and a run is no place to lose those edits — including an edit
+        the guard below refuses, which is that call's to report.
         """
         ...
 

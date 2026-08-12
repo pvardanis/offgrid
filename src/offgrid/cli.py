@@ -7,8 +7,7 @@ from pathlib import Path
 
 import typer
 
-from offgrid.agents.claude_code import dialect as agent_dialect
-from offgrid.agents.claude_code import plan, prepare
+from offgrid.agents.claude_code import prepare
 from offgrid.answering import get_resident_model, hold_model
 from offgrid.dialect import require_compatible
 from offgrid.exceptions import OffgridError, ProfileError
@@ -78,6 +77,7 @@ def doctor() -> None:
     """Check that the runtime is reachable and holding a model."""
     profile = _profile()
     runtime = _connect(profile)
+    agent = prepare(CONFIG_DIR)
 
     with _reporting():
         model = get_resident_model(runtime)
@@ -85,7 +85,7 @@ def doctor() -> None:
     tell(f"  runtime   {profile.runtime.value} at {profile.host}, reachable")
     tell(f"  model     {model.identifier}")
     tell(f"  context   {model.context_limit or 'unstated'}")
-    tell(f"  agent     {profile.agent}, speaking {agent_dialect().value}")
+    tell(f"  agent     {profile.agent}, speaking {agent.dialect.value}")
 
 
 @app.command()
@@ -118,14 +118,16 @@ def run(
     """Start the agent against a model the runtime is holding."""
     profile = _profile()
     runtime = _connect(profile)
+    agent = prepare(CONFIG_DIR)
     wanted = model_name or profile.model
 
     with _reporting():
         # A dialect that cannot be paired and settings that would undo a
         # guarantee are both knowable before a load, and a load is tens of
         # seconds nobody gets back.
-        require_compatible(runtime.dialect, agent_dialect())
-        prepare(CONFIG_DIR)
+        require_compatible(runtime.dialect, agent.dialect)
+        agent.configure()
+        agent.require_hosted_tools_denied()
 
         model = hold_model(runtime, wanted)
 
@@ -134,10 +136,9 @@ def run(
     try:
         tell(f"  {model.identifier}, context {model.context_limit or 'unstated'}")
 
-        launch = plan(
+        launch = agent.plan(
             model,
             host=profile.host,
-            config_dir=CONFIG_DIR,
             token=TOKEN,
             passthrough=list(context.args),
         )

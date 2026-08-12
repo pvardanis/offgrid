@@ -349,12 +349,13 @@ def test_an_agent_that_cannot_talk_to_the_runtime_is_refused_before_the_wait(
 ):
     # Checking after the load spends a minute of someone's time to arrive at
     # an answer that was knowable before it started.
+    from offgrid.agents.claude_code import ClaudeCode
     from offgrid.dialect import Dialect
 
     runner.invoke(app, ["setup"])
     asked = answer_as_lm_studio(monkeypatch, cold={"a/other-7b": 8192})
     _launched(monkeypatch)
-    monkeypatch.setattr("offgrid.cli.agent_dialect", lambda: Dialect.OPENAI)
+    monkeypatch.setattr(ClaudeCode, "dialect", Dialect.OPENAI)
 
     result = runner.invoke(app, ["run", "-m", "a/other-7b"])
     assert result.exit_code == 1
@@ -411,12 +412,14 @@ def test_the_model_is_let_go_when_the_launch_cannot_be_built(
     # Between holding a model and starting the agent there is nothing a
     # person waits for, but it is the second after the longest wait in the
     # program, which is when a hand reaches for Ctrl-C.
+    from offgrid.agents.claude_code import ClaudeCode
+
     runner.invoke(app, ["setup"])
 
     def broken(*args, **kwargs):
         raise RuntimeError("the launch could not be built")
 
-    monkeypatch.setattr("offgrid.cli.plan", broken)
+    monkeypatch.setattr(ClaudeCode, "plan", broken)
 
     runner.invoke(app, ["run"])
     assert runtime["let_go"] == [RESIDENT]
