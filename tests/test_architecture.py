@@ -95,6 +95,13 @@ def test_every_runtime_offgrid_names_has_an_adapter_bound_to_it():
     assert set(RUNTIMES) == set(RuntimeName)
 
 
+def test_every_agent_offgrid_names_has_an_adapter_bound_to_it():
+    from offgrid.agent import AgentName
+    from offgrid.agents import AGENTS
+
+    assert set(AGENTS) == set(AgentName)
+
+
 def test_the_layer_rule_names_no_module_that_is_gone():
     stale = sorted(_domain_in_the_contract() - _modules())
 
