@@ -474,6 +474,8 @@ agent sent is what was read. Against claude 2.1.231:
 | `--setting-sources user` | no |
 | `--setting-sources project,local` | **yes** |
 | `--setting-sources=project,local` | **yes** |
+| `--setting-sources user --setting-sources project,local` | **yes** |
+| `--setting-sources project,local --setting-sources user` | no |
 
 Four of the five suspects are innocent. `deny` is applied where the tool list
 is built, so a denied tool is never offered, and nothing that turns a
@@ -481,6 +483,11 @@ permission check off can put back a tool the model was not given. An `allow`
 loses to a `deny` rather than merging past it. The one that works does not
 touch permissions at all: it stops the file being loaded. offgrid writes the
 `user` source, and a list of sources omitting `user` never reads it.
+
+The last two rows are why the guard reads the last of those arguments rather
+than the first. Claude Code takes the later value when given the flag twice,
+so a guard stopping at the first match would pass the one line that drops the
+deny and refuse the one that does not.
 
 So `require_hosted_tools_denied` takes the arguments and refuses that one,
 naming it. Refusing rather than warning, because the failure it prevents is

@@ -2,7 +2,9 @@
 
 The settings and the notes are what a person edits, and what counts as a
 denial is what the agent itself reads: a rule Claude Code does not honour is
-not one offgrid may count as protection.
+not one offgrid may count as protection. That is why the arguments are read
+here too — one of them decides whether the file is loaded at all, and a deny
+in a file nothing loads is no more protection than a shape nothing honours.
 """
 
 from offgrid.exceptions import AgentSettingsError
@@ -40,7 +42,7 @@ could not be looked up rather than answering from memory.
 """
 
 
-def require_arguments_keep_the_settings(arguments: list[str]) -> None:
+def require_arguments_keep_the_settings_loaded(arguments: list[str]) -> None:
     """Refuse arguments that stop the settings file being read at all.
 
     A deny only binds where the file carrying it is loaded, and one argument
@@ -54,7 +56,7 @@ def require_arguments_keep_the_settings(arguments: list[str]) -> None:
     :raise AgentSettingsError: When a list of sources leaves out the one
         offgrid wrote.
     """
-    named = get_setting_sources(arguments)
+    named = _read_setting_sources(arguments)
 
     if named is not None and WRITTEN_SOURCE not in named:
         raise AgentSettingsError(
@@ -66,29 +68,31 @@ def require_arguments_keep_the_settings(arguments: list[str]) -> None:
         )
 
 
-def get_setting_sources(arguments: list[str]) -> list[str] | None:
+def _read_setting_sources(arguments: list[str]) -> list[str] | None:
     """List the settings sources the arguments confine the agent to.
 
-    Both spellings the agent accepts, checked against it: a value in the next
-    argument, and a value joined on with `=`. Matching the flag at the start
-    of an argument rather than anywhere inside one keeps a prompt that quotes
-    it from reading as one.
+    The last of them, because that is the one Claude Code acts on: given the
+    argument twice it takes the later value, so reading the first would pass
+    the very line that drops the deny. Both spellings the agent accepts are
+    read, and matching the flag at the start of an argument rather than
+    anywhere inside one keeps a prompt that quotes it from counting as one.
 
     :param arguments: What was handed to the agent unchanged.
 
-    :return: The sources named, or none where the arguments name none.
+    :return: The sources named last, or none where the arguments name none.
     """
+    named = None
+
     for index, argument in enumerate(arguments):
         if argument.startswith(f"{SOURCES}="):
-            return _split(argument.split("=", 1)[1])
+            named = _split_sources(argument.split("=", 1)[1])
+        elif argument == SOURCES and index + 1 < len(arguments):
+            named = _split_sources(arguments[index + 1])
 
-        if argument == SOURCES and index + 1 < len(arguments):
-            return _split(arguments[index + 1])
-
-    return None
+    return named
 
 
-def _split(value: str) -> list[str]:
+def _split_sources(value: str) -> list[str]:
     """Read one source per entry out of the value the argument carried.
 
     :param value: What the argument was given.
