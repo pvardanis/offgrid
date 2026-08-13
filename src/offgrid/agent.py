@@ -58,6 +58,11 @@ class Agent(Protocol):
         the call as prose and the agent returns that as a result — an invented
         answer, with no error anywhere.
 
+        What it settles is the configuration, which is less than the whole
+        run: an agent takes arguments too, and one that turns its permission
+        checks off leaves this passing and the tool reachable (#65). The
+        promise is that the configuration denies it, not that nothing can.
+
         :raise AgentSettingsError: When the configuration permits one, is not
             there to say otherwise, or cannot be read.
         """

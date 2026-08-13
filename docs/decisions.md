@@ -441,6 +441,16 @@ class rather than a case — Codex carries `supports_standalone_web_search` — 
 the agent port answers for it, because a failure this silent will not be
 noticed missing from a second adapter.
 
+What "denied by default" covers is the default: the configuration offgrid
+writes, and a hand-edited one that undoes it. It is not every way the tool can
+be reached. Claude Code takes `--dangerously-skip-permissions`, `--permission-
+mode bypassPermissions` and `--setting-sources`, all of which reach it past a
+settings file that denies it, and `offgrid run` hands everything after `--` to
+the agent unread. #65 is where that is settled — refuse those arguments, warn,
+or leave the promise this size and say so. Until it is, the guard is stated at
+the size it actually holds, because a guarantee claimed wider than it is is
+worse than the narrow one: it stops anybody looking.
+
 Everything else filed under privacy — nonessential traffic, telemetry, the
 attribution header, the WebFetch domain check that still calls home despite
 `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` — becomes a feature behind a flag,

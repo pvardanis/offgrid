@@ -63,6 +63,11 @@ class ClaudeCode:
     def require_hosted_tools_denied(self) -> None:
         """Refuse settings that would let the agent reach for WebSearch.
 
+        The settings offgrid wrote, which is what it can answer for. Claude
+        Code takes `--dangerously-skip-permissions`, `--permission-mode
+        bypassPermissions` and `--setting-sources`, and each of them can leave
+        this passing while the deny is unenforced or unread (#65).
+
         :raise AgentSettingsError: When the settings are absent, cannot be
             read, or do not deny it.
         """
