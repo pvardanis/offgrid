@@ -52,8 +52,11 @@ class StandInAgent:
     def configure(self) -> None:
         """Write nothing, having nothing to write."""
 
-    def require_hosted_tools_denied(self) -> None:
-        """Deny nothing, having no configuration to deny it in."""
+    def require_hosted_tools_denied(self, passthrough: list[str]) -> None:
+        """Deny nothing, having no configuration to deny it in.
+
+        :param passthrough: What would be handed on, and is not read.
+        """
 
     def plan(
         self,

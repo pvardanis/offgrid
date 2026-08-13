@@ -15,6 +15,7 @@ from offgrid.agents.claude_code.configuring import (
     SETTINGS,
     SLIM_SETTINGS,
     get_denied_tools,
+    require_arguments_keep_the_settings,
 )
 from offgrid.agents.claude_code.launching import (
     FALLBACK_CONTEXT,
@@ -60,16 +61,16 @@ class ClaudeCode:
                 "there or what owns it, and run again."
             ) from error
 
-    def require_hosted_tools_denied(self) -> None:
-        """Refuse settings that would let the agent reach for WebSearch.
+    def require_hosted_tools_denied(self, passthrough: list[str]) -> None:
+        """Refuse anything that would let the agent reach for WebSearch.
 
-        The settings offgrid wrote, which is what it can answer for. Claude
-        Code takes `--dangerously-skip-permissions`, `--permission-mode
-        bypassPermissions` and `--setting-sources`, and each of them can leave
-        this passing while the deny is unenforced or unread (#65).
+        Both halves of it: the settings offgrid wrote, and the arguments that
+        decide whether the agent reads them.
+
+        :param passthrough: Arguments handed to the agent unchanged.
 
         :raise AgentSettingsError: When the settings are absent, cannot be
-            read, or do not deny it.
+            read, or do not deny it, or when an argument stops them counting.
         """
         settings = self.config_dir / SETTINGS
 
@@ -80,6 +81,8 @@ class ClaudeCode:
                 "model invents a result and the agent returns it as an answer. Add "
                 "it to permissions.deny, or delete the file and offgrid writes one."
             )
+
+        require_arguments_keep_the_settings(passthrough)
 
     def plan(
         self,

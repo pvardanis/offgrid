@@ -431,6 +431,22 @@ def test_settings_that_would_let_the_agent_search_stop_the_run(here, monkeypatch
     assert asked["order"] == []
 
 
+def test_arguments_that_undo_the_deny_stop_the_run(here, monkeypatch):
+    # The same guarantee as the settings above, undone from the other side:
+    # the file denies WebSearch and the argument stops it being read. Nothing
+    # loads, because a refusal after a load costs tens of seconds.
+    runner.invoke(app, ["setup"])
+    asked = answer_as_lm_studio(monkeypatch, cold={"a/other-7b": 8192})
+    _launched(monkeypatch)
+
+    result = runner.invoke(
+        app, ["run", "-m", "a/other-7b", "--", "--setting-sources", "project"]
+    )
+    assert result.exit_code == 1
+    assert "--setting-sources" in result.stderr
+    assert asked["order"] == []
+
+
 def test_the_model_is_let_go_when_the_launch_cannot_be_built(
     here, monkeypatch, runtime
 ):
