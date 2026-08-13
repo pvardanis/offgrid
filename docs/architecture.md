@@ -420,6 +420,11 @@ prose that reads as an answer, with no error anywhere. Codex CLI carries
 tool — and without a named slot, its adapter ships without the guard and
 nothing says so.
 
+What the slot settles is the configuration, and a run is more than that: the
+arguments after `--` reach the agent unread, and Claude Code takes several that
+turn its permission checks off or load its settings from somewhere else. #65 is
+where that is decided. The member is stated at the size it holds until then.
+
 **`plan` returns a `Launch` and writes nothing.** An environment and an
 argument list can be shown before anything runs, which is the whole reason
 `Launch` exists. Three agents configure themselves three different ways —
