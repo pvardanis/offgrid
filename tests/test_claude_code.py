@@ -155,7 +155,7 @@ def test_a_configuration_that_cannot_be_written_says_what_stopped_it(tmp_path):
 def test_what_the_agent_writes_for_itself_passes_its_own_guard(agent):
     agent.configure()
 
-    agent.require_hosted_tools_denied()
+    agent.require_hosted_tools_denied([])
 
 
 def test_configuring_does_not_refuse_settings_the_guard_would(agent, tmp_path):
@@ -175,14 +175,62 @@ def test_settings_that_would_let_the_agent_search_are_refused(agent, tmp_path):
     (tmp_path / "settings.json").write_text('{"theme": "mine"}')
 
     with pytest.raises(AgentSettingsError, match="WebSearch"):
-        agent.require_hosted_tools_denied()
+        agent.require_hosted_tools_denied([])
+
+
+def test_arguments_that_stop_the_settings_being_read_are_refused(agent):
+    # Measured against claude 2.1.231: a --setting-sources list without `user`
+    # never loads the file offgrid wrote, and WebSearch is offered again.
+    agent.configure()
+
+    with pytest.raises(AgentSettingsError, match="--setting-sources"):
+        agent.require_hosted_tools_denied(["--setting-sources", "project,local"])
+
+
+def test_the_joined_spelling_of_that_argument_is_refused_too(agent):
+    # Claude Code takes a value either way round, and both were measured to
+    # drop the deny, so reading only one of them refuses half the cases.
+    agent.configure()
+
+    with pytest.raises(AgentSettingsError, match="--setting-sources"):
+        agent.require_hosted_tools_denied(["--setting-sources=project,local"])
+
+
+def test_sources_that_still_name_the_one_offgrid_wrote_are_allowed(agent):
+    # The argument is not the problem — leaving out `user` is. Narrowing the
+    # sources while keeping that one still loads the deny.
+    agent.configure()
+
+    agent.require_hosted_tools_denied(["--setting-sources", "user, project"])
+
+
+@pytest.mark.parametrize(
+    "argument",
+    [
+        ["--dangerously-skip-permissions"],
+        ["--permission-mode", "bypassPermissions"],
+        ["--allowedTools", "WebSearch"],
+        ["-p", "run it with --setting-sources=project"],
+    ],
+    ids=["skip permissions", "bypass mode", "allow the tool", "a prompt naming it"],
+)
+def test_arguments_measured_to_leave_the_deny_standing_are_allowed(agent, argument):
+    # Regression guards, not slices. The first three read as though they undo
+    # the deny and do not: against claude 2.1.231 the tool list is built with
+    # `deny` already applied, so nothing that turns a permission check off or
+    # adds an allow puts WebSearch back. Refusing them would cost someone a
+    # run for no gain. The fourth is the flag as a value rather than as an
+    # argument, which reaches the model as text and configures nothing.
+    agent.configure()
+
+    agent.require_hosted_tools_denied(argument)
 
 
 def test_settings_that_are_not_readable_json_are_refused(agent, tmp_path):
     (tmp_path / "settings.json").write_text('{"permissions": ')
 
     with pytest.raises(AgentSettingsError, match="not readable as JSON"):
-        agent.require_hosted_tools_denied()
+        agent.require_hosted_tools_denied([])
 
 
 @pytest.mark.parametrize(
@@ -204,14 +252,14 @@ def test_settings_shaped_so_nothing_denies_anything_are_refused(
     (tmp_path / "settings.json").write_text(written)
 
     with pytest.raises(AgentSettingsError, match="does not deny WebSearch"):
-        agent.require_hosted_tools_denied()
+        agent.require_hosted_tools_denied([])
 
 
 def test_settings_that_are_not_there_at_all_are_refused(agent, tmp_path):
     # Nothing denies WebSearch, which is what the guard is asked. Saying the
     # file is missing sends someone to `configure` rather than to an editor.
     with pytest.raises(AgentSettingsError, match="offgrid run"):
-        agent.require_hosted_tools_denied()
+        agent.require_hosted_tools_denied([])
 
 
 def test_settings_that_are_not_text_are_not_called_bad_json(agent, tmp_path):
@@ -220,7 +268,7 @@ def test_settings_that_are_not_text_are_not_called_bad_json(agent, tmp_path):
     (tmp_path / "settings.json").write_bytes(b'{"permissions": \xff}')
 
     with pytest.raises(AgentSettingsError, match="cannot be read") as refused:
-        agent.require_hosted_tools_denied()
+        agent.require_hosted_tools_denied([])
 
     assert "JSON" not in str(refused.value)
 
@@ -231,6 +279,6 @@ def test_settings_that_are_there_and_unreadable_are_not_called_missing(agent, tm
     (tmp_path / "settings.json").mkdir()
 
     with pytest.raises(AgentSettingsError, match="cannot be read") as refused:
-        agent.require_hosted_tools_denied()
+        agent.require_hosted_tools_denied([])
 
     assert "is not there" not in str(refused.value)

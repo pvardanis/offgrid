@@ -5,8 +5,16 @@ denial is what the agent itself reads: a rule Claude Code does not honour is
 not one offgrid may count as protection.
 """
 
+from offgrid.exceptions import AgentSettingsError
+
 SETTINGS = "settings.json"
 NOTES = "CLAUDE.md"
+
+# Claude Code reads three sources, and this argument confines it to the ones
+# it names. `user` is the one CLAUDE_CONFIG_DIR points at, so it is the one
+# offgrid writes the deny into and the one a list may not leave out.
+SOURCES = "--setting-sources"
+WRITTEN_SOURCE = "user"
 
 # nothing to run it, so the model emits a tool call as prose and the agent
 # returns it as a result: an invented answer, with no error.
@@ -30,6 +38,64 @@ results rather than as an error. Nothing replaces it yet.
 WebFetch does work: use it whenever a URL is known. Where one is not, say what
 could not be looked up rather than answering from memory.
 """
+
+
+def require_arguments_keep_the_settings(arguments: list[str]) -> None:
+    """Refuse arguments that stop the settings file being read at all.
+
+    A deny only binds where the file carrying it is loaded, and one argument
+    decides that. Measured against claude 2.1.231, the rest of what `--help`
+    suggests would defeat it does not: `deny` is applied where the tool list
+    is built, so bypassing the permission checks never puts a denied tool
+    back, and an `allow` loses to it.
+
+    :param arguments: What was handed to the agent unchanged.
+
+    :raise AgentSettingsError: When a list of sources leaves out the one
+        offgrid wrote.
+    """
+    named = get_setting_sources(arguments)
+
+    if named is not None and WRITTEN_SOURCE not in named:
+        raise AgentSettingsError(
+            f"{SOURCES} {','.join(named)} does not name `{WRITTEN_SOURCE}`, which "
+            "is the source offgrid writes its settings into, so nothing loads the "
+            "deny on WebSearch and the agent is offered it again. Against a model "
+            "on this machine there is nothing to run it, so the model invents a "
+            f"result. Add `{WRITTEN_SOURCE}` to the list, or drop the argument."
+        )
+
+
+def get_setting_sources(arguments: list[str]) -> list[str] | None:
+    """List the settings sources the arguments confine the agent to.
+
+    Both spellings the agent accepts, checked against it: a value in the next
+    argument, and a value joined on with `=`. Matching the flag at the start
+    of an argument rather than anywhere inside one keeps a prompt that quotes
+    it from reading as one.
+
+    :param arguments: What was handed to the agent unchanged.
+
+    :return: The sources named, or none where the arguments name none.
+    """
+    for index, argument in enumerate(arguments):
+        if argument.startswith(f"{SOURCES}="):
+            return _split(argument.split("=", 1)[1])
+
+        if argument == SOURCES and index + 1 < len(arguments):
+            return _split(arguments[index + 1])
+
+    return None
+
+
+def _split(value: str) -> list[str]:
+    """Read one source per entry out of the value the argument carried.
+
+    :param value: What the argument was given.
+
+    :return: The sources it names.
+    """
+    return [source.strip() for source in value.split(",")]
 
 
 def get_denied_tools(stored: object) -> list[str]:

@@ -49,8 +49,8 @@ class Agent(Protocol):
         """
         ...
 
-    def require_hosted_tools_denied(self) -> None:
-        """Refuse a configuration that lets the agent reach a hosted tool.
+    def require_hosted_tools_denied(self, passthrough: list[str]) -> None:
+        """Refuse anything that lets the agent reach a hosted tool.
 
         Its own job rather than part of configuring, because the failure it
         prevents is silent: a tool that runs on its vendor's servers has
@@ -58,13 +58,17 @@ class Agent(Protocol):
         the call as prose and the agent returns that as a result — an invented
         answer, with no error anywhere.
 
-        What it settles is the configuration, which is less than the whole
-        run: an agent takes arguments too, and one that turns its permission
-        checks off leaves this passing and the tool reachable (#65). The
-        promise is that the configuration denies it, not that nothing can.
+        It reads the arguments as well as the configuration, because a
+        configuration only denies where the agent loads it, and an agent takes
+        arguments deciding whether it does. One call rather than two: what a
+        caller wants to know is whether the run is safe, and neither half
+        answers that alone.
+
+        :param passthrough: Arguments handed to the agent unchanged.
 
         :raise AgentSettingsError: When the configuration permits one, is not
-            there to say otherwise, or cannot be read.
+            there to say otherwise, cannot be read, or when an argument stops
+            it being read.
         """
         ...
 
