@@ -15,7 +15,7 @@ from offgrid.agents.claude_code.configuring import (
     SETTINGS,
     SLIM_SETTINGS,
     get_denied_tools,
-    require_arguments_keep_the_settings,
+    require_arguments_keep_the_settings_loaded,
 )
 from offgrid.agents.claude_code.launching import (
     FALLBACK_CONTEXT,
@@ -82,7 +82,7 @@ class ClaudeCode:
                 "it to permissions.deny, or delete the file and offgrid writes one."
             )
 
-        require_arguments_keep_the_settings(passthrough)
+        require_arguments_keep_the_settings_loaded(passthrough)
 
     def plan(
         self,

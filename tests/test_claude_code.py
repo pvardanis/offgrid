@@ -183,8 +183,15 @@ def test_arguments_that_stop_the_settings_being_read_are_refused(agent):
     # never loads the file offgrid wrote, and WebSearch is offered again.
     agent.configure()
 
-    with pytest.raises(AgentSettingsError, match="--setting-sources"):
+    with pytest.raises(AgentSettingsError) as refused:
         agent.require_hosted_tools_denied(["--setting-sources", "project,local"])
+
+    # What a person can act on: which argument, what it cost them, what to
+    # type instead. A message worn down to the flag name says none of it.
+    complaint = str(refused.value)
+    assert "--setting-sources project,local" in complaint
+    assert "WebSearch" in complaint
+    assert "Add `user` to the list, or drop the argument." in complaint
 
 
 def test_the_joined_spelling_of_that_argument_is_refused_too(agent):
@@ -196,12 +203,35 @@ def test_the_joined_spelling_of_that_argument_is_refused_too(agent):
         agent.require_hosted_tools_denied(["--setting-sources=project,local"])
 
 
-def test_sources_that_still_name_the_one_offgrid_wrote_are_allowed(agent):
-    # The argument is not the problem — leaving out `user` is. Narrowing the
-    # sources while keeping that one still loads the deny.
+def test_the_last_of_two_such_arguments_is_the_one_that_counts(agent):
+    # Claude Code takes the last, measured both ways round: naming `user`
+    # first and dropping it after leaves WebSearch offered, so a guard reading
+    # the first argument passes exactly the line that defeats it.
     agent.configure()
 
-    agent.require_hosted_tools_denied(["--setting-sources", "user, project"])
+    with pytest.raises(AgentSettingsError, match="--setting-sources"):
+        agent.require_hosted_tools_denied(
+            ["--setting-sources", "user", "--setting-sources", "project,local"]
+        )
+
+
+def test_a_later_argument_naming_it_again_is_allowed(agent):
+    # The same rule from the other side: the last one names `user`, so the
+    # settings load and refusing would cost a run that was never at risk.
+    agent.configure()
+
+    agent.require_hosted_tools_denied(
+        ["--setting-sources", "project,local", "--setting-sources", "user"]
+    )
+
+
+def test_sources_that_still_name_the_one_offgrid_wrote_are_allowed(agent):
+    # The argument is not the problem — leaving out `user` is. Narrowing the
+    # sources while keeping that one still loads the deny. Spaced, and named
+    # second, so the entry that has to match is the one carrying the space.
+    agent.configure()
+
+    agent.require_hosted_tools_denied(["--setting-sources", "project, user"])
 
 
 @pytest.mark.parametrize(
