@@ -441,18 +441,60 @@ class rather than a case — Codex carries `supports_standalone_web_search` — 
 the agent port answers for it, because a failure this silent will not be
 noticed missing from a second adapter.
 
-What "denied by default" covers is the default: the configuration offgrid
-writes, and a hand-edited one that undoes it. It is not every way the tool can
-be reached. Claude Code takes `--dangerously-skip-permissions`, `--permission-
-mode bypassPermissions` and `--setting-sources`, all of which reach it past a
-settings file that denies it, and `offgrid run` hands everything after `--` to
-the agent unread. #65 is where that is settled — refuse those arguments, warn,
-or leave the promise this size and say so. Until it is, the guard is stated at
-the size it actually holds, because a guarantee claimed wider than it is is
-worse than the narrow one: it stops anybody looking.
+What "denied by default" covers is the configuration offgrid writes, a
+hand-edited one that undoes it, and the arguments that decide whether either is
+read. `offgrid run` hands everything after `--` to the agent, and one of those
+arguments reaches the tool past a settings file that denies it. Which one, and
+why it is the only one, is the entry below.
 
 Everything else filed under privacy — nonessential traffic, telemetry, the
 attribution header, the WebFetch domain check that still calls home despite
 `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` — becomes a feature behind a flag,
 later. Naming it that way is more honest than the alternative, which is
 claiming a guarantee with a known hole in it.
+
+## Only one argument gets past the deny, and it is refused
+
+#65 asked which of the arguments Claude Code takes could undo the WebSearch
+deny, having read them out of `--help`. `--help` says what a flag is for, not
+how it composes with a deny, so the question was answered by measurement:
+`ANTHROPIC_BASE_URL` pointed at a proxy in front of the runtime, which logged
+the `tools` array of every request, and each flag was run against a model held
+on this machine. What the model then said was not evidence — a local model will
+narrate a tool call whether or not it was offered one — so the tool list the
+agent sent is what was read. Against claude 2.1.231:
+
+| After `--` | WebSearch offered |
+|---|---|
+| nothing | no |
+| `--dangerously-skip-permissions` | no |
+| `--permission-mode bypassPermissions` | no |
+| `--allowedTools WebSearch` | no |
+| `--settings` carrying `permissions.allow` | no |
+| `--setting-sources user` | no |
+| `--setting-sources project,local` | **yes** |
+| `--setting-sources=project,local` | **yes** |
+
+Four of the five suspects are innocent. `deny` is applied where the tool list
+is built, so a denied tool is never offered, and nothing that turns a
+permission check off can put back a tool the model was not given. An `allow`
+loses to a `deny` rather than merging past it. The one that works does not
+touch permissions at all: it stops the file being loaded. offgrid writes the
+`user` source, and a list of sources omitting `user` never reads it.
+
+So `require_hosted_tools_denied` takes the arguments and refuses that one,
+naming it. Refusing rather than warning, because the failure it prevents is
+silent and a warning scrolls off the top of a session that then runs for an
+hour — the same silence the guard exists to break. Only that one, because
+refusing the other four would cost someone a run to prevent nothing.
+
+It reads the arguments inside the member that already reads the settings,
+rather than in a fifth member on the port. The two halves answer one question —
+is this run going to invent answers — and neither answers it alone. It cannot
+go in `plan`, which runs after the model is held: a refusal there wastes the
+one wait in the program that nobody gets back.
+
+The answer is version-specific. It was measured, not read, and a later Claude
+Code could apply `deny` somewhere else. What protects that is the table above:
+re-run it and see, rather than trusting the tests, which encode the finding
+rather than checking it.

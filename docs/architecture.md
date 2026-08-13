@@ -161,7 +161,7 @@ sequenceDiagram
     Note over C,G: the only place a name becomes an adapter
     C->>D: require_compatible(runtime.dialect, agent.dialect)
     C->>A: configure()
-    C->>A: require_hosted_tools_denied()
+    C->>A: require_hosted_tools_denied(passthrough)
     Note over C,A: everything knowable before a load, before the load
     C->>H: hold_model(runtime, wanted)
     Note over H: wanted may be none, which asks for<br/>whatever the runtime is already holding
@@ -395,7 +395,7 @@ class Agent(Protocol):
     def dialect(self) -> Dialect: ...
 
     def configure(self) -> None: ...
-    def require_hosted_tools_denied(self) -> None: ...
+    def require_hosted_tools_denied(self, passthrough: list[str]) -> None: ...
     def plan(
         self,
         model: Model,
@@ -409,9 +409,9 @@ class Agent(Protocol):
 **`configure` and the guarantee are separate calls** because they are separate
 jobs. `configure` writes what is missing and leaves alone what a person edited
 — including settings the guard will refuse, which are an edit rather than
-something to write over. `require_hosted_tools_denied` refuses a configuration
-that would let the agent reach for a tool it cannot run, and is the privacy
-promise in `docs/decisions.md` made executable.
+something to write over. `require_hosted_tools_denied` refuses a run that would
+let the agent reach for a tool it cannot run, and is the privacy promise in
+`docs/decisions.md` made executable.
 
 It is a slot in the port rather than one adapter's business because the failure
 it guards is silent. A hosted tool called against a local model returns invented
@@ -420,10 +420,20 @@ prose that reads as an answer, with no error anywhere. Codex CLI carries
 tool — and without a named slot, its adapter ships without the guard and
 nothing says so.
 
-What the slot settles is the configuration, and a run is more than that: the
-arguments after `--` reach the agent unread, and Claude Code takes several that
-turn its permission checks off or load its settings from somewhere else. #65 is
-where that is decided. The member is stated at the size it holds until then.
+**It reads the arguments as well as the configuration**, because a
+configuration only denies where the agent loads it, and the arguments after
+`--` decide whether it does. One member rather than two: what a caller wants to
+know is whether the run is safe, and neither half answers that alone.
+
+Which arguments matter is the adapter's knowledge, and for Claude Code it is
+one. `--setting-sources` confines it to the sources it names, and offgrid
+writes the `user` source, so a list leaving that out never loads the deny —
+measured against claude 2.1.231, and refused in both spellings the agent takes.
+What `--help` suggests would also defeat it does not: `deny` is applied where
+the tool list is built, so `--dangerously-skip-permissions`, `--permission-mode
+bypassPermissions`, `--allowedTools WebSearch` and a `--settings` file carrying
+its own permissions all leave WebSearch out of what the model is offered.
+Refusing them would cost someone a run for nothing.
 
 **`plan` returns a `Launch` and writes nothing.** An environment and an
 argument list can be shown before anything runs, which is the whole reason
