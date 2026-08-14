@@ -15,6 +15,7 @@ from offgrid.exceptions import ProfileError
 from offgrid.profile import Profile, save_profile
 from offgrid.runtime import RuntimeName
 from offgrid.runtimes import create_runtime_config
+from tests.doubles import StandInAgentConfig
 
 HOST = "127.0.0.1:1234"
 
@@ -55,6 +56,21 @@ def test_a_profile_writes_nothing_offgrid_settled_for_itself(tmp_path):
     save_profile(_profile(), path)
 
     assert "runtime_host" not in path.read_text()
+
+
+def test_a_setting_only_one_adapter_reads_is_written_down(tmp_path):
+    # A section is where an adapter's own settings go, which is the whole of
+    # what this shape is for. The field is annotated on the base, and pydantic
+    # serializes through the annotation rather than the object — so a setting
+    # the base does not declare goes out of the file without a word, and the
+    # next `setup` writes the profile back without it.
+    path = tmp_path / "profile.yaml"
+    runtime = create_runtime_config({"name": "lmstudio", "host": HOST})
+    agent = StandInAgentConfig(runtime_host=HOST, theme="light")
+
+    save_profile(Profile(runtime=runtime, agent=agent), path)
+
+    assert yaml.safe_load(path.read_text())["agent"]["theme"] == "light"
 
 
 def test_a_profile_typed_by_hand_loads(tmp_path):

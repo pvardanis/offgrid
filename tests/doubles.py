@@ -45,8 +45,13 @@ class StandInAgentConfig(AgentConfig):
     """What a second agent adapter's config would be, to whoever wired it.
 
     Indistinguishable from Claude Code's to a registry dict typed on the base,
-    which is the mis-wiring an adapter has to refuse for itself.
+    which is the mis-wiring an adapter has to refuse for itself. It carries a
+    setting of its own, which is what a second adapter is for.
+
+    :param theme: A setting no other adapter reads.
     """
+
+    theme: str = "dark"
 
     @computed_field
     @property
