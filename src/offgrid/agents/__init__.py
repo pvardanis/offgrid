@@ -32,13 +32,14 @@ def create_agent_config(said: dict, *, runtime_host: str) -> AgentConfig:
 
     :return: What that adapter is built from.
 
+    :raise KeyError: When the section names no adapter at all.
     :raise ValueError: When the name is not one offgrid has an adapter for.
     :raise TypeError: When the section names what offgrid settles itself.
     :raise ValidationError: When the section says something that adapter
         cannot read. `profile.refusing` is what turns any of them into a
         sentence.
     """
-    name = AgentName(said.get("name", AgentName.CLAUDE_CODE.value))
+    name = AgentName(said["name"])
     written = {key: value for key, value in said.items() if key != "name"}
 
     return AGENT_CONFIGS[name](**written, runtime_host=runtime_host)

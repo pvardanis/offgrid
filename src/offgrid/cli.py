@@ -31,6 +31,10 @@ from offgrid.runtimes import connect_runtime, create_runtime_config
 from offgrid.say import say_on_stderr, tell
 
 DEFAULT_HOST = "127.0.0.1:1234"
+# What a fresh profile names. Which adapter to write down is this command's
+# decision, not something the file may leave out and have guessed for it.
+DEFAULT_RUNTIME = RuntimeName.LMSTUDIO
+DEFAULT_AGENT = AgentName.CLAUDE_CODE
 BILLION = 1e9
 GIB = 1024**3
 
@@ -56,8 +60,12 @@ def setup(
     listening_at = host or (profile.runtime.host if profile else DEFAULT_HOST)
 
     with _reporting():
-        runtime = create_runtime_config({"host": listening_at})
-        agent = create_agent_config({}, runtime_host=listening_at)
+        runtime = create_runtime_config(
+            {"name": DEFAULT_RUNTIME.value, "host": listening_at}
+        )
+        agent = create_agent_config(
+            {"name": DEFAULT_AGENT.value}, runtime_host=listening_at
+        )
 
     save(
         Profile(runtime=runtime, agent=agent, model=profile.model if profile else None),

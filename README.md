@@ -368,12 +368,13 @@ model: qwen/qwen3.6-35b-a3b
 
 | Key | Meaning |
 |---|---|
-| `runtime.name`, `agent.name` | which adapters to use. A name offgrid has no adapter for is refused rather than recorded |
+| `runtime.name`, `agent.name` | which adapters to use. Both are required: a name offgrid has no adapter for is refused rather than recorded, and a section naming none is refused rather than guessed at |
 | `runtime.host` | where the runtime listens. It sits under the runtime because that is the only thing it means anything to |
 | `model` | what `run` uses when the command line names nothing |
 
 One section per adapter, so an adapter with settings of its own has somewhere
-to put them and the file says what belongs to what.
+to put them and the file says what belongs to what. The block above is the
+whole of a minimal profile — `model` is the only key you can leave out.
 
 A typo is an error rather than a shrug: `modle:` is reported, not read as "no
 model named". So is a key the adapter a section names does not read — that one
