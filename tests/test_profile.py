@@ -12,7 +12,7 @@ from offgrid.agent import AgentName
 from offgrid.agents import create_agent_config
 from offgrid.cli import read_profile
 from offgrid.exceptions import ProfileError
-from offgrid.profile import Profile, save
+from offgrid.profile import Profile, save_profile
 from offgrid.runtime import RuntimeName
 from offgrid.runtimes import create_runtime_config
 
@@ -33,14 +33,14 @@ def _profile(host: str = HOST, **rest) -> Profile:
 def test_a_saved_profile_reads_back_the_same(tmp_path):
     path = tmp_path / "profile.yaml"
     written = _profile()
-    save(written, path)
+    save_profile(written, path)
 
     assert read_profile(path) == written
 
 
 def test_a_profile_is_readable_yaml(tmp_path):
     path = tmp_path / "profile.yaml"
-    save(_profile(), path)
+    save_profile(_profile(), path)
 
     on_disk = yaml.safe_load(path.read_text())
     assert on_disk["runtime"] == {"host": HOST, "name": "lmstudio"}
@@ -52,7 +52,7 @@ def test_a_profile_writes_nothing_offgrid_settled_for_itself(tmp_path):
     # section that says so. Written under `agent:` too, it would be a second
     # answer that a hand-edit could put out of step with the first.
     path = tmp_path / "profile.yaml"
-    save(_profile(), path)
+    save_profile(_profile(), path)
 
     assert "runtime_host" not in path.read_text()
 
@@ -150,7 +150,7 @@ def test_a_section_naming_no_adapter_is_refused(tmp_path, written, port, offered
 
 def test_a_profile_can_name_the_model_to_use(tmp_path):
     path = tmp_path / "profile.yaml"
-    save(_profile(model="qwen/qwen3.6-35b-a3b"), path)
+    save_profile(_profile(model="qwen/qwen3.6-35b-a3b"), path)
 
     assert read_profile(path).model == "qwen/qwen3.6-35b-a3b"
 
@@ -159,7 +159,7 @@ def test_a_mistyped_key_is_named_rather_than_ignored(tmp_path):
     # A profile is hand-edited, and `modle:` read as "no model named" sends
     # someone looking at the runtime for a mistake that is in the file.
     path = tmp_path / "profile.yaml"
-    save(_profile(), path)
+    save_profile(_profile(), path)
     path.write_text(path.read_text() + "modle: qwen/typo\n")
 
     with pytest.raises(ProfileError, match="modle"):
@@ -180,7 +180,7 @@ def test_a_runtime_offgrid_cannot_talk_to_is_refused(tmp_path):
     # Naming another runtime changed nothing: offgrid spoke to LM Studio
     # regardless, and `doctor` reported the name back as though it had not.
     path = tmp_path / "profile.yaml"
-    save(_profile(), path)
+    save_profile(_profile(), path)
     path.write_text(path.read_text().replace("lmstudio", "ollama"))
 
     with pytest.raises(ProfileError, match="ollama"):
@@ -189,7 +189,7 @@ def test_a_runtime_offgrid_cannot_talk_to_is_refused(tmp_path):
 
 def test_an_agent_offgrid_cannot_start_is_refused(tmp_path):
     path = tmp_path / "profile.yaml"
-    save(_profile(), path)
+    save_profile(_profile(), path)
     path.write_text(path.read_text().replace("claude-code", "opencode"))
 
     with pytest.raises(ProfileError, match="opencode"):

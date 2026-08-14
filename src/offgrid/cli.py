@@ -22,8 +22,8 @@ from offgrid.profile import (
     Profile,
     create_profile,
     load_yaml,
-    refusing,
-    save,
+    refuse_profile_section,
+    save_profile,
 )
 from offgrid.recommendation import summarize_findings
 from offgrid.runtime import RuntimeName
@@ -67,7 +67,7 @@ def setup(
             {"name": DEFAULT_AGENT.value}, runtime_host=listening_at
         )
 
-    save(
+    save_profile(
         Profile(runtime=runtime, agent=agent, model=profile.model if profile else None),
         DEFAULT_PATH,
     )
@@ -248,10 +248,10 @@ def read_profile(path: Path) -> Profile:
     body = load_yaml(path)
     said = {port: body.get(port, {}) for port in ("runtime", "agent")}
 
-    with refusing(said["runtime"], port="runtime", names=RuntimeName):
+    with refuse_profile_section(said["runtime"], port="runtime", names=RuntimeName):
         runtime = create_runtime_config(said["runtime"])
 
-    with refusing(said["agent"], port="agent", names=AgentName):
+    with refuse_profile_section(said["agent"], port="agent", names=AgentName):
         agent = create_agent_config(said["agent"], runtime_host=runtime.host)
 
     return create_profile(body, runtime=runtime, agent=agent)

@@ -123,7 +123,10 @@ capabilities.py    what a runtime can be asked to do
 hosted_tools.py    what an agent can reach that offgrid cannot run here
 runtime.py         what offgrid asks of a runtime, and which ones there are
 agent.py           what offgrid asks of an agent, and which ones there are
-profile.py         what is remembered between runs
+profile/           what is remembered between runs
+  profile.py       the file, and what is read out of it
+  refusing.py      what a section offgrid cannot read reads like
+  flat.py          refusing the shape offgrid read before this one
 home.py            where offgrid keeps it
 launch.py          an environment and an argument list, and running one
 answering.py       which model answers, and making it the one that does
