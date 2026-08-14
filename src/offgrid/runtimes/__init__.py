@@ -32,11 +32,12 @@ def create_runtime_config(said: dict) -> RuntimeConfig:
 
     :return: What that adapter is built from.
 
+    :raise KeyError: When the section names no adapter at all.
     :raise ValueError: When the name is not one offgrid has an adapter for.
     :raise ValidationError: When the section says something that adapter
         cannot read. `profile.refusing` is what turns either into a sentence.
     """
-    name = RuntimeName(said.get("name", RuntimeName.LMSTUDIO.value))
+    name = RuntimeName(said["name"])
 
     return RUNTIME_CONFIGS[name](**{k: v for k, v in said.items() if k != "name"})
 

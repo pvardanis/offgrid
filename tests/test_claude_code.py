@@ -15,7 +15,7 @@ HOST = "127.0.0.1:1234"
 
 def _config(**said):
     """The config the registry would build, from what a profile said."""
-    return create_agent_config(said, runtime_host=HOST)
+    return create_agent_config({"name": "claude-code"} | said, runtime_host=HOST)
 
 
 @pytest.fixture(autouse=True)

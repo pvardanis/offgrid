@@ -19,10 +19,13 @@ from offgrid.runtimes import create_runtime_config
 HOST = "127.0.0.1:1234"
 
 
+NAMED = "runtime:\n  name: lmstudio\n  host: {host}\nagent:\n  name: claude-code\n"
+
+
 def _profile(host: str = HOST, **rest) -> Profile:
     """A profile built the way the command line builds one."""
-    runtime = create_runtime_config({"host": host})
-    agent = create_agent_config({}, runtime_host=host)
+    runtime = create_runtime_config({"name": "lmstudio", "host": host})
+    agent = create_agent_config({"name": "claude-code"}, runtime_host=host)
 
     return Profile(runtime=runtime, agent=agent, **rest)
 
@@ -55,10 +58,10 @@ def test_a_profile_writes_nothing_offgrid_settled_for_itself(tmp_path):
 
 
 def test_a_profile_typed_by_hand_loads(tmp_path):
-    # The file is meant to be typed into, and everything but the host has a
-    # default, so naming the runtime and its address is a whole profile.
+    # The file is meant to be typed into, and this is the whole of one: an
+    # adapter per port and where the runtime listens.
     path = tmp_path / "profile.yaml"
-    path.write_text("runtime:\n  host: 10.0.0.5:4321\n")
+    path.write_text(NAMED.format(host="10.0.0.5:4321"))
 
     profile = read_profile(path)
 
@@ -72,7 +75,7 @@ def test_the_agent_is_told_where_the_runtime_listens(tmp_path):
     # An agent that writes where to talk into a config file of its own needs
     # it before `configure` runs, and its own section never says it.
     path = tmp_path / "profile.yaml"
-    path.write_text("runtime:\n  host: 10.0.0.5:4321\n")
+    path.write_text(NAMED.format(host="10.0.0.5:4321"))
 
     assert read_profile(path).agent.runtime_host == "10.0.0.5:4321"
 
@@ -82,7 +85,7 @@ def test_the_runtime_a_profile_names_is_a_name_offgrid_has(tmp_path):
     # it is read. The name is what picks the adapter, so it is a type from the
     # moment the file is read.
     path = tmp_path / "profile.yaml"
-    path.write_text("runtime:\n  host: 10.0.0.5:4321\n")
+    path.write_text(NAMED.format(host="10.0.0.5:4321"))
 
     assert read_profile(path).runtime.name is RuntimeName.LMSTUDIO
 
@@ -91,7 +94,7 @@ def test_the_agent_a_profile_names_is_a_name_offgrid_has(tmp_path):
     # The name is what picks the adapter offgrid launches, so it is a type
     # from the moment the file is read rather than a string checked once.
     path = tmp_path / "profile.yaml"
-    path.write_text("runtime:\n  host: 10.0.0.5:4321\n")
+    path.write_text(NAMED.format(host="10.0.0.5:4321"))
 
     assert read_profile(path).agent.name is AgentName.CLAUDE_CODE
 
@@ -117,6 +120,34 @@ def test_a_profile_missing_a_field_names_the_field(tmp_path):
         read_profile(path)
 
 
+@pytest.mark.parametrize(
+    ("written", "port", "offered"),
+    [
+        (
+            "runtime:\n  host: 10.0.0.5:4321\nagent:\n  name: claude-code\n",
+            "runtime",
+            "lmstudio",
+        ),
+        ("runtime:\n  name: lmstudio\n  host: 10.0.0.5:4321\n", "agent", "claude-code"),
+    ],
+    ids=["the runtime", "the agent"],
+)
+def test_a_section_naming_no_adapter_is_refused(tmp_path, written, port, offered):
+    # Which adapter to use is the whole point of a section, and guessing one
+    # is how a profile silently runs something nobody asked for. It is not
+    # defaulted: `setup` writes the name, and a hand-edit has to say it.
+    path = tmp_path / "profile.yaml"
+    path.write_text(written)
+
+    with pytest.raises(ProfileError) as refused:
+        read_profile(path)
+
+    said = str(refused.value)
+    assert f"`{port}` section" in said
+    assert "names no adapter" in said
+    assert offered in said
+
+
 def test_a_profile_can_name_the_model_to_use(tmp_path):
     path = tmp_path / "profile.yaml"
     save(_profile(model="qwen/qwen3.6-35b-a3b"), path)
@@ -139,7 +170,7 @@ def test_a_profile_that_is_not_yaml_is_refused_as_a_profile(tmp_path):
     # An unbalanced bracket is how a hand-edited YAML file usually breaks,
     # and a parser's traceback is not what the person who typed it needs.
     path = tmp_path / "profile.yaml"
-    path.write_text("runtime:\n  host: [127.0.0.1:1234\n")
+    path.write_text("runtime:\n  name: [lmstudio\n")
 
     with pytest.raises(ProfileError, match=r"profile\.yaml"):
         read_profile(path)
@@ -170,7 +201,10 @@ def test_a_key_the_agent_it_names_does_not_read_is_refused(tmp_path):
     # only place a typo under `agent:` can be caught — and it is caught, not
     # dropped. The message names the section, the adapter, and the key.
     path = tmp_path / "profile.yaml"
-    path.write_text(f"runtime:\n  host: {HOST}\nagent:\n  theme: dark\n")
+    path.write_text(
+        f"runtime:\n  name: lmstudio\n  host: {HOST}\n"
+        "agent:\n  name: claude-code\n  theme: dark\n"
+    )
 
     with pytest.raises(ProfileError) as refused:
         read_profile(path)
@@ -187,7 +221,8 @@ def test_a_key_offgrid_settles_itself_is_refused_rather_than_taken(tmp_path):
     # one dropped key `extra="forbid"` cannot catch.
     path = tmp_path / "profile.yaml"
     path.write_text(
-        f"runtime:\n  host: {HOST}\nagent:\n  runtime_host: 10.0.0.5:4321\n"
+        f"runtime:\n  name: lmstudio\n  host: {HOST}\n"
+        "agent:\n  name: claude-code\n  runtime_host: 10.0.0.5:4321\n"
     )
 
     with pytest.raises(ProfileError) as refused:
@@ -229,10 +264,7 @@ def test_a_profile_carrying_a_measured_machine_is_refused(tmp_path):
     # is refused rather than read past.
     path = tmp_path / "profile.yaml"
     path.write_text(
-        "runtime:\n"
-        "  name: lmstudio\n"
-        "  host: 127.0.0.1:1234\n"
-        "chip: Apple M1 Max\n"
+        NAMED.format(host=HOST) + "chip: Apple M1 Max\n"
         "memory_bytes: 68719476736\n"
         "wired_limit_bytes: 60129542144\n"
     )

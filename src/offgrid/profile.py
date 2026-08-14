@@ -155,17 +155,22 @@ def refusing(said: dict, *, port: str, names: type[Enum]) -> Iterator[None]:
     """
     try:
         yield
+    except KeyError as error:
+        raise ProfileError(
+            f"The `{port}` section of the profile names no adapter. Say which "
+            f"one with `name:` — offgrid has {_offered(names)}."
+        ) from error
     except ValueError as error:
         if isinstance(error, ValidationError):
             raise ProfileError(
-                f"{_named(said, names)} cannot read the `{port}` section of "
+                f"{_named(said)} cannot read the `{port}` section of "
                 f"the profile: {_problems(error)}. Take it out of the file, or "
                 "spell it the way that adapter does."
             ) from error
 
         raise ProfileError(
             f"The `{port}` section names {said.get('name')}, which offgrid has "
-            f"no adapter for. It has {', '.join(one.value for one in names)}."
+            f"no adapter for. It has {_offered(names)}."
         ) from error
     except TypeError as error:
         raise ProfileError(
@@ -174,15 +179,24 @@ def refusing(said: dict, *, port: str, names: type[Enum]) -> Iterator[None]:
         ) from error
 
 
-def _named(said: dict, names: type[Enum]) -> str:
+def _named(said: dict) -> str:
     """Say which adapter a section asked for, as the file spells it.
 
     :param said: What the profile says about this port.
+
+    :return: The adapter's name.
+    """
+    return str(said["name"])
+
+
+def _offered(names: type[Enum]) -> str:
+    """List the adapters offgrid has for one port.
+
     :param names: The adapters offgrid has for this port.
 
-    :return: The adapter's name, or the one it gets by saying nothing.
+    :return: Their names, as a profile spells them.
     """
-    return str(said.get("name", next(iter(names)).value))
+    return ", ".join(str(one.value) for one in names)
 
 
 def _problems(error: ValidationError) -> str:
