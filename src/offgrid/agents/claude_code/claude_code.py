@@ -15,12 +15,12 @@ from offgrid.agents.claude_code.configuring import (
     SETTINGS,
     SLIM_SETTINGS,
     get_denied_tools,
-    require_arguments_keep_the_settings_loaded,
 )
 from offgrid.agents.claude_code.launching import (
     FALLBACK_CONTEXT,
     MAX_OUTPUT_TOKENS,
     get_claude_args,
+    require_arguments_keep_the_settings_loaded,
 )
 from offgrid.dialect import Dialect
 from offgrid.exceptions import AgentSettingsError
