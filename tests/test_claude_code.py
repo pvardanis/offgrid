@@ -6,7 +6,7 @@ from offgrid.agents.claude_code import prepare
 from offgrid.agents.claude_code.launching import FALLBACK_CONTEXT
 from offgrid.dialect import Dialect
 from offgrid.exceptions import AgentSettingsError
-from offgrid.hosted_tools import HostedTools
+from offgrid.hosted_tools import HostedToolsStatus
 from offgrid.model import Model
 
 HOST = "127.0.0.1:1234"
@@ -166,7 +166,7 @@ def test_a_configuration_that_cannot_be_written_says_what_stopped_it(tmp_path):
 def test_what_the_agent_writes_for_itself_reads_as_denied(agent):
     agent.configure()
 
-    assert agent.read_hosted_tools().hosted_tools is HostedTools.DENIED
+    assert agent.read_hosted_tools().status is HostedToolsStatus.DENIED
 
 
 def test_configuring_does_not_refuse_settings_the_reading_would_call_permitted(
@@ -189,7 +189,7 @@ def test_settings_that_would_let_the_agent_search_read_as_permitted(agent, tmp_p
 
     found = agent.read_hosted_tools()
 
-    assert found.hosted_tools is HostedTools.PERMITTED
+    assert found.status is HostedToolsStatus.PERMITTED
     assert "WebSearch" in found.detail
     assert "permissions.deny" in found.remedy
 
@@ -199,7 +199,7 @@ def test_settings_nobody_has_written_yet_are_not_called_permitted(agent):
     # machine before its first run. Nothing is wrong, and nothing is denied.
     found = agent.read_hosted_tools()
 
-    assert found.hosted_tools is HostedTools.UNWRITTEN
+    assert found.status is HostedToolsStatus.UNWRITTEN
     assert "offgrid run" in found.remedy
 
 
@@ -212,7 +212,7 @@ def test_an_argument_that_drops_the_settings_reads_as_permitted(started_with):
 
     found = agent.read_hosted_tools()
 
-    assert found.hosted_tools is HostedTools.PERMITTED
+    assert found.status is HostedToolsStatus.PERMITTED
     assert "--setting-sources project,local" in found.detail
     assert found.remedy == "Add `user` to the list, or drop the argument."
 
@@ -223,7 +223,7 @@ def test_the_joined_spelling_of_that_argument_is_read_too(started_with):
     agent = started_with("--setting-sources=project,local")
     agent.configure()
 
-    assert agent.read_hosted_tools().hosted_tools is HostedTools.PERMITTED
+    assert agent.read_hosted_tools().status is HostedToolsStatus.PERMITTED
 
 
 def test_the_last_of_two_such_arguments_is_the_one_that_counts(started_with):
@@ -235,7 +235,7 @@ def test_the_last_of_two_such_arguments_is_the_one_that_counts(started_with):
     )
     agent.configure()
 
-    assert agent.read_hosted_tools().hosted_tools is HostedTools.PERMITTED
+    assert agent.read_hosted_tools().status is HostedToolsStatus.PERMITTED
 
 
 def test_a_later_argument_naming_it_again_reads_as_denied(started_with):
@@ -246,7 +246,7 @@ def test_a_later_argument_naming_it_again_reads_as_denied(started_with):
     )
     agent.configure()
 
-    assert agent.read_hosted_tools().hosted_tools is HostedTools.DENIED
+    assert agent.read_hosted_tools().status is HostedToolsStatus.DENIED
 
 
 def test_sources_that_still_name_the_one_offgrid_wrote_read_as_denied(started_with):
@@ -255,7 +255,7 @@ def test_sources_that_still_name_the_one_offgrid_wrote_read_as_denied(started_wi
     agent = started_with("--setting-sources", "project, user")
     agent.configure()
 
-    assert agent.read_hosted_tools().hosted_tools is HostedTools.DENIED
+    assert agent.read_hosted_tools().status is HostedToolsStatus.DENIED
 
 
 @pytest.mark.parametrize(
@@ -280,7 +280,7 @@ def test_arguments_measured_to_leave_the_deny_standing_read_as_denied(
     agent = started_with(*argument)
     agent.configure()
 
-    assert agent.read_hosted_tools().hosted_tools is HostedTools.DENIED
+    assert agent.read_hosted_tools().status is HostedToolsStatus.DENIED
 
 
 def test_settings_that_are_not_readable_json_are_refused(agent, tmp_path):
@@ -310,7 +310,7 @@ def test_settings_shaped_so_nothing_denies_anything_read_as_permitted(
     # calling the run safe is the invented answer the guard exists to stop.
     (tmp_path / "settings.json").write_text(written)
 
-    assert agent.read_hosted_tools().hosted_tools is HostedTools.PERMITTED
+    assert agent.read_hosted_tools().status is HostedToolsStatus.PERMITTED
 
 
 def test_settings_that_are_not_text_are_not_called_bad_json(agent, tmp_path):

@@ -10,7 +10,7 @@ from enum import StrEnum, auto
 from offgrid.exceptions import HostedToolReachableError
 
 
-class HostedTools(StrEnum):
+class HostedToolsStatus(StrEnum):
     """What an agent can reach that offgrid cannot run on this machine.
 
     A hosted tool runs on its vendor's servers. Against a model held here
@@ -52,12 +52,12 @@ class HostedToolsReport:
     The answer is offgrid's to act on; the words are the agent's, because
     only the adapter knows which file to name or which argument to drop.
 
-    :param hosted_tools: Whether one can be reached.
+    :param status: Whether one can be reached.
     :param detail: What the adapter found, in its own terms.
     :param remedy: What to change, named the way that agent names it.
     """
 
-    hosted_tools: HostedTools
+    status: HostedToolsStatus
     detail: str
     remedy: str = ""
 
@@ -73,7 +73,7 @@ def require_hosted_tools_denied(report: HostedToolsReport) -> None:
 
     :raise HostedToolReachableError: When nothing denies one.
     """
-    if report.hosted_tools in (HostedTools.NONE_OFFERED, HostedTools.DENIED):
+    if report.status in (HostedToolsStatus.NONE_OFFERED, HostedToolsStatus.DENIED):
         return
 
     raise HostedToolReachableError(f"{report.detail} {report.remedy}".strip())

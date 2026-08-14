@@ -89,7 +89,7 @@ def doctor() -> None:
     tell(f"  model     {model.identifier}")
     tell(f"  context   {model.context_limit or 'unstated'}")
     tell(f"  agent     {profile.agent.value}, speaking {agent.dialect.value}")
-    tell(f"  hosted    {reachable.hosted_tools}")
+    tell(f"  hosted    {reachable.status}")
 
 
 @app.command()

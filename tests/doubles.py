@@ -11,7 +11,7 @@ import pytest
 
 from offgrid.agent import AgentName, Prepare
 from offgrid.dialect import Dialect
-from offgrid.hosted_tools import HostedTools, HostedToolsReport
+from offgrid.hosted_tools import HostedToolsReport, HostedToolsStatus
 from offgrid.launch import Launch
 from offgrid.machine import Machine
 from offgrid.model import Model
@@ -59,7 +59,7 @@ class StandInAgent:
         :return: What an agent with no hosted tool says.
         """
         return HostedToolsReport(
-            hosted_tools=HostedTools.NONE_OFFERED,
+            status=HostedToolsStatus.NONE_OFFERED,
             detail="a stand-in offers no tool that runs anywhere else.",
         )
 
