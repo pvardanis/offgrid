@@ -616,9 +616,24 @@ Pydantic will not parse a base-annotated field into a subclass. Annotate
 `agent: AgentConfig` and a section holding an adapter's own keys either has
 them silently dropped or is refused outright, depending on `extra` — never
 parsed into the subclass that declares them. Only the shapes that tell the
-parser which class to build work: a discriminated union, or a base permissive
-enough to carry a section it cannot read while each concrete config narrows to
-`extra="forbid"`.
+parser which class to build work: a discriminated union, which would make
+`profile.py` import every concrete config, or something that picks the class
+before pydantic is asked.
+
+So nothing parses a profile in one step. The file is read as a mapping, each
+registry is asked to build its own section into the config its adapter
+declares, and the profile is constructed from the two finished configs. That
+is the shape `aily` uses — a builder holding injected factories, a raw dict in,
+concrete configs out, and the discriminator stripped before construction — and
+it is why its parent config can annotate an abstract base at all.
+
+A config's `name` is therefore a `@computed_field` property, abstract on the
+base and answered by each adapter, rather than a field a file sets. Which class
+a profile gets is the registry's answer to the name in the file; once built,
+the class is the authority on what it is, which is what lets `connect_runtime`
+and `prepare_agent` look up by the config's own name. Computed rather than
+plain, because a plain property is left out of `model_dump`, and a profile
+saved without `name:` would silently load as whichever adapter is the default.
 
 And the port cannot take a `Profile`: `profile.py` imports `AgentName` from
 `agent.py`, so the reverse is a cycle. That is the right way round anyway — a
@@ -637,22 +652,27 @@ is what #56 is about — along with the validated set that lets a profile refuse
 an unknown agent at load rather than at dispatch.
 
 There are two dicts per port rather than one, keyed alike: a name becomes a
-config, and a config becomes an adapter. Both are typed on the base config,
-because a factory declared to take a concrete one cannot sit in a dict typed on
-the base — callable parameters are contravariant. So each factory takes the
-base and narrows to its own type, raising where it was handed another
-adapter's. Pairing each config type with its factory in a generic holder, so a
-cross-wiring is a type error where it is written, was considered and set aside
-as more machinery than two adapters justify; the suite checks the pairing
-instead.
+config, and a config becomes an adapter. The config dict is typed
+`type[AgentConfig]`, which is covariant, so it names the concrete class. The
+factory dict is typed on a callable taking the base, and callable parameters
+are contravariant, so a factory declared to take a concrete config cannot sit
+in it — each takes the base and narrows inside, raising where it was handed
+another adapter's. Pairing each config type with its factory in a generic
+holder, so a cross-wiring is a type error where it is written, was considered
+and set aside as more machinery than two adapters justify.
 
 `plan` ends up taking only the model, which is the one thing a run discovers.
-Where the runtime listens goes to the adapter when it is built, along with the
-directory offgrid gives it — neither is in the agent's own section, and an
-agent that writes the address into a config file needs it before `configure`
-runs. The token went with it, into `agents/claude_code/`: the local server
-ignores it and Claude Code refuses to start without one, which makes it a fact
-about that agent rather than about the run.
+Where the runtime listens rides on the agent's config as `runtime_host`, filled
+from the runtime's section while the profile is built and excluded from what is
+written back — the file says it once, under the runtime it belongs to, and an
+agent that writes the address into a config file of its own has it before
+`configure` runs. Filled there rather than set afterwards because a config is
+frozen, and because a step the command line has to remember is a step it can
+forget: a missed one would write no address at all and fail as a model that
+cannot be reached. The directory an agent is run out of is derived from its own
+name, so it is neither said nor passed. The token went into
+`agents/claude_code/`: the local server ignores it and Claude Code refuses to
+start without one, which makes it a fact about that agent rather than the run.
 
 A bad adapter key says to fix it by hand and stops there, where every other
 profile error offers `offgrid setup` as well. `setup` keeps what it finds, and
@@ -668,8 +688,10 @@ failure rather than a visible one: that every concrete config forbids the keys
 it does not name, and that every name in each enum has both an adapter and a
 config factory behind it. Both were proven by breaking them.
 
-`profile.py` split as a consequence. Reading a section as the adapter it names
-declares it is its own idea, and it now lives in `sections.py` beside the
-profile rather than inside it. `Capabilities` moved out of `runtime.py` the
-same way, into `capabilities.py`, which kept the port under the line limit
-without grouping anything by kind.
+Reading and building are two calls, because `profile.py` may not name an
+adapter and only the command line has both registries. `load_yaml` answers with
+the mapping, each registry answers with its own config, and `create_profile`
+puts them together — passing the rest of the body whole, so a key belonging to
+no section is still refused rather than quietly dropped. `Capabilities` moved
+out of `runtime.py` into `capabilities.py`, and `OFFGRID_HOME` into `home.py`,
+which two modules that may not import each other both need.
