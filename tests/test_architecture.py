@@ -126,7 +126,7 @@ def test_every_runtime_offgrid_names_has_an_adapter_bound_to_it():
     # Two places that cannot be one: an enum carrying its own factory would
     # be a domain type importing an adapter. A name with no entry raises a
     # KeyError at somebody's terminal, halfway through a run.
-    from offgrid.domain.runtime import RuntimeName
+    from offgrid.domain.running.runtime import RuntimeName
     from offgrid.runtimes import RUNTIME_CONFIGS, RUNTIMES
 
     assert set(RUNTIMES) == set(RuntimeName)
@@ -135,7 +135,7 @@ def test_every_runtime_offgrid_names_has_an_adapter_bound_to_it():
 
 def test_every_agent_offgrid_names_has_an_adapter_bound_to_it():
     from offgrid.agents import AGENT_CONFIGS, AGENTS
-    from offgrid.domain.agent import AgentName
+    from offgrid.domain.running.agent import AgentName
 
     assert set(AGENTS) == set(AgentName)
     assert set(AGENT_CONFIGS) == set(AgentName)
@@ -148,8 +148,8 @@ def test_every_config_an_adapter_declares_forbids_a_key_it_does_not_name():
     # `allow` would accept junk in silence, which is the failure this whole
     # area exists to prevent.
     from offgrid.agents import AGENTS
-    from offgrid.domain.agent import AgentConfig
-    from offgrid.domain.runtime import RuntimeConfig
+    from offgrid.domain.running.agent import AgentConfig
+    from offgrid.domain.running.runtime import RuntimeConfig
     from offgrid.runtimes import RUNTIMES
 
     # The registries are what import every adapter, and an adapter has to have

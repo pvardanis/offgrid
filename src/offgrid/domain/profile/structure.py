@@ -12,8 +12,8 @@ from pathlib import Path
 
 import yaml
 
-from offgrid.domain.agent import AgentName
-from offgrid.domain.runtime import RuntimeName
+from offgrid.domain.running.agent import AgentName
+from offgrid.domain.running.runtime import RuntimeName
 from offgrid.shared.exceptions import ProfileError
 
 # An address to show a shape with, rather than one to reach anything at.

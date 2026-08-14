@@ -25,10 +25,10 @@ from offgrid.agents.claude_code.launching import (
     get_claude_args,
     get_dropped_settings_sources,
 )
-from offgrid.domain.dialect import Dialect
-from offgrid.domain.hosted_tools import HostedToolsReport, HostedToolsStatus
-from offgrid.domain.launch import Launch
-from offgrid.domain.model import Model
+from offgrid.domain.running.dialect import Dialect
+from offgrid.domain.running.hosted_tools import HostedToolsReport, HostedToolsStatus
+from offgrid.domain.running.launch import Launch
+from offgrid.domain.running.model import Model
 from offgrid.shared.exceptions import AgentSettingsError
 
 

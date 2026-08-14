@@ -8,8 +8,8 @@ What reaching that state costs is the runtime's business, and each one reaches
 it differently. This is where offgrid says which model it wants held.
 """
 
-from offgrid.domain.model import Model
-from offgrid.domain.runtime import Runtime
+from offgrid.domain.running.model import Model
+from offgrid.domain.running.runtime import Runtime
 from offgrid.shared.exceptions import ModelUnavailableError
 
 

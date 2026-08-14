@@ -1,12 +1,12 @@
 import pytest
 
-from offgrid.domain.fit import (
+from offgrid.domain.sizing.fit import (
     CACHE_SHARE,
     get_params_that_fit,
     get_sizes_that_fit,
     weigh_model,
 )
-from offgrid.domain.machine import Machine
+from offgrid.domain.sizing.machine import Machine
 
 GIB = 1024**3
 BILLION = 1e9

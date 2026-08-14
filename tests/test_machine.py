@@ -2,7 +2,7 @@ import platform
 
 import pytest
 
-from offgrid.domain.machine import detect, parse, require_apple_silicon
+from offgrid.domain.sizing.machine import detect, parse, require_apple_silicon
 from offgrid.shared.exceptions import UnsupportedMachineError
 
 GIB = 1024**3

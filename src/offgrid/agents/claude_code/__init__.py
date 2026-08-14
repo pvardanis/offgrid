@@ -8,7 +8,7 @@ beside it.
 
 from offgrid.agents.claude_code.claude_code import ClaudeCode
 from offgrid.agents.claude_code.config import ClaudeCodeConfig
-from offgrid.domain.agent import Agent, AgentConfig
+from offgrid.domain.running.agent import Agent, AgentConfig
 from offgrid.shared.declaring import as_declared
 
 

@@ -1,8 +1,8 @@
 import pytest
 
-from offgrid.domain.listing import Fit, Listing, get_listing_with_feasible_widths
-from offgrid.domain.machine import Machine
-from offgrid.domain.speed import tokens_per_second
+from offgrid.domain.sizing.listing import Fit, Listing, get_listing_with_feasible_widths
+from offgrid.domain.sizing.machine import Machine
+from offgrid.domain.sizing.speed import tokens_per_second
 
 GIB = 1024**3
 BILLION = 1e9

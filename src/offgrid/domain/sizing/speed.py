@@ -8,9 +8,9 @@ The constants here are the weakest numbers offgrid has. Issue #21 measures
 this machine and replaces them.
 """
 
-from offgrid.domain.fit import BYTES_PER_GB
-from offgrid.domain.listing import Fit
-from offgrid.domain.machine import Machine
+from offgrid.domain.sizing.fit import BYTES_PER_GB
+from offgrid.domain.sizing.listing import Fit
+from offgrid.domain.sizing.machine import Machine
 
 # Peak memory bandwidth in GB/s, by the brand string sysctl reports. Read from
 # the GPU table onyx.app ships in its own front end, fetched 2026-08-07, which

@@ -15,10 +15,10 @@ from typing import Protocol
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 
-from offgrid.domain.dialect import Dialect
-from offgrid.domain.hosted_tools import HostedToolsReport
-from offgrid.domain.launch import Launch
-from offgrid.domain.model import Model
+from offgrid.domain.running.dialect import Dialect
+from offgrid.domain.running.hosted_tools import HostedToolsReport
+from offgrid.domain.running.launch import Launch
+from offgrid.domain.running.model import Model
 from offgrid.shared.home import OFFGRID_HOME
 
 

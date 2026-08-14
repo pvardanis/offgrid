@@ -8,13 +8,6 @@ from pathlib import Path
 import typer
 
 from offgrid.agents import create_agent_config, prepare_agent
-from offgrid.domain.agent import Agent, AgentName
-from offgrid.domain.answering import get_resident_model, hold_model
-from offgrid.domain.dialect import require_compatible
-from offgrid.domain.fit import BYTES_PER_GB, get_sizes_that_fit
-from offgrid.domain.hosted_tools import HostedToolsStatus, require_hosted_tools_denied
-from offgrid.domain.launch import explain_why_it_would_not_start, start
-from offgrid.domain.machine import detect, suggest_raising_the_gpu_limit
 from offgrid.domain.profile import (
     DEFAULT_PATH,
     Profile,
@@ -23,8 +16,18 @@ from offgrid.domain.profile import (
     refuse_profile_section,
     save_profile,
 )
-from offgrid.domain.recommendation import summarize_findings
-from offgrid.domain.runtime import Runtime, RuntimeName
+from offgrid.domain.running.agent import Agent, AgentName
+from offgrid.domain.running.answering import get_resident_model, hold_model
+from offgrid.domain.running.dialect import require_compatible
+from offgrid.domain.running.hosted_tools import (
+    HostedToolsStatus,
+    require_hosted_tools_denied,
+)
+from offgrid.domain.running.launch import explain_why_it_would_not_start, start
+from offgrid.domain.running.runtime import Runtime, RuntimeName
+from offgrid.domain.sizing.fit import BYTES_PER_GB, get_sizes_that_fit
+from offgrid.domain.sizing.machine import detect, suggest_raising_the_gpu_limit
+from offgrid.domain.sizing.recommendation import summarize_findings
 from offgrid.leaderboards.reading import get_reading
 from offgrid.runtimes import connect_runtime, create_runtime_config
 from offgrid.shared.exceptions import OffgridError, ProfileError

@@ -5,7 +5,7 @@ say is how much room there is, so that the choice is made against a number
 rather than a guess.
 """
 
-from offgrid.domain.machine import Machine
+from offgrid.domain.sizing.machine import Machine
 
 BITS_PER_BYTE = 8
 

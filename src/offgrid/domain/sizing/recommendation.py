@@ -9,22 +9,22 @@ Nothing here says anything; it returns the lines and the command line says
 them.
 """
 
-from offgrid.domain.fit import (
+from offgrid.domain.sizing.fit import (
     BYTES_PER_GB,
     QUANTIZATION_WIDTHS,
     get_params_that_fit,
     weigh_model,
 )
-from offgrid.domain.listing import Fit, Table
-from offgrid.domain.machine import Machine, suggest_raising_the_gpu_limit
-from offgrid.domain.quality import Quality
-from offgrid.domain.shortlist import (
+from offgrid.domain.sizing.listing import Fit, Table
+from offgrid.domain.sizing.machine import Machine, suggest_raising_the_gpu_limit
+from offgrid.domain.sizing.quality import Quality
+from offgrid.domain.sizing.shortlist import (
     Dropped,
     Rule,
     get_listings_with_coding_score,
     shortlist,
 )
-from offgrid.domain.speed import tokens_per_second
+from offgrid.domain.sizing.speed import tokens_per_second
 
 # One layout, so the heading and the models under it cannot drift apart.
 COLUMNS = (

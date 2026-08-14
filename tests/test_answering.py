@@ -12,7 +12,7 @@ is not evidence about anything.
 
 import pytest
 
-from offgrid.domain.answering import get_resident_model, hold_model
+from offgrid.domain.running.answering import get_resident_model, hold_model
 from offgrid.runtimes.lmstudio import connect
 from offgrid.runtimes.lmstudio.config import LMStudioConfig
 from offgrid.shared.exceptions import ModelUnavailableError

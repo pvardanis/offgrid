@@ -12,9 +12,9 @@ the number agree.
 import math
 from dataclasses import dataclass
 
-from offgrid.domain.listing import Fit
-from offgrid.domain.machine import Machine
-from offgrid.domain.speed import tokens_per_second
+from offgrid.domain.sizing.listing import Fit
+from offgrid.domain.sizing.machine import Machine
+from offgrid.domain.sizing.speed import tokens_per_second
 
 HEADROOM_POINTS = 45
 SCORE_POINTS = 30

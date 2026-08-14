@@ -21,9 +21,9 @@ flowchart TD
         lb["leaderboards/"]
     end
     subgraph domain ["domain/"]
-        answering[answering.py]
-        ports["runtime.py · agent.py"]
-        rest["machine · fit · listing · speed · quality ·<br/>shortlist · recommendation · dialect · hosted_tools ·<br/>capabilities · profile · launch · model"]
+        sizing["sizing/<br/>machine · fit · listing · speed ·<br/>quality · shortlist · recommendation"]
+        running["running/<br/>model · dialect · capabilities · hosted_tools ·<br/>launch · runtime · agent · answering"]
+        profile["profile/"]
     end
     subgraph shared ["shared/"]
         sh["exceptions.py · say.py · home.py · declaring.py"]
@@ -34,7 +34,7 @@ flowchart TD
     adapters --> domain
     domain --> shared
     adapters --> shared
-    answering --> ports
+    profile --> running
 ```
 
 Dependencies point inwards: adapters know about the domain, the domain knows
@@ -45,23 +45,24 @@ Each of these is a folder, so the tree says which layer a module is in and a
 new one lands somewhere on purpose. It is also what lets the contracts be
 stated over one name per layer rather than every module by hand.
 
-`answering.py` reaches `runtime.py`, which is a port and not an adapter: what
-satisfies it is bound to a name in `runtimes/`, and `cli.py` is where the two
-meet. `agent.py` stands the same way to `agents/`. One seam is still a folder
+`running/answering.py` reaches `running/runtime.py`, which is a port and not an
+adapter: what satisfies it is bound to a name in `runtimes/`, and `cli.py` is
+where the two meet. `running/agent.py` stands the same way to `agents/`. One seam is still a folder
 rather than a port — `leaderboards/` — and the section below says what it
 becomes.
 
 ### What checks this — built
 
-`import-linter` states the rule as three contracts in `pyproject.toml`, and the
+`import-linter` states the rule as four contracts in `pyproject.toml`, and the
 hooks run them on every commit, so a broken layer fails rather than waiting to
 be spotted in review. `uv run lint-imports` runs them by hand.
 
 The first contract is the rule above: `offgrid.domain` reaches no adapter. The
 second is that `offgrid.shared` reaches nothing of offgrid's at all, which is
-what makes it the innermost layer rather than a place things are put. The third
-is that no adapter reaches for another: `runtimes/`, `agents/` and
-`leaderboards/` do not know each other exists.
+what makes it the innermost layer rather than a place things are put. The third is that the two halves of the
+domain do not know each other: nothing under `sizing/` imports anything under
+`running/`, or the reverse. The fourth is that no adapter reaches for another:
+`runtimes/`, `agents/` and `leaderboards/` do not know each other exists.
 
 Each is stated over one name per layer, so a module is covered by living in the
 layer rather than by being remembered.
@@ -119,25 +120,27 @@ leaderboards/      one module per published list
 
 ```
 domain/
-  machine.py       what this Mac is, and how to give its GPU more room
-  fit.py           how much room it has
-  model.py         a model the runtime describes
-  listing.py       a model a published list describes, and which ones fit
-  speed.py         how fast this machine reads a model's weights
-  quality.py       how good a fit is, as one number and one word
-  shortlist.py     what fits, ranked, and what each rule dropped
-  recommendation.py  how that reads to whoever asked
-  dialect.py       which API shapes can be paired
-  capabilities.py  what a runtime can be asked to do
-  hosted_tools.py  what an agent can reach that offgrid cannot run here
-  runtime.py       what offgrid asks of a runtime, and which ones there are
-  agent.py         what offgrid asks of an agent, and which ones there are
+  sizing/          what this machine has room for
+    machine.py     what this Mac is, and how to give its GPU more room
+    fit.py         how much room it has
+    listing.py     a model a published list describes, and which ones fit
+    speed.py       how fast this machine reads a model's weights
+    quality.py     how good a fit is, as one number and one word
+    shortlist.py   what fits, ranked, and what each rule dropped
+    recommendation.py  how that reads to whoever asked
+  running/         what a run is made of
+    model.py       a model the runtime describes
+    dialect.py     which API shapes can be paired
+    capabilities.py  what a runtime can be asked to do
+    hosted_tools.py  what an agent can reach that offgrid cannot run here
+    launch.py      an environment and an argument list, and running one
+    runtime.py     what offgrid asks of a runtime, and which ones there are
+    agent.py       what offgrid asks of an agent, and which ones there are
+    answering.py   which model answers, and making it the one that does
   profile/         what is remembered between runs
     profile.py     the file, and what is read out of it
     refusing.py    what a section offgrid cannot read reads like
     structure.py   whether it is built the way offgrid reads one
-  launch.py        an environment and an argument list, and running one
-  answering.py     which model answers, and making it the one that does
 ```
 
 One more joins them when the leaderboard seam is built — `leaderboard.py`,
