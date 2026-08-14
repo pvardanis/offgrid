@@ -226,6 +226,20 @@ def test_doctor_says_nothing_is_written_before_a_first_run(here):
     assert "unwritten" in result.stderr
 
 
+def test_doctor_says_a_hand_edited_settings_file_permits_the_search(here):
+    # The machine this command was missing: the deny taken out by hand used
+    # to get four green lines here and a refusal from `run`.
+    runner.invoke(app, ["setup"])
+    config = here / "claude-code"
+    config.mkdir()
+    (config / "settings.json").write_text('{"theme": "mine"}')
+
+    result = runner.invoke(app, ["doctor"])
+
+    assert result.exit_code == 0
+    assert "permitted" in result.stderr
+
+
 def test_doctor_reports_settings_it_cannot_read_rather_than_crashing(here):
     # A file that is there and unreadable is a fault rather than an answer
     # about hosted tools, and offgrid's own errors are reported: a traceback
