@@ -776,6 +776,12 @@ what a run is made from, not part of making one, and `setup` reads it without
 running anything. It also has to sit outside the contract, since it depends on
 one of the two halves; folding it in would muddy what the contract asserts.
 
+The two ports moved with it: `runtime.py` and `agent.py` are under `running/`
+now, so the note above about `domain/runtime.py` sitting a folder from
+`runtimes/` reads as `domain/running/runtime.py`, two folders from it. The
+names stay close — `running/` and `runtimes/` — but never at the same level,
+which is what made the old pair worth paying down.
+
 `running/` rather than `run/`, which was the other candidate. `run` is the
 noun offgrid uses everywhere and is truer to the ports — `agent.py` runs
 nothing, it says what offgrid asks of an agent — but the gerund pairs with
