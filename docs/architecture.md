@@ -23,7 +23,7 @@ flowchart TD
     subgraph domain [domain]
         answering[answering.py]
         ports["runtime.py · agent.py"]
-        rest["machine · fit · listing · speed · quality ·<br/>shortlist · recommendation · dialect · hosted_tools ·<br/>capabilities · profile · home · launch · model"]
+        rest["machine · fit · listing · speed · quality ·<br/>shortlist · recommendation · dialect · hosted_tools ·<br/>capabilities · declaring · profile · home · launch · model"]
     end
     subgraph shared [shared]
         sh["exceptions.py · say.py"]
@@ -118,6 +118,7 @@ quality.py         how good a fit is, as one number and one word
 shortlist.py       what fits, ranked, and what each rule dropped
 recommendation.py  how that reads to whoever asked
 dialect.py         which API shapes can be paired
+declaring.py       reading a config as the adapter that declared it
 capabilities.py    what a runtime can be asked to do
 hosted_tools.py    what an agent can reach that offgrid cannot run here
 runtime.py         what offgrid asks of a runtime, and which ones there are

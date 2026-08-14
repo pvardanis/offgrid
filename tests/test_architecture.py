@@ -155,7 +155,7 @@ def test_a_config_built_for_one_agent_cannot_reach_another_s_factory():
     from offgrid.agents.claude_code import prepare
     from tests.doubles import StandInAgentConfig
 
-    with pytest.raises(TypeError, match="claude-code was handed StandInAgentConfig"):
+    with pytest.raises(TypeError, match="ClaudeCodeConfig was expected"):
         prepare(StandInAgentConfig(runtime_host="127.0.0.1:1234"), ())
 
 
@@ -163,7 +163,7 @@ def test_a_config_built_for_one_runtime_cannot_reach_another_s_factory():
     from offgrid.runtimes.lmstudio import connect
     from tests.doubles import StandInRuntimeConfig
 
-    with pytest.raises(TypeError, match="lmstudio was handed StandInRuntimeConfig"):
+    with pytest.raises(TypeError, match="LMStudioConfig was expected"):
         connect(StandInRuntimeConfig(host="127.0.0.1:1234"))
 
 
