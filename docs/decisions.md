@@ -703,3 +703,38 @@ puts them together — passing the rest of the body whole, so a key belonging to
 no section is still refused rather than quietly dropped. `Capabilities` moved
 out of `runtime.py` into `capabilities.py`, and `OFFGRID_HOME` into `home.py`,
 which two modules that may not import each other both need.
+
+## The tree says what the layers are
+
+Twenty-odd modules sat at the root of `src/offgrid/`, and which layer each
+belonged to was visible only in `docs/architecture.md`. A module landed
+wherever it was written, and the map was the only thing that said otherwise —
+which made the map something to keep true rather than something to read.
+
+So the layers are folders: `domain/`, `shared/`, and the adapter packages that
+were already there, with `cli.py` alone at the root because it is the only
+thing outside all of them.
+
+What this buys is not tidiness. Both `import-linter` contracts were stated over
+every domain module by hand — twenty names, and a new module was covered only
+if somebody remembered to add it. They are stated over `offgrid.domain` now,
+one name, and everything beneath it is covered because it is beneath it. The
+test that closed the same hole from the other side shrank with them: it places
+a module by the first package above it that a layer claims, rather than
+matching names one at a time.
+
+`shared/` is what reaches nothing of offgrid's own, and that is a test rather
+than a description: `exceptions.py`, `say.py`, `home.py` and `declaring.py`
+each import only the standard library or a dependency. `home.py` in particular
+stops being a module of its own for want of anywhere else — `agent.py` derives
+an agent's directory from it and `profile/` needs it for the file, and
+`profile/` already imports `agent.py`, so it could live in neither.
+
+`domain/` rather than `ports/` for the two seam modules, and rather than a
+package each. A package holding one file says nothing, and `runtime/` beside
+`runtimes/` would have been two folders one letter apart — the cost this file
+recorded as worth paying when one of them was a file. As `domain/runtime.py`
+beside `runtimes/`, it stops being a cost at all.
+
+It is a move: no behaviour changes, and the suite passing unchanged is the
+whole of the proof.
