@@ -11,6 +11,7 @@ import pytest
 
 from offgrid.agent import AgentName, Prepare
 from offgrid.dialect import Dialect
+from offgrid.hosted_tools import HostedTools, HostedToolsReport
 from offgrid.launch import Launch
 from offgrid.machine import Machine
 from offgrid.model import Model
@@ -52,11 +53,15 @@ class StandInAgent:
     def configure(self) -> None:
         """Write nothing, having nothing to write."""
 
-    def require_hosted_tools_denied(self, passthrough: list[str]) -> None:
-        """Deny nothing, having no configuration to deny it in.
+    def read_hosted_tools(self) -> HostedToolsReport:
+        """Answer that there is nothing to reach, having no tools at all.
 
-        :param passthrough: What would be handed on, and is not read.
+        :return: What an agent with no hosted tool says.
         """
+        return HostedToolsReport(
+            hosted_tools=HostedTools.NONE_OFFERED,
+            detail="a stand-in offers no tool that runs anywhere else.",
+        )
 
     def plan(
         self,
@@ -64,14 +69,12 @@ class StandInAgent:
         *,
         host: str,
         token: str,
-        passthrough: list[str],
     ) -> Launch:
         """Answer with a launch, or refuse to build one.
 
         :param model: The model that would answer.
         :param host: Where the runtime listens.
         :param token: What the agent would be given.
-        :param passthrough: What would be handed on.
 
         :return: A launch that starts nothing.
 
@@ -97,7 +100,9 @@ def answer_as_an_agent(monkeypatch: pytest.MonkeyPatch, agent: StandInAgent) -> 
     # Typed, so that a stand-in that has stopped satisfying the port is what
     # the type checker says rather than what a test quietly proves nothing
     # about.
-    agents: dict[AgentName, Prepare] = {AgentName.CLAUDE_CODE: lambda _: agent}
+    agents: dict[AgentName, Prepare] = {
+        AgentName.CLAUDE_CODE: lambda _directory, _passthrough: agent
+    }
 
     monkeypatch.setattr("offgrid.agents.AGENTS", agents)
 

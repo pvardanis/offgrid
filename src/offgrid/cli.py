@@ -12,6 +12,7 @@ from offgrid.answering import get_resident_model, hold_model
 from offgrid.dialect import require_compatible
 from offgrid.exceptions import OffgridError, ProfileError
 from offgrid.fit import BYTES_PER_GB, get_sizes_that_fit
+from offgrid.hosted_tools import require_hosted_tools_denied
 from offgrid.launch import explain_why_it_would_not_start, start
 from offgrid.leaderboards.reading import get_reading
 from offgrid.machine import detect, suggest_raising_the_gpu_limit
@@ -116,9 +117,9 @@ def run(
     """Start the agent against a model the runtime is holding."""
     profile = _profile()
     runtime = connect_runtime(profile)
-    agent = prepare_agent(profile)
+    passthrough = tuple(context.args)
+    agent = prepare_agent(profile, passthrough)
     wanted = model_name or profile.model
-    passthrough = list(context.args)
 
     with _reporting():
         # A dialect that cannot be paired and a run that would undo a
@@ -126,7 +127,7 @@ def run(
         # seconds nobody gets back.
         require_compatible(runtime.dialect, agent.dialect)
         agent.configure()
-        agent.require_hosted_tools_denied(passthrough)
+        require_hosted_tools_denied(agent.read_hosted_tools())
 
         model = hold_model(runtime, wanted)
 
@@ -139,7 +140,6 @@ def run(
             model,
             host=profile.host,
             token=TOKEN,
-            passthrough=passthrough,
         )
 
         try:

@@ -19,26 +19,35 @@ from offgrid.agents.claude_code.configuring import (
 from offgrid.agents.claude_code.launching import (
     FALLBACK_CONTEXT,
     MAX_OUTPUT_TOKENS,
+    SOURCES,
+    WRITTEN_SOURCE,
     get_claude_args,
-    require_arguments_keep_the_settings_loaded,
+    get_dropped_settings_sources,
 )
 from offgrid.dialect import Dialect
 from offgrid.exceptions import AgentSettingsError
+from offgrid.hosted_tools import HostedTools, HostedToolsReport
 from offgrid.launch import Launch
 from offgrid.model import Model
 
 
 @dataclass(frozen=True)
 class ClaudeCode:
-    """Claude Code, run out of the directory it was bound to.
+    """Claude Code, run out of the directory and arguments it was bound to.
 
-    `dialect` is a fact about Claude Code rather than about one directory, so
+    Both are settled before a run starts, so both are bound rather than
+    passed: what is read to decide whether a run is safe is then the same
+    thing that is launched.
+
+    `dialect` is a fact about Claude Code rather than about one binding, so
     it is settled here and not passed in.
 
     :param config_dir: Where its settings and its notes are kept.
+    :param passthrough: Arguments handed to the agent unchanged.
     """
 
     config_dir: Path
+    passthrough: tuple[str, ...] = ()
     dialect: Dialect = field(init=False, default=Dialect.ANTHROPIC)
 
     def configure(self) -> None:
@@ -61,28 +70,55 @@ class ClaudeCode:
                 "there or what owns it, and run again."
             ) from error
 
-    def require_hosted_tools_denied(self, passthrough: list[str]) -> None:
-        """Refuse anything that would let the agent reach for WebSearch.
+    def read_hosted_tools(self) -> HostedToolsReport:
+        """Say whether WebSearch can still be reached from this run.
 
-        Both halves of it: the settings offgrid wrote, and the arguments that
-        decide whether the agent reads them.
+        Both halves of it, in the order they bite: an argument that stops the
+        settings being loaded leaves them beside the point, however they read.
 
-        :param passthrough: Arguments handed to the agent unchanged.
+        :return: What it found, and what to change.
 
-        :raise AgentSettingsError: When the settings are absent, cannot be
-            read, or do not deny it, or when an argument stops them counting.
+        :raise AgentSettingsError: When the settings are there and cannot be
+            read, which says nothing either way about WebSearch.
         """
-        settings = self.config_dir / SETTINGS
+        dropped = get_dropped_settings_sources(self.passthrough)
 
-        if "WebSearch" not in get_denied_tools(self._read_settings()):
-            raise AgentSettingsError(
-                f"{settings} does not deny WebSearch, which runs on Anthropic's "
-                "servers: against a local model there is nothing to run it, so the "
-                "model invents a result and the agent returns it as an answer. Add "
-                "it to permissions.deny, or delete the file and offgrid writes one."
+        if dropped is not None:
+            return HostedToolsReport(
+                hosted_tools=HostedTools.PERMITTED,
+                detail=(
+                    f"{SOURCES} {','.join(dropped)} does not name "
+                    f"`{WRITTEN_SOURCE}`, so nothing loads the deny on WebSearch."
+                ),
+                remedy=f"Add `{WRITTEN_SOURCE}` to the list, or drop the argument.",
             )
 
-        require_arguments_keep_the_settings_loaded(passthrough)
+        settings = self.config_dir / SETTINGS
+
+        if not settings.exists():
+            return HostedToolsReport(
+                hosted_tools=HostedTools.UNWRITTEN,
+                detail=f"{settings} is not there, so nothing denies WebSearch.",
+                remedy="`offgrid run` writes it before it starts the agent.",
+            )
+
+        if "WebSearch" in get_denied_tools(self._read_settings()):
+            return HostedToolsReport(
+                hosted_tools=HostedTools.DENIED,
+                detail=f"{settings} denies WebSearch.",
+            )
+
+        return HostedToolsReport(
+            hosted_tools=HostedTools.PERMITTED,
+            detail=(
+                f"{settings} does not deny WebSearch, which runs on Anthropic's "
+                "servers: against a local model there is nothing to run it, so "
+                "the model invents a result and the agent returns it as an answer."
+            ),
+            remedy=(
+                "Add it to permissions.deny, or delete the file and offgrid writes one."
+            ),
+        )
 
     def plan(
         self,
@@ -90,7 +126,6 @@ class ClaudeCode:
         *,
         host: str,
         token: str,
-        passthrough: list[str],
     ) -> Launch:
         """Work out how to start Claude Code against a local runtime.
 
@@ -98,7 +133,6 @@ class ClaudeCode:
         :param host: Address the runtime listens on, e.g. ``127.0.0.1:1234``.
         :param token: Credential the local server ignores but the agent
             requires.
-        :param passthrough: Arguments handed to the agent unchanged.
 
         :return: The environment and command to run.
         """
@@ -121,7 +155,7 @@ class ClaudeCode:
             "CLAUDE_CODE_DISABLE_1M_CONTEXT": "1",
         }
 
-        return Launch(env=env, argv=get_claude_args(passthrough))
+        return Launch(env=env, argv=get_claude_args(self.passthrough))
 
     def _write_missing(self, name: str, content: str) -> None:
         """Write one file of the configuration, unless it is already there.
@@ -136,23 +170,6 @@ class ClaudeCode:
         if not written.exists():
             written.write_text(content)
 
-    def _require_settings_file(self) -> Path:
-        """Answer with the settings file, which has to be there to deny.
-
-        :return: The path to it.
-
-        :raise AgentSettingsError: When it is not there.
-        """
-        settings = self.config_dir / SETTINGS
-
-        if not settings.exists():
-            raise AgentSettingsError(
-                f"{settings} is not there, so nothing denies WebSearch. "
-                "`offgrid run` writes it before it starts the agent."
-            )
-
-        return settings
-
     def _read_settings(self) -> object:
         """Read the settings file as whatever it holds.
 
@@ -162,10 +179,9 @@ class ClaudeCode:
 
         :return: What the file holds, in whatever shape it was written.
 
-        :raise AgentSettingsError: When it is absent, cannot be read, or is
-            not JSON.
+        :raise AgentSettingsError: When it cannot be read, or is not JSON.
         """
-        settings = self._require_settings_file()
+        settings = self.config_dir / SETTINGS
 
         try:
             body = settings.read_text()

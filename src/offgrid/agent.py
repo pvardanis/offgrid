@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Protocol
 
 from offgrid.dialect import Dialect
+from offgrid.hosted_tools import HostedToolsReport
 from offgrid.launch import Launch
 from offgrid.model import Model
 
@@ -49,26 +50,30 @@ class Agent(Protocol):
         """
         ...
 
-    def require_hosted_tools_denied(self, passthrough: list[str]) -> None:
-        """Refuse anything that lets the agent reach a hosted tool.
+    def read_hosted_tools(self) -> HostedToolsReport:
+        """Say what this agent can reach that offgrid cannot run here.
 
-        Its own job rather than part of configuring, because the failure it
-        prevents is silent: a tool that runs on its vendor's servers has
+        Its own member rather than part of configuring, because the failure
+        it describes is silent: a tool that runs on its vendor's servers has
         nothing to run it against a model on this machine, so the model emits
-        the call as prose and the agent returns that as a result — an invented
-        answer, with no error anywhere.
+        the call as prose and the agent returns that as a result — an
+        invented answer, with no error anywhere.
 
-        It reads the arguments as well as the configuration, because a
-        configuration only denies where the agent loads it, and an agent takes
-        arguments deciding whether it does. One call rather than two: what a
-        caller wants to know is whether the run is safe, and neither half
-        answers that alone.
+        It answers rather than refuses, so that one reading serves both the
+        command that must not proceed and the command that only reports. It
+        reads the arguments as well as the configuration, because a
+        configuration only denies where the agent loads it, and an agent
+        takes arguments deciding whether it does.
 
-        :param passthrough: Arguments handed to the agent unchanged.
+        It writes nothing and changes nothing. Rewriting a configuration
+        would overrule an edit a person made deliberately, and dropping an
+        argument would launch something other than what they typed — so the
+        remedy it carries is words rather than an action.
 
-        :raise AgentSettingsError: When the configuration permits one, is not
-            there to say otherwise, cannot be read, or when an argument stops
-            it being read.
+        :return: What it found, and what to change.
+
+        :raise AgentSettingsError: When the configuration is there and cannot
+            be read at all, which is not an answer about hosted tools.
         """
         ...
 
@@ -78,7 +83,6 @@ class Agent(Protocol):
         *,
         host: str,
         token: str,
-        passthrough: list[str],
     ) -> Launch:
         """Work out how to start the agent against a model.
 
@@ -91,11 +95,10 @@ class Agent(Protocol):
         :param host: Address the runtime listens on, e.g. ``127.0.0.1:1234``.
         :param token: Credential the local server ignores but the agent
             requires.
-        :param passthrough: Arguments handed to the agent unchanged.
 
         :return: The environment and command to run.
         """
         ...
 
 
-Prepare = Callable[[Path], Agent]
+Prepare = Callable[[Path, tuple[str, ...]], Agent]
