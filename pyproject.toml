@@ -86,7 +86,7 @@ source_modules = [
     "offgrid.machine",
     "offgrid.model",
     "offgrid.profile",
-    "offgrid.profile.flat",
+    "offgrid.profile.structure",
     "offgrid.profile.profile",
     "offgrid.profile.refusing",
     "offgrid.quality",
