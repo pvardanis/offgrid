@@ -484,24 +484,87 @@ loses to a `deny` rather than merging past it. The one that works does not
 touch permissions at all: it stops the file being loaded. offgrid writes the
 `user` source, and a list of sources omitting `user` never reads it.
 
-The last two rows are why the guard reads the last of those arguments rather
+The last two rows are why the last of those arguments is the one read, rather
 than the first. Claude Code takes the later value when given the flag twice,
-so a guard stopping at the first match would pass the one line that drops the
-deny and refuse the one that does not.
+so stopping at the first match would pass the one line that drops the deny and
+refuse the one that does not.
 
-So `require_hosted_tools_denied` takes the arguments and refuses that one,
-naming it. Refusing rather than warning, because the failure it prevents is
-silent and a warning scrolls off the top of a session that then runs for an
-hour — the same silence the guard exists to break. Only that one, because
+So the adapter reads the arguments alongside the settings, and a run that
+could reach the tool is refused rather than warned about: the failure is
+silent, and a warning scrolls off the top of a session that then runs for an
+hour — the same silence this exists to break. Only that one argument, because
 refusing the other four would cost someone a run to prevent nothing.
 
-It reads the arguments inside the member that already reads the settings,
-rather than in a fifth member on the port. The two halves answer one question —
-is this run going to invent answers — and neither answers it alone. It cannot
-go in `plan`, which runs after the model is held: a refusal there wastes the
-one wait in the program that nobody gets back.
+The arguments are read where the settings are read, rather than in a member of
+their own. The two halves answer one question — is this run going to invent
+answers — and neither answers it alone. Neither can go in `plan`, which runs
+after the model is held: a refusal there wastes the one wait in the program
+that nobody gets back.
 
 The answer is version-specific. It was measured, not read, and a later Claude
 Code could apply `deny` somewhere else. What protects that is the table above:
 re-run it and see, rather than trusting the tests, which encode the finding
 rather than checking it.
+
+## The agent answers; offgrid decides
+
+`require_hosted_tools_denied` was a member of the agent port that raised. It is
+now two things: `read_hosted_tools` on the port, answering with a
+`HostedToolsReport`, and `require_hosted_tools_denied` in `hosted_tools.py`,
+which takes that report and raises. `dialect.py` already had this shape —
+`agent.dialect` states a fact, `require_compatible` decides it is a problem,
+`cli.py` calls it — and this is the same split for the same reason.
+
+Three things follow from it, and the third is why it was worth doing.
+
+`doctor` can report what `run` refuses. #64 asked for a line beside the other
+four, and a member that raises cannot give one: two of the states — a
+configuration that permits the tool, and no configuration yet — raise the same
+exception, so telling them apart meant matching on the message. A reading with
+four states says which, and each command decides what that means. `run` refuses
+on `PERMITTED`; `doctor` prints and exits 0. `UNWRITTEN` never reaches `run`,
+because `configure` has written the file by then, which is what made that state
+awkward to word while the guard was the only caller.
+
+The policy stops being adapter business. Which tools are hosted, what the
+configuration says, and which arguments stop it being read are things only the
+adapter knows. That a reachable one stops a run is offgrid's rule, and a
+guarantee holding for one agent and not another would tell a person nothing.
+The words in the refusal are still the adapter's — the report carries its own
+`detail` and `remedy`, so the message a person reads names their file or their
+flag exactly as before.
+
+And an agent with no hosted tool has something true to say. opencode 1.18.14
+offers ten tools — bash, edit, glob, grep, read, skill, task, todowrite,
+webfetch, write — and every one runs on this machine; it speaks to whatever
+provider it is pointed at rather than to one vendor, so there is nothing
+server-side to deny. Measured the same way as the Claude Code table above, by
+reading the tool list it sends. Under a member that raises, its adapter would
+implement a guard whose body does nothing, indistinguishable from an adapter
+whose author never considered the question. Under a reading it answers
+`NONE_OFFERED`, which is a dated fact with evidence behind it.
+
+The reading writes nothing and changes nothing. Rewriting a settings file would
+overrule an edit someone made deliberately, and dropping an argument would
+launch something other than what they typed — both are the silent divergence
+this whole area exists to prevent, committed by the thing meant to prevent it.
+So the remedy it carries is words.
+
+## An adapter is bound to what a run has already settled
+
+`ClaudeCode` took a directory and was handed the arguments twice — once to
+check them, once to build a command line from them. Nothing made those the same
+arguments; `cli.py` passed one variable, but the types allowed a later edit to
+check one thing and launch another, which is exactly the hole the check exists
+to close.
+
+Both are settled before a run starts, so the adapter is bound to both:
+`Prepare` takes the directory and the arguments, and `plan` takes only the
+model, which is the one thing the run discovers. `doctor` binds with no
+arguments, and so reports on a configuration alone — which is all it can
+honestly speak to, since nobody types a command line for a run they have not
+made yet.
+
+The same rule settles `host` and `token` when there is a second agent to draw
+it from: bind what the profile and the command line have already fixed, pass
+what the run produces.
