@@ -26,7 +26,7 @@ from offgrid.agents.claude_code.launching import (
 )
 from offgrid.dialect import Dialect
 from offgrid.exceptions import AgentSettingsError
-from offgrid.hosted_tools import HostedTools, HostedToolsReport
+from offgrid.hosted_tools import HostedToolsReport, HostedToolsStatus
 from offgrid.launch import Launch
 from offgrid.model import Model
 
@@ -85,7 +85,7 @@ class ClaudeCode:
 
         if dropped is not None:
             return HostedToolsReport(
-                hosted_tools=HostedTools.PERMITTED,
+                status=HostedToolsStatus.PERMITTED,
                 detail=(
                     f"{SOURCES} {','.join(dropped)} does not name "
                     f"`{WRITTEN_SOURCE}`, so nothing loads the deny on WebSearch."
@@ -97,19 +97,19 @@ class ClaudeCode:
 
         if not settings.exists():
             return HostedToolsReport(
-                hosted_tools=HostedTools.UNWRITTEN,
+                status=HostedToolsStatus.UNWRITTEN,
                 detail=f"{settings} is not there, so nothing denies WebSearch.",
                 remedy="`offgrid run` writes it before it starts the agent.",
             )
 
         if "WebSearch" in get_denied_tools(self._read_settings()):
             return HostedToolsReport(
-                hosted_tools=HostedTools.DENIED,
+                status=HostedToolsStatus.DENIED,
                 detail=f"{settings} denies WebSearch.",
             )
 
         return HostedToolsReport(
-            hosted_tools=HostedTools.PERMITTED,
+            status=HostedToolsStatus.PERMITTED,
             detail=(
                 f"{settings} does not deny WebSearch, which runs on Anthropic's "
                 "servers: against a local model there is nothing to run it, so "
