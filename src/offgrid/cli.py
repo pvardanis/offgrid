@@ -78,14 +78,18 @@ def doctor() -> None:
     runtime = connect_runtime(profile)
     agent = prepare_agent(profile)
 
+    # Both readings happen before anything is printed, so a fault in either
+    # is reported as offgrid's own error rather than as a traceback under
+    # four lines that already looked like an answer.
     with _reporting():
         model = get_resident_model(runtime)
+        reachable = agent.read_hosted_tools()
 
     tell(f"  runtime   {profile.runtime.value} at {profile.host}, reachable")
     tell(f"  model     {model.identifier}")
     tell(f"  context   {model.context_limit or 'unstated'}")
     tell(f"  agent     {profile.agent.value}, speaking {agent.dialect.value}")
-    tell(f"  hosted    {agent.read_hosted_tools().hosted_tools}")
+    tell(f"  hosted    {reachable.hosted_tools}")
 
 
 @app.command()

@@ -226,6 +226,22 @@ def test_doctor_says_nothing_is_written_before_a_first_run(here):
     assert "unwritten" in result.stderr
 
 
+def test_doctor_reports_settings_it_cannot_read_rather_than_crashing(here):
+    # A file that is there and unreadable is a fault rather than an answer
+    # about hosted tools, and offgrid's own errors are reported: a traceback
+    # is what everything else gets.
+    runner.invoke(app, ["setup"])
+    config = here / "claude-code"
+    config.mkdir()
+    (config / "settings.json").write_text('{"permissions": ')
+
+    result = runner.invoke(app, ["doctor"])
+
+    assert result.exit_code == 1
+    assert result.exception is None or isinstance(result.exception, SystemExit)
+    assert "not readable as JSON" in result.stderr
+
+
 def test_doctor_writes_no_configuration(here):
     # It reports what a run would do. Reaching the registry to ask the agent
     # what it speaks binds a directory and nothing more.
