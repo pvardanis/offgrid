@@ -10,12 +10,13 @@ from offgrid.agent import Agent
 from offgrid.agents.claude_code.claude_code import ClaudeCode
 
 
-def prepare(config_dir: Path) -> Agent:
-    """Bind the directory Claude Code keeps its configuration in.
+def prepare(config_dir: Path, passthrough: tuple[str, ...]) -> Agent:
+    """Bind what Claude Code is run out of and started with.
 
     :param config_dir: Profile directory to use instead of the caller's own,
         which keeps their plugins and servers out of the cached prefix.
+    :param passthrough: Arguments handed to the agent unchanged.
 
     :return: An agent offgrid can configure and start.
     """
-    return ClaudeCode(config_dir=config_dir)
+    return ClaudeCode(config_dir=config_dir, passthrough=passthrough)

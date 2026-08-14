@@ -1,11 +1,9 @@
-"""How Claude Code is started, what it is given to work in, and what it refuses.
+"""How Claude Code is started, and what is read out of what it is given.
 
-What may be passed is settled beside what offgrid passes itself, because one
-argument decides whether the settings file is read at all — and a deny in a
+What was passed is read beside what offgrid passes itself, because one
+argument decides whether the settings file is loaded at all — and a deny in a
 file nothing loads protects nothing.
 """
-
-from offgrid.exceptions import AgentSettingsError
 
 # Decode runs at tens of tokens per second, so thinking and long replies cost
 # wall time directly.
@@ -22,7 +20,7 @@ SOURCES = "--setting-sources"
 WRITTEN_SOURCE = "user"
 
 
-def get_claude_args(passthrough: list[str]) -> list[str]:
+def get_claude_args(passthrough: tuple[str, ...]) -> list[str]:
     """Settle the command line Claude Code is started with.
 
     :param passthrough: Arguments handed to the agent unchanged.
@@ -40,8 +38,8 @@ def get_claude_args(passthrough: list[str]) -> list[str]:
     ]
 
 
-def require_arguments_keep_the_settings_loaded(arguments: list[str]) -> None:
-    """Refuse arguments that stop the settings file being read at all.
+def get_dropped_settings_sources(arguments: tuple[str, ...]) -> list[str] | None:
+    """List the sources an argument confines the agent to, where it drops ours.
 
     A deny only binds where the file carrying it is loaded, and one argument
     decides that. Measured against claude 2.1.231, the rest of what `--help`
@@ -51,22 +49,18 @@ def require_arguments_keep_the_settings_loaded(arguments: list[str]) -> None:
 
     :param arguments: What was handed to the agent unchanged.
 
-    :raise AgentSettingsError: When a list of sources leaves out the one
-        offgrid wrote.
+    :return: The sources named, where they leave out the one offgrid writes —
+        and none where the arguments still load it, or name none at all.
     """
     named = _read_setting_sources(arguments)
 
-    if named is not None and WRITTEN_SOURCE not in named:
-        raise AgentSettingsError(
-            f"{SOURCES} {','.join(named)} does not name `{WRITTEN_SOURCE}`, which "
-            "is the source offgrid writes its settings into, so nothing loads the "
-            "deny on WebSearch and the agent is offered it again. Against a model "
-            "on this machine there is nothing to run it, so the model invents a "
-            f"result. Add `{WRITTEN_SOURCE}` to the list, or drop the argument."
-        )
+    if named is None or WRITTEN_SOURCE in named:
+        return None
+
+    return named
 
 
-def _read_setting_sources(arguments: list[str]) -> list[str] | None:
+def _read_setting_sources(arguments: tuple[str, ...]) -> list[str] | None:
     """List the settings sources the arguments confine the agent to.
 
     The last of them, because that is the one Claude Code acts on: given the

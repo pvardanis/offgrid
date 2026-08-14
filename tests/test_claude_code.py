@@ -6,6 +6,7 @@ from offgrid.agents.claude_code import prepare
 from offgrid.agents.claude_code.launching import FALLBACK_CONTEXT
 from offgrid.dialect import Dialect
 from offgrid.exceptions import AgentSettingsError
+from offgrid.hosted_tools import HostedTools
 from offgrid.model import Model
 
 HOST = "127.0.0.1:1234"
@@ -13,13 +14,23 @@ HOST = "127.0.0.1:1234"
 
 @pytest.fixture
 def agent(tmp_path):
-    return prepare(tmp_path)
+    return prepare(tmp_path, ())
+
+
+@pytest.fixture
+def started_with(tmp_path):
+    """Answer with an agent bound to the arguments a run would hand on."""
+
+    def bind(*passthrough):
+        return prepare(tmp_path, passthrough)
+
+    return bind
 
 
 @pytest.fixture
 def launch(agent):
     model = Model(identifier="qwen/qwen3.6-35b-a3b", context_limit=212224)
-    return agent.plan(model, host=HOST, token="lmstudio", passthrough=[])
+    return agent.plan(model, host=HOST, token="lmstudio")
 
 
 def _settings(config_dir):
@@ -66,16 +77,16 @@ def test_volatile_prompt_sections_stay_out_of_the_cached_prefix(launch):
     assert "--exclude-dynamic-system-prompt-sections" in launch.argv
 
 
-def test_arguments_are_passed_through_to_the_agent(agent):
+def test_arguments_are_passed_through_to_the_agent(started_with):
     model = Model(identifier="a/b", context_limit=8192)
-    launch = agent.plan(model, host=HOST, token="t", passthrough=["-p", "hi"])
+    launch = started_with("-p", "hi").plan(model, host=HOST, token="t")
 
     assert launch.argv[-2:] == ["-p", "hi"]
 
 
 def test_a_model_with_no_stated_context_gets_a_workable_default(agent):
     unstated = Model(identifier="a/b", context_limit=0)
-    launch = agent.plan(unstated, host=HOST, token="t", passthrough=[])
+    launch = agent.plan(unstated, host=HOST, token="t")
 
     assert launch.env["CLAUDE_CODE_AUTO_COMPACT_WINDOW"] == str(FALLBACK_CONTEXT)
 
@@ -84,7 +95,7 @@ def test_planning_a_launch_writes_nothing(agent, tmp_path):
     # An environment and an argument list can be shown before anything runs,
     # which is only true while building one changes nothing on disk.
     model = Model(identifier="a/b", context_limit=8192)
-    agent.plan(model, host=HOST, token="t", passthrough=[])
+    agent.plan(model, host=HOST, token="t")
 
     assert list(tmp_path.iterdir()) == []
 
@@ -149,18 +160,20 @@ def test_a_configuration_that_cannot_be_written_says_what_stopped_it(tmp_path):
     in_the_way.write_text("")
 
     with pytest.raises(AgentSettingsError, match="cannot be written"):
-        prepare(in_the_way / "claude-code").configure()
+        prepare(in_the_way / "claude-code", ()).configure()
 
 
-def test_what_the_agent_writes_for_itself_passes_its_own_guard(agent):
+def test_what_the_agent_writes_for_itself_reads_as_denied(agent):
     agent.configure()
 
-    agent.require_hosted_tools_denied([])
+    assert agent.read_hosted_tools().hosted_tools is HostedTools.DENIED
 
 
-def test_configuring_does_not_refuse_settings_the_guard_would(agent, tmp_path):
-    # Two jobs, and only one of them is allowed to stop a run: settings that
-    # would let the agent search are still an edit worth keeping.
+def test_configuring_does_not_refuse_settings_the_reading_would_call_permitted(
+    agent, tmp_path
+):
+    # Two jobs, and only one of them may stop a run: settings that would let
+    # the agent search are still an edit worth keeping.
     permitting = '{"theme": "mine"}'
     (tmp_path / "settings.json").write_text(permitting)
 
@@ -169,69 +182,80 @@ def test_configuring_does_not_refuse_settings_the_guard_would(agent, tmp_path):
     assert (tmp_path / "settings.json").read_text() == permitting
 
 
-def test_settings_that_would_let_the_agent_search_are_refused(agent, tmp_path):
+def test_settings_that_would_let_the_agent_search_read_as_permitted(agent, tmp_path):
     # The file is hand-editable, and an edit that drops the deny brings back
     # the invented answers it was written to prevent.
     (tmp_path / "settings.json").write_text('{"theme": "mine"}')
 
-    with pytest.raises(AgentSettingsError, match="WebSearch"):
-        agent.require_hosted_tools_denied([])
+    found = agent.read_hosted_tools()
+
+    assert found.hosted_tools is HostedTools.PERMITTED
+    assert "WebSearch" in found.detail
+    assert "permissions.deny" in found.remedy
 
 
-def test_arguments_that_stop_the_settings_being_read_are_refused(agent):
+def test_settings_nobody_has_written_yet_are_not_called_permitted(agent):
+    # `setup` writes a profile and no agent configuration, so this is every
+    # machine before its first run. Nothing is wrong, and nothing is denied.
+    found = agent.read_hosted_tools()
+
+    assert found.hosted_tools is HostedTools.UNWRITTEN
+    assert "offgrid run" in found.remedy
+
+
+def test_an_argument_that_drops_the_settings_reads_as_permitted(started_with):
     # Measured against claude 2.1.231: a --setting-sources list without `user`
-    # never loads the file offgrid wrote, and WebSearch is offered again.
+    # never loads the file offgrid wrote, and WebSearch is offered again. The
+    # file is correct here — the argument is what makes it beside the point.
+    agent = started_with("--setting-sources", "project,local")
     agent.configure()
 
-    with pytest.raises(AgentSettingsError) as refused:
-        agent.require_hosted_tools_denied(["--setting-sources", "project,local"])
+    found = agent.read_hosted_tools()
 
-    # What a person can act on: which argument, what it cost them, what to
-    # type instead. A message worn down to the flag name says none of it.
-    complaint = str(refused.value)
-    assert "--setting-sources project,local" in complaint
-    assert "WebSearch" in complaint
-    assert "Add `user` to the list, or drop the argument." in complaint
+    assert found.hosted_tools is HostedTools.PERMITTED
+    assert "--setting-sources project,local" in found.detail
+    assert found.remedy == "Add `user` to the list, or drop the argument."
 
 
-def test_the_joined_spelling_of_that_argument_is_refused_too(agent):
+def test_the_joined_spelling_of_that_argument_is_read_too(started_with):
     # Claude Code takes a value either way round, and both were measured to
-    # drop the deny, so reading only one of them refuses half the cases.
+    # drop the deny, so reading only one of them misses half the cases.
+    agent = started_with("--setting-sources=project,local")
     agent.configure()
 
-    with pytest.raises(AgentSettingsError, match="--setting-sources"):
-        agent.require_hosted_tools_denied(["--setting-sources=project,local"])
+    assert agent.read_hosted_tools().hosted_tools is HostedTools.PERMITTED
 
 
-def test_the_last_of_two_such_arguments_is_the_one_that_counts(agent):
+def test_the_last_of_two_such_arguments_is_the_one_that_counts(started_with):
     # Claude Code takes the last, measured both ways round: naming `user`
-    # first and dropping it after leaves WebSearch offered, so a guard reading
-    # the first argument passes exactly the line that defeats it.
-    agent.configure()
-
-    with pytest.raises(AgentSettingsError, match="--setting-sources"):
-        agent.require_hosted_tools_denied(
-            ["--setting-sources", "user", "--setting-sources", "project,local"]
-        )
-
-
-def test_a_later_argument_naming_it_again_is_allowed(agent):
-    # The same rule from the other side: the last one names `user`, so the
-    # settings load and refusing would cost a run that was never at risk.
-    agent.configure()
-
-    agent.require_hosted_tools_denied(
-        ["--setting-sources", "project,local", "--setting-sources", "user"]
+    # first and dropping it after leaves WebSearch offered, so reading the
+    # first argument passes exactly the line that defeats it.
+    agent = started_with(
+        "--setting-sources", "user", "--setting-sources", "project,local"
     )
-
-
-def test_sources_that_still_name_the_one_offgrid_wrote_are_allowed(agent):
-    # The argument is not the problem — leaving out `user` is. Narrowing the
-    # sources while keeping that one still loads the deny. Spaced, and named
-    # second, so the entry that has to match is the one carrying the space.
     agent.configure()
 
-    agent.require_hosted_tools_denied(["--setting-sources", "project, user"])
+    assert agent.read_hosted_tools().hosted_tools is HostedTools.PERMITTED
+
+
+def test_a_later_argument_naming_it_again_reads_as_denied(started_with):
+    # The same rule from the other side: the last one names `user`, so the
+    # settings load and calling this permitted would cost a run never at risk.
+    agent = started_with(
+        "--setting-sources", "project,local", "--setting-sources", "user"
+    )
+    agent.configure()
+
+    assert agent.read_hosted_tools().hosted_tools is HostedTools.DENIED
+
+
+def test_sources_that_still_name_the_one_offgrid_wrote_read_as_denied(started_with):
+    # The argument is not the problem — leaving out `user` is. Spaced, and
+    # named second, so the entry that has to match carries the space.
+    agent = started_with("--setting-sources", "project, user")
+    agent.configure()
+
+    assert agent.read_hosted_tools().hosted_tools is HostedTools.DENIED
 
 
 @pytest.mark.parametrize(
@@ -244,23 +268,28 @@ def test_sources_that_still_name_the_one_offgrid_wrote_are_allowed(agent):
     ],
     ids=["skip permissions", "bypass mode", "allow the tool", "a prompt naming it"],
 )
-def test_arguments_measured_to_leave_the_deny_standing_are_allowed(agent, argument):
+def test_arguments_measured_to_leave_the_deny_standing_read_as_denied(
+    started_with, argument
+):
     # Regression guards, not slices. The first three read as though they undo
     # the deny and do not: against claude 2.1.231 the tool list is built with
     # `deny` already applied, so nothing that turns a permission check off or
-    # adds an allow puts WebSearch back. Refusing them would cost someone a
-    # run for no gain. The fourth is the flag as a value rather than as an
-    # argument, which reaches the model as text and configures nothing.
+    # adds an allow puts WebSearch back. Calling them permitted would cost
+    # someone a run for no gain. The fourth is the flag as a value rather than
+    # as an argument, which reaches the model as text and configures nothing.
+    agent = started_with(*argument)
     agent.configure()
 
-    agent.require_hosted_tools_denied(argument)
+    assert agent.read_hosted_tools().hosted_tools is HostedTools.DENIED
 
 
 def test_settings_that_are_not_readable_json_are_refused(agent, tmp_path):
+    # Not an answer about hosted tools: the file is there and says nothing
+    # either way, which is a fault to fix rather than a state to report.
     (tmp_path / "settings.json").write_text('{"permissions": ')
 
     with pytest.raises(AgentSettingsError, match="not readable as JSON"):
-        agent.require_hosted_tools_denied([])
+        agent.read_hosted_tools()
 
 
 @pytest.mark.parametrize(
@@ -272,7 +301,7 @@ def test_settings_that_are_not_readable_json_are_refused(agent, tmp_path):
     ],
     ids=["deny is a word", "permissions is a list", "the file is a list"],
 )
-def test_settings_shaped_so_nothing_denies_anything_are_refused(
+def test_settings_shaped_so_nothing_denies_anything_read_as_permitted(
     agent, tmp_path, written
 ):
     # Regression guards, not slices: they pass as written. A settings file is
@@ -281,15 +310,7 @@ def test_settings_shaped_so_nothing_denies_anything_are_refused(
     # calling the run safe is the invented answer the guard exists to stop.
     (tmp_path / "settings.json").write_text(written)
 
-    with pytest.raises(AgentSettingsError, match="does not deny WebSearch"):
-        agent.require_hosted_tools_denied([])
-
-
-def test_settings_that_are_not_there_at_all_are_refused(agent, tmp_path):
-    # Nothing denies WebSearch, which is what the guard is asked. Saying the
-    # file is missing sends someone to `configure` rather than to an editor.
-    with pytest.raises(AgentSettingsError, match="offgrid run"):
-        agent.require_hosted_tools_denied([])
+    assert agent.read_hosted_tools().hosted_tools is HostedTools.PERMITTED
 
 
 def test_settings_that_are_not_text_are_not_called_bad_json(agent, tmp_path):
@@ -298,7 +319,7 @@ def test_settings_that_are_not_text_are_not_called_bad_json(agent, tmp_path):
     (tmp_path / "settings.json").write_bytes(b'{"permissions": \xff}')
 
     with pytest.raises(AgentSettingsError, match="cannot be read") as refused:
-        agent.require_hosted_tools_denied([])
+        agent.read_hosted_tools()
 
     assert "JSON" not in str(refused.value)
 
@@ -309,6 +330,6 @@ def test_settings_that_are_there_and_unreadable_are_not_called_missing(agent, tm
     (tmp_path / "settings.json").mkdir()
 
     with pytest.raises(AgentSettingsError, match="cannot be read") as refused:
-        agent.require_hosted_tools_denied([])
+        agent.read_hosted_tools()
 
     assert "is not there" not in str(refused.value)
