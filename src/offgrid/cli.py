@@ -19,12 +19,11 @@ from offgrid.machine import detect, suggest_raising_the_gpu_limit
 from offgrid.profile import DEFAULT_PATH, Profile, save
 from offgrid.profile import load as load_profile
 from offgrid.recommendation import summarize_findings
+from offgrid.runtime import RuntimeConfig
 from offgrid.runtimes import connect_runtime
 from offgrid.say import say_on_stderr, tell
 
 DEFAULT_HOST = "127.0.0.1:1234"
-# The local server ignores it; the agent refuses to start without one.
-TOKEN = "local"
 BILLION = 1e9
 GIB = 1024**3
 
@@ -46,8 +45,8 @@ def setup(
 ) -> None:
     """Measure this machine and record how to reach the runtime."""
     machine = detect()
-    profile = _stored() or Profile(host=DEFAULT_HOST)
-    save(profile.model_copy(update={"host": host or profile.host}), DEFAULT_PATH)
+    profile = _stored() or Profile(runtime=RuntimeConfig(host=DEFAULT_HOST))
+    save(_listening_at(profile, host or profile.runtime.host), DEFAULT_PATH)
 
     tell(f"  {machine.chip} · {machine.memory_bytes / GIB:.0f}GB unified memory")
     limit = machine.wired_limit_bytes
@@ -75,20 +74,23 @@ def setup(
 def doctor() -> None:
     """Check that the runtime is reachable and holding a model."""
     profile = _profile()
-    runtime = connect_runtime(profile)
-    agent = prepare_agent(profile)
 
-    # Both readings happen before anything is printed, so a fault in either
-    # is reported as offgrid's own error rather than as a traceback under
-    # four lines that already looked like an answer.
+    # Binding and both readings happen before anything is printed, so a fault
+    # in any of them is reported as offgrid's own error rather than as a
+    # traceback under four lines that already looked like an answer.
     with _reporting():
+        runtime = connect_runtime(profile)
+        agent = prepare_agent(profile)
+
         model = get_resident_model(runtime)
         report = agent.read_hosted_tools()
 
-    tell(f"  runtime   {profile.runtime.value} at {profile.host}, reachable")
+    tell(
+        f"  runtime   {profile.runtime.name.value} at {profile.runtime.host}, reachable"
+    )
     tell(f"  model     {model.identifier}")
     tell(f"  context   {model.context_limit or 'unstated'}")
-    tell(f"  agent     {profile.agent.value}, speaking {agent.dialect.value}")
+    tell(f"  agent     {profile.agent.name.value}, speaking {agent.dialect.value}")
     tell(f"  hosted    {report.status}")
 
     # What a run would refuse with, said here instead of after the load it
@@ -126,12 +128,13 @@ def run(
 ) -> None:
     """Start the agent against a model the runtime is holding."""
     profile = _profile()
-    runtime = connect_runtime(profile)
     passthrough = tuple(context.args)
-    agent = prepare_agent(profile, passthrough)
     wanted = model_name or profile.model
 
     with _reporting():
+        runtime = connect_runtime(profile)
+        agent = prepare_agent(profile, passthrough)
+
         # A dialect that cannot be paired and a run that would undo a
         # guarantee are both knowable before a load, and a load is tens of
         # seconds nobody gets back.
@@ -146,11 +149,7 @@ def run(
     try:
         tell(f"  {model.identifier}, context {model.context_limit or 'unstated'}")
 
-        launch = agent.plan(
-            model,
-            host=profile.host,
-            token=TOKEN,
-        )
+        launch = agent.plan(model)
 
         try:
             code = start(launch)
@@ -179,6 +178,19 @@ def _reporting() -> Iterator[None]:
     except OffgridError as error:
         tell(f"  {error}")
         raise typer.Exit(1) from error
+
+
+def _listening_at(profile: Profile, host: str) -> Profile:
+    """Answer with the profile, saying the runtime listens somewhere.
+
+    :param profile: What is stored, or what would be.
+    :param host: Where the runtime listens.
+
+    :return: The same profile, with the address under its runtime.
+    """
+    return profile.model_copy(
+        update={"runtime": profile.runtime.model_copy(update={"host": host})}
+    )
 
 
 def _stored() -> Profile | None:

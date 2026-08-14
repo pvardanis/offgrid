@@ -19,6 +19,7 @@ from offgrid.exceptions import (
     RuntimeUnreachableError,
 )
 from offgrid.runtimes.lmstudio import connect
+from offgrid.runtimes.lmstudio.binding import LMStudioConfig
 from tests.doubles import (
     answer_as_lm_studio,
     refuse_to_let_go,
@@ -33,7 +34,7 @@ def test_a_model_the_runtime_does_not_have_names_what_lists_them(monkeypatch):
     answer_as_lm_studio(monkeypatch, holding={"a/held-7b": 8192})
 
     with pytest.raises(ModelUnavailableError, match="offgrid doctor") as refused:
-        connect(HOST).ensure_only("a/absent-7b")
+        connect(LMStudioConfig(host=HOST)).ensure_only("a/absent-7b")
 
     assert HOST in str(refused.value)
 
@@ -44,7 +45,7 @@ def test_what_a_swap_costs_is_said_before_it_is_paid(monkeypatch, caplog):
     )
 
     with caplog.at_level(logging.INFO, logger="offgrid.runtimes.lmstudio"):
-        connect(HOST).ensure_only("a/other-7b")
+        connect(LMStudioConfig(host=HOST)).ensure_only("a/other-7b")
 
     assert any(
         "Letting go of a/held-7b" in record.getMessage()
@@ -57,7 +58,7 @@ def test_the_wait_for_a_load_is_said_while_it_is_waited_for(monkeypatch, caplog)
     answer_as_lm_studio(monkeypatch, cold={"a/other-7b": 8192})
 
     with caplog.at_level(logging.INFO, logger="offgrid.runtimes.lmstudio"):
-        connect(HOST).ensure_only("a/other-7b")
+        connect(LMStudioConfig(host=HOST)).ensure_only("a/other-7b")
 
     said = [record.getMessage() for record in caplog.records]
     assert any("Loading a/other-7b" in line for line in said)
@@ -72,7 +73,7 @@ def test_a_model_already_held_is_not_let_go_of_and_loaded_again(monkeypatch):
         monkeypatch, holding={"a/held-7b": 8192, "a/wanted-7b": 8192}
     )
 
-    connect(HOST).ensure_only("a/wanted-7b")
+    connect(LMStudioConfig(host=HOST)).ensure_only("a/wanted-7b")
 
     assert asked["loaded"] is None
     assert asked["let_go"] == ["a/held-7b"]
@@ -87,7 +88,7 @@ def test_every_model_held_is_let_go_not_only_the_first(monkeypatch):
         cold={"a/other-7b": 8192},
     )
 
-    connect(HOST).ensure_only("a/other-7b")
+    connect(LMStudioConfig(host=HOST)).ensure_only("a/other-7b")
 
     assert asked["order"] == [
         ("let_go", "a/held-7b"),
@@ -106,7 +107,7 @@ def test_a_swap_that_freed_nothing_does_not_load_on_top_of_it(monkeypatch):
     refuse_to_let_go(monkeypatch, "it would not go")
 
     with pytest.raises(RuntimeUnreachableError, match="still holding"):
-        connect(HOST).ensure_only("a/other-7b")
+        connect(LMStudioConfig(host=HOST)).ensure_only("a/other-7b")
 
     assert asked["loaded"] is None
 
@@ -119,10 +120,12 @@ def test_a_model_already_held_answers_even_where_another_will_not_go(monkeypatch
     answer_as_lm_studio(monkeypatch, holding={"a/wanted-7b": 8192, "a/stuck-7b": 8192})
     refuse_to_let_go(monkeypatch, "it would not go")
 
-    model = connect(HOST).ensure_only("a/wanted-7b")
+    model = connect(LMStudioConfig(host=HOST)).ensure_only("a/wanted-7b")
 
     assert model.identifier == "a/wanted-7b"
-    assert [held.identifier for held in connect(HOST).read_held()] == [
+    assert [
+        held.identifier for held in connect(LMStudioConfig(host=HOST)).read_held()
+    ] == [
         "a/wanted-7b",
         "a/stuck-7b",
     ]
@@ -135,7 +138,7 @@ def test_what_a_model_that_will_not_go_costs_is_said_where_the_run_goes_on(
     refuse_to_let_go(monkeypatch, "it would not go")
 
     with caplog.at_level(logging.WARNING, logger="offgrid.runtimes.lmstudio"):
-        connect(HOST).ensure_only("a/wanted-7b")
+        connect(LMStudioConfig(host=HOST)).ensure_only("a/wanted-7b")
 
     assert any(
         "still holding a/stuck-7b" in record.getMessage() for record in caplog.records
@@ -154,7 +157,7 @@ def test_a_model_that_will_not_stay_held_is_reported(monkeypatch):
     )
 
     with pytest.raises(ModelNotHeldError, match="accepted"):
-        connect(HOST).ensure_only("a/other-7b")
+        connect(LMStudioConfig(host=HOST)).ensure_only("a/other-7b")
 
 
 def test_a_model_that_did_not_stay_held_is_let_go_of_before_the_error(monkeypatch):
@@ -169,7 +172,7 @@ def test_a_model_that_did_not_stay_held_is_let_go_of_before_the_error(monkeypatc
     )
 
     with pytest.raises(ModelNotHeldError):
-        connect(HOST).ensure_only("a/other-7b")
+        connect(LMStudioConfig(host=HOST)).ensure_only("a/other-7b")
 
     assert "a/other-7b" in asked["let_go"]
 
@@ -183,7 +186,7 @@ def test_a_load_that_is_interrupted_lets_go_of_what_it_started(monkeypatch):
     serve_post(monkeypatch, interrupted)
 
     with pytest.raises(KeyboardInterrupt):
-        connect(HOST).ensure_only("a/other-7b")
+        connect(LMStudioConfig(host=HOST)).ensure_only("a/other-7b")
 
     assert "a/other-7b" in asked["let_go"]
 
@@ -193,14 +196,14 @@ def test_letting_go_says_whether_the_memory_came_back(monkeypatch):
     # answer it can branch on.
     answer_as_lm_studio(monkeypatch, holding={"a/held-7b": 8192})
 
-    assert connect(HOST).let_go("a/held-7b") is True
+    assert connect(LMStudioConfig(host=HOST)).let_go("a/held-7b") is True
 
 
 def test_letting_go_says_when_the_memory_did_not_come_back(monkeypatch):
     answer_as_lm_studio(monkeypatch, holding={"a/held-7b": 8192})
     refuse_to_let_go(monkeypatch, "it would not go")
 
-    assert connect(HOST).let_go("a/held-7b") is False
+    assert connect(LMStudioConfig(host=HOST)).let_go("a/held-7b") is False
 
 
 def test_a_runtime_that_will_not_let_go_is_said_rather_than_raised(monkeypatch, caplog):
@@ -210,7 +213,7 @@ def test_a_runtime_that_will_not_let_go_is_said_rather_than_raised(monkeypatch, 
     refuse_to_let_go(monkeypatch, "it would not go")
 
     with caplog.at_level(logging.WARNING, logger="offgrid.runtimes.lmstudio"):
-        connect(HOST).let_go("a/held-7b")
+        connect(LMStudioConfig(host=HOST)).let_go("a/held-7b")
 
     assert any("still holding" in record.getMessage() for record in caplog.records)
 
@@ -223,7 +226,7 @@ def test_a_tool_that_freed_nothing_is_not_taken_at_its_word(monkeypatch, caplog)
     run_tool(monkeypatch, returncode=0, stdout="Model Not Found")
 
     with caplog.at_level(logging.WARNING, logger="offgrid.runtimes.lmstudio"):
-        came_back = connect(HOST).let_go("a/held-7b")
+        came_back = connect(LMStudioConfig(host=HOST)).let_go("a/held-7b")
 
     assert came_back is False
     assert any("still holding" in record.getMessage() for record in caplog.records)
@@ -234,7 +237,7 @@ def test_what_is_held_is_read_back_as_it_is_served(monkeypatch):
         monkeypatch, holding={"a/held-7b": 8192}, cold={"a/other-7b": 8192}
     )
 
-    connection = connect(HOST)
+    connection = connect(LMStudioConfig(host=HOST))
 
     assert [model.identifier for model in connection.read_held()] == ["a/held-7b"]
     assert [model.identifier for model in connection.read_catalogue()] == [
@@ -250,7 +253,7 @@ def test_a_model_is_answered_for_as_it_is_served_not_as_it_is_catalogued(monkeyp
     # instead — which is the failure compacting exists to avoid.
     answer_as_lm_studio(monkeypatch, cold={"a/other-7b": 32768})
 
-    model = connect(HOST).ensure_only("a/other-7b")
+    model = connect(LMStudioConfig(host=HOST)).ensure_only("a/other-7b")
 
     assert model.identifier == "a/other-7b"
     assert model.context_limit == 32768

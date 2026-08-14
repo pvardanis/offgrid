@@ -5,6 +5,7 @@ import pytest
 
 from offgrid.dialect import Dialect
 from offgrid.runtimes.lmstudio import connect
+from offgrid.runtimes.lmstudio.binding import LMStudioConfig
 from offgrid.runtimes.lmstudio.catalogue import (
     get_loaded_models,
     parse_models_from_payload,
@@ -82,4 +83,4 @@ def test_a_model_the_api_describes_sparsely_still_parses():
 
 
 def test_lm_studio_serves_the_anthropic_dialect():
-    assert connect("127.0.0.1:1234").dialect is Dialect.ANTHROPIC
+    assert connect(LMStudioConfig(host="127.0.0.1:1234")).dialect is Dialect.ANTHROPIC

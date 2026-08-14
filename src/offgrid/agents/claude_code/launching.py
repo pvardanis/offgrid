@@ -9,6 +9,10 @@ file nothing loads protects nothing.
 # wall time directly.
 MAX_OUTPUT_TOKENS = 8192
 
+# The local server ignores it; Claude Code refuses to start without one, so it
+# is a fact about this agent rather than about the runtime it is pointed at.
+TOKEN = "local"
+
 # Used when the runtime states no context for a model. Small enough to be
 # served by anything, large enough to hold a conversation.
 FALLBACK_CONTEXT = 32768

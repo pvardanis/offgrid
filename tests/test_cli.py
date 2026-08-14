@@ -130,7 +130,7 @@ def test_setup_writes_a_profile_that_can_be_read_back(here):
     from offgrid.profile import load
 
     runner.invoke(app, ["setup"])
-    assert load(here / "profile.yaml").host == "127.0.0.1:1234"
+    assert load(here / "profile.yaml").runtime.host == "127.0.0.1:1234"
 
 
 def test_setup_writes_nothing_it_measured_into_the_profile(here):
@@ -140,7 +140,19 @@ def test_setup_writes_nothing_it_measured_into_the_profile(here):
 
     written = yaml.safe_load((here / "profile.yaml").read_text())
 
-    assert set(written) == {"host", "runtime", "agent", "model"}
+    assert set(written) == {"runtime", "agent", "model"}
+    assert set(written["runtime"]) == {"name", "host"}
+
+
+def test_setup_writes_the_shape_offgrid_reads(here):
+    # What offgrid writes and what it refuses have to agree, or the first
+    # thing a person does after `setup` is fix the file it just wrote.
+    runner.invoke(app, ["setup"])
+
+    written = yaml.safe_load((here / "profile.yaml").read_text())
+
+    assert written["runtime"] == {"name": "lmstudio", "host": "127.0.0.1:1234"}
+    assert written["agent"] == {"name": "claude-code"}
 
 
 def test_setup_run_again_keeps_what_was_edited_by_hand(here):
@@ -176,7 +188,7 @@ def test_setup_takes_the_host_it_is_given_over_the_stored_one(here):
 
     from offgrid.profile import load
 
-    assert load(here / "profile.yaml").host == "127.0.0.1:1234"
+    assert load(here / "profile.yaml").runtime.host == "127.0.0.1:1234"
 
 
 def test_setup_keeps_a_host_that_was_stored_when_none_is_given(here):
@@ -185,7 +197,7 @@ def test_setup_keeps_a_host_that_was_stored_when_none_is_given(here):
 
     from offgrid.profile import load
 
-    assert load(here / "profile.yaml").host == "10.0.0.5:4321"
+    assert load(here / "profile.yaml").runtime.host == "10.0.0.5:4321"
 
 
 def test_doctor_needs_a_profile_first(here):
@@ -202,6 +214,46 @@ def test_doctor_reports_the_runtime_the_profile_names(here):
     result = runner.invoke(app, ["doctor"])
 
     assert "lmstudio" in result.stderr
+
+
+def test_doctor_refuses_a_key_the_agent_it_names_does_not_read(here):
+    # A section is permissive until the registry narrows it, so this is where
+    # a typo under `agent:` is caught. It is caught before anything is asked
+    # of the runtime, and it names the section as well as the key.
+    runner.invoke(app, ["setup"])
+    _add_to_section(here, "agent", "theme: dark")
+
+    result = runner.invoke(app, ["doctor"])
+
+    assert result.exit_code == 1
+    assert "`agent` section" in result.stderr
+    assert "theme" in result.stderr
+    assert "claude-code" in result.stderr
+
+
+def test_doctor_refuses_a_key_the_runtime_it_names_does_not_read(here):
+    runner.invoke(app, ["setup"])
+    _add_to_section(here, "runtime", "timeout: 30")
+
+    result = runner.invoke(app, ["doctor"])
+
+    assert result.exit_code == 1
+    assert "`runtime` section" in result.stderr
+    assert "timeout" in result.stderr
+    assert "lmstudio" in result.stderr
+
+
+def test_run_refuses_a_key_the_agent_it_names_does_not_read(here, monkeypatch):
+    # Before the load, like every other refusal a run can make in advance.
+    runner.invoke(app, ["setup"])
+    started = _launched(monkeypatch)
+    _add_to_section(here, "agent", "theme: dark")
+
+    result = runner.invoke(app, ["run"])
+
+    assert result.exit_code == 1
+    assert "`agent` section" in result.stderr
+    assert not started
 
 
 def test_doctor_reports_the_agent_the_profile_names_and_what_it_speaks(here):
@@ -657,6 +709,15 @@ def _name_in_profile(here, identifier: str) -> None:
     """Write a model into the stored profile, as a person editing it would."""
     path = here / "profile.yaml"
     path.write_text(path.read_text() + f"model: {identifier}\n")
+
+
+def _add_to_section(here, port: str, line: str) -> None:
+    """Type a line into one section of the stored profile."""
+    path = here / "profile.yaml"
+    written = yaml.safe_load(path.read_text())
+    written[port] = written[port] | yaml.safe_load(line)
+
+    path.write_text(yaml.safe_dump(written, sort_keys=False))
 
 
 def _listed(

@@ -54,8 +54,9 @@ Five words carry the whole design, and the modules are named after them.
   dialects match. offgrid refuses the pair rather than translating between them.
 - **held**, **resident** — a model the runtime currently has in memory. A held
   model answers immediately; anything else costs a load first.
-- **profile** — what offgrid remembers between runs: where the runtime listens,
-  which runtime and agent to use, and which model to run.
+- **profile** — what offgrid remembers between runs: one section per adapter,
+  saying which runtime and agent to use and whatever each of them reads, plus
+  which model to run.
 
 ## Why
 
@@ -248,8 +249,10 @@ downloaded, and nothing is written.
 | [LM Studio](https://lmstudio.ai/) | `anthropic` | ✅ |
 | [Ollama](https://ollama.com/) | `openai` | ❌ |
 
-Adding one is a module in `runtimes/` exposing a `connect(host)`, and one line
-in the registry beside it. What that answers with satisfies `Runtime`: it
+Adding one is a module in `runtimes/` exposing a `read_config(section)` and a
+`connect(config)`, and one line each in the two registries beside it. The
+config declares which keys the runtime section may carry, and offgrid refuses
+the rest on the adapter's behalf. What that answers with satisfies `Runtime`: it
 reports a dialect and what it can be asked to do, lists what it has and what it
 holds, holds one model alone, and lets one go. How it reaches that state is its
 own business, and nothing above knows which runtime is answering.
@@ -297,8 +300,11 @@ back. The catalogue can.
 | [Claude Code](https://claude.com/claude-code) | `anthropic` | ✅ |
 | [OpenCode](https://opencode.ai/) | either, per provider | ❌ |
 
-Adding one is a module in `agents/`: report a dialect, build a launch — an
-environment and an argument list — and prepare whatever profile it reads.
+Adding one is a module in `agents/`: declare which keys your section carries,
+report a dialect, build a launch — an environment and an argument list — and
+prepare whatever profile it reads. The adapter is handed where the runtime
+listens when it is built, so an agent that writes that into a config file of
+its own can do it while it configures.
 Launches are built rather than exported, so a caller can show one before
 anything runs.
 
@@ -350,20 +356,30 @@ error anywhere. `WebFetch` is genuinely local and stays enabled.
 `~/.offgrid/profile.yaml`, hand-editable:
 
 ```yaml
-host: 127.0.0.1:1234
-runtime: lmstudio
-agent: claude-code
+runtime:
+  name: lmstudio
+  host: 127.0.0.1:1234
+agent:
+  name: claude-code
 model: qwen/qwen3.6-35b-a3b
 ```
 
 | Key | Meaning |
 |---|---|
-| `host` | where the runtime listens |
-| `runtime`, `agent` | which adapters to use. A name offgrid has no adapter for is refused rather than recorded |
+| `runtime.name`, `agent.name` | which adapters to use. A name offgrid has no adapter for is refused rather than recorded |
+| `runtime.host` | where the runtime listens. It sits under the runtime because that is the only thing it means anything to |
 | `model` | what `run` uses when the command line names nothing |
 
+One section per adapter, so an adapter with settings of its own has somewhere
+to put them and the file says what belongs to what.
+
 A typo is an error rather than a shrug: `modle:` is reported, not read as "no
-model named".
+model named". So is a key the adapter a section names does not read — that one
+is caught a moment later, when the command binds the adapter, and the message
+names the section as well as the key.
+
+A profile in the older flat shape — `host:` beside `runtime:` — is refused,
+with the shape above in the message. There is no migration.
 
 Nothing measured is kept here. `setup` reads the chip, the memory and the GPU
 limit and prints them; every command that needs them reads them again, so a

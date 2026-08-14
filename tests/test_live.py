@@ -32,7 +32,7 @@ def host() -> str:
     :return: The address from the profile.
     """
     try:
-        return load_profile().host
+        return load_profile().runtime.host
     except OffgridError as error:
         pytest.skip(f"no profile to read the runtime's address from: {error}")
 

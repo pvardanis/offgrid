@@ -2,19 +2,25 @@ import json
 
 import pytest
 
-from offgrid.agents.claude_code import prepare
+from offgrid.agent import AgentConfig
+from offgrid.agents.claude_code import prepare, read_config
 from offgrid.agents.claude_code.launching import FALLBACK_CONTEXT
 from offgrid.dialect import Dialect
-from offgrid.exceptions import AgentSettingsError
+from offgrid.exceptions import AgentSettingsError, ProfileError
 from offgrid.hosted_tools import HostedToolsStatus
 from offgrid.model import Model
 
 HOST = "127.0.0.1:1234"
 
 
+def _config(config_dir, **said):
+    """The config a registry would build, from what a profile said."""
+    return read_config(AgentConfig(**said), host=HOST, config_dir=config_dir)
+
+
 @pytest.fixture
 def agent(tmp_path):
-    return prepare(tmp_path, ())
+    return prepare(_config(tmp_path), ())
 
 
 @pytest.fixture
@@ -22,7 +28,7 @@ def started_with(tmp_path):
     """Answer with an agent bound to the arguments a run would hand on."""
 
     def bind(*passthrough):
-        return prepare(tmp_path, passthrough)
+        return prepare(_config(tmp_path), passthrough)
 
     return bind
 
@@ -30,7 +36,32 @@ def started_with(tmp_path):
 @pytest.fixture
 def launch(agent):
     model = Model(identifier="qwen/qwen3.6-35b-a3b", context_limit=212224)
-    return agent.plan(model, host=HOST, token="lmstudio")
+    return agent.plan(model)
+
+
+def test_a_key_claude_code_does_not_read_is_refused_naming_the_section(tmp_path):
+    # The base section carries what it cannot read, so this is the only place
+    # a typo under `agent:` can be caught — and it is caught, not dropped.
+    with pytest.raises(ProfileError) as refused:
+        _config(tmp_path, theme="dark")
+
+    said = str(refused.value)
+    assert "`agent` section" in said
+    assert "claude-code" in said
+    assert "theme" in said
+
+
+def test_a_key_offgrid_settles_is_refused_rather_than_taken_from_the_file(tmp_path):
+    # `host` is a field of Claude Code's config, so a section naming it would
+    # otherwise be overridden in silence — the one shape of dropped key the
+    # adapter's own `extra="forbid"` cannot catch.
+    with pytest.raises(ProfileError) as refused:
+        _config(tmp_path, host="10.0.0.5:4321")
+
+    said = str(refused.value)
+    assert "`agent` section" in said
+    assert "host" in said
+    assert "offgrid settles itself" in said
 
 
 def _settings(config_dir):
@@ -79,14 +110,14 @@ def test_volatile_prompt_sections_stay_out_of_the_cached_prefix(launch):
 
 def test_arguments_are_passed_through_to_the_agent(started_with):
     model = Model(identifier="a/b", context_limit=8192)
-    launch = started_with("-p", "hi").plan(model, host=HOST, token="t")
+    launch = started_with("-p", "hi").plan(model)
 
     assert launch.argv[-2:] == ["-p", "hi"]
 
 
 def test_a_model_with_no_stated_context_gets_a_workable_default(agent):
     unstated = Model(identifier="a/b", context_limit=0)
-    launch = agent.plan(unstated, host=HOST, token="t")
+    launch = agent.plan(unstated)
 
     assert launch.env["CLAUDE_CODE_AUTO_COMPACT_WINDOW"] == str(FALLBACK_CONTEXT)
 
@@ -95,7 +126,7 @@ def test_planning_a_launch_writes_nothing(agent, tmp_path):
     # An environment and an argument list can be shown before anything runs,
     # which is only true while building one changes nothing on disk.
     model = Model(identifier="a/b", context_limit=8192)
-    agent.plan(model, host=HOST, token="t")
+    agent.plan(model)
 
     assert list(tmp_path.iterdir()) == []
 
@@ -160,7 +191,7 @@ def test_a_configuration_that_cannot_be_written_says_what_stopped_it(tmp_path):
     in_the_way.write_text("")
 
     with pytest.raises(AgentSettingsError, match="cannot be written"):
-        prepare(in_the_way / "claude-code", ()).configure()
+        prepare(_config(in_the_way / "claude-code"), ()).configure()
 
 
 def test_what_the_agent_writes_for_itself_reads_as_denied(agent):
