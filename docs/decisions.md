@@ -600,11 +600,11 @@ reason.
 
 ## A profile grows a section per adapter
 
-Settled, not yet built. `host` sits flat beside `runtime` today as though it
-were global, and there is nowhere for an adapter's own settings to go — which
-the second agent needs immediately, since opencode learns where the runtime
-listens from a `provider.<name>.options.baseURL` block in a file it must be
-configured with, rather than from an environment variable at launch.
+`host` sat flat beside `runtime` as though it were global, and there was
+nowhere for an adapter's own settings to go — which the second agent needs
+immediately, since opencode learns where the runtime listens from a
+`provider.<name>.options.baseURL` block in a file it must be configured with,
+rather than from an environment variable at launch.
 
 So the profile nests: `agent: AgentConfig` and `runtime: RuntimeConfig`, each
 carrying a `name` and whatever else that adapter reads, with `host` moving
@@ -635,3 +635,36 @@ alternative is self-registration, and it costs the property that `agents/` is
 the one place a name becomes an adapter — checkable by reading imports, which
 is what #56 is about — along with the validated set that lets a profile refuse
 an unknown agent at load rather than at dispatch.
+
+There are two dicts per port rather than one, keyed alike: a name becomes a
+config, and a config becomes an adapter. Both are typed on the base config,
+because a factory declared to take a concrete one cannot sit in a dict typed on
+the base — callable parameters are contravariant. So each factory takes the
+base and narrows to its own type, raising where it was handed another
+adapter's. Pairing each config type with its factory in a generic holder, so a
+cross-wiring is a type error where it is written, was considered and set aside
+as more machinery than two adapters justify; the suite checks the pairing
+instead.
+
+`plan` ends up taking only the model, which is the one thing a run discovers.
+Where the runtime listens goes to the adapter when it is built, along with the
+directory offgrid gives it — neither is in the agent's own section, and an
+agent that writes the address into a config file needs it before `configure`
+runs. The token went with it, into `agents/claude_code/`: the local server
+ignores it and Claude Code refuses to start without one, which makes it a fact
+about that agent rather than about the run.
+
+A profile in the flat shape is refused rather than migrated, naming the shape
+it now wants. v0.1 is a handful of people on a clone-and-run project, and a
+silent rewrite of a hand-edited file is worse than a clear refusal.
+
+Two guards are written deliberately, because each protects against a silent
+failure rather than a visible one: that every concrete config forbids the keys
+it does not name, and that every name in each enum has both an adapter and a
+config factory behind it. Both were proven by breaking them.
+
+`profile.py` split as a consequence. Reading a section as the adapter it names
+declares it is its own idea, and it now lives in `sections.py` beside the
+profile rather than inside it. `Capabilities` moved out of `runtime.py` the
+same way, into `capabilities.py`, which kept the port under the line limit
+without grouping anything by kind.
