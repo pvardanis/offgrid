@@ -16,11 +16,8 @@ from offgrid.sections import describe_problems
 
 DEFAULT_PATH = Path.home() / ".offgrid" / "profile.yaml"
 
-NESTED = """runtime:
-  name: lmstudio
-  host: 127.0.0.1:1234
-agent:
-  name: claude-code"""
+# An address to show a shape with, rather than one to reach anything at.
+EXAMPLE_HOST = "127.0.0.1:1234"
 
 
 class Profile(BaseModel):
@@ -107,8 +104,8 @@ def load(path: Path = DEFAULT_PATH) -> Profile:
 def _refuse_a_flat_profile(body: dict, path: Path) -> None:
     """Say that a profile written flat has to be nested, and how.
 
-    A file that worked yesterday and is refused today owes the reader the
-    shape it now wants, not the name of the first key that no longer fits.
+    The whole shape, because a reader given the name of one key that does not
+    fit has to guess at the rest of the file.
 
     :param body: What the file holds.
     :param path: Where it was read from.
@@ -122,6 +119,20 @@ def _refuse_a_flat_profile(body: dict, path: Path) -> None:
 
     if flat:
         raise ProfileError(
-            f"{path} is flat, and a profile now carries a section per adapter. "
-            f"`host` belongs to the runtime. Write it as:\n\n{NESTED}"
+            f"{path} is flat, and a profile carries a section per adapter. "
+            f"`host` belongs to the runtime. Write it as:\n\n{_example()}"
         )
+
+
+def _example() -> str:
+    """Write out a whole profile, as offgrid itself would.
+
+    Built rather than spelled, so that it names whichever adapters the two
+    enums default to rather than repeating two names this module has no
+    business knowing.
+
+    :return: A profile in the shape offgrid reads.
+    """
+    written = Profile(runtime=RuntimeConfig(host=EXAMPLE_HOST)).model_dump(mode="json")
+
+    return yaml.safe_dump(written, sort_keys=False).strip()

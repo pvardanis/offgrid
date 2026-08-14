@@ -123,7 +123,7 @@ hosted_tools.py    what an agent can reach that offgrid cannot run here
 runtime.py         what offgrid asks of a runtime, and which ones there are
 agent.py           what offgrid asks of an agent, and which ones there are
 profile.py         what is remembered between runs
-sections.py        one section of it, read as its adapter declares it
+sections.py        what an adapter declares, read out of the profile
 launch.py          an environment and an argument list, and running one
 answering.py       which model answers, and making it the one that does
 ```

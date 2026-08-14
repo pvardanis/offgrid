@@ -6,9 +6,10 @@ it. What that answers with is in `claude_code.py`, and what it writes and reads
 is beside it.
 """
 
-from offgrid.agent import Agent, AgentConfig
+from offgrid.agent import Agent, AgentConfig, AgentName
 from offgrid.agents.claude_code.binding import ClaudeCodeConfig, read_config
 from offgrid.agents.claude_code.claude_code import ClaudeCode
+from offgrid.sections import as_declared
 
 __all__ = ["prepare", "read_config"]
 
@@ -24,13 +25,11 @@ def prepare(config: AgentConfig, passthrough: tuple[str, ...]) -> Agent:
     :raise TypeError: When the config was built for another agent, which is a
         registry binding one name to two adapters.
     """
-    if not isinstance(config, ClaudeCodeConfig):
-        raise TypeError(
-            f"claude-code was handed {type(config).__name__}, which is not its "
-            "own config. In agents/__init__.py, the name is bound to one "
-            "adapter's config and another adapter's factory."
-        )
-
-    return ClaudeCode(
-        config_dir=config.config_dir, host=config.host, passthrough=passthrough
+    own = as_declared(
+        config,
+        ClaudeCodeConfig,
+        adapter=AgentName.CLAUDE_CODE.value,
+        registry="agents/__init__.py",
     )
+
+    return ClaudeCode(config_dir=own.config_dir, host=own.host, passthrough=passthrough)

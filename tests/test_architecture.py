@@ -18,6 +18,7 @@ import tomllib
 from pathlib import Path
 
 import pytest
+from pydantic import BaseModel
 
 ROOT = Path(__file__).parent.parent
 DOC = ROOT / "docs" / "architecture.md"
@@ -59,6 +60,15 @@ def _adapters(modules: set[str]) -> set[str]:
         for module in modules
         if module.split(".")[1] in ADAPTER_PACKAGES and module.count(".") > 1
     }
+
+
+def _below(base: type[BaseModel]) -> list[type[BaseModel]]:
+    """Every model descending from one, however far down."""
+    return [
+        descendant
+        for child in base.__subclasses__()
+        for descendant in (child, *_below(child))
+    ]
 
 
 def test_the_doc_names_every_module_there_is():
@@ -122,7 +132,7 @@ def test_every_config_an_adapter_declares_forbids_a_key_it_does_not_name():
 
     declared = [
         config
-        for config in (*AgentConfig.__subclasses__(), *RuntimeConfig.__subclasses__())
+        for config in (*_below(AgentConfig), *_below(RuntimeConfig))
         if config.__module__.startswith("offgrid.")
     ]
     permissive = sorted(

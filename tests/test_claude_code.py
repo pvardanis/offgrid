@@ -76,6 +76,13 @@ def test_the_agent_is_pointed_at_the_local_server(launch):
     assert launch.env["ANTHROPIC_BASE_URL"] == f"http://{HOST}"
 
 
+def test_the_agent_is_given_a_token_the_local_server_ignores(launch):
+    # Claude Code will not start without one, and the local server never looks
+    # at it. Nothing else in a launch fails this quietly: no token is a refusal
+    # from the agent, before the model that was just held is ever asked.
+    assert launch.env["ANTHROPIC_AUTH_TOKEN"]
+
+
 def test_every_model_tier_resolves_to_the_local_model(launch):
     tiers = [
         "ANTHROPIC_MODEL",
