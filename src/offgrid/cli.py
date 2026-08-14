@@ -46,7 +46,8 @@ def setup(
     """Measure this machine and record how to reach the runtime."""
     machine = detect()
     profile = _stored() or Profile(runtime=RuntimeConfig(host=DEFAULT_HOST))
-    save(_listening_at(profile, host or profile.runtime.host), DEFAULT_PATH)
+    runtime = profile.runtime.model_copy(update={"host": host or profile.runtime.host})
+    save(profile.model_copy(update={"runtime": runtime}), DEFAULT_PATH)
 
     tell(f"  {machine.chip} · {machine.memory_bytes / GIB:.0f}GB unified memory")
     limit = machine.wired_limit_bytes
@@ -178,19 +179,6 @@ def _reporting() -> Iterator[None]:
     except OffgridError as error:
         tell(f"  {error}")
         raise typer.Exit(1) from error
-
-
-def _listening_at(profile: Profile, host: str) -> Profile:
-    """Answer with the profile, saying the runtime listens somewhere.
-
-    :param profile: What is stored, or what would be.
-    :param host: Where the runtime listens.
-
-    :return: The same profile, with the address under its runtime.
-    """
-    return profile.model_copy(
-        update={"runtime": profile.runtime.model_copy(update={"host": host})}
-    )
 
 
 def _stored() -> Profile | None:
