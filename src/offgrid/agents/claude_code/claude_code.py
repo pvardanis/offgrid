@@ -54,8 +54,8 @@ class ClaudeCode:
         """Write the settings and the notes that are not there.
 
         Both are meant to be edited, so what is already there is left as it
-        is — including settings the guard would refuse, which are still an
-        edit rather than something to write over.
+        is — including settings that leave WebSearch reachable, which are
+        still an edit rather than something to write over.
 
         :raise AgentSettingsError: When what is missing cannot be written.
         """

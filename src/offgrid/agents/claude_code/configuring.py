@@ -1,4 +1,4 @@
-"""What offgrid writes into a fresh Claude Code directory, and refuses.
+"""What offgrid writes into a fresh Claude Code directory, and reads back.
 
 The settings and the notes are what a person edits, and what counts as a
 denial is what the agent itself reads: a rule Claude Code does not honour is
