@@ -126,7 +126,7 @@ agent.py           what offgrid asks of an agent, and which ones there are
 profile/           what is remembered between runs
   profile.py       the file, and what is read out of it
   refusing.py      what a section offgrid cannot read reads like
-  flat.py          refusing the shape offgrid read before this one
+  structure.py     whether it is built the way offgrid reads one
 home.py            where offgrid keeps it
 launch.py          an environment and an argument list, and running one
 answering.py       which model answers, and making it the one that does

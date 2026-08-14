@@ -17,7 +17,7 @@ from pydantic import BaseModel, ConfigDict, SerializeAsAny, ValidationError
 from offgrid.agent import AgentConfig
 from offgrid.exceptions import ProfileError
 from offgrid.home import OFFGRID_HOME
-from offgrid.profile.flat import refuse_a_flat_profile
+from offgrid.profile.structure import refuse_a_flat_profile
 from offgrid.runtime import RuntimeConfig
 
 DEFAULT_PATH = OFFGRID_HOME / "profile.yaml"

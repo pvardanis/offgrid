@@ -1,4 +1,8 @@
-"""Refusing a profile written in the shape offgrid read before this one.
+"""Whether a profile is built the way offgrid reads one.
+
+The shape, before anything asks what it says: a profile written flat is the
+one offgrid read before it carried a section per adapter, and it is refused
+rather than migrated.
 
 Its own module because it has an end: once nobody has a flat profile left,
 this file goes and nothing else moves.
