@@ -12,7 +12,7 @@ both back here.
 from pathlib import Path
 
 import yaml
-from pydantic import BaseModel, ConfigDict, ValidationError
+from pydantic import BaseModel, ConfigDict, SerializeAsAny, ValidationError
 
 from offgrid.agent import AgentConfig
 from offgrid.exceptions import ProfileError
@@ -30,6 +30,11 @@ class Profile(BaseModel):
     that adapter reads. A section is where an adapter's own settings go, and
     where the file says which part of the system a setting belongs to.
 
+    Both sections are serialized as the object rather than the annotation.
+    Pydantic writes a field through the type it is declared as, so a setting
+    only one adapter declares would go out of the file without a word — and
+    the next `setup` would write the profile back without it.
+
     :param runtime: The runtime adapter to use, and where it listens.
     :param agent: The agent adapter to use.
     :param model: The model to run unless one is named on the command line, or
@@ -46,8 +51,8 @@ class Profile(BaseModel):
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    runtime: RuntimeConfig
-    agent: AgentConfig
+    runtime: SerializeAsAny[RuntimeConfig]
+    agent: SerializeAsAny[AgentConfig]
     model: str | None = None
 
 
