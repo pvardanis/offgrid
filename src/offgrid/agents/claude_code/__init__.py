@@ -9,6 +9,7 @@ beside it.
 from offgrid.agent import Agent, AgentConfig
 from offgrid.agents.claude_code.claude_code import ClaudeCode
 from offgrid.agents.claude_code.config import ClaudeCodeConfig
+from offgrid.declaring import as_declared
 
 __all__ = ["ClaudeCodeConfig", "prepare"]
 
@@ -24,11 +25,6 @@ def prepare(config: AgentConfig, passthrough: tuple[str, ...]) -> Agent:
     :raise TypeError: When the config was built for another agent, which is a
         registry binding one name to two adapters.
     """
-    if not isinstance(config, ClaudeCodeConfig):
-        raise TypeError(
-            f"claude-code was handed {type(config).__name__}, which is not its "
-            "own config. In agents/__init__.py, the name is bound to one "
-            "adapter's config and another adapter's factory."
-        )
-
-    return ClaudeCode(config=config, passthrough=passthrough)
+    return ClaudeCode(
+        config=as_declared(config, ClaudeCodeConfig), passthrough=passthrough
+    )

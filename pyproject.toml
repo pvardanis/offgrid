@@ -76,6 +76,7 @@ type = "forbidden"
 source_modules = [
     "offgrid.agent",
     "offgrid.capabilities",
+    "offgrid.declaring",
     "offgrid.dialect",
     "offgrid.answering",
     "offgrid.fit",
