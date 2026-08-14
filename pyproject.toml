@@ -74,27 +74,7 @@ root_package = "offgrid"
 name = "The domain knows nothing about adapters"
 type = "forbidden"
 source_modules = [
-    "offgrid.agent",
-    "offgrid.capabilities",
-    "offgrid.declaring",
-    "offgrid.dialect",
-    "offgrid.answering",
-    "offgrid.fit",
-    "offgrid.hosted_tools",
-    "offgrid.launch",
-    "offgrid.listing",
-    "offgrid.machine",
-    "offgrid.model",
-    "offgrid.profile",
-    "offgrid.profile.structure",
-    "offgrid.profile.profile",
-    "offgrid.profile.refusing",
-    "offgrid.quality",
-    "offgrid.recommendation",
-    "offgrid.runtime",
-    "offgrid.home",
-    "offgrid.shortlist",
-    "offgrid.speed",
+    "offgrid.domain",
 ]
 forbidden_modules = [
     "offgrid.agents",

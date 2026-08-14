@@ -5,7 +5,7 @@ import subprocess
 
 import pytest
 
-from offgrid.launch import STOPS, Launch, start
+from offgrid.domain.launch import STOPS, Launch, start
 
 LAUNCH = Launch(env={"ANTHROPIC_BASE_URL": "http://127.0.0.1:1234"}, argv=["claude"])
 

@@ -11,9 +11,9 @@ Nothing here is said to anybody. `recommendation.py` is where that happens.
 from dataclasses import dataclass
 from enum import Enum, auto
 
-from offgrid.listing import Fit, Listing, Table, get_listing_with_feasible_widths
-from offgrid.machine import Machine
-from offgrid.quality import Quality, get_quality_for_fit
+from offgrid.domain.listing import Fit, Listing, Table, get_listing_with_feasible_widths
+from offgrid.domain.machine import Machine
+from offgrid.domain.quality import Quality, get_quality_for_fit
 
 
 class Rule(Enum):

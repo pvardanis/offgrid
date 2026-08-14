@@ -7,17 +7,15 @@ from pathlib import Path
 
 import typer
 
-from offgrid.agent import Agent, AgentName
 from offgrid.agents import create_agent_config, prepare_agent
-from offgrid.answering import get_resident_model, hold_model
-from offgrid.dialect import require_compatible
-from offgrid.exceptions import OffgridError, ProfileError
-from offgrid.fit import BYTES_PER_GB, get_sizes_that_fit
-from offgrid.hosted_tools import HostedToolsStatus, require_hosted_tools_denied
-from offgrid.launch import explain_why_it_would_not_start, start
-from offgrid.leaderboards.reading import get_reading
-from offgrid.machine import detect, suggest_raising_the_gpu_limit
-from offgrid.profile import (
+from offgrid.domain.agent import Agent, AgentName
+from offgrid.domain.answering import get_resident_model, hold_model
+from offgrid.domain.dialect import require_compatible
+from offgrid.domain.fit import BYTES_PER_GB, get_sizes_that_fit
+from offgrid.domain.hosted_tools import HostedToolsStatus, require_hosted_tools_denied
+from offgrid.domain.launch import explain_why_it_would_not_start, start
+from offgrid.domain.machine import detect, suggest_raising_the_gpu_limit
+from offgrid.domain.profile import (
     DEFAULT_PATH,
     Profile,
     create_profile,
@@ -25,10 +23,12 @@ from offgrid.profile import (
     refuse_profile_section,
     save_profile,
 )
-from offgrid.recommendation import summarize_findings
-from offgrid.runtime import Runtime, RuntimeName
+from offgrid.domain.recommendation import summarize_findings
+from offgrid.domain.runtime import Runtime, RuntimeName
+from offgrid.leaderboards.reading import get_reading
 from offgrid.runtimes import connect_runtime, create_runtime_config
-from offgrid.say import say_on_stderr, tell
+from offgrid.shared.exceptions import OffgridError, ProfileError
+from offgrid.shared.say import say_on_stderr, tell
 
 DEFAULT_HOST = "127.0.0.1:1234"
 # What a fresh profile names. Which adapter to write down is this command's

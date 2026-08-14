@@ -12,10 +12,10 @@ is not evidence about anything.
 
 import pytest
 
-from offgrid.answering import get_resident_model, hold_model
-from offgrid.exceptions import ModelUnavailableError
+from offgrid.domain.answering import get_resident_model, hold_model
 from offgrid.runtimes.lmstudio import connect
 from offgrid.runtimes.lmstudio.config import LMStudioConfig
+from offgrid.shared.exceptions import ModelUnavailableError
 from tests.doubles import answer_as_lm_studio
 
 HOST = "127.0.0.1:1234"

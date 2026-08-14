@@ -5,10 +5,10 @@ import pytest
 from offgrid.agents import create_agent_config
 from offgrid.agents.claude_code import prepare
 from offgrid.agents.claude_code.launching import FALLBACK_CONTEXT
-from offgrid.dialect import Dialect
-from offgrid.exceptions import AgentSettingsError
-from offgrid.hosted_tools import HostedToolsStatus
-from offgrid.model import Model
+from offgrid.domain.dialect import Dialect
+from offgrid.domain.hosted_tools import HostedToolsStatus
+from offgrid.domain.model import Model
+from offgrid.shared.exceptions import AgentSettingsError
 
 HOST = "127.0.0.1:1234"
 
@@ -21,7 +21,7 @@ def _config(**said):
 @pytest.fixture(autouse=True)
 def _nowhere_real(monkeypatch, tmp_path):
     """Keep the directory an agent derives for itself inside the test."""
-    monkeypatch.setattr("offgrid.agent.OFFGRID_HOME", tmp_path)
+    monkeypatch.setattr("offgrid.domain.agent.OFFGRID_HOME", tmp_path)
 
 
 @pytest.fixture
@@ -188,7 +188,7 @@ def test_a_configuration_that_cannot_be_written_says_what_stopped_it(
     # directory that would not take the file.
     in_the_way = tmp_path / "not-a-directory"
     in_the_way.write_text("")
-    monkeypatch.setattr("offgrid.agent.OFFGRID_HOME", in_the_way)
+    monkeypatch.setattr("offgrid.domain.agent.OFFGRID_HOME", in_the_way)
 
     with pytest.raises(AgentSettingsError, match="cannot be written"):
         prepare(_config(), ()).configure()

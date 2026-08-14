@@ -15,11 +15,11 @@ from typing import Protocol
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 
-from offgrid.dialect import Dialect
-from offgrid.home import OFFGRID_HOME
-from offgrid.hosted_tools import HostedToolsReport
-from offgrid.launch import Launch
-from offgrid.model import Model
+from offgrid.domain.dialect import Dialect
+from offgrid.domain.hosted_tools import HostedToolsReport
+from offgrid.domain.launch import Launch
+from offgrid.domain.model import Model
+from offgrid.shared.home import OFFGRID_HOME
 
 
 class AgentName(Enum):

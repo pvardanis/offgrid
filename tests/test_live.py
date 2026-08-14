@@ -13,13 +13,13 @@ import subprocess
 import pytest
 
 from offgrid.cli import read_profile
-from offgrid.exceptions import OffgridError
-from offgrid.profile import DEFAULT_PATH
+from offgrid.domain.profile import DEFAULT_PATH
 from offgrid.runtimes.lmstudio.catalogue import (
     get_catalogue_payload,
     get_loaded_models,
     parse_models_from_payload,
 )
+from offgrid.shared.exceptions import OffgridError
 
 pytestmark = pytest.mark.live
 

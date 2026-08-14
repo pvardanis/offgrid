@@ -6,10 +6,10 @@ that answers with is in `claude_code.py`, and what it writes and reads is
 beside it.
 """
 
-from offgrid.agent import Agent, AgentConfig
 from offgrid.agents.claude_code.claude_code import ClaudeCode
 from offgrid.agents.claude_code.config import ClaudeCodeConfig
-from offgrid.declaring import as_declared
+from offgrid.domain.agent import Agent, AgentConfig
+from offgrid.shared.declaring import as_declared
 
 
 def prepare(config: AgentConfig, passthrough: tuple[str, ...]) -> Agent:

@@ -3,7 +3,6 @@ import json
 import httpx
 import pytest
 
-from offgrid.exceptions import RuntimeUnreachableError
 from offgrid.runtimes.lmstudio.catalogue import (
     TIMEOUT_SECONDS,
     get_catalogue_payload,
@@ -11,6 +10,7 @@ from offgrid.runtimes.lmstudio.catalogue import (
     parse_models_from_payload,
 )
 from offgrid.runtimes.lmstudio.holding import LOAD_TIMEOUT_SECONDS
+from offgrid.shared.exceptions import RuntimeUnreachableError
 from tests.doubles import serve_get, serve_post
 
 HOST = "127.0.0.1:1234"

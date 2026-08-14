@@ -7,8 +7,8 @@ model has been downloaded. What this machine makes of one is the fit.
 
 from dataclasses import dataclass
 
-from offgrid.fit import get_sizes_that_fit, weigh_model
-from offgrid.machine import Machine
+from offgrid.domain.fit import get_sizes_that_fit, weigh_model
+from offgrid.domain.machine import Machine
 
 
 @dataclass(frozen=True)

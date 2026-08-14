@@ -2,8 +2,8 @@ import subprocess
 
 import pytest
 
-from offgrid.exceptions import RuntimeUnreachableError
 from offgrid.runtimes.lmstudio.holding import unload
+from offgrid.shared.exceptions import RuntimeUnreachableError
 from tests.doubles import run_tool
 
 

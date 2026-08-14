@@ -1,7 +1,7 @@
 import pytest
 
-from offgrid.dialect import Dialect, require_compatible
-from offgrid.exceptions import DialectMismatchError
+from offgrid.domain.dialect import Dialect, require_compatible
+from offgrid.shared.exceptions import DialectMismatchError
 
 
 def test_matching_dialects_are_allowed():

@@ -7,7 +7,7 @@ is what lets `run` refuse and `doctor` report the same fact.
 from dataclasses import dataclass
 from enum import StrEnum, auto
 
-from offgrid.exceptions import HostedToolReachableError
+from offgrid.shared.exceptions import HostedToolReachableError
 
 
 class HostedToolsStatus(StrEnum):
