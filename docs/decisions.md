@@ -681,9 +681,11 @@ true, since a hand-rolled summary drifts from what the validator actually
 checked. Taken deliberately, with both messages read side by side.
 
 A bad adapter key says to fix it by hand and stops there, where every other
-profile error offers `offgrid setup` as well. `setup` keeps what it finds, and
-a section is permissive where it reads one — so it loads the offending key and
-writes it straight back. Measured, not assumed.
+profile error offers `offgrid setup` as well. `setup` would answer it, but
+lossily: the file no longer loads, so it is set aside as `.yaml.rejected` and a
+fresh profile is written from the defaults, losing the address and the model
+along with the bad key. A one-line edit is the better instruction, so that is
+the one given.
 
 A profile in the flat shape is refused rather than migrated, naming the shape
 it now wants. v0.1 is a handful of people on a clone-and-run project, and a

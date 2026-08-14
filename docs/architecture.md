@@ -161,12 +161,16 @@ sequenceDiagram
     participant L as launch.py
 
     P->>C: offgrid run [--model X]
-    C->>F: load(path)
-    Note over F: an unknown runtime or agent is refused here,<br/>naming the field, before anything else runs
-    F-->>C: Profile — RuntimeConfig, AgentConfig, model
-    C->>G: connect_runtime(profile)
+    C->>F: load_yaml(path)
+    F-->>C: the file, as the mapping it holds
+    C->>G: create_runtime_config(said) · create_agent_config(said, host)
+    Note over G: the name picks the class, and the class says<br/>which of the rest of the section it accepts
+    G-->>C: RuntimeConfig · AgentConfig
+    C->>F: create_profile(body, runtime, agent)
+    F-->>C: Profile
+    C->>G: connect_runtime(profile.runtime)
     G-->>C: Runtime
-    C->>G: prepare_agent(profile, passthrough)
+    C->>G: prepare_agent(profile.agent, passthrough)
     G-->>C: Agent
     Note over C,G: the only place a name becomes an adapter, and<br/>where a key its adapter does not read is refused
     C->>D: require_compatible(runtime.dialect, agent.dialect)
@@ -532,9 +536,9 @@ class AgentName(Enum):
 ```
 
 `profile.runtime.name` and `profile.agent.name` are then a `RuntimeName` and
-an `AgentName` rather than strings, and pydantic refuses an unknown one when
-the profile is read — `Input should be 'lmstudio'`, naming the field, before
-anything else runs. That is what the profile is for: it is hand-edited, and a
+an `AgentName` rather than strings, and the registry refuses an unknown one as
+the profile is read, naming what offgrid does have. A section naming no adapter
+at all is refused the same way, rather than defaulted to one. That is what the profile is for: it is hand-edited, and a
 name offgrid does not have is a mistake to report rather than a preference to
 record.
 
@@ -555,7 +559,7 @@ RUNTIME_CONFIGS: dict[RuntimeName, type[RuntimeConfig]] = {
 
 
 def create_runtime_config(said: dict) -> RuntimeConfig:
-    name = RuntimeName(said.get("name", RuntimeName.LMSTUDIO.value))
+    name = RuntimeName(said["name"])
 
     return RUNTIME_CONFIGS[name](**{k: v for k, v in said.items() if k != "name"})
 
