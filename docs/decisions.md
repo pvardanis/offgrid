@@ -674,6 +674,12 @@ name, so it is neither said nor passed. The token went into
 `agents/claude_code/`: the local server ignores it and Claude Code refuses to
 start without one, which makes it a fact about that agent rather than the run.
 
+What a validator refused is passed through as pydantic wrote it, rather than
+condensed into a phrase. It costs a reader six lines, a class name and a URL
+where one line would have named the field — and buys one fewer thing to keep
+true, since a hand-rolled summary drifts from what the validator actually
+checked. Taken deliberately, with both messages read side by side.
+
 A bad adapter key says to fix it by hand and stops there, where every other
 profile error offers `offgrid setup` as well. `setup` keeps what it finds, and
 a section is permissive where it reads one — so it loads the offending key and
