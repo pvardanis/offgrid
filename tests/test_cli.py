@@ -209,9 +209,9 @@ def test_doctor_reports_the_runtime_the_profile_names(here):
 
 
 def test_doctor_refuses_a_key_the_agent_it_names_does_not_read(here):
-    # A section is permissive until the registry narrows it, so this is where
-    # a typo under `agent:` is caught. It is caught before anything is asked
-    # of the runtime, and it names the section as well as the key.
+    # The section belongs to whichever adapter its name picks, so the registry
+    # is where a typo under `agent:` is caught. It is caught before anything is
+    # asked of the runtime, and it names the section as well as the key.
     runner.invoke(app, ["setup"])
     _add_to_section(here, "agent", "theme: dark")
 
