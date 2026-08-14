@@ -433,7 +433,7 @@ configuration says and which arguments stop it being read are the adapter's
 knowledge; that a reachable one stops a run is offgrid's rule, and would tell
 a person nothing if it held for one agent and not another. That split is what
 lets `run` refuse and `doctor` report the same reading — and it is why an
-agent with no hosted tool answers `none offered` rather than implementing a
+agent with no hosted tool answers `none_offered` rather than implementing a
 guard that does nothing.
 
 **It reads the arguments as well as the configuration**, because a

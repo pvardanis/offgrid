@@ -66,7 +66,12 @@ class DialectMismatchError(OffgridError):
 
 
 class AgentSettingsError(OffgridError):
-    """The agent's settings would let it do something offgrid cannot back."""
+    """The agent's settings cannot be written, or cannot be read at all.
+
+    A file that says something offgrid will not back is not this: that is an
+    answer about what the run could reach, and `HostedToolReachableError`
+    carries it.
+    """
 
 
 class HostedToolReachableError(OffgridError):
