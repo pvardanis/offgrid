@@ -1,6 +1,6 @@
 import pytest
 
-from offgrid.domain.dialect import Dialect, require_compatible
+from offgrid.domain.running.dialect import Dialect, require_compatible
 from offgrid.shared.exceptions import DialectMismatchError
 
 

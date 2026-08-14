@@ -11,7 +11,7 @@ built from, the other what it is started as.
 """
 
 from offgrid.agents import claude_code
-from offgrid.domain.agent import Agent, AgentConfig, AgentName, Prepare
+from offgrid.domain.running.agent import Agent, AgentConfig, AgentName, Prepare
 
 AGENTS: dict[AgentName, Prepare] = {AgentName.CLAUDE_CODE: claude_code.prepare}
 

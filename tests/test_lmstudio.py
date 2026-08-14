@@ -3,7 +3,7 @@ import pathlib
 
 import pytest
 
-from offgrid.domain.dialect import Dialect
+from offgrid.domain.running.dialect import Dialect
 from offgrid.runtimes.lmstudio import connect
 from offgrid.runtimes.lmstudio.catalogue import (
     get_loaded_models,

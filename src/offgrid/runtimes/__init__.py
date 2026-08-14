@@ -12,7 +12,7 @@ The two mappings are keyed alike and go together: one says what a name is
 built from, the other what it is reached with.
 """
 
-from offgrid.domain.runtime import Connect, Runtime, RuntimeConfig, RuntimeName
+from offgrid.domain.running.runtime import Connect, Runtime, RuntimeConfig, RuntimeName
 from offgrid.runtimes import lmstudio
 
 RUNTIMES: dict[RuntimeName, Connect] = {RuntimeName.LMSTUDIO: lmstudio.connect}

@@ -97,6 +97,14 @@ forbidden_modules = [
 ]
 
 [[tool.importlinter.contracts]]
+name = "What fits and what runs do not know each other"
+type = "independence"
+modules = [
+    "offgrid.domain.sizing",
+    "offgrid.domain.running",
+]
+
+[[tool.importlinter.contracts]]
 name = "One adapter never reaches for another"
 type = "independence"
 modules = [

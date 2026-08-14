@@ -10,13 +10,13 @@ import httpx
 import pytest
 from pydantic import computed_field
 
-from offgrid.domain.agent import AgentConfig, AgentName, Prepare
-from offgrid.domain.dialect import Dialect
-from offgrid.domain.hosted_tools import HostedToolsReport, HostedToolsStatus
-from offgrid.domain.launch import Launch
-from offgrid.domain.machine import Machine
-from offgrid.domain.model import Model
-from offgrid.domain.runtime import RuntimeConfig, RuntimeName
+from offgrid.domain.running.agent import AgentConfig, AgentName, Prepare
+from offgrid.domain.running.dialect import Dialect
+from offgrid.domain.running.hosted_tools import HostedToolsReport, HostedToolsStatus
+from offgrid.domain.running.launch import Launch
+from offgrid.domain.running.model import Model
+from offgrid.domain.running.runtime import RuntimeConfig, RuntimeName
+from offgrid.domain.sizing.machine import Machine
 
 GIB = 1024**3
 MACHINE = Machine(
@@ -38,7 +38,7 @@ def answer_as_a_mac(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     # reads and writes the profile, and an agent's config derives its own
     # directory. A test that patched one would reach the real other.
     monkeypatch.setattr("offgrid.cli.DEFAULT_PATH", tmp_path / "profile.yaml")
-    monkeypatch.setattr("offgrid.domain.agent.OFFGRID_HOME", tmp_path)
+    monkeypatch.setattr("offgrid.domain.running.agent.OFFGRID_HOME", tmp_path)
 
 
 class StandInAgentConfig(AgentConfig):

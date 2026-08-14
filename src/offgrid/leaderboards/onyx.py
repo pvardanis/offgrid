@@ -10,7 +10,7 @@ import json
 
 import httpx
 
-from offgrid.domain.listing import Listing, Table
+from offgrid.domain.sizing.listing import Listing, Table
 from offgrid.shared.exceptions import (
     LeaderboardUnreachableError,
     LeaderboardUnreadableError,

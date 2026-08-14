@@ -4,9 +4,9 @@ The figures asserted here are the ones issue #24 states this machine should
 reach, arrived at by hand before any of this was written.
 """
 
-from offgrid.domain.listing import Fit, Listing, get_listing_with_feasible_widths
-from offgrid.domain.machine import Machine
-from offgrid.domain.quality import get_quality_for_fit
+from offgrid.domain.sizing.listing import Fit, Listing, get_listing_with_feasible_widths
+from offgrid.domain.sizing.machine import Machine
+from offgrid.domain.sizing.quality import get_quality_for_fit
 
 GIB = 1024**3
 BILLION = 1e9

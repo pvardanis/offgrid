@@ -6,7 +6,7 @@ connection from it. What that answers with is in `lmstudio.py`, and what it
 reaches for is beside it.
 """
 
-from offgrid.domain.runtime import Runtime, RuntimeConfig
+from offgrid.domain.running.runtime import Runtime, RuntimeConfig
 from offgrid.runtimes.lmstudio.config import LMStudioConfig
 from offgrid.runtimes.lmstudio.lmstudio import LMStudio
 from offgrid.shared.declaring import as_declared

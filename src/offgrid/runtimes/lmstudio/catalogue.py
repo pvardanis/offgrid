@@ -10,7 +10,7 @@ beside each other rather than down a ladder of `except` branches.
 
 import httpx
 
-from offgrid.domain.model import Model
+from offgrid.domain.running.model import Model
 from offgrid.shared.exceptions import RuntimeUnreachableError
 
 CATALOGUE = "/api/v0/models"

@@ -4,9 +4,9 @@ import logging
 import time
 from dataclasses import dataclass, field
 
-from offgrid.domain.capabilities import Capabilities
-from offgrid.domain.dialect import Dialect
-from offgrid.domain.model import Model
+from offgrid.domain.running.capabilities import Capabilities
+from offgrid.domain.running.dialect import Dialect
+from offgrid.domain.running.model import Model
 from offgrid.runtimes.lmstudio.catalogue import (
     get_catalogue_payload,
     get_loaded_models,

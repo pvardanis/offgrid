@@ -8,7 +8,7 @@ setting Claude Code grows later has somewhere to land.
 
 from pydantic import computed_field
 
-from offgrid.domain.agent import AgentConfig, AgentName
+from offgrid.domain.running.agent import AgentConfig, AgentName
 
 
 class ClaudeCodeConfig(AgentConfig):

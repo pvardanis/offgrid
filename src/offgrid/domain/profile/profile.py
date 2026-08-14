@@ -14,9 +14,9 @@ from pathlib import Path
 import yaml
 from pydantic import BaseModel, ConfigDict, SerializeAsAny, ValidationError
 
-from offgrid.domain.agent import AgentConfig
 from offgrid.domain.profile.structure import refuse_a_flat_profile
-from offgrid.domain.runtime import RuntimeConfig
+from offgrid.domain.running.agent import AgentConfig
+from offgrid.domain.running.runtime import RuntimeConfig
 from offgrid.shared.exceptions import ProfileError
 from offgrid.shared.home import OFFGRID_HOME
 

@@ -10,9 +10,9 @@ import yaml
 
 from offgrid.agents import create_agent_config
 from offgrid.cli import read_profile
-from offgrid.domain.agent import AgentName
 from offgrid.domain.profile import Profile, save_profile
-from offgrid.domain.runtime import RuntimeName
+from offgrid.domain.running.agent import AgentName
+from offgrid.domain.running.runtime import RuntimeName
 from offgrid.runtimes import create_runtime_config
 from offgrid.shared.exceptions import ProfileError
 from tests.doubles import StandInAgentConfig

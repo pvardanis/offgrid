@@ -8,7 +8,7 @@ grows later has somewhere to land.
 
 from pydantic import computed_field
 
-from offgrid.domain.runtime import RuntimeConfig, RuntimeName
+from offgrid.domain.running.runtime import RuntimeConfig, RuntimeName
 
 
 class LMStudioConfig(RuntimeConfig):

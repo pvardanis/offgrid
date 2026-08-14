@@ -15,9 +15,9 @@ from typing import Protocol
 
 from pydantic import BaseModel, ConfigDict, computed_field
 
-from offgrid.domain.capabilities import Capabilities
-from offgrid.domain.dialect import Dialect
-from offgrid.domain.model import Model
+from offgrid.domain.running.capabilities import Capabilities
+from offgrid.domain.running.dialect import Dialect
+from offgrid.domain.running.model import Model
 
 
 class RuntimeName(Enum):

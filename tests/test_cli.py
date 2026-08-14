@@ -7,7 +7,7 @@ import yaml
 from typer.testing import CliRunner
 
 from offgrid.cli import app, read_profile
-from offgrid.domain.machine import Machine
+from offgrid.domain.sizing.machine import Machine
 from offgrid.shared.exceptions import LeaderboardUnreachableError
 from tests.doubles import (
     StandInAgent,
@@ -490,7 +490,7 @@ def test_an_agent_that_cannot_talk_to_the_runtime_is_refused_before_the_wait(
 ):
     # Checking after the load spends a minute of someone's time to arrive at
     # an answer that was knowable before it started.
-    from offgrid.domain.dialect import Dialect
+    from offgrid.domain.running.dialect import Dialect
 
     runner.invoke(app, ["setup"])
     asked = answer_as_lm_studio(monkeypatch, cold={"a/other-7b": 8192})
@@ -568,7 +568,7 @@ def test_the_model_is_let_go_when_the_launch_cannot_be_built(
     # Between holding a model and starting the agent there is nothing a
     # person waits for, but it is the second after the longest wait in the
     # program, which is when a hand reaches for Ctrl-C.
-    from offgrid.domain.dialect import Dialect
+    from offgrid.domain.running.dialect import Dialect
 
     runner.invoke(app, ["setup"])
     answer_as_an_agent(
@@ -850,8 +850,8 @@ def test_every_rule_that_drops_a_row_has_words_for_it():
     # A regression guard rather than a slice. A fourth rule added without
     # wording raises a KeyError the first time a table trips it, which is a
     # long way from where the rule was introduced.
-    from offgrid.domain.recommendation import WHY_DROPPED
-    from offgrid.domain.shortlist import Rule
+    from offgrid.domain.sizing.recommendation import WHY_DROPPED
+    from offgrid.domain.sizing.shortlist import Rule
 
     assert set(WHY_DROPPED) == set(Rule)
 
