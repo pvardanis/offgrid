@@ -223,7 +223,7 @@ def test_doctor_says_nothing_is_written_before_a_first_run(here):
     result = runner.invoke(app, ["doctor"])
 
     assert result.exit_code == 0
-    assert "not written yet" in result.stderr
+    assert "unwritten" in result.stderr
 
 
 def test_doctor_writes_no_configuration(here):
