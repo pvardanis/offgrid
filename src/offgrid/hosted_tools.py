@@ -5,7 +5,7 @@ is what lets `run` refuse and `doctor` report the same fact.
 """
 
 from dataclasses import dataclass
-from enum import StrEnum
+from enum import StrEnum, auto
 
 from offgrid.exceptions import HostedToolReachableError
 
@@ -34,16 +34,15 @@ class HostedTools(StrEnum):
     speak either way: a machine that has run `offgrid setup` and never
     `offgrid run`. Nothing is wrong, and nothing has been written.
 
-    The values are prose because a person reads them out of `doctor`, which
-    is why this is a `StrEnum` where `Dialect` and `AgentName` are not — a
-    dialect and an agent name are keys in a profile, and these are a line of
-    a report.
+    A `StrEnum` so that a reading prints into a line of `doctor` without
+    reaching for `.value`, which `Dialect` and `AgentName` have no call to do:
+    they are keys in a profile, and these are read off a report.
     """
 
-    NONE_OFFERED = "none offered"
-    DENIED = "denied"
-    PERMITTED = "permitted"
-    UNWRITTEN = "not written yet"
+    NONE_OFFERED = auto()
+    DENIED = auto()
+    PERMITTED = auto()
+    UNWRITTEN = auto()
 
 
 @dataclass(frozen=True)
