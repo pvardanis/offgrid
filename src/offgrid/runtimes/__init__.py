@@ -22,13 +22,13 @@ RUNTIME_CONFIGS: dict[RuntimeName, type[RuntimeConfig]] = {
 }
 
 
-def create_runtime_config(said: dict) -> RuntimeConfig:
+def create_runtime_config(runtime_dict: dict) -> RuntimeConfig:
     """Build what a profile's runtime section says, as its adapter reads it.
 
     What it says goes to the config unread: the name picks the class, and the
     class says which of the rest it accepts.
 
-    :param said: What the profile says about the runtime.
+    :param runtime_dict: What the profile says about the runtime.
 
     :return: What that adapter is built from.
 
@@ -37,9 +37,10 @@ def create_runtime_config(said: dict) -> RuntimeConfig:
     :raise ValidationError: When the section says something that adapter
         cannot read. `profile.refusing` is what turns either into a sentence.
     """
-    name = RuntimeName(said["name"])
+    name = RuntimeName(runtime_dict["name"])
+    kwargs = {key: value for key, value in runtime_dict.items() if key != "name"}
 
-    return RUNTIME_CONFIGS[name](**{k: v for k, v in said.items() if k != "name"})
+    return RUNTIME_CONFIGS[name](**kwargs)
 
 
 def connect_runtime(config: RuntimeConfig) -> Runtime:

@@ -20,14 +20,14 @@ AGENT_CONFIGS: dict[AgentName, type[AgentConfig]] = {
 }
 
 
-def create_agent_config(said: dict, *, runtime_host: str) -> AgentConfig:
+def create_agent_config(agent_dict: dict, *, runtime_host: str) -> AgentConfig:
     """Build what a profile's agent section says, as its adapter reads it.
 
     The runtime's address is supplied rather than read, because it belongs to
     the other section: an agent that writes where to talk into a config file
     of its own needs it before `configure` runs.
 
-    :param said: What the profile says about the agent.
+    :param agent_dict: What the profile says about the agent.
     :param runtime_host: Address the runtime listens on.
 
     :return: What that adapter is built from.
@@ -39,10 +39,10 @@ def create_agent_config(said: dict, *, runtime_host: str) -> AgentConfig:
         cannot read. `profile.refusing` is what turns any of them into a
         sentence.
     """
-    name = AgentName(said["name"])
-    written = {key: value for key, value in said.items() if key != "name"}
+    name = AgentName(agent_dict["name"])
+    kwargs = {key: value for key, value in agent_dict.items() if key != "name"}
 
-    return AGENT_CONFIGS[name](**written, runtime_host=runtime_host)
+    return AGENT_CONFIGS[name](**kwargs, runtime_host=runtime_host)
 
 
 def prepare_agent(config: AgentConfig, passthrough: tuple[str, ...] = ()) -> Agent:

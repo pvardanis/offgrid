@@ -11,8 +11,6 @@ from offgrid.agents.claude_code.claude_code import ClaudeCode
 from offgrid.agents.claude_code.config import ClaudeCodeConfig
 from offgrid.declaring import as_declared
 
-__all__ = ["ClaudeCodeConfig", "prepare"]
-
 
 def prepare(config: AgentConfig, passthrough: tuple[str, ...]) -> Agent:
     """Bind what Claude Code is run out of and started with.
