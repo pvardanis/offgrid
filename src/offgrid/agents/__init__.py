@@ -10,12 +10,8 @@ The two mappings are keyed alike and go together: one says what a name is
 built from, the other what it is started as.
 """
 
-from pydantic import ValidationError
-
 from offgrid.agent import Agent, AgentConfig, AgentName, Prepare
 from offgrid.agents import claude_code
-from offgrid.exceptions import ProfileError
-from offgrid.profile import describe_problems
 
 AGENTS: dict[AgentName, Prepare] = {AgentName.CLAUDE_CODE: claude_code.prepare}
 
@@ -25,7 +21,7 @@ AGENT_CONFIGS: dict[AgentName, type[AgentConfig]] = {
 
 
 def create_agent_config(said: dict, *, runtime_host: str) -> AgentConfig:
-    """Read a profile's agent section as the adapter it names reads it.
+    """Build what a profile's agent section says, as its adapter reads it.
 
     The runtime's address is supplied rather than read, because it belongs to
     the other section: an agent that writes where to talk into a config file
@@ -36,27 +32,16 @@ def create_agent_config(said: dict, *, runtime_host: str) -> AgentConfig:
 
     :return: What that adapter is built from.
 
-    :raise ProfileError: When the name is not one offgrid has an adapter for,
-        or the section says something that adapter cannot read.
+    :raise ValueError: When the name is not one offgrid has an adapter for.
+    :raise TypeError: When the section names what offgrid settles itself.
+    :raise ValidationError: When the section says something that adapter
+        cannot read. `profile.refusing` is what turns any of them into a
+        sentence.
     """
+    name = AgentName(said.get("name", AgentName.CLAUDE_CODE.value))
     written = {key: value for key, value in said.items() if key != "name"}
 
-    try:
-        name = AgentName(said.get("name", AgentName.CLAUDE_CODE.value))
-    except ValueError as error:
-        raise ProfileError(
-            f"The `agent` section names {said['name']}, which offgrid has no "
-            f"adapter for. It has {', '.join(one.value for one in AgentName)}."
-        ) from error
-
-    try:
-        return AGENT_CONFIGS[name](**written, runtime_host=runtime_host)
-    except (TypeError, ValidationError) as error:
-        raise ProfileError(
-            f"{name.value} cannot read the `agent` section of the profile: "
-            f"{_said_about(error)}. Take it out of the file, or spell it the "
-            "way that adapter does."
-        ) from error
+    return AGENT_CONFIGS[name](**written, runtime_host=runtime_host)
 
 
 def prepare_agent(config: AgentConfig, passthrough: tuple[str, ...] = ()) -> Agent:
@@ -76,19 +61,3 @@ def prepare_agent(config: AgentConfig, passthrough: tuple[str, ...] = ()) -> Age
     :return: An agent offgrid can configure and start.
     """
     return AGENTS[config.name](config, passthrough)
-
-
-def _said_about(error: Exception) -> str:
-    """Say what refused a section, whichever way it was refused.
-
-    A section naming something offgrid settles arrives as a `TypeError` about
-    a repeated argument, which is true and unreadable.
-
-    :param error: What refusing it raised.
-
-    :return: What to tell whoever typed the section.
-    """
-    if isinstance(error, ValidationError):
-        return describe_problems(error)
-
-    return f"{error}, which offgrid settles itself"

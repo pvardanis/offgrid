@@ -12,10 +12,6 @@ The two mappings are keyed alike and go together: one says what a name is
 built from, the other what it is reached with.
 """
 
-from pydantic import ValidationError
-
-from offgrid.exceptions import ProfileError
-from offgrid.profile import describe_problems
 from offgrid.runtime import Connect, Runtime, RuntimeConfig, RuntimeName
 from offgrid.runtimes import lmstudio
 
@@ -27,33 +23,22 @@ RUNTIME_CONFIGS: dict[RuntimeName, type[RuntimeConfig]] = {
 
 
 def create_runtime_config(said: dict) -> RuntimeConfig:
-    """Read a profile's runtime section as the adapter it names reads it.
+    """Build what a profile's runtime section says, as its adapter reads it.
+
+    What it says goes to the config unread: the name picks the class, and the
+    class says which of the rest it accepts.
 
     :param said: What the profile says about the runtime.
 
     :return: What that adapter is built from.
 
-    :raise ProfileError: When the name is not one offgrid has an adapter for,
-        or the section says something that adapter cannot read.
+    :raise ValueError: When the name is not one offgrid has an adapter for.
+    :raise ValidationError: When the section says something that adapter
+        cannot read. `profile.refusing` is what turns either into a sentence.
     """
-    written = {key: value for key, value in said.items() if key != "name"}
+    name = RuntimeName(said.get("name", RuntimeName.LMSTUDIO.value))
 
-    try:
-        name = RuntimeName(said.get("name", RuntimeName.LMSTUDIO.value))
-    except ValueError as error:
-        raise ProfileError(
-            f"The `runtime` section names {said['name']}, which offgrid has no "
-            f"adapter for. It has {', '.join(one.value for one in RuntimeName)}."
-        ) from error
-
-    try:
-        return RUNTIME_CONFIGS[name](**written)
-    except ValidationError as error:
-        raise ProfileError(
-            f"{name.value} cannot read the `runtime` section of the profile: "
-            f"{describe_problems(error)}. Take it out of the file, or spell it "
-            "the way that adapter does."
-        ) from error
+    return RUNTIME_CONFIGS[name](**{k: v for k, v in said.items() if k != "name"})
 
 
 def connect_runtime(config: RuntimeConfig) -> Runtime:
