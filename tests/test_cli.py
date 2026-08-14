@@ -240,6 +240,35 @@ def test_doctor_says_a_hand_edited_settings_file_permits_the_search(here):
     assert "permitted" in result.stderr
 
 
+def test_doctor_says_what_to_change_when_a_tool_can_be_reached(here):
+    # `doctor` exists to save someone the load a run costs. Saying only that
+    # something is permitted sends them to make the run anyway to find out
+    # which file and what to type.
+    runner.invoke(app, ["setup"])
+    config = here / "claude-code"
+    config.mkdir()
+    (config / "settings.json").write_text('{"theme": "mine"}')
+
+    result = runner.invoke(app, ["doctor"])
+
+    assert "settings.json" in result.stderr
+    assert "permissions.deny" in result.stderr
+
+
+def test_doctor_says_no_more_than_the_state_when_nothing_can_be_reached(here):
+    # Nothing to act on, so nothing to read: the four lines beside it are
+    # what someone came for.
+    runner.invoke(app, ["setup"])
+    config = here / "claude-code"
+    config.mkdir()
+    (config / "settings.json").write_text('{"permissions": {"deny": ["WebSearch"]}}')
+
+    result = runner.invoke(app, ["doctor"])
+
+    assert "  hosted    denied\n" in result.stderr
+    assert "settings.json" not in result.stderr
+
+
 def test_doctor_reports_settings_it_cannot_read_rather_than_crashing(here):
     # A file that is there and unreadable is a fault rather than an answer
     # about hosted tools, and offgrid's own errors are reported: a traceback
