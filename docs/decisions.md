@@ -747,3 +747,36 @@ beside `runtimes/`, it stops being a cost at all.
 It is a move: no behaviour changes, and every test that was there passes
 against the same code at a different address. `tests/test_architecture.py` is
 the exception and had to change, since what it checks is where things are.
+
+## What fits and what runs do not know each other
+
+`domain/` was fifteen modules and a package, and read as a graph it was already
+two clusters with no import between them in either direction. The code had the
+boundary and did not say so.
+
+```
+fit · listing · speed · quality · shortlist · recommendation -> machine, each other
+model · dialect · capabilities · hosted_tools · launch · runtime · agent · answering
+```
+
+Not one edge crosses. It falls out of what the commands do: `recommend` draws
+entirely from the first, `doctor` and `run` entirely from the second, and
+`setup` straddles both, which is what a composition root is for.
+
+So they are `sizing/` and `running/`, named for the question each answers. The
+folders are the smaller half of it. The point is the contract, because the two
+being disjoint was true by accident and nothing protected it — an import from
+`quality.py` to `model.py` would read as reasonable in review and would fuse
+the halves in silence. Proven by writing that exact import and watching
+`lint-imports` refuse it.
+
+`profile/` stays a sibling rather than moving under `running/`, though it
+imports `agent` and `runtime`. It is what offgrid remembers between runs —
+what a run is made from, not part of making one, and `setup` reads it without
+running anything. It also has to sit outside the contract, since it depends on
+one of the two halves; folding it in would muddy what the contract asserts.
+
+`running/` rather than `run/`, which was the other candidate. `run` is the
+noun offgrid uses everywhere and is truer to the ports — `agent.py` runs
+nothing, it says what offgrid asks of an agent — but the gerund pairs with
+`sizing/`, and the pair reads as the question each half answers.
