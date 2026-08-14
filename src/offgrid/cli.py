@@ -56,19 +56,31 @@ def setup(
 ) -> None:
     """Measure this machine and record how to reach the runtime."""
     machine = detect()
-    profile = _stored()
-    listening_at = host or (profile.runtime.host if profile else DEFAULT_HOST)
+    stored = _stored()
+    listening_at = host or (stored.runtime.host if stored else DEFAULT_HOST)
 
+    # What was stored is carried over whole rather than rebuilt from the
+    # defaults, so a re-run keeps the adapters named and whatever settings of
+    # their own they were given. Only the address moves, and it moves in both
+    # places at once.
     with _reporting():
-        runtime = create_runtime_config(
-            {"name": DEFAULT_RUNTIME.value, "host": listening_at}
+        runtime = (
+            stored.runtime.model_copy(update={"host": listening_at})
+            if stored
+            else create_runtime_config(
+                {"name": DEFAULT_RUNTIME.value, "host": listening_at}
+            )
         )
-        agent = create_agent_config(
-            {"name": DEFAULT_AGENT.value}, runtime_host=listening_at
+        agent = (
+            stored.agent.model_copy(update={"runtime_host": listening_at})
+            if stored
+            else create_agent_config(
+                {"name": DEFAULT_AGENT.value}, runtime_host=listening_at
+            )
         )
 
     save_profile(
-        Profile(runtime=runtime, agent=agent, model=profile.model if profile else None),
+        Profile(runtime=runtime, agent=agent, model=stored.model if stored else None),
         DEFAULT_PATH,
     )
 
