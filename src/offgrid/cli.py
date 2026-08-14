@@ -7,7 +7,7 @@ from pathlib import Path
 
 import typer
 
-from offgrid.agents import prepare_agent
+from offgrid.agents import create_agent_config, prepare_agent
 from offgrid.answering import get_resident_model, hold_model
 from offgrid.dialect import require_compatible
 from offgrid.exceptions import OffgridError, ProfileError
@@ -16,11 +16,9 @@ from offgrid.hosted_tools import HostedToolsStatus, require_hosted_tools_denied
 from offgrid.launch import explain_why_it_would_not_start, start
 from offgrid.leaderboards.reading import get_reading
 from offgrid.machine import detect, suggest_raising_the_gpu_limit
-from offgrid.profile import DEFAULT_PATH, Profile, save
-from offgrid.profile import load as load_profile
+from offgrid.profile import DEFAULT_PATH, Profile, create_profile, load_yaml, save
 from offgrid.recommendation import summarize_findings
-from offgrid.runtime import RuntimeConfig
-from offgrid.runtimes import connect_runtime
+from offgrid.runtimes import connect_runtime, create_runtime_config
 from offgrid.say import say_on_stderr, tell
 
 DEFAULT_HOST = "127.0.0.1:1234"
@@ -45,9 +43,17 @@ def setup(
 ) -> None:
     """Measure this machine and record how to reach the runtime."""
     machine = detect()
-    profile = _stored() or Profile(runtime=RuntimeConfig(host=DEFAULT_HOST))
-    runtime = profile.runtime.model_copy(update={"host": host or profile.runtime.host})
-    save(profile.model_copy(update={"runtime": runtime}), DEFAULT_PATH)
+    profile = _stored()
+    listening_at = host or (profile.runtime.host if profile else DEFAULT_HOST)
+
+    with _reporting():
+        runtime = create_runtime_config({"host": listening_at})
+        agent = create_agent_config({}, runtime_host=listening_at)
+
+    save(
+        Profile(runtime=runtime, agent=agent, model=profile.model if profile else None),
+        DEFAULT_PATH,
+    )
 
     tell(f"  {machine.chip} · {machine.memory_bytes / GIB:.0f}GB unified memory")
     limit = machine.wired_limit_bytes
@@ -80,8 +86,8 @@ def doctor() -> None:
     # in any of them is reported as offgrid's own error rather than as a
     # traceback under four lines that already looked like an answer.
     with _reporting():
-        runtime = connect_runtime(profile)
-        agent = prepare_agent(profile)
+        runtime = connect_runtime(profile.runtime)
+        agent = prepare_agent(profile.agent)
 
         model = get_resident_model(runtime)
         report = agent.read_hosted_tools()
@@ -133,8 +139,8 @@ def run(
     wanted = model_name or profile.model
 
     with _reporting():
-        runtime = connect_runtime(profile)
-        agent = prepare_agent(profile, passthrough)
+        runtime = connect_runtime(profile.runtime)
+        agent = prepare_agent(profile.agent, passthrough)
 
         # A dialect that cannot be paired and a run that would undo a
         # guarantee are both knowable before a load, and a load is tens of
@@ -190,7 +196,7 @@ def _stored() -> Profile | None:
         return None
 
     try:
-        return load_profile(DEFAULT_PATH)
+        return read_profile(DEFAULT_PATH)
     except ProfileError as error:
         kept = DEFAULT_PATH.with_suffix(".yaml.rejected")
         kept.write_text(DEFAULT_PATH.read_text())
@@ -214,7 +220,28 @@ def _profile() -> Profile:
     :return: The stored profile.
     """
     with _reporting():
-        return load_profile(DEFAULT_PATH)
+        return read_profile(DEFAULT_PATH)
+
+
+def read_profile(path: Path) -> Profile:
+    """Read a profile, asking each registry to read the section that is its own.
+
+    This is the one place that has both registries, so it is the one place a
+    section can become the config an adapter is built from.
+
+    :param path: Where to read it from.
+
+    :return: What a run is made from.
+
+    :raise ProfileError: When the file is not one, or a section is not one its
+        adapter can read.
+    """
+    body = load_yaml(path)
+
+    runtime = create_runtime_config(body.get("runtime", {}))
+    agent = create_agent_config(body.get("agent", {}), runtime_host=runtime.host)
+
+    return create_profile(body, runtime=runtime, agent=agent)
 
 
 def main() -> None:

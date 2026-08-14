@@ -12,6 +12,7 @@ from offgrid.exceptions import (
     RuntimeUnreachableError,
 )
 from offgrid.model import Model
+from offgrid.runtimes.lmstudio.binding import LMStudioConfig
 from offgrid.runtimes.lmstudio.catalogue import (
     get_catalogue_payload,
     get_loaded_models,
@@ -47,10 +48,10 @@ class LMStudio:
     `dialect` and `capabilities` are facts about LM Studio rather than about
     one connection to it, so they are settled here and not passed in.
 
-    :param host: Address it listens on.
+    :param config: What the profile settled for this runtime.
     """
 
-    host: str
+    config: LMStudioConfig
     dialect: Dialect = field(init=False, default=Dialect.ANTHROPIC)
     capabilities: Capabilities = field(init=False, default=CAPABILITIES)
 
@@ -61,7 +62,7 @@ class LMStudio:
 
         :raise RuntimeUnreachableError: When it cannot be reached.
         """
-        return parse_models_from_payload(get_catalogue_payload(self.host))
+        return parse_models_from_payload(get_catalogue_payload(self.config.host))
 
     def read_held(self) -> list[Model]:
         """List the models LM Studio has in memory.
@@ -70,7 +71,7 @@ class LMStudio:
 
         :raise RuntimeUnreachableError: When it cannot be reached.
         """
-        return get_loaded_models(get_catalogue_payload(self.host))
+        return get_loaded_models(get_catalogue_payload(self.config.host))
 
     def ensure_only(self, identifier: str) -> Model:
         """Hold the named model, whatever the runtime is holding now.
@@ -95,14 +96,14 @@ class LMStudio:
         # go of between them, and then what the runtime has and what it holds
         # describe different states of the same machine. What is decided below
         # turns on both at once.
-        payload = get_catalogue_payload(self.host)
+        payload = get_catalogue_payload(self.config.host)
         known = {
             model.identifier: model for model in parse_models_from_payload(payload)
         }
 
         if identifier not in known:
             raise ModelUnavailableError(
-                f"The runtime at {self.host} does not have {identifier}. "
+                f"The runtime at {self.config.host} does not have {identifier}. "
                 "`offgrid doctor` lists what it holds."
             )
 
@@ -117,9 +118,10 @@ class LMStudio:
 
         if stuck:
             raise RuntimeUnreachableError(
-                f"The runtime at {self.host} is still holding {', '.join(stuck)}, "
-                f"so {identifier} is not being loaded on top of it. Let go of it "
-                "in the runtime directly, or restart the runtime."
+                f"The runtime at {self.config.host} is still holding "
+                f"{', '.join(stuck)}, so {identifier} is not being loaded on "
+                "top of it. Let go of it in the runtime directly, or restart "
+                "the runtime."
             )
 
         return self._load(identifier)
@@ -150,7 +152,7 @@ class LMStudio:
                 "directly.",
                 identifier,
                 TOOL,
-                self.host,
+                self.config.host,
                 said or "nothing",
             )
             return False
@@ -171,7 +173,7 @@ class LMStudio:
         started = time.monotonic()
 
         try:
-            load(self.host, identifier)
+            load(self.config.host, identifier)
             log.info("  ready in %.0fs", time.monotonic() - started)
 
             return self._now_holding(identifier)
@@ -194,7 +196,7 @@ class LMStudio:
 
         if identifier not in in_memory:
             raise ModelNotHeldError(
-                f"The runtime at {self.host} accepted {identifier} but is not "
+                f"The runtime at {self.config.host} accepted {identifier} but is not "
                 "holding it. Load it in the runtime directly to see what it says."
             )
 

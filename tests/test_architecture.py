@@ -156,7 +156,7 @@ def test_a_config_built_for_one_agent_cannot_reach_another_s_factory():
     from tests.doubles import StandInAgentConfig
 
     with pytest.raises(TypeError, match="claude-code was handed StandInAgentConfig"):
-        prepare(StandInAgentConfig(), ())
+        prepare(StandInAgentConfig(runtime_host="127.0.0.1:1234"), ())
 
 
 def test_a_config_built_for_one_runtime_cannot_reach_another_s_factory():

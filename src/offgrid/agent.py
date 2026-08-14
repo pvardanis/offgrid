@@ -7,14 +7,16 @@ act — two on the configuration, one on nothing at all.
 Why it is shaped this way is in `docs/architecture.md` under "The agent seam".
 """
 
+from abc import abstractmethod
 from collections.abc import Callable
 from enum import Enum
 from pathlib import Path
 from typing import Protocol
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 from offgrid.dialect import Dialect
+from offgrid.home import OFFGRID_HOME
 from offgrid.hosted_tools import HostedToolsReport
 from offgrid.launch import Launch
 from offgrid.model import Model
@@ -31,19 +33,49 @@ class AgentName(Enum):
 
 
 class AgentConfig(BaseModel):
-    """The profile's agent section, as much of it as offgrid itself reads.
+    """What one agent adapter is built from.
 
-    Extra keys are carried rather than refused, because the section belongs to
-    whichever adapter the name picks and this type cannot know what that one
-    reads. The registry narrows it to that adapter's own config, which forbids
-    what it does not name.
+    Abstract, and each adapter declares its own. Which one a profile gets is
+    the registry's answer to the name it holds, so ``name`` is a property of
+    the class rather than a field a file sets — an adapter cannot be handed a
+    config claiming to be another.
 
-    :param name: Which agent adapter to use.
+    Keys it does not name are refused, so a typo under ``agent:`` is reported
+    rather than dropped.
+
+    :param runtime_host: Address the runtime listens on. Offgrid settles it
+        from the runtime's own section, so the file neither says it nor has it
+        written back; an agent that writes where to talk into a config file of
+        its own needs it before ``configure`` runs.
     """
 
-    model_config = ConfigDict(extra="allow", frozen=True)
+    model_config = ConfigDict(extra="forbid", frozen=True)
 
-    name: AgentName = AgentName.CLAUDE_CODE
+    runtime_host: str = Field(exclude=True)
+
+    @computed_field
+    @property
+    @abstractmethod
+    def name(self) -> AgentName:
+        """Which agent this is the config for.
+
+        Computed, so that it survives a round trip through the profile: what
+        is written is what picks this class again when the file is read.
+
+        :return: The name a profile calls this adapter by.
+        """
+
+    @property
+    def config_dir(self) -> Path:
+        """Where this agent's own configuration is kept.
+
+        Beside the profile and under the agent's own name, so a second adapter
+        does not inherit the first's. Derived rather than stored: nobody says
+        it, so nothing can disagree about it.
+
+        :return: The directory the agent is run out of.
+        """
+        return OFFGRID_HOME / self.name.value
 
 
 class Agent(Protocol):
@@ -116,29 +148,3 @@ class Agent(Protocol):
 
 
 Prepare = Callable[[AgentConfig, tuple[str, ...]], Agent]
-
-
-class MakeAgentConfig(Protocol):
-    """Turn the profile's agent section into one adapter's own settings."""
-
-    def __call__(
-        self, section: AgentConfig, *, host: str, config_dir: Path
-    ) -> AgentConfig:
-        """Read the section, alongside what offgrid settles for every agent.
-
-        The two settled arguments are what an adapter cannot read out of its
-        own section: where the runtime listens, which the runtime section
-        says, and the directory offgrid gives it, which is derived from where
-        the profile lives. An agent that writes a config file rather than
-        taking an environment needs the first of them before `configure` runs.
-
-        :param section: What the profile says about the agent.
-        :param host: Address the runtime listens on, e.g. ``127.0.0.1:1234``.
-        :param config_dir: Where this agent's own configuration is kept.
-
-        :return: The config the adapter it names is built from.
-
-        :raise ProfileError: When the section says something that adapter
-            cannot read.
-        """
-        ...

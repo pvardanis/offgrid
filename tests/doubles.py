@@ -8,7 +8,7 @@ from pathlib import Path
 
 import httpx
 import pytest
-from pydantic import ConfigDict
+from pydantic import computed_field
 
 from offgrid.agent import AgentConfig, AgentName, Prepare
 from offgrid.dialect import Dialect
@@ -16,7 +16,7 @@ from offgrid.hosted_tools import HostedToolsReport, HostedToolsStatus
 from offgrid.launch import Launch
 from offgrid.machine import Machine
 from offgrid.model import Model
-from offgrid.runtime import RuntimeConfig
+from offgrid.runtime import RuntimeConfig, RuntimeName
 
 GIB = 1024**3
 MACHINE = Machine(
@@ -35,10 +35,10 @@ def answer_as_a_mac(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setattr("offgrid.cli.detect", lambda: MACHINE)
 
     # Both, because each module holds its own name for it: the command line
-    # reads and writes the profile, and the agent registry puts a directory
-    # beside it. A test that patched one would reach the real other.
+    # reads and writes the profile, and an agent's config derives its own
+    # directory. A test that patched one would reach the real other.
     monkeypatch.setattr("offgrid.cli.DEFAULT_PATH", tmp_path / "profile.yaml")
-    monkeypatch.setattr("offgrid.agents.DEFAULT_PATH", tmp_path / "profile.yaml")
+    monkeypatch.setattr("offgrid.agent.OFFGRID_HOME", tmp_path)
 
 
 class StandInAgentConfig(AgentConfig):
@@ -48,13 +48,27 @@ class StandInAgentConfig(AgentConfig):
     which is the mis-wiring an adapter has to refuse for itself.
     """
 
-    model_config = ConfigDict(extra="forbid", frozen=True)
+    @computed_field
+    @property
+    def name(self) -> AgentName:
+        """Which agent this is the config for.
+
+        :return: A name offgrid has, so that only the type differs.
+        """
+        return AgentName.CLAUDE_CODE
 
 
 class StandInRuntimeConfig(RuntimeConfig):
     """The same for a second runtime adapter, which wires the same way."""
 
-    model_config = ConfigDict(extra="forbid", frozen=True)
+    @computed_field
+    @property
+    def name(self) -> RuntimeName:
+        """Which runtime this is the config for.
+
+        :return: A name offgrid has, so that only the type differs.
+        """
+        return RuntimeName.LMSTUDIO
 
 
 @dataclass(frozen=True)
