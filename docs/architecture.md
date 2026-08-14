@@ -47,9 +47,9 @@ stated over one name per layer rather than every module by hand.
 
 `running/answering.py` reaches `running/runtime.py`, which is a port and not an
 adapter: what satisfies it is bound to a name in `runtimes/`, and `cli.py` is
-where the two meet. `running/agent.py` stands the same way to `agents/`. One seam is still a folder
-rather than a port — `leaderboards/` — and the section below says what it
-becomes.
+where the two meet. `running/agent.py` stands the same way to `agents/`. One
+seam is still a folder rather than a port — `leaderboards/` — and the section
+below says what it becomes.
 
 ### What checks this — built
 
@@ -59,13 +59,20 @@ be spotted in review. `uv run lint-imports` runs them by hand.
 
 The first contract is the rule above: `offgrid.domain` reaches no adapter. The
 second is that `offgrid.shared` reaches nothing of offgrid's at all, which is
-what makes it the innermost layer rather than a place things are put. The third is that the two halves of the
-domain do not know each other: nothing under `sizing/` imports anything under
-`running/`, or the reverse. The fourth is that no adapter reaches for another:
-`runtimes/`, `agents/` and `leaderboards/` do not know each other exists.
+what makes it the innermost layer rather than a place things are put. The
+third is that the two halves of the domain do not know each other: nothing
+under `sizing/` imports anything under `running/`, or the reverse. The fourth
+is that no adapter reaches for another: `runtimes/`, `agents/` and
+`leaderboards/` do not know each other exists.
 
-Each is stated over one name per layer, so a module is covered by living in the
-layer rather than by being remembered.
+Three of them are stated over one name per layer, so a module is covered by
+living in the layer rather than by being remembered. The third is the exception
+and is stated inside a layer, over the two halves of the domain.
+
+`domain/profile/` is deliberately in none of them. It depends on `running/`,
+which is what a profile is for — naming the adapters a run uses — so it could
+not sit on either side of that contract without making it assert something
+softer than it does.
 
 The first carried one exemption — `offgrid.hold -> offgrid.runtimes.lmstudio`
 — which the commit that built the runtime port deleted. It is stated without
@@ -149,7 +156,8 @@ runtime and an agent.
 
 The tree is the layers, so a module's place says which one it is in and the
 contracts are stated over four names rather than every module by hand. It also
-puts `domain/runtime.py` a folder away from `runtimes/` instead of one letter.
+puts `domain/running/runtime.py` two folders away from `runtimes/` instead of
+one letter.
 
 **shared**
 
@@ -348,8 +356,9 @@ map is how this repo says where things are, and a `Runtime` inside `answering.py
 has no line in it.
 
 `cli.py` imports both — the port for its types, the registry to build one — and
-they read as what they are now that the layer is a folder: `domain/runtime.py`
-beside `runtimes/`, rather than two names one letter apart.
+they read as what they are now that the layers are folders:
+`domain/running/runtime.py` and `runtimes/`, rather than two names one letter
+apart at the same level.
 
 ## The runtime seam — built
 
