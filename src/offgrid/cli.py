@@ -7,6 +7,7 @@ from pathlib import Path
 
 import typer
 
+from offgrid.agent import AgentName
 from offgrid.agents import create_agent_config, prepare_agent
 from offgrid.answering import get_resident_model, hold_model
 from offgrid.dialect import require_compatible
@@ -16,8 +17,16 @@ from offgrid.hosted_tools import HostedToolsStatus, require_hosted_tools_denied
 from offgrid.launch import explain_why_it_would_not_start, start
 from offgrid.leaderboards.reading import get_reading
 from offgrid.machine import detect, suggest_raising_the_gpu_limit
-from offgrid.profile import DEFAULT_PATH, Profile, create_profile, load_yaml, save
+from offgrid.profile import (
+    DEFAULT_PATH,
+    Profile,
+    create_profile,
+    load_yaml,
+    refusing,
+    save,
+)
 from offgrid.recommendation import summarize_findings
+from offgrid.runtime import RuntimeName
 from offgrid.runtimes import connect_runtime, create_runtime_config
 from offgrid.say import say_on_stderr, tell
 
@@ -80,12 +89,12 @@ def setup(
 @app.command()
 def doctor() -> None:
     """Check that the runtime is reachable and holding a model."""
-    profile = _profile()
-
-    # Binding and both readings happen before anything is printed, so a fault
-    # in any of them is reported as offgrid's own error rather than as a
-    # traceback under four lines that already looked like an answer.
+    # Reading, binding and both askings happen before anything is printed, so
+    # a fault in any of them is reported as offgrid's own error rather than as
+    # a traceback under four lines that already looked like an answer.
     with _reporting():
+        profile = read_profile(DEFAULT_PATH)
+
         runtime = connect_runtime(profile.runtime)
         agent = prepare_agent(profile.agent)
 
@@ -134,11 +143,12 @@ def run(
     ),
 ) -> None:
     """Start the agent against a model the runtime is holding."""
-    profile = _profile()
     passthrough = tuple(context.args)
-    wanted = model_name or profile.model
 
     with _reporting():
+        profile = read_profile(DEFAULT_PATH)
+        wanted = model_name or profile.model
+
         runtime = connect_runtime(profile.runtime)
         agent = prepare_agent(profile.agent, passthrough)
 
@@ -214,15 +224,6 @@ def _cache() -> Path:
     return DEFAULT_PATH.parent / "leaderboard.json"
 
 
-def _profile() -> Profile:
-    """Read the stored profile, or explain how to make one.
-
-    :return: The stored profile.
-    """
-    with _reporting():
-        return read_profile(DEFAULT_PATH)
-
-
 def read_profile(path: Path) -> Profile:
     """Read a profile, asking each registry to read the section that is its own.
 
@@ -237,9 +238,13 @@ def read_profile(path: Path) -> Profile:
         adapter can read.
     """
     body = load_yaml(path)
+    said = {port: body.get(port, {}) for port in ("runtime", "agent")}
 
-    runtime = create_runtime_config(body.get("runtime", {}))
-    agent = create_agent_config(body.get("agent", {}), runtime_host=runtime.host)
+    with refusing(said["runtime"], port="runtime", names=RuntimeName):
+        runtime = create_runtime_config(said["runtime"])
+
+    with refusing(said["agent"], port="agent", names=AgentName):
+        agent = create_agent_config(said["agent"], runtime_host=runtime.host)
 
     return create_profile(body, runtime=runtime, agent=agent)
 

@@ -165,6 +165,40 @@ def test_an_agent_offgrid_cannot_start_is_refused(tmp_path):
         read_profile(path)
 
 
+def test_a_key_the_agent_it_names_does_not_read_is_refused(tmp_path):
+    # The section belongs to whichever adapter its name picks, so this is the
+    # only place a typo under `agent:` can be caught — and it is caught, not
+    # dropped. The message names the section, the adapter, and the key.
+    path = tmp_path / "profile.yaml"
+    path.write_text(f"runtime:\n  host: {HOST}\nagent:\n  theme: dark\n")
+
+    with pytest.raises(ProfileError) as refused:
+        read_profile(path)
+
+    said = str(refused.value)
+    assert "`agent` section" in said
+    assert "claude-code" in said
+    assert "theme" in said
+
+
+def test_a_key_offgrid_settles_itself_is_refused_rather_than_taken(tmp_path):
+    # `runtime_host` is a field of the agent's config, filled from the runtime
+    # section. A file naming it would otherwise be overridden in silence — the
+    # one dropped key `extra="forbid"` cannot catch.
+    path = tmp_path / "profile.yaml"
+    path.write_text(
+        f"runtime:\n  host: {HOST}\nagent:\n  runtime_host: 10.0.0.5:4321\n"
+    )
+
+    with pytest.raises(ProfileError) as refused:
+        read_profile(path)
+
+    said = str(refused.value)
+    assert "`agent` section" in said
+    assert "runtime_host" in said
+    assert "offgrid settles itself" in said
+
+
 def test_a_profile_written_flat_is_refused_with_the_shape_it_now_wants(tmp_path):
     # The shape a working profile is in before it is nested. Naming the first
     # key that does not fit leaves the reader guessing at the rest of it.

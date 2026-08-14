@@ -6,7 +6,7 @@ from offgrid.agents import create_agent_config
 from offgrid.agents.claude_code import prepare
 from offgrid.agents.claude_code.launching import FALLBACK_CONTEXT
 from offgrid.dialect import Dialect
-from offgrid.exceptions import AgentSettingsError, ProfileError
+from offgrid.exceptions import AgentSettingsError
 from offgrid.hosted_tools import HostedToolsStatus
 from offgrid.model import Model
 
@@ -52,31 +52,6 @@ def started_with():
 def launch(agent):
     model = Model(identifier="qwen/qwen3.6-35b-a3b", context_limit=212224)
     return agent.plan(model)
-
-
-def test_a_key_claude_code_does_not_read_is_refused_naming_the_section(tmp_path):
-    # The base section carries what it cannot read, so this is the only place
-    # a typo under `agent:` can be caught — and it is caught, not dropped.
-    with pytest.raises(ProfileError) as refused:
-        _config(theme="dark")
-
-    said = str(refused.value)
-    assert "`agent` section" in said
-    assert "claude-code" in said
-    assert "theme" in said
-
-
-def test_a_key_offgrid_settles_is_refused_rather_than_taken_from_the_file(tmp_path):
-    # `host` is a field of Claude Code's config, so a section naming it would
-    # otherwise be overridden in silence — the one shape of dropped key the
-    # adapter's own `extra="forbid"` cannot catch.
-    with pytest.raises(ProfileError) as refused:
-        _config(runtime_host="10.0.0.5:4321")
-
-    said = str(refused.value)
-    assert "`agent` section" in said
-    assert "host" in said
-    assert "offgrid settles itself" in said
 
 
 def _settings(config_dir):

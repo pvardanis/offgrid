@@ -9,6 +9,9 @@ registries reads the file, asks each registry for its own section, and hands
 both back here.
 """
 
+from collections.abc import Iterator
+from contextlib import contextmanager
+from enum import Enum
 from pathlib import Path
 
 import yaml
@@ -128,12 +131,61 @@ def create_profile(
     except ValidationError as error:
         raise ProfileError(
             f"The profile does not describe a run offgrid can make: "
-            f"{describe_problems(error)}. Fix it by hand, or run `offgrid "
+            f"{_problems(error)}. Fix it by hand, or run `offgrid "
             "setup` to write it again."
         ) from error
 
 
-def describe_problems(error: ValidationError) -> str:
+@contextmanager
+def refusing(said: dict, *, port: str, names: type[Enum]) -> Iterator[None]:
+    """Say what a section was refused for, as a profile error.
+
+    A registry builds what its own names say and nothing else, so what it
+    raises is a parser's word for the fault rather than a reader's. This is
+    where it becomes one: the section it was in, the adapter it named, and
+    what to do next — the same sentence every other profile error is.
+
+    :param said: What the profile says about this port.
+    :param port: Which section it is, as the file spells it.
+    :param names: The adapters offgrid has for this port.
+
+    :yield: To the registry building the section.
+
+    :raise ProfileError: When the section is not one that adapter can read.
+    """
+    try:
+        yield
+    except ValueError as error:
+        if isinstance(error, ValidationError):
+            raise ProfileError(
+                f"{_named(said, names)} cannot read the `{port}` section of "
+                f"the profile: {_problems(error)}. Take it out of the file, or "
+                "spell it the way that adapter does."
+            ) from error
+
+        raise ProfileError(
+            f"The `{port}` section names {said.get('name')}, which offgrid has "
+            f"no adapter for. It has {', '.join(one.value for one in names)}."
+        ) from error
+    except TypeError as error:
+        raise ProfileError(
+            f"The `{port}` section of the profile names something offgrid "
+            f"settles itself: {error}. Take it out of the file."
+        ) from error
+
+
+def _named(said: dict, names: type[Enum]) -> str:
+    """Say which adapter a section asked for, as the file spells it.
+
+    :param said: What the profile says about this port.
+    :param names: The adapters offgrid has for this port.
+
+    :return: The adapter's name, or the one it gets by saying nothing.
+    """
+    return str(said.get("name", next(iter(names)).value))
+
+
+def _problems(error: ValidationError) -> str:
     """Name what a validator refused, field by field.
 
     :param error: What the validator raised.
