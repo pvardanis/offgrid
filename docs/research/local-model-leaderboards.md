@@ -6,7 +6,7 @@ Everything below was fetched on 2026-08-07 with `curl`, no browser and no
 search tool. Every claim carries the URL it came from. Where a thing could not
 be established it says so and says what was tried.
 
-The bar a source has to clear is set by `src/offgrid/listing.py`: a `Listing`
+The bar a source has to clear is set by `src/offgrid/domain/listing.py`: a `Listing`
 needs a `name` and a `parameters` count, and takes a `context_window` and a
 `license` if the source has them. `fit.py` sizes from `parameters`, so a row
 without one is dropped — which is why a scores-only leaderboard is useless

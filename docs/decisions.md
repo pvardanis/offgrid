@@ -715,13 +715,21 @@ So the layers are folders: `domain/`, `shared/`, and the adapter packages that
 were already there, with `cli.py` alone at the root because it is the only
 thing outside all of them.
 
-What this buys is not tidiness. Both `import-linter` contracts were stated over
-every domain module by hand — twenty names, and a new module was covered only
-if somebody remembered to add it. They are stated over `offgrid.domain` now,
-one name, and everything beneath it is covered because it is beneath it. The
-test that closed the same hole from the other side shrank with them: it places
-a module by the first package above it that a layer claims, rather than
-matching names one at a time.
+What this buys is not tidiness. The contract saying the domain knows nothing
+about adapters was stated over every domain module by hand — twenty names, and
+a new module was covered only if somebody remembered to add it. It is stated
+over `offgrid.domain` now, and everything beneath it is covered by being
+beneath it. The test that closed the same hole from the other side shrank with
+it: it places a module by the first package above it that a layer claims,
+rather than matching names one at a time.
+
+A third contract was written while moving, because the move showed it was
+missing. `shared/` claims to reach nothing of offgrid's own, and nothing said
+so: `home.py` and `declaring.py` had been named in the domain contract and
+stopped being, while `say.py` had never been covered at all. Probed one module
+at a time, three of the four were caught anyway through something that imports
+them, and `say.py` was not caught by anything. The claim is a contract now
+rather than a sentence.
 
 `shared/` is what reaches nothing of offgrid's own, and that is a test rather
 than a description: `exceptions.py`, `say.py`, `home.py` and `declaring.py`
@@ -736,5 +744,6 @@ package each. A package holding one file says nothing, and `runtime/` beside
 recorded as worth paying when one of them was a file. As `domain/runtime.py`
 beside `runtimes/`, it stops being a cost at all.
 
-It is a move: no behaviour changes, and the suite passing unchanged is the
-whole of the proof.
+It is a move: no behaviour changes, and every test that was there passes
+against the same code at a different address. `tests/test_architecture.py` is
+the exception and had to change, since what it checks is where things are.

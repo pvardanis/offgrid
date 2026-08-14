@@ -42,8 +42,8 @@ nothing about adapters. The command line is outermost and may reach anything;
 `shared` is innermost and reaches nothing of offgrid's.
 
 Each of these is a folder, so the tree says which layer a module is in and a
-new one lands somewhere on purpose. It is also what lets both contracts be
-stated over four names rather than every module by hand.
+new one lands somewhere on purpose. It is also what lets the contracts be
+stated over one name per layer rather than every module by hand.
 
 `answering.py` reaches `runtime.py`, which is a port and not an adapter: what
 satisfies it is bound to a name in `runtimes/`, and `cli.py` is where the two
@@ -53,13 +53,18 @@ becomes.
 
 ### What checks this — built
 
-`import-linter` states the rule as two contracts in `pyproject.toml`, and the
+`import-linter` states the rule as three contracts in `pyproject.toml`, and the
 hooks run them on every commit, so a broken layer fails rather than waiting to
 be spotted in review. `uv run lint-imports` runs them by hand.
 
-The first contract is the rule above. The second is that no adapter reaches
-for another: `runtimes/`, `agents/` and `leaderboards/` do not know each other
-exists.
+The first contract is the rule above: `offgrid.domain` reaches no adapter. The
+second is that `offgrid.shared` reaches nothing of offgrid's at all, which is
+what makes it the innermost layer rather than a place things are put. The third
+is that no adapter reaches for another: `runtimes/`, `agents/` and
+`leaderboards/` do not know each other exists.
+
+Each is stated over one name per layer, so a module is covered by living in the
+layer rather than by being remembered.
 
 The first carried one exemption — `offgrid.hold -> offgrid.runtimes.lmstudio`
 — which the commit that built the runtime port deleted. It is stated without

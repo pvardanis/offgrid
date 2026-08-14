@@ -83,6 +83,20 @@ forbidden_modules = [
 ]
 
 [[tool.importlinter.contracts]]
+name = "What every layer may reach, reaches nothing of offgrid's"
+type = "forbidden"
+source_modules = [
+    "offgrid.shared",
+]
+forbidden_modules = [
+    "offgrid.cli",
+    "offgrid.domain",
+    "offgrid.agents",
+    "offgrid.leaderboards",
+    "offgrid.runtimes",
+]
+
+[[tool.importlinter.contracts]]
 name = "One adapter never reaches for another"
 type = "independence"
 modules = [
