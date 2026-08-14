@@ -15,7 +15,7 @@ import pytest
 from offgrid.answering import get_resident_model, hold_model
 from offgrid.exceptions import ModelUnavailableError
 from offgrid.runtimes.lmstudio import connect
-from offgrid.runtimes.lmstudio.binding import LMStudioConfig
+from offgrid.runtimes.lmstudio.config import LMStudioConfig
 from tests.doubles import answer_as_lm_studio
 
 HOST = "127.0.0.1:1234"

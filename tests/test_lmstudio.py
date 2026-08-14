@@ -5,11 +5,11 @@ import pytest
 
 from offgrid.dialect import Dialect
 from offgrid.runtimes.lmstudio import connect
-from offgrid.runtimes.lmstudio.binding import LMStudioConfig
 from offgrid.runtimes.lmstudio.catalogue import (
     get_loaded_models,
     parse_models_from_payload,
 )
+from offgrid.runtimes.lmstudio.config import LMStudioConfig
 
 FIXTURE = pathlib.Path(__file__).parent / "fixtures" / "lmstudio_models.json"
 
