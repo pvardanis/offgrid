@@ -1,17 +1,17 @@
 """What docs/architecture.md and the import contracts claim, against the tree.
 
-Both enumerate the modules by hand, and both go stale the same silent way:
-somebody adds a module, or splits one, and neither notices. A map that has
-quietly stopped describing the code is worse than none, because it is still
-read.
+The map enumerates the modules by hand and goes stale the silent way: somebody
+adds a module, or splits one, and it notices nothing. A map that has quietly
+stopped describing the code is worse than none, because it is still read.
 
-The contract's side matters more than the doc's. A module missing from
-`source_modules` is not covered by the rule that the domain knows nothing
-about adapters — it is outside the check rather than passing it, and nothing
+The contracts are stated over one name per layer, so a module cannot fall out
+of them by being forgotten — but a whole package can, by landing outside every
+layer. That module is outside the check rather than passing it, and nothing
 else would say so.
 
 This is a regression guard, not a slice: it passes the day it is written. It
-was checked by taking a module out of each list in turn and watching it fail.
+was checked by taking a module out of the map, and a package out of every
+layer, and watching each fail.
 """
 
 import tomllib
@@ -27,6 +27,11 @@ SOURCE = ROOT / "src" / "offgrid"
 
 # One name per layer, as the tree says it. A module belongs to the layer of the
 # package above it, so these stay this length however many modules there are.
+DOMAIN_CONTRACT = "The domain knows nothing about adapters"
+
+# Held here rather than derived, so that calling a package shared is a decision
+# someone makes rather than something a heuristic infers. Anything shared is
+# reachable from every layer, which is a thing to be sure about.
 ADAPTERS = {"offgrid.agents", "offgrid.leaderboards", "offgrid.runtimes"}
 COMMAND_LINE = {"offgrid.cli"}
 SHARED = {"offgrid.shared"}
@@ -60,9 +65,9 @@ def _domain_in_the_contract() -> set[str]:
     contracts = tomllib.loads(PYPROJECT.read_text())["tool"]["importlinter"][
         "contracts"
     ]
-    forbidden = next(one for one in contracts if one["type"] == "forbidden")
+    stated = next(one for one in contracts if one["name"] == DOMAIN_CONTRACT)
 
-    return set(forbidden["source_modules"])
+    return set(stated["source_modules"])
 
 
 def _is_covered(module: str, named: set[str]) -> bool:
@@ -111,9 +116,9 @@ def test_every_module_is_covered_by_the_layer_rule():
     )
 
     assert not unclassified, (
-        f"{unclassified} sits in no layer, so the import contract does not "
-        "cover it. Add it to `source_modules` in pyproject.toml, or to SHARED "
-        "here if every layer may reach it."
+        f"{unclassified} sits in no layer, so no import contract covers it. "
+        "Move it under the layer it belongs to, or state a contract over it "
+        "in pyproject.toml and name it here."
     )
 
 
