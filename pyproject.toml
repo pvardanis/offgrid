@@ -75,6 +75,7 @@ name = "The domain knows nothing about adapters"
 type = "forbidden"
 source_modules = [
     "offgrid.agent",
+    "offgrid.capabilities",
     "offgrid.dialect",
     "offgrid.answering",
     "offgrid.fit",

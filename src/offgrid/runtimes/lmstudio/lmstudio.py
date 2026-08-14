@@ -4,6 +4,7 @@ import logging
 import time
 from dataclasses import dataclass, field
 
+from offgrid.capabilities import Capabilities
 from offgrid.dialect import Dialect
 from offgrid.exceptions import (
     ModelNotHeldError,
@@ -11,7 +12,6 @@ from offgrid.exceptions import (
     RuntimeUnreachableError,
 )
 from offgrid.model import Model
-from offgrid.runtime import Capabilities
 from offgrid.runtimes.lmstudio.catalogue import (
     get_catalogue_payload,
     get_loaded_models,

@@ -23,7 +23,7 @@ flowchart TD
     subgraph domain [domain]
         answering[answering.py]
         ports["runtime.py · agent.py"]
-        rest["machine · fit · listing · speed · quality ·<br/>shortlist · recommendation · dialect · hosted_tools ·<br/>profile · launch · model"]
+        rest["machine · fit · listing · speed · quality ·<br/>shortlist · recommendation · dialect · hosted_tools ·<br/>capabilities · profile · launch · model"]
     end
     subgraph shared [shared]
         sh["exceptions.py · say.py"]
@@ -116,6 +116,7 @@ quality.py         how good a fit is, as one number and one word
 shortlist.py       what fits, ranked, and what each rule dropped
 recommendation.py  how that reads to whoever asked
 dialect.py         which API shapes can be paired
+capabilities.py    what a runtime can be asked to do
 hosted_tools.py    what an agent can reach that offgrid cannot run here
 runtime.py         what offgrid asks of a runtime, and which ones there are
 agent.py           what offgrid asks of an agent, and which ones there are
@@ -282,7 +283,8 @@ agent.py           what offgrid needs of an agent, and which ones there are
 leaderboard.py     what offgrid needs of a published list
 ```
 
-`runtime.py` holds `Runtime`, `Capabilities` and `RuntimeName`; `agent.py`
+`runtime.py` holds `Runtime` and `RuntimeName`, with `Capabilities` beside
+them in `capabilities.py`; `agent.py`
 holds `Agent` and `AgentName`; `leaderboard.py` holds `Leaderboard`, `Fetch`
 and `Parse`. The adapter packages hold implementations and their registry, and
 each concrete adapter becomes importable from exactly one place: that registry.
