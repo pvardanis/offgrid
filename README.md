@@ -249,10 +249,11 @@ downloaded, and nothing is written.
 | [LM Studio](https://lmstudio.ai/) | `anthropic` | ✅ |
 | [Ollama](https://ollama.com/) | `openai` | ❌ |
 
-Adding one is a module in `runtimes/` exposing a `read_config(section)` and a
+Adding one is a module in `runtimes/` exposing a config class and a
 `connect(config)`, and one line each in the two registries beside it. The
 config declares which keys the runtime section may carry, and offgrid refuses
-the rest on the adapter's behalf. What that answers with satisfies `Runtime`: it
+the rest on the adapter's behalf. Its name is a property of the class rather
+than a field, so a config cannot claim to be an adapter it is not. What that answers with satisfies `Runtime`: it
 reports a dialect and what it can be asked to do, lists what it has and what it
 holds, holds one model alone, and lets one go. How it reaches that state is its
 own business, and nothing above knows which runtime is answering.
@@ -300,11 +301,12 @@ back. The catalogue can.
 | [Claude Code](https://claude.com/claude-code) | `anthropic` | ✅ |
 | [OpenCode](https://opencode.ai/) | either, per provider | ❌ |
 
-Adding one is a module in `agents/`: declare which keys your section carries,
-report a dialect, build a launch — an environment and an argument list — and
-prepare whatever profile it reads. The adapter is handed where the runtime
-listens when it is built, so an agent that writes that into a config file of
-its own can do it while it configures.
+Adding one is a module in `agents/`: a config class declaring which keys your
+section carries, then report a dialect, build a launch — an environment and an
+argument list — and prepare whatever profile it reads. The config carries where
+the runtime listens, filled from the runtime's own section, so an agent that
+writes that into a config file of its own can do it while it configures. Where
+its files live is derived from its name, so nobody writes that down.
 Launches are built rather than exported, so a caller can show one before
 anything runs.
 

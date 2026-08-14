@@ -12,8 +12,9 @@ import subprocess
 
 import pytest
 
+from offgrid.cli import read_profile
 from offgrid.exceptions import OffgridError
-from offgrid.profile import load as load_profile
+from offgrid.profile import DEFAULT_PATH
 from offgrid.runtimes.lmstudio.catalogue import (
     get_catalogue_payload,
     get_loaded_models,
@@ -32,7 +33,7 @@ def host() -> str:
     :return: The address from the profile.
     """
     try:
-        return load_profile().runtime.host
+        return read_profile(DEFAULT_PATH).runtime.host
     except OffgridError as error:
         pytest.skip(f"no profile to read the runtime's address from: {error}")
 

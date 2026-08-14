@@ -2,8 +2,8 @@ import json
 
 import pytest
 
-from offgrid.agent import AgentConfig
-from offgrid.agents.claude_code import prepare, read_config
+from offgrid.agents import create_agent_config
+from offgrid.agents.claude_code import prepare
 from offgrid.agents.claude_code.launching import FALLBACK_CONTEXT
 from offgrid.dialect import Dialect
 from offgrid.exceptions import AgentSettingsError, ProfileError
@@ -13,22 +13,37 @@ from offgrid.model import Model
 HOST = "127.0.0.1:1234"
 
 
-def _config(config_dir, **said):
-    """The config a registry would build, from what a profile said."""
-    return read_config(AgentConfig(**said), host=HOST, config_dir=config_dir)
+def _config(**said):
+    """The config the registry would build, from what a profile said."""
+    return create_agent_config(said, runtime_host=HOST)
+
+
+@pytest.fixture(autouse=True)
+def _nowhere_real(monkeypatch, tmp_path):
+    """Keep the directory an agent derives for itself inside the test."""
+    monkeypatch.setattr("offgrid.agent.OFFGRID_HOME", tmp_path)
 
 
 @pytest.fixture
-def agent(tmp_path):
-    return prepare(_config(tmp_path), ())
+def config_dir(tmp_path):
+    """Where the agent keeps its own files, as its config derives it."""
+    made = tmp_path / "claude-code"
+    made.mkdir()
+
+    return made
 
 
 @pytest.fixture
-def started_with(tmp_path):
+def agent():
+    return prepare(_config(), ())
+
+
+@pytest.fixture
+def started_with():
     """Answer with an agent bound to the arguments a run would hand on."""
 
     def bind(*passthrough):
-        return prepare(_config(tmp_path), passthrough)
+        return prepare(_config(), passthrough)
 
     return bind
 
@@ -43,7 +58,7 @@ def test_a_key_claude_code_does_not_read_is_refused_naming_the_section(tmp_path)
     # The base section carries what it cannot read, so this is the only place
     # a typo under `agent:` can be caught — and it is caught, not dropped.
     with pytest.raises(ProfileError) as refused:
-        _config(tmp_path, theme="dark")
+        _config(theme="dark")
 
     said = str(refused.value)
     assert "`agent` section" in said
@@ -56,7 +71,7 @@ def test_a_key_offgrid_settles_is_refused_rather_than_taken_from_the_file(tmp_pa
     # otherwise be overridden in silence — the one shape of dropped key the
     # adapter's own `extra="forbid"` cannot catch.
     with pytest.raises(ProfileError) as refused:
-        _config(tmp_path, host="10.0.0.5:4321")
+        _config(runtime_host="10.0.0.5:4321")
 
     said = str(refused.value)
     assert "`agent` section" in said
@@ -103,8 +118,8 @@ def test_thinking_is_off_because_it_is_paid_for_at_decode_speed(launch):
     assert launch.env["MAX_THINKING_TOKENS"] == "0"
 
 
-def test_the_config_directory_is_the_one_the_agent_was_bound_to(launch, tmp_path):
-    assert launch.env["CLAUDE_CONFIG_DIR"] == str(tmp_path)
+def test_the_config_directory_is_the_one_the_agent_derives(launch, config_dir):
+    assert launch.env["CLAUDE_CONFIG_DIR"] == str(config_dir)
 
 
 def test_no_mcp_servers_are_loaded(launch):
@@ -129,41 +144,41 @@ def test_a_model_with_no_stated_context_gets_a_workable_default(agent):
     assert launch.env["CLAUDE_CODE_AUTO_COMPACT_WINDOW"] == str(FALLBACK_CONTEXT)
 
 
-def test_planning_a_launch_writes_nothing(agent, tmp_path):
+def test_planning_a_launch_writes_nothing(agent, config_dir):
     # An environment and an argument list can be shown before anything runs,
     # which is only true while building one changes nothing on disk.
     model = Model(identifier="a/b", context_limit=8192)
     agent.plan(model)
 
-    assert list(tmp_path.iterdir()) == []
+    assert not list(config_dir.iterdir())
 
 
-def test_the_configuration_denies_the_search_that_cannot_work(agent, tmp_path):
+def test_the_configuration_denies_the_search_that_cannot_work(agent, config_dir):
     # WebSearch runs on Anthropic's servers, so against a local model the
     # model invents a result and Claude Code returns it without an error.
     agent.configure()
 
-    assert "WebSearch" in _settings(tmp_path)["permissions"]["deny"]
+    assert "WebSearch" in _settings(config_dir)["permissions"]["deny"]
 
 
-def test_no_mcp_servers_are_enabled_in_the_configuration(agent, tmp_path):
+def test_no_mcp_servers_are_enabled_in_the_configuration(agent, config_dir):
     agent.configure()
 
-    assert _settings(tmp_path)["enableAllProjectMcpServers"] is False
+    assert _settings(config_dir)["enableAllProjectMcpServers"] is False
 
 
-def test_the_configuration_tells_the_agent_it_cannot_search(agent, tmp_path):
+def test_the_configuration_tells_the_agent_it_cannot_search(agent, config_dir):
     # Discovering the wall by calling the tool costs a turn, and locally a
     # turn is tens of seconds.
     agent.configure()
-    notes = (tmp_path / "CLAUDE.md").read_text()
+    notes = (config_dir / "CLAUDE.md").read_text()
 
     assert "WebSearch" in notes
     assert "WebFetch" in notes
 
 
-def test_settings_already_there_are_left_alone(agent, tmp_path):
-    settings = tmp_path / "settings.json"
+def test_settings_already_there_are_left_alone(agent, config_dir):
+    settings = config_dir / "settings.json"
     kept = '{"theme": "mine", "permissions": {"deny": ["WebSearch"]}}'
     settings.write_text(kept)
 
@@ -172,8 +187,8 @@ def test_settings_already_there_are_left_alone(agent, tmp_path):
     assert settings.read_text() == kept
 
 
-def test_notes_already_written_are_left_alone(agent, tmp_path):
-    notes = tmp_path / "CLAUDE.md"
+def test_notes_already_written_are_left_alone(agent, config_dir):
+    notes = config_dir / "CLAUDE.md"
     notes.write_text("# mine\n")
 
     agent.configure()
@@ -181,24 +196,27 @@ def test_notes_already_written_are_left_alone(agent, tmp_path):
     assert notes.read_text() == "# mine\n"
 
 
-def test_configuring_twice_changes_nothing_the_second_time(agent, tmp_path):
+def test_configuring_twice_changes_nothing_the_second_time(agent, config_dir):
     agent.configure()
-    written = {path.name: path.read_text() for path in tmp_path.iterdir()}
+    written = {path.name: path.read_text() for path in config_dir.iterdir()}
 
     agent.configure()
 
-    assert {path.name: path.read_text() for path in tmp_path.iterdir()} == written
+    assert {path.name: path.read_text() for path in config_dir.iterdir()} == written
 
 
-def test_a_configuration_that_cannot_be_written_says_what_stopped_it(tmp_path):
+def test_a_configuration_that_cannot_be_written_says_what_stopped_it(
+    tmp_path, monkeypatch
+):
     # The command line reports offgrid's own errors and lets everything else
     # reach the terminal as a traceback, which is no use to whoever owns the
     # directory that would not take the file.
     in_the_way = tmp_path / "not-a-directory"
     in_the_way.write_text("")
+    monkeypatch.setattr("offgrid.agent.OFFGRID_HOME", in_the_way)
 
     with pytest.raises(AgentSettingsError, match="cannot be written"):
-        prepare(_config(in_the_way / "claude-code"), ()).configure()
+        prepare(_config(), ()).configure()
 
 
 def test_what_the_agent_writes_for_itself_reads_as_denied(agent):
@@ -208,22 +226,22 @@ def test_what_the_agent_writes_for_itself_reads_as_denied(agent):
 
 
 def test_configuring_does_not_refuse_settings_the_reading_would_call_permitted(
-    agent, tmp_path
+    agent, config_dir
 ):
     # Two jobs, and only one of them may stop a run: settings that would let
     # the agent search are still an edit worth keeping.
     permitting = '{"theme": "mine"}'
-    (tmp_path / "settings.json").write_text(permitting)
+    (config_dir / "settings.json").write_text(permitting)
 
     agent.configure()
 
-    assert (tmp_path / "settings.json").read_text() == permitting
+    assert (config_dir / "settings.json").read_text() == permitting
 
 
-def test_settings_that_would_let_the_agent_search_read_as_permitted(agent, tmp_path):
+def test_settings_that_would_let_the_agent_search_read_as_permitted(agent, config_dir):
     # The file is hand-editable, and an edit that drops the deny brings back
     # the invented answers it was written to prevent.
-    (tmp_path / "settings.json").write_text('{"theme": "mine"}')
+    (config_dir / "settings.json").write_text('{"theme": "mine"}')
 
     found = agent.read_hosted_tools()
 
@@ -321,10 +339,10 @@ def test_arguments_measured_to_leave_the_deny_standing_read_as_denied(
     assert agent.read_hosted_tools().status is HostedToolsStatus.DENIED
 
 
-def test_settings_that_are_not_readable_json_are_refused(agent, tmp_path):
+def test_settings_that_are_not_readable_json_are_refused(agent, config_dir):
     # Not an answer about hosted tools: the file is there and says nothing
     # either way, which is a fault to fix rather than a state to report.
-    (tmp_path / "settings.json").write_text('{"permissions": ')
+    (config_dir / "settings.json").write_text('{"permissions": ')
 
     with pytest.raises(AgentSettingsError, match="not readable as JSON"):
         agent.read_hosted_tools()
@@ -340,21 +358,21 @@ def test_settings_that_are_not_readable_json_are_refused(agent, tmp_path):
     ids=["deny is a word", "permissions is a list", "the file is a list"],
 )
 def test_settings_shaped_so_nothing_denies_anything_read_as_permitted(
-    agent, tmp_path, written
+    agent, config_dir, written
 ):
     # Regression guards, not slices: they pass as written. A settings file is
     # typed by hand into a schema nobody memorises, and each of these is a
     # shape the agent itself ignores — so reading a deny out of one and
     # calling the run safe is the invented answer the guard exists to stop.
-    (tmp_path / "settings.json").write_text(written)
+    (config_dir / "settings.json").write_text(written)
 
     assert agent.read_hosted_tools().status is HostedToolsStatus.PERMITTED
 
 
-def test_settings_that_are_not_text_are_not_called_bad_json(agent, tmp_path):
+def test_settings_that_are_not_text_are_not_called_bad_json(agent, config_dir):
     # A file whose bytes are not text never reached the parser, so naming
     # JSON sends someone looking for a bracket in a file that has none.
-    (tmp_path / "settings.json").write_bytes(b'{"permissions": \xff}')
+    (config_dir / "settings.json").write_bytes(b'{"permissions": \xff}')
 
     with pytest.raises(AgentSettingsError, match="cannot be read") as refused:
         agent.read_hosted_tools()
@@ -362,10 +380,12 @@ def test_settings_that_are_not_text_are_not_called_bad_json(agent, tmp_path):
     assert "JSON" not in str(refused.value)
 
 
-def test_settings_that_are_there_and_unreadable_are_not_called_missing(agent, tmp_path):
+def test_settings_that_are_there_and_unreadable_are_not_called_missing(
+    agent, config_dir
+):
     # "It is not there" sends someone to write a file that is already there.
     # What stopped the read is what they need, whatever it was.
-    (tmp_path / "settings.json").mkdir()
+    (config_dir / "settings.json").mkdir()
 
     with pytest.raises(AgentSettingsError, match="cannot be read") as refused:
         agent.read_hosted_tools()

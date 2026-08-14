@@ -1,17 +1,16 @@
 """LM Studio, which serves Anthropic's message API alongside OpenAI's.
 
-`read_config` and `connect` are the whole of what the registry asks for: one
-turns the profile's runtime section into what LM Studio reads, the other opens
-a connection from it. What that answers with is in `lmstudio.py`, and what it
+`LMStudioConfig` and `connect` are the whole of what the registry asks for:
+one says what a profile's runtime section may hold, the other opens a
+connection from it. What that answers with is in `lmstudio.py`, and what it
 reaches for is beside it.
 """
 
-from offgrid.runtime import Runtime, RuntimeConfig, RuntimeName
-from offgrid.runtimes.lmstudio.binding import LMStudioConfig, read_config
+from offgrid.runtime import Runtime, RuntimeConfig
+from offgrid.runtimes.lmstudio.binding import LMStudioConfig
 from offgrid.runtimes.lmstudio.lmstudio import LMStudio
-from offgrid.sections import as_declared
 
-__all__ = ["connect", "read_config"]
+__all__ = ["LMStudioConfig", "connect"]
 
 
 def connect(config: RuntimeConfig) -> Runtime:
@@ -24,11 +23,11 @@ def connect(config: RuntimeConfig) -> Runtime:
     :raise TypeError: When the config was built for another runtime, which is
         a registry binding one name to two adapters.
     """
-    own = as_declared(
-        config,
-        LMStudioConfig,
-        adapter=RuntimeName.LMSTUDIO.value,
-        registry="runtimes/__init__.py",
-    )
+    if not isinstance(config, LMStudioConfig):
+        raise TypeError(
+            f"lmstudio was handed {type(config).__name__}, which is not its "
+            "own config. In runtimes/__init__.py, the name is bound to one "
+            "adapter's config and another adapter's factory."
+        )
 
-    return LMStudio(host=own.host)
+    return LMStudio(config=config)

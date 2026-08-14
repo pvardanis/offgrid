@@ -23,7 +23,7 @@ flowchart TD
     subgraph domain [domain]
         answering[answering.py]
         ports["runtime.py · agent.py"]
-        rest["machine · fit · listing · speed · quality ·<br/>shortlist · recommendation · dialect · hosted_tools ·<br/>capabilities · profile · sections · launch · model"]
+        rest["machine · fit · listing · speed · quality ·<br/>shortlist · recommendation · dialect · hosted_tools ·<br/>capabilities · profile · home · launch · model"]
     end
     subgraph shared [shared]
         sh["exceptions.py · say.py"]
@@ -123,7 +123,7 @@ hosted_tools.py    what an agent can reach that offgrid cannot run here
 runtime.py         what offgrid asks of a runtime, and which ones there are
 agent.py           what offgrid asks of an agent, and which ones there are
 profile.py         what is remembered between runs
-sections.py        what an adapter declares, read out of the profile
+home.py            where offgrid keeps it
 launch.py          an environment and an argument list, and running one
 answering.py       which model answers, and making it the one that does
 ```
@@ -323,15 +323,14 @@ registry to build one. Worth it for being findable, but worth knowing about.
 
 ## The runtime seam — built
 
-A runtime adapter is a module exposing two factories. One reads the profile's
-runtime section as the settings this adapter declares; the other binds those
-once and answers with something satisfying `Runtime` — a frozen dataclass
+A runtime adapter is a module exposing a config and a factory. The config
+says what the profile's runtime section may hold; the factory binds one and
+answers with something satisfying `Runtime` — a frozen dataclass
 holding the host, with methods, inheriting nothing. The Protocol is a class and
 so is what satisfies it; neither is a base of the other, and `ty` checks the
 match structurally.
 
 ```python
-MakeRuntimeConfig = Callable[[RuntimeConfig], RuntimeConfig]
 Connect = Callable[[RuntimeConfig], Runtime]
 
 
@@ -413,17 +412,11 @@ that manages its own memory can undo the promise a second after it is made.
 
 ## The agent seam — built
 
-The same shape: a module exposing two factories, the second binding what the
-first read. What it answers with is a frozen dataclass holding that, with
-methods, inheriting nothing.
+The same shape: a module exposing a config and a factory that binds one. What
+it answers with is a frozen dataclass holding that config, with methods,
+inheriting nothing.
 
 ```python
-class MakeAgentConfig(Protocol):
-    def __call__(
-        self, section: AgentConfig, *, host: str, config_dir: Path
-    ) -> AgentConfig: ...
-
-
 Prepare = Callable[[AgentConfig, tuple[str, ...]], Agent]
 
 
@@ -440,10 +433,12 @@ Everything but the model is settled before a run starts, so an adapter is bound
 to all of it and `plan` takes only what the run discovers. What is read to
 decide whether a run is safe is then the same thing that gets launched.
 
-An agent is handed the runtime's address as well as its own directory, neither
-of which its section says: one is the runtime section's, the other is derived
-from where the profile lives. An agent that learns where to talk from a config
-file rather than from an environment needs the address before `configure` runs.
+Its config carries the runtime's address, which its own section never says —
+an agent that learns where to talk from a config file rather than from an
+environment needs it before `configure` runs, and offgrid fills it from the
+runtime's section rather than letting the file say it twice. The directory the
+agent is run out of is derived from its own name, so nobody states it and
+nothing can disagree about it.
 
 **`configure` and the reading are separate calls** because they are separate
 jobs. `configure` writes what is missing and leaves alone what a person edited
@@ -550,23 +545,31 @@ the one function that reads it — which is the package's whole public face.
 ```python
 RUNTIMES: dict[RuntimeName, Connect] = {RuntimeName.LMSTUDIO: lmstudio.connect}
 
-RUNTIME_CONFIGS: dict[RuntimeName, MakeRuntimeConfig] = {
-    RuntimeName.LMSTUDIO: lmstudio.read_config
+RUNTIME_CONFIGS: dict[RuntimeName, type[RuntimeConfig]] = {
+    RuntimeName.LMSTUDIO: lmstudio.LMStudioConfig
 }
 
 
-def connect_runtime(profile: Profile) -> Runtime:
-    name = profile.runtime.name
+def create_runtime_config(said: dict) -> RuntimeConfig:
+    name = RuntimeName(said.get("name", RuntimeName.LMSTUDIO.value))
 
-    return RUNTIMES[name](RUNTIME_CONFIGS[name](profile.runtime))
+    return RUNTIME_CONFIGS[name](**{k: v for k, v in said.items() if k != "name"})
+
+
+def connect_runtime(config: RuntimeConfig) -> Runtime:
+    return RUNTIMES[config.name](config)
 ```
 
-Two mappings keyed alike, because the profile's section is permissive — it has
-to carry keys only its adapter reads — and narrowing it is that adapter's job.
-Both dicts are typed on the base config, so each factory takes the base and
-narrows to its own type, failing loudly where a name has been bound to one
-adapter's config and another's factory. The suite checks that every name is in
-both.
+Two mappings keyed alike: one says what a name is built from, the other what it
+is reached with. The name is stripped before the config is built, because a
+config's `name` is a property of its class rather than a field a file sets —
+which is also why `connect_runtime` can look up by the config's own name, so a
+config cannot reach an adapter that would misread it.
+
+The config registry is typed on `type[RuntimeConfig]`, which is covariant, so
+the concrete class is named concretely. The factory registry is typed on a
+`Callable` taking the base, which is contravariant, so its values take the base
+and narrow inside.
 
 A caller asks for the adapter a profile names rather than indexing a registry
 with a field of it, so what the profile carries stays a type nothing outside

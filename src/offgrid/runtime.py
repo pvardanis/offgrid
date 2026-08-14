@@ -8,11 +8,12 @@ Why it is shaped this way, and why the attributes are properties, is in
 `docs/architecture.md` under "The runtime seam".
 """
 
+from abc import abstractmethod
 from collections.abc import Callable
 from enum import Enum
 from typing import Protocol
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, computed_field
 
 from offgrid.capabilities import Capabilities
 from offgrid.dialect import Dialect
@@ -30,23 +31,35 @@ class RuntimeName(Enum):
 
 
 class RuntimeConfig(BaseModel):
-    """The profile's runtime section, as much of it as offgrid itself reads.
+    """What one runtime adapter is built from.
 
-    Extra keys are carried rather than refused, because the section belongs to
-    whichever adapter the name picks and this type cannot know what that one
-    reads. The registry narrows it to that adapter's own config, which forbids
-    what it does not name.
+    Abstract, and each adapter declares its own. Which one a profile gets is
+    the registry's answer to the name it holds, so ``name`` is a property of
+    the class rather than a field a file sets.
 
-    :param name: Which runtime adapter to use.
+    Keys it does not name are refused, so a typo under ``runtime:`` is
+    reported rather than dropped.
+
     :param host: Address the runtime listens on, e.g. ``127.0.0.1:1234``. It
         sits here rather than beside the profile's other keys because it means
         nothing to anything but the runtime.
     """
 
-    model_config = ConfigDict(extra="allow", frozen=True)
+    model_config = ConfigDict(extra="forbid", frozen=True)
 
-    name: RuntimeName = RuntimeName.LMSTUDIO
     host: str
+
+    @computed_field
+    @property
+    @abstractmethod
+    def name(self) -> RuntimeName:
+        """Which runtime this is the config for.
+
+        Computed, so that it survives a round trip through the profile: what
+        is written is what picks this class again when the file is read.
+
+        :return: The name a profile calls this adapter by.
+        """
 
 
 class Runtime(Protocol):
@@ -139,11 +152,3 @@ class Runtime(Protocol):
 
 
 Connect = Callable[[RuntimeConfig], Runtime]
-
-MakeRuntimeConfig = Callable[[RuntimeConfig], RuntimeConfig]
-"""Turn the profile's runtime section into one adapter's own settings.
-
-It takes the section and nothing else: where the runtime listens is the one
-thing every runtime needs, and the section already says it. It raises
-``ProfileError`` where the section says something that adapter cannot read.
-"""

@@ -7,8 +7,8 @@ before anything runs.
 
 import json
 from dataclasses import dataclass, field
-from pathlib import Path
 
+from offgrid.agents.claude_code.binding import ClaudeCodeConfig
 from offgrid.agents.claude_code.configuring import (
     INSTRUCTIONS,
     NOTES,
@@ -43,13 +43,11 @@ class ClaudeCode:
     `dialect` is a fact about Claude Code rather than about one binding, so
     it is settled here and not passed in.
 
-    :param config_dir: Where its settings and its notes are kept.
-    :param host: Address the runtime listens on, e.g. ``127.0.0.1:1234``.
+    :param config: What the profile and the run settled for this agent.
     :param passthrough: Arguments handed to the agent unchanged.
     """
 
-    config_dir: Path
-    host: str
+    config: ClaudeCodeConfig
     passthrough: tuple[str, ...] = ()
     dialect: Dialect = field(init=False, default=Dialect.ANTHROPIC)
 
@@ -63,13 +61,13 @@ class ClaudeCode:
         :raise AgentSettingsError: When what is missing cannot be written.
         """
         try:
-            self.config_dir.mkdir(parents=True, exist_ok=True)
+            self.config.config_dir.mkdir(parents=True, exist_ok=True)
 
             self._write_missing(NOTES, INSTRUCTIONS)
             self._write_missing(SETTINGS, json.dumps(SLIM_SETTINGS, indent=2) + "\n")
         except OSError as error:
             raise AgentSettingsError(
-                f"{self.config_dir} cannot be written: {error}. Fix what is "
+                f"{self.config.config_dir} cannot be written: {error}. Fix what is "
                 "there or what owns it, and run again."
             ) from error
 
@@ -96,7 +94,7 @@ class ClaudeCode:
                 remedy=f"Add `{WRITTEN_SOURCE}` to the list, or drop the argument.",
             )
 
-        settings = self.config_dir / SETTINGS
+        settings = self.config.config_dir / SETTINGS
 
         if not settings.exists():
             return HostedToolsReport(
@@ -133,8 +131,8 @@ class ClaudeCode:
         context = model.context_limit or FALLBACK_CONTEXT
 
         env = {
-            "CLAUDE_CONFIG_DIR": str(self.config_dir),
-            "ANTHROPIC_BASE_URL": f"http://{self.host}",
+            "CLAUDE_CONFIG_DIR": str(self.config.config_dir),
+            "ANTHROPIC_BASE_URL": f"http://{self.config.runtime_host}",
             "ANTHROPIC_AUTH_TOKEN": TOKEN,
             "ANTHROPIC_MODEL": model.identifier,
             "ANTHROPIC_DEFAULT_OPUS_MODEL": model.identifier,
@@ -159,7 +157,7 @@ class ClaudeCode:
 
         :raise OSError: When it cannot be written.
         """
-        written = self.config_dir / name
+        written = self.config.config_dir / name
 
         if not written.exists():
             written.write_text(content)
@@ -175,7 +173,7 @@ class ClaudeCode:
 
         :raise AgentSettingsError: When it cannot be read, or is not JSON.
         """
-        settings = self.config_dir / SETTINGS
+        settings = self.config.config_dir / SETTINGS
 
         try:
             body = settings.read_text()

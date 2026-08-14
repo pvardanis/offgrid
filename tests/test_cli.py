@@ -6,7 +6,7 @@ import pytest
 import yaml
 from typer.testing import CliRunner
 
-from offgrid.cli import app
+from offgrid.cli import app, read_profile
 from offgrid.exceptions import LeaderboardUnreachableError
 from offgrid.machine import Machine
 from tests.doubles import (
@@ -127,10 +127,8 @@ def test_setup_names_the_command_that_says_which_models_fit(here):
 
 
 def test_setup_writes_a_profile_that_can_be_read_back(here):
-    from offgrid.profile import load
-
     runner.invoke(app, ["setup"])
-    assert load(here / "profile.yaml").runtime.host == "127.0.0.1:1234"
+    assert read_profile(here / "profile.yaml").runtime.host == "127.0.0.1:1234"
 
 
 def test_setup_writes_nothing_it_measured_into_the_profile(here):
@@ -163,10 +161,8 @@ def test_setup_run_again_keeps_what_was_edited_by_hand(here):
 
     result = runner.invoke(app, ["setup"])
 
-    from offgrid.profile import load
-
     assert result.exit_code == 0
-    assert load(here / "profile.yaml").model == "a/chosen-by-hand-7b"
+    assert read_profile(here / "profile.yaml").model == "a/chosen-by-hand-7b"
 
 
 def test_setup_keeps_the_profile_it_could_not_read(here):
@@ -186,18 +182,14 @@ def test_setup_takes_the_host_it_is_given_over_the_stored_one(here):
     runner.invoke(app, ["setup", "--host", "10.0.0.5:4321"])
     runner.invoke(app, ["setup", "--host", "127.0.0.1:1234"])
 
-    from offgrid.profile import load
-
-    assert load(here / "profile.yaml").runtime.host == "127.0.0.1:1234"
+    assert read_profile(here / "profile.yaml").runtime.host == "127.0.0.1:1234"
 
 
 def test_setup_keeps_a_host_that_was_stored_when_none_is_given(here):
     runner.invoke(app, ["setup", "--host", "10.0.0.5:4321"])
     runner.invoke(app, ["setup"])
 
-    from offgrid.profile import load
-
-    assert load(here / "profile.yaml").runtime.host == "10.0.0.5:4321"
+    assert read_profile(here / "profile.yaml").runtime.host == "10.0.0.5:4321"
 
 
 def test_doctor_needs_a_profile_first(here):

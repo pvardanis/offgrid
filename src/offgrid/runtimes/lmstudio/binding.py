@@ -1,36 +1,24 @@
-"""What LM Studio is bound to before a run starts.
+"""What LM Studio is built from, as the profile's runtime section says it.
 
-Where it listens is all of it. The type is here anyway, so that a key nobody
-reads is refused rather than carried, and so that a setting LM Studio grows
-later has somewhere to land.
+Where it listens is all of it, and every runtime needs that, so the type adds
+nothing to what the port already declares. It is here anyway, so that a key
+nobody reads is refused rather than carried, and so that a setting LM Studio
+grows later has somewhere to land.
 """
 
-from pydantic import ConfigDict
+from pydantic import computed_field
 
 from offgrid.runtime import RuntimeConfig, RuntimeName
-from offgrid.sections import read_section
 
 
 class LMStudioConfig(RuntimeConfig):
-    """Everything LM Studio is reached with.
+    """Everything LM Studio is reached with."""
 
-    :param name: Always ``lmstudio``.
-    :param host: Address the runtime listens on, e.g. ``127.0.0.1:1234``.
-    """
+    @computed_field
+    @property
+    def name(self) -> RuntimeName:
+        """Which runtime this is the config for.
 
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-    name: RuntimeName = RuntimeName.LMSTUDIO
-
-
-def read_config(section: RuntimeConfig) -> LMStudioConfig:
-    """Read the profile's runtime section as LM Studio's own settings.
-
-    :param section: What the profile says about the runtime.
-
-    :return: What the adapter is built from.
-
-    :raise ProfileError: When the section says something LM Studio cannot
-        read.
-    """
-    return read_section(section, LMStudioConfig, port="runtime")
+        :return: Always ``lmstudio``.
+        """
+        return RuntimeName.LMSTUDIO
