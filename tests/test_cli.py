@@ -214,6 +214,18 @@ def test_doctor_reports_the_agent_the_profile_names_and_what_it_speaks(here):
     assert "anthropic" in result.stderr
 
 
+def test_doctor_says_nothing_is_written_before_a_first_run(here):
+    # `setup` writes a profile and no agent configuration, so on a machine
+    # that has never run the agent there is nothing to deny with. Saying so
+    # is not a fault: it is what a run would fix on its way past.
+    runner.invoke(app, ["setup"])
+
+    result = runner.invoke(app, ["doctor"])
+
+    assert result.exit_code == 0
+    assert "not written yet" in result.stderr
+
+
 def test_doctor_writes_no_configuration(here):
     # It reports what a run would do. Reaching the registry to ask the agent
     # what it speaks binds a directory and nothing more.
