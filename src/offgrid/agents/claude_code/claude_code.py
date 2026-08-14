@@ -8,7 +8,7 @@ before anything runs.
 import json
 from dataclasses import dataclass, field
 
-from offgrid.agents.claude_code.binding import ClaudeCodeConfig
+from offgrid.agents.claude_code.config import ClaudeCodeConfig
 from offgrid.agents.claude_code.configuring import (
     INSTRUCTIONS,
     NOTES,

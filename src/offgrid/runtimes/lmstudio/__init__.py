@@ -7,7 +7,7 @@ reaches for is beside it.
 """
 
 from offgrid.runtime import Runtime, RuntimeConfig
-from offgrid.runtimes.lmstudio.binding import LMStudioConfig
+from offgrid.runtimes.lmstudio.config import LMStudioConfig
 from offgrid.runtimes.lmstudio.lmstudio import LMStudio
 
 __all__ = ["LMStudioConfig", "connect"]

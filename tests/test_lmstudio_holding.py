@@ -19,7 +19,7 @@ from offgrid.exceptions import (
     RuntimeUnreachableError,
 )
 from offgrid.runtimes.lmstudio import connect
-from offgrid.runtimes.lmstudio.binding import LMStudioConfig
+from offgrid.runtimes.lmstudio.config import LMStudioConfig
 from tests.doubles import (
     answer_as_lm_studio,
     refuse_to_let_go,

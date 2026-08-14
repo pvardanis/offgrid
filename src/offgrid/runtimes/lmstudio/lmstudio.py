@@ -12,12 +12,12 @@ from offgrid.exceptions import (
     RuntimeUnreachableError,
 )
 from offgrid.model import Model
-from offgrid.runtimes.lmstudio.binding import LMStudioConfig
 from offgrid.runtimes.lmstudio.catalogue import (
     get_catalogue_payload,
     get_loaded_models,
     parse_models_from_payload,
 )
+from offgrid.runtimes.lmstudio.config import LMStudioConfig
 from offgrid.runtimes.lmstudio.holding import TOOL, load, unload
 
 # What LM Studio's API can be asked, rather than what this machine can reach:

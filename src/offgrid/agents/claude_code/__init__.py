@@ -7,8 +7,8 @@ beside it.
 """
 
 from offgrid.agent import Agent, AgentConfig
-from offgrid.agents.claude_code.binding import ClaudeCodeConfig
 from offgrid.agents.claude_code.claude_code import ClaudeCode
+from offgrid.agents.claude_code.config import ClaudeCodeConfig
 
 __all__ = ["ClaudeCodeConfig", "prepare"]
 

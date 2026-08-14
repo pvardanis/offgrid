@@ -90,13 +90,13 @@ cli.py             setup, doctor, recommend, run
 runtimes/          one package per runtime
   lmstudio/
     lmstudio.py    what a runtime is asked, in LM Studio's terms
-    binding.py     what it is reached with, read out of the profile
+    config.py      what it is reached with, as a profile says it
     catalogue.py   what it has, and what it is holding
     holding.py     taking a model into memory, and letting one go
 agents/            one package per agent
   claude_code/
     claude_code.py what an agent is asked, in Claude Code's terms
-    binding.py     what it is run out of, read out of the profile
+    config.py      what it is run out of, as a profile says it
     configuring.py what offgrid writes into its directory
     launching.py   the arguments and sizes it is started with, and
                    what is read back out of them
