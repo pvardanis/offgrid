@@ -254,11 +254,10 @@ def _read_the_run(passthrough: tuple[str, ...] = ()) -> tuple[Profile, Runtime, 
     """
     profile = read_profile(DEFAULT_PATH)
 
-    return (
-        profile,
-        connect_runtime(profile.runtime),
-        prepare_agent(profile.agent, passthrough),
-    )
+    runtime = connect_runtime(profile.runtime)
+    agent = prepare_agent(profile.agent, passthrough)
+
+    return profile, runtime, agent
 
 
 def read_profile(path: Path) -> Profile:
