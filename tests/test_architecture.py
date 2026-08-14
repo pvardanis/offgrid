@@ -43,6 +43,20 @@ def _modules() -> set[str]:
     }
 
 
+def _packages() -> set[str]:
+    """Every package in the tree, which `_modules` cannot see.
+
+    A package's `__init__.py` holds imports like any other file, and the rule
+    is stated over module names — so a package left out of the contract is one
+    whose `__init__.py` may reach anywhere, unnoticed.
+    """
+    return {
+        "offgrid." + ".".join(path.parent.relative_to(SOURCE).parts)
+        for path in SOURCE.rglob("__init__.py")
+        if path.parent != SOURCE
+    }
+
+
 def _domain_in_the_contract() -> set[str]:
     """The modules the layer rule is stated over."""
     contracts = tomllib.loads(PYPROJECT.read_text())["tool"]["importlinter"][
@@ -55,11 +69,7 @@ def _domain_in_the_contract() -> set[str]:
 
 def _adapters(modules: set[str]) -> set[str]:
     """The modules living inside an adapter package."""
-    return {
-        module
-        for module in modules
-        if module.split(".")[1] in ADAPTER_PACKAGES and module.count(".") > 1
-    }
+    return {module for module in modules if module.split(".")[1] in ADAPTER_PACKAGES}
 
 
 def _below(base: type[BaseModel]) -> list[type[BaseModel]]:
@@ -85,10 +95,10 @@ def test_the_doc_names_every_module_there_is():
 
 
 def test_every_module_is_covered_by_the_layer_rule():
-    modules = _modules()
-    classified = _domain_in_the_contract() | _adapters(modules) | COMMAND_LINE | SHARED
+    written = _modules() | _packages()
+    classified = _domain_in_the_contract() | _adapters(written) | COMMAND_LINE | SHARED
 
-    unclassified = sorted(modules - classified)
+    unclassified = sorted(written - classified)
 
     assert not unclassified, (
         f"{unclassified} sits in no layer, so the import contract does not "
@@ -117,10 +127,11 @@ def test_every_agent_offgrid_names_has_an_adapter_bound_to_it():
 
 
 def test_every_config_an_adapter_declares_forbids_a_key_it_does_not_name():
-    # The base configs are permissive, because a section belongs to whichever
-    # adapter the name picks and the base cannot know what that one reads. A
-    # subclass that forgot to narrow would accept junk in silence, which is
-    # the failure this whole area exists to prevent.
+    # A config declares what its adapter reads and refuses the rest, so that a
+    # typo under a section is reported rather than dropped. The base says so
+    # once and every adapter inherits it — a subclass that set `extra` back to
+    # `allow` would accept junk in silence, which is the failure this whole
+    # area exists to prevent.
     from offgrid.agent import AgentConfig
     from offgrid.agents import AGENTS
     from offgrid.runtime import RuntimeConfig
@@ -168,7 +179,7 @@ def test_a_config_built_for_one_runtime_cannot_reach_another_s_factory():
 
 
 def test_the_layer_rule_names_no_module_that_is_gone():
-    stale = sorted(_domain_in_the_contract() - _modules())
+    stale = sorted(_domain_in_the_contract() - (_modules() | _packages()))
 
     assert not stale, (
         f"`source_modules` in pyproject.toml names {stale}, which is not in "
