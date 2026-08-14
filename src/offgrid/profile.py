@@ -9,19 +9,29 @@ from pathlib import Path
 import yaml
 from pydantic import BaseModel, ConfigDict, ValidationError
 
-from offgrid.agent import AgentName
+from offgrid.agent import AgentConfig
 from offgrid.exceptions import ProfileError
-from offgrid.runtime import RuntimeName
+from offgrid.runtime import RuntimeConfig
+from offgrid.sections import describe_problems
 
 DEFAULT_PATH = Path.home() / ".offgrid" / "profile.yaml"
+
+NESTED = """runtime:
+  name: lmstudio
+  host: 127.0.0.1:1234
+agent:
+  name: claude-code"""
 
 
 class Profile(BaseModel):
     """How to reach the runtime, and what offgrid should run against it.
 
-    :param host: Address the runtime listens on.
-    :param runtime: Which runtime adapter to use.
-    :param agent: Which agent adapter to use.
+    One section per port, each naming its adapter and carrying whatever else
+    that adapter reads. A section is where an adapter's own settings go, and
+    where the file says which part of the system a setting belongs to.
+
+    :param runtime: The runtime adapter to use, and where it listens.
+    :param agent: The agent adapter to use.
     :param model: The model to run unless one is named on the command line, or
         ``None`` to use whatever the runtime is already holding.
 
@@ -35,9 +45,8 @@ class Profile(BaseModel):
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    host: str
-    runtime: RuntimeName = RuntimeName.LMSTUDIO
-    agent: AgentName = AgentName.CLAUDE_CODE
+    runtime: RuntimeConfig
+    agent: AgentConfig = AgentConfig()
     model: str | None = None
 
 
@@ -83,15 +92,36 @@ def load(path: Path = DEFAULT_PATH) -> Profile:
             f"{path} is not a profile: it holds {type(body).__name__}, not a mapping."
         )
 
+    _refuse_a_flat_profile(body, path)
+
     try:
         return Profile(**body)
     except ValidationError as error:
-        problems = ", ".join(
-            f"{problem['loc'][0] if problem['loc'] else 'the file'} "
-            f"({problem['msg'].lower()})"
-            for problem in error.errors()
-        )
         raise ProfileError(
-            f"{path} does not describe a run offgrid can make: {problems}. "
-            "Fix it by hand, or run `offgrid setup` to write it again."
+            f"{path} does not describe a run offgrid can make: "
+            f"{describe_problems(error)}. Fix it by hand, or run "
+            "`offgrid setup` to write it again."
         ) from error
+
+
+def _refuse_a_flat_profile(body: dict, path: Path) -> None:
+    """Say that a profile written flat has to be nested, and how.
+
+    A file that worked yesterday and is refused today owes the reader the
+    shape it now wants, not the name of the first key that no longer fits.
+
+    :param body: What the file holds.
+    :param path: Where it was read from.
+
+    :raise ProfileError: When the file names a port without a section.
+    """
+    flat = "host" in body or any(
+        port in body and not isinstance(body[port], dict)
+        for port in ("runtime", "agent")
+    )
+
+    if flat:
+        raise ProfileError(
+            f"{path} is flat, and a profile now carries a section per adapter. "
+            f"`host` belongs to the runtime. Write it as:\n\n{NESTED}"
+        )

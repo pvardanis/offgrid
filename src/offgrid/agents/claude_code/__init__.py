@@ -1,22 +1,36 @@
 """Claude Code, which speaks Anthropic's message API.
 
-`prepare` is the whole of what the registry asks for. What it answers with is
-in `claude_code.py`, and what that writes and reads is beside it.
+`read_config` and `prepare` are the whole of what the registry asks for: one
+turns the profile's agent section into what Claude Code reads, the other binds
+it. What that answers with is in `claude_code.py`, and what it writes and reads
+is beside it.
 """
 
-from pathlib import Path
-
-from offgrid.agent import Agent
+from offgrid.agent import Agent, AgentConfig
+from offgrid.agents.claude_code.binding import ClaudeCodeConfig, read_config
 from offgrid.agents.claude_code.claude_code import ClaudeCode
 
+__all__ = ["prepare", "read_config"]
 
-def prepare(config_dir: Path, passthrough: tuple[str, ...]) -> Agent:
+
+def prepare(config: AgentConfig, passthrough: tuple[str, ...]) -> Agent:
     """Bind what Claude Code is run out of and started with.
 
-    :param config_dir: Profile directory to use instead of the caller's own,
-        which keeps their plugins and servers out of the cached prefix.
+    :param config: What the profile and the run settled for this agent.
     :param passthrough: Arguments handed to the agent unchanged.
 
     :return: An agent offgrid can configure and start.
+
+    :raise TypeError: When the config was built for another agent, which is a
+        registry binding one name to two adapters.
     """
-    return ClaudeCode(config_dir=config_dir, passthrough=passthrough)
+    if not isinstance(config, ClaudeCodeConfig):
+        raise TypeError(
+            f"claude-code was handed {type(config).__name__}, which is not its "
+            "own config. In agents/__init__.py, the name is bound to one "
+            "adapter's config and another adapter's factory."
+        )
+
+    return ClaudeCode(
+        config_dir=config.config_dir, host=config.host, passthrough=passthrough
+    )

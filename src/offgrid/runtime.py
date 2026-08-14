@@ -1,6 +1,6 @@
 """What offgrid needs of a runtime, and which ones there are.
 
-An adapter binds an address once and answers with something satisfying
+An adapter binds its own settings once and answers with something satisfying
 ``Runtime``. Two of its members are attributes, settled when the connection
 opens; four are methods, which reach the server.
 
@@ -11,6 +11,8 @@ Why it is shaped this way, and why the attributes are properties, is in
 from collections.abc import Callable
 from enum import Enum
 from typing import Protocol
+
+from pydantic import BaseModel, ConfigDict
 
 from offgrid.capabilities import Capabilities
 from offgrid.dialect import Dialect
@@ -25,6 +27,26 @@ class RuntimeName(Enum):
     """
 
     LMSTUDIO = "lmstudio"
+
+
+class RuntimeConfig(BaseModel):
+    """The profile's runtime section, as much of it as offgrid itself reads.
+
+    Extra keys are carried rather than refused, because the section belongs to
+    whichever adapter the name picks and this type cannot know what that one
+    reads. The registry narrows it to that adapter's own config, which forbids
+    what it does not name.
+
+    :param name: Which runtime adapter to use.
+    :param host: Address the runtime listens on, e.g. ``127.0.0.1:1234``. It
+        sits here rather than beside the profile's other keys because it means
+        nothing to anything but the runtime.
+    """
+
+    model_config = ConfigDict(extra="allow", frozen=True)
+
+    name: RuntimeName = RuntimeName.LMSTUDIO
+    host: str
 
 
 class Runtime(Protocol):
@@ -116,4 +138,12 @@ class Runtime(Protocol):
         ...
 
 
-Connect = Callable[[str], Runtime]
+Connect = Callable[[RuntimeConfig], Runtime]
+
+MakeRuntimeConfig = Callable[[RuntimeConfig], RuntimeConfig]
+"""Turn the profile's runtime section into one adapter's own settings.
+
+It takes the section and nothing else: where the runtime listens is the one
+thing every runtime needs, and the section already says it. It raises
+``ProfileError`` where the section says something that adapter cannot read.
+"""

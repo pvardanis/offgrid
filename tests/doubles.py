@@ -8,13 +8,15 @@ from pathlib import Path
 
 import httpx
 import pytest
+from pydantic import ConfigDict
 
-from offgrid.agent import AgentName, Prepare
+from offgrid.agent import AgentConfig, AgentName, Prepare
 from offgrid.dialect import Dialect
 from offgrid.hosted_tools import HostedToolsReport, HostedToolsStatus
 from offgrid.launch import Launch
 from offgrid.machine import Machine
 from offgrid.model import Model
+from offgrid.runtime import RuntimeConfig
 
 GIB = 1024**3
 MACHINE = Machine(
@@ -37,6 +39,22 @@ def answer_as_a_mac(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     # beside it. A test that patched one would reach the real other.
     monkeypatch.setattr("offgrid.cli.DEFAULT_PATH", tmp_path / "profile.yaml")
     monkeypatch.setattr("offgrid.agents.DEFAULT_PATH", tmp_path / "profile.yaml")
+
+
+class StandInAgentConfig(AgentConfig):
+    """What a second agent adapter's config would be, to whoever wired it.
+
+    Indistinguishable from Claude Code's to a registry dict typed on the base,
+    which is the mis-wiring an adapter has to refuse for itself.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+
+class StandInRuntimeConfig(RuntimeConfig):
+    """The same for a second runtime adapter, which wires the same way."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
 
 
 @dataclass(frozen=True)
@@ -63,18 +81,10 @@ class StandInAgent:
             detail="a stand-in offers no tool that runs anywhere else.",
         )
 
-    def plan(
-        self,
-        model: Model,
-        *,
-        host: str,
-        token: str,
-    ) -> Launch:
+    def plan(self, model: Model) -> Launch:
         """Answer with a launch, or refuse to build one.
 
         :param model: The model that would answer.
-        :param host: Where the runtime listens.
-        :param token: What the agent would be given.
 
         :return: A launch that starts nothing.
 
@@ -101,7 +111,7 @@ def answer_as_an_agent(monkeypatch: pytest.MonkeyPatch, agent: StandInAgent) -> 
     # the type checker says rather than what a test quietly proves nothing
     # about.
     agents: dict[AgentName, Prepare] = {
-        AgentName.CLAUDE_CODE: lambda _directory, _passthrough: agent
+        AgentName.CLAUDE_CODE: lambda _config, _passthrough: agent
     }
 
     monkeypatch.setattr("offgrid.agents.AGENTS", agents)

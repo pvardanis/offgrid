@@ -23,7 +23,7 @@ flowchart TD
     subgraph domain [domain]
         answering[answering.py]
         ports["runtime.py · agent.py"]
-        rest["machine · fit · listing · speed · quality ·<br/>shortlist · recommendation · dialect · hosted_tools ·<br/>capabilities · profile · launch · model"]
+        rest["machine · fit · listing · speed · quality ·<br/>shortlist · recommendation · dialect · hosted_tools ·<br/>capabilities · profile · sections · launch · model"]
     end
     subgraph shared [shared]
         sh["exceptions.py · say.py"]
@@ -90,11 +90,13 @@ cli.py             setup, doctor, recommend, run
 runtimes/          one package per runtime
   lmstudio/
     lmstudio.py    what a runtime is asked, in LM Studio's terms
+    binding.py     what it is reached with, read out of the profile
     catalogue.py   what it has, and what it is holding
     holding.py     taking a model into memory, and letting one go
 agents/            one package per agent
   claude_code/
     claude_code.py what an agent is asked, in Claude Code's terms
+    binding.py     what it is run out of, read out of the profile
     configuring.py what offgrid writes into its directory
     launching.py   the arguments and sizes it is started with, and
                    what is read back out of them
@@ -121,6 +123,7 @@ hosted_tools.py    what an agent can reach that offgrid cannot run here
 runtime.py         what offgrid asks of a runtime, and which ones there are
 agent.py           what offgrid asks of an agent, and which ones there are
 profile.py         what is remembered between runs
+sections.py        one section of it, read as its adapter declares it
 launch.py          an environment and an argument list, and running one
 answering.py       which model answers, and making it the one that does
 ```
@@ -156,12 +159,12 @@ sequenceDiagram
     P->>C: offgrid run [--model X]
     C->>F: load(path)
     Note over F: an unknown runtime or agent is refused here,<br/>naming the field, before anything else runs
-    F-->>C: Profile — host, RuntimeName, AgentName, model
+    F-->>C: Profile — RuntimeConfig, AgentConfig, model
     C->>G: connect_runtime(profile)
     G-->>C: Runtime
     C->>G: prepare_agent(profile, passthrough)
     G-->>C: Agent
-    Note over C,G: the only place a name becomes an adapter
+    Note over C,G: the only place a name becomes an adapter, and<br/>where a key its adapter does not read is refused
     C->>D: require_compatible(runtime.dialect, agent.dialect)
     C->>A: configure()
     C->>A: read_hosted_tools()
@@ -174,7 +177,7 @@ sequenceDiagram
     Note over R: what "only this one" costs here is the adapter's<br/>problem: let go of the rest, load, read back
     R-->>H: Model, as served
     H-->>C: Model
-    C->>A: plan(model, host, token)
+    C->>A: plan(model)
     A-->>C: Launch
     C->>L: start(launch)
     L-->>C: exit code
@@ -248,7 +251,27 @@ it is holding and prints it beside the agent's dialect.
 
 ## What the profile carries — built
 
-`host`, `runtime`, `agent` and `model`. Nothing measured: `setup` and
+One section per port and a model. `runtime` names its adapter and says where it
+listens; `agent` names its adapter; `model` is the run's, and belongs to
+neither. An adapter with settings of its own puts them in its own section,
+which is what the second agent needs: opencode learns where the runtime listens
+from a `provider.<name>.options.baseURL` block in a file it is configured with,
+so its adapter has to be told the host before `configure` runs.
+
+```yaml
+runtime:
+  name: lmstudio
+  host: 127.0.0.1:1234
+agent:
+  name: claude-code
+model: qwen/qwen3.6-35b-a3b
+```
+
+A profile written flat is refused, naming the shape it now wants rather than
+the first key that no longer fits. It is a hand-edited file on a clone-and-run
+project, and a silent migration of one is worse than a clear refusal.
+
+Nothing measured: `setup` and
 `recommend` each call `detect()` where they need it, so a chip, a memory size
 and a GPU limit recorded here would be a second answer to a question the
 machine answers for itself — and a stale one from the first reboot, or from a
@@ -283,9 +306,9 @@ agent.py           what offgrid needs of an agent, and which ones there are
 leaderboard.py     what offgrid needs of a published list
 ```
 
-`runtime.py` holds `Runtime` and `RuntimeName`, with `Capabilities` beside
-them in `capabilities.py`; `agent.py`
-holds `Agent` and `AgentName`; `leaderboard.py` holds `Leaderboard`, `Fetch`
+`runtime.py` holds `Runtime`, `RuntimeConfig` and `RuntimeName`; `agent.py`
+holds `Agent`, `AgentConfig` and `AgentName`; `capabilities.py` beside them
+holds `Capabilities`; `leaderboard.py` holds `Leaderboard`, `Fetch`
 and `Parse`. The adapter packages hold implementations and their registry, and
 each concrete adapter becomes importable from exactly one place: that registry.
 
@@ -300,14 +323,16 @@ registry to build one. Worth it for being findable, but worth knowing about.
 
 ## The runtime seam — built
 
-A runtime adapter is a module exposing one factory. The factory binds an
-address once and answers with something satisfying `Runtime` — a frozen
-dataclass holding the host, with methods, inheriting nothing. The Protocol is
-a class and so is what satisfies it; neither is a base of the other, and `ty`
-checks the match structurally.
+A runtime adapter is a module exposing two factories. One reads the profile's
+runtime section as the settings this adapter declares; the other binds those
+once and answers with something satisfying `Runtime` — a frozen dataclass
+holding the host, with methods, inheriting nothing. The Protocol is a class and
+so is what satisfies it; neither is a base of the other, and `ty` checks the
+match structurally.
 
 ```python
-Connect = Callable[[str], Runtime]
+MakeRuntimeConfig = Callable[[RuntimeConfig], RuntimeConfig]
+Connect = Callable[[RuntimeConfig], Runtime]
 
 
 class Runtime(Protocol):
@@ -388,12 +413,18 @@ that manages its own memory can undo the promise a second after it is made.
 
 ## The agent seam — built
 
-The same shape: a module exposing one factory, binding the configuration
-directory once. What it answers with is a frozen dataclass holding that
-directory, with methods, inheriting nothing.
+The same shape: a module exposing two factories, the second binding what the
+first read. What it answers with is a frozen dataclass holding that, with
+methods, inheriting nothing.
 
 ```python
-Prepare = Callable[[Path], Agent]
+class MakeAgentConfig(Protocol):
+    def __call__(
+        self, section: AgentConfig, *, host: str, config_dir: Path
+    ) -> AgentConfig: ...
+
+
+Prepare = Callable[[AgentConfig, tuple[str, ...]], Agent]
 
 
 class Agent(Protocol):
@@ -402,19 +433,17 @@ class Agent(Protocol):
 
     def configure(self) -> None: ...
     def read_hosted_tools(self) -> HostedToolsReport: ...
-    def plan(
-        self,
-        model: Model,
-        *,
-        host: str,
-        token: str,
-    ) -> Launch: ...
+    def plan(self, model: Model) -> Launch: ...
 ```
 
-The configuration directory and the arguments after `--` are both settled
-before a run starts, so an adapter is bound to both and `plan` takes only what
-the run discovers. What is read to decide whether a run is safe is then the
-same thing that gets launched.
+Everything but the model is settled before a run starts, so an adapter is bound
+to all of it and `plan` takes only what the run discovers. What is read to
+decide whether a run is safe is then the same thing that gets launched.
+
+An agent is handed the runtime's address as well as its own directory, neither
+of which its section says: one is the runtime section's, the other is derived
+from where the profile lives. An agent that learns where to talk from a config
+file rather than from an environment needs the address before `configure` runs.
 
 **`configure` and the reading are separate calls** because they are separate
 jobs. `configure` writes what is missing and leaves alone what a person edited
@@ -503,12 +532,17 @@ class AgentName(Enum):
     CLAUDE_CODE = "claude-code"
 ```
 
-`profile.runtime` and `profile.agent` are then a `RuntimeName` and an
-`AgentName` rather than strings, and pydantic refuses an unknown one when the
-profile is read — `Input should be 'lmstudio'`, naming the field, before
+`profile.runtime.name` and `profile.agent.name` are then a `RuntimeName` and
+an `AgentName` rather than strings, and pydantic refuses an unknown one when
+the profile is read — `Input should be 'lmstudio'`, naming the field, before
 anything else runs. That is what the profile is for: it is hand-edited, and a
 name offgrid does not have is a mistake to report rather than a preference to
 record.
+
+A key the adapter that name picks does not read is caught a beat later, when
+the registry narrows the section into that adapter's own config. Still before
+anything expensive — both commands bind immediately after loading — but not at
+load, because the section has to be permissive for its adapter's sake.
 
 Each adapter package holds a dict keyed by that enum in its `__init__.py`, and
 the one function that reads it — which is the package's whole public face.
@@ -516,10 +550,23 @@ the one function that reads it — which is the package's whole public face.
 ```python
 RUNTIMES: dict[RuntimeName, Connect] = {RuntimeName.LMSTUDIO: lmstudio.connect}
 
+RUNTIME_CONFIGS: dict[RuntimeName, MakeRuntimeConfig] = {
+    RuntimeName.LMSTUDIO: lmstudio.read_config
+}
+
 
 def connect_runtime(profile: Profile) -> Runtime:
-    return RUNTIMES[profile.runtime](profile.host)
+    name = profile.runtime.name
+
+    return RUNTIMES[name](RUNTIME_CONFIGS[name](profile.runtime))
 ```
+
+Two mappings keyed alike, because the profile's section is permissive — it has
+to carry keys only its adapter reads — and narrowing it is that adapter's job.
+Both dicts are typed on the base config, so each factory takes the base and
+narrows to its own type, failing loudly where a name has been bound to one
+adapter's config and another's factory. The suite checks that every name is in
+both.
 
 A caller asks for the adapter a profile names rather than indexing a registry
 with a field of it, so what the profile carries stays a type nothing outside

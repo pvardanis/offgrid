@@ -20,6 +20,7 @@ from offgrid.agents.claude_code.launching import (
     FALLBACK_CONTEXT,
     MAX_OUTPUT_TOKENS,
     SOURCES,
+    TOKEN,
     WRITTEN_SOURCE,
     get_claude_args,
     get_dropped_settings_sources,
@@ -33,20 +34,22 @@ from offgrid.model import Model
 
 @dataclass(frozen=True)
 class ClaudeCode:
-    """Claude Code, run out of the directory and arguments it was bound to.
+    """Claude Code, run out of what a profile and a run settled for it.
 
-    Both are settled before a run starts, so both are bound rather than
-    passed: what is read to decide whether a run is safe is then the same
+    All of it is settled before a run starts, so all of it is bound rather
+    than passed: what is read to decide whether a run is safe is then the same
     thing that is launched.
 
     `dialect` is a fact about Claude Code rather than about one binding, so
     it is settled here and not passed in.
 
     :param config_dir: Where its settings and its notes are kept.
+    :param host: Address the runtime listens on, e.g. ``127.0.0.1:1234``.
     :param passthrough: Arguments handed to the agent unchanged.
     """
 
     config_dir: Path
+    host: str
     passthrough: tuple[str, ...] = ()
     dialect: Dialect = field(init=False, default=Dialect.ANTHROPIC)
 
@@ -120,19 +123,10 @@ class ClaudeCode:
             ),
         )
 
-    def plan(
-        self,
-        model: Model,
-        *,
-        host: str,
-        token: str,
-    ) -> Launch:
+    def plan(self, model: Model) -> Launch:
         """Work out how to start Claude Code against a local runtime.
 
         :param model: The model that will answer.
-        :param host: Address the runtime listens on, e.g. ``127.0.0.1:1234``.
-        :param token: Credential the local server ignores but the agent
-            requires.
 
         :return: The environment and command to run.
         """
@@ -140,8 +134,8 @@ class ClaudeCode:
 
         env = {
             "CLAUDE_CONFIG_DIR": str(self.config_dir),
-            "ANTHROPIC_BASE_URL": f"http://{host}",
-            "ANTHROPIC_AUTH_TOKEN": token,
+            "ANTHROPIC_BASE_URL": f"http://{self.host}",
+            "ANTHROPIC_AUTH_TOKEN": TOKEN,
             "ANTHROPIC_MODEL": model.identifier,
             "ANTHROPIC_DEFAULT_OPUS_MODEL": model.identifier,
             "ANTHROPIC_DEFAULT_SONNET_MODEL": model.identifier,

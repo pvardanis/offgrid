@@ -1,8 +1,8 @@
 """What offgrid asks of an agent, and which ones there are.
 
-An adapter binds a configuration directory once and answers with something
-satisfying ``Agent``. Its one attribute is settled when that happens; its
-three methods act — two on the configuration, one on nothing at all.
+An adapter binds its own settings once and answers with something satisfying
+``Agent``. Its one attribute is settled when that happens; its three methods
+act — two on the configuration, one on nothing at all.
 
 Why it is shaped this way is in `docs/architecture.md` under "The agent seam".
 """
@@ -11,6 +11,8 @@ from collections.abc import Callable
 from enum import Enum
 from pathlib import Path
 from typing import Protocol
+
+from pydantic import BaseModel, ConfigDict
 
 from offgrid.dialect import Dialect
 from offgrid.hosted_tools import HostedToolsReport
@@ -26,6 +28,22 @@ class AgentName(Enum):
     """
 
     CLAUDE_CODE = "claude-code"
+
+
+class AgentConfig(BaseModel):
+    """The profile's agent section, as much of it as offgrid itself reads.
+
+    Extra keys are carried rather than refused, because the section belongs to
+    whichever adapter the name picks and this type cannot know what that one
+    reads. The registry narrows it to that adapter's own config, which forbids
+    what it does not name.
+
+    :param name: Which agent adapter to use.
+    """
+
+    model_config = ConfigDict(extra="allow", frozen=True)
+
+    name: AgentName = AgentName.CLAUDE_CODE
 
 
 class Agent(Protocol):
@@ -78,13 +96,7 @@ class Agent(Protocol):
         """
         ...
 
-    def plan(
-        self,
-        model: Model,
-        *,
-        host: str,
-        token: str,
-    ) -> Launch:
+    def plan(self, model: Model) -> Launch:
         """Work out how to start the agent against a model.
 
         It writes nothing. Agents configure themselves in ways that have
@@ -92,14 +104,41 @@ class Agent(Protocol):
         config file — and that belongs in `configure`, where a caller can see
         it happen, rather than in the call that builds an argument list.
 
+        The model is the only thing it takes, because it is the only thing a
+        run discovers. Everything else the agent needs was settled before it
+        started, and is bound to the adapter rather than passed here.
+
         :param model: The model that will answer.
-        :param host: Address the runtime listens on, e.g. ``127.0.0.1:1234``.
-        :param token: Credential the local server ignores but the agent
-            requires.
 
         :return: The environment and command to run.
         """
         ...
 
 
-Prepare = Callable[[Path, tuple[str, ...]], Agent]
+Prepare = Callable[[AgentConfig, tuple[str, ...]], Agent]
+
+
+class MakeAgentConfig(Protocol):
+    """Turn the profile's agent section into one adapter's own settings."""
+
+    def __call__(
+        self, section: AgentConfig, *, host: str, config_dir: Path
+    ) -> AgentConfig:
+        """Read the section, alongside what offgrid settles for every agent.
+
+        The two settled arguments are what an adapter cannot read out of its
+        own section: where the runtime listens, which the runtime section
+        says, and the directory offgrid gives it, which is derived from where
+        the profile lives. An agent that writes a config file rather than
+        taking an environment needs the first of them before `configure` runs.
+
+        :param section: What the profile says about the agent.
+        :param host: Address the runtime listens on, e.g. ``127.0.0.1:1234``.
+        :param config_dir: Where this agent's own configuration is kept.
+
+        :return: The config the adapter it names is built from.
+
+        :raise ProfileError: When the section says something that adapter
+            cannot read.
+        """
+        ...
