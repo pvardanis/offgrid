@@ -568,3 +568,70 @@ made yet.
 The same rule settles `host` and `token` when there is a second agent to draw
 it from: bind what the profile and the command line have already fixed, pass
 what the run produces.
+
+## What persists and what is true of one run
+
+`configure` takes nothing, writes to disk, and depends only on what is already
+in the directory — it is about the place the agent lives. `plan` takes this
+run's facts, writes nothing, and answers with a value describing one launch —
+it is about the occasion. That axis is why reading what a run could reach is a
+third call rather than folded into either: it reads the settings file, which is
+the place, and the arguments, which are the occasion, and a check spanning both
+cannot live in a member that owns one.
+
+Four other homes were tried and each gives up something the axis explains.
+
+A second protocol, so an agent with nothing hosted implements nothing, makes a
+forgotten reading indistinguishable from a legitimate absence — `cli.py` would
+skip both silently, which is the failure the slot exists to prevent, one level
+up. `plan` cannot: it runs after the model is held, so a refusal there wastes
+the one wait in the program nobody gets back, and it would stop being pure —
+ten tests build a launch against a directory nothing has written yet.
+`configure` cannot: it would gain a parameter changing nothing it writes, and
+one call would both preserve a person's edit and reject it. `__init__` cannot,
+and this one is structural rather than a trade: `ClaudeCode` writes the
+settings file it would validate, so checking at construction means never being
+able to bootstrap a machine that has not run yet.
+
+What the argument turned up in passing is that offgrid has this shape already.
+`agent.dialect` states a fact, `require_compatible` decides it is a problem,
+`cli.py` calls it — and the reading is the same three parts for the same
+reason.
+
+## A profile grows a section per adapter
+
+Settled, not yet built. `host` sits flat beside `runtime` today as though it
+were global, and there is nowhere for an adapter's own settings to go — which
+the second agent needs immediately, since opencode learns where the runtime
+listens from a `provider.<name>.options.baseURL` block in a file it must be
+configured with, rather than from an environment variable at launch.
+
+So the profile nests: `agent: AgentConfig` and `runtime: RuntimeConfig`, each
+carrying a `name` and whatever else that adapter reads, with `host` moving
+under the runtime that is the only thing it means anything to.
+
+Two findings shape how, and both were measured rather than reasoned.
+
+Pydantic will not parse a base-annotated field into a subclass. Annotate
+`agent: AgentConfig` and a section holding an adapter's own keys either has
+them silently dropped or is refused outright, depending on `extra` — never
+parsed into the subclass that declares them. Only the shapes that tell the
+parser which class to build work: a discriminated union, or a base permissive
+enough to carry a section it cannot read while each concrete config narrows to
+`extra="forbid"`.
+
+And the port cannot take a `Profile`: `profile.py` imports `AgentName` from
+`agent.py`, so the reverse is a cycle. That is the right way round anyway — a
+port taking the config-file type has made the file format part of its
+interface, and every adapter would see fields that are none of its business.
+
+The configs live in `agent.py` and `runtime.py` beside the vocabulary they
+belong to, not in a `config/` folder, which would group them by kind and split
+each adapter's knowledge across two files.
+
+The registry stays a closed enum keyed dict, which is not open for extension:
+adding an adapter edits the enum and the registry both. That is deliberate. The
+alternative is self-registration, and it costs the property that `agents/` is
+the one place a name becomes an adapter — checkable by reading imports, which
+is what #56 is about — along with the validated set that lets a profile refuse
+an unknown agent at load rather than at dispatch.
