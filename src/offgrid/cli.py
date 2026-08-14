@@ -12,7 +12,7 @@ from offgrid.answering import get_resident_model, hold_model
 from offgrid.dialect import require_compatible
 from offgrid.exceptions import OffgridError, ProfileError
 from offgrid.fit import BYTES_PER_GB, get_sizes_that_fit
-from offgrid.hosted_tools import require_hosted_tools_denied
+from offgrid.hosted_tools import HostedToolsStatus, require_hosted_tools_denied
 from offgrid.launch import explain_why_it_would_not_start, start
 from offgrid.leaderboards.reading import get_reading
 from offgrid.machine import detect, suggest_raising_the_gpu_limit
@@ -83,13 +83,18 @@ def doctor() -> None:
     # four lines that already looked like an answer.
     with _reporting():
         model = get_resident_model(runtime)
-        reachable = agent.read_hosted_tools()
+        report = agent.read_hosted_tools()
 
     tell(f"  runtime   {profile.runtime.value} at {profile.host}, reachable")
     tell(f"  model     {model.identifier}")
     tell(f"  context   {model.context_limit or 'unstated'}")
     tell(f"  agent     {profile.agent.value}, speaking {agent.dialect.value}")
-    tell(f"  hosted    {reachable.status}")
+    tell(f"  hosted    {report.status}")
+
+    # What a run would refuse with, said here instead of after the load it
+    # was run to save. Nothing to act on where nothing can be reached.
+    if report.status is not HostedToolsStatus.DENIED:
+        tell(f"            {report.detail} {report.remedy}".rstrip())
 
 
 @app.command()
