@@ -2,7 +2,7 @@
 
 from enum import Enum
 
-from offgrid.exceptions import DialectMismatchError
+from offgrid.shared.exceptions import DialectMismatchError
 
 
 class Dialect(Enum):

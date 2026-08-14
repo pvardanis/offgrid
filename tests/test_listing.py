@@ -1,5 +1,5 @@
-from offgrid.listing import Fit, Listing, get_listing_with_feasible_widths
-from offgrid.machine import Machine
+from offgrid.domain.listing import Fit, Listing, get_listing_with_feasible_widths
+from offgrid.domain.machine import Machine
 
 GIB = 1024**3
 BILLION = 1e9

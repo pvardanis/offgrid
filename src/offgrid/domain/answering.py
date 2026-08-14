@@ -8,9 +8,9 @@ What reaching that state costs is the runtime's business, and each one reaches
 it differently. This is where offgrid says which model it wants held.
 """
 
-from offgrid.exceptions import ModelUnavailableError
-from offgrid.model import Model
-from offgrid.runtime import Runtime
+from offgrid.domain.model import Model
+from offgrid.domain.runtime import Runtime
+from offgrid.shared.exceptions import ModelUnavailableError
 
 
 def get_resident_model(runtime: Runtime) -> Model:

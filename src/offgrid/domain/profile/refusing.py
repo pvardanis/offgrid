@@ -10,7 +10,7 @@ from enum import Enum
 
 from pydantic import ValidationError
 
-from offgrid.exceptions import ProfileError
+from offgrid.shared.exceptions import ProfileError
 
 
 @contextmanager

@@ -10,8 +10,8 @@ beside each other rather than down a ladder of `except` branches.
 
 import httpx
 
-from offgrid.exceptions import RuntimeUnreachableError
-from offgrid.model import Model
+from offgrid.domain.model import Model
+from offgrid.shared.exceptions import RuntimeUnreachableError
 
 CATALOGUE = "/api/v0/models"
 TIMEOUT_SECONDS = 5

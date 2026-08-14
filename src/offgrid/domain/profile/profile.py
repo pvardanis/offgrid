@@ -14,11 +14,11 @@ from pathlib import Path
 import yaml
 from pydantic import BaseModel, ConfigDict, SerializeAsAny, ValidationError
 
-from offgrid.agent import AgentConfig
-from offgrid.exceptions import ProfileError
-from offgrid.home import OFFGRID_HOME
-from offgrid.profile.structure import refuse_a_flat_profile
-from offgrid.runtime import RuntimeConfig
+from offgrid.domain.agent import AgentConfig
+from offgrid.domain.profile.structure import refuse_a_flat_profile
+from offgrid.domain.runtime import RuntimeConfig
+from offgrid.shared.exceptions import ProfileError
+from offgrid.shared.home import OFFGRID_HOME
 
 DEFAULT_PATH = OFFGRID_HOME / "profile.yaml"
 

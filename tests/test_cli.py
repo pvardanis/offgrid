@@ -7,8 +7,8 @@ import yaml
 from typer.testing import CliRunner
 
 from offgrid.cli import app, read_profile
-from offgrid.exceptions import LeaderboardUnreachableError
-from offgrid.machine import Machine
+from offgrid.domain.machine import Machine
+from offgrid.shared.exceptions import LeaderboardUnreachableError
 from tests.doubles import (
     StandInAgent,
     answer_as_a_mac,
@@ -490,7 +490,7 @@ def test_an_agent_that_cannot_talk_to_the_runtime_is_refused_before_the_wait(
 ):
     # Checking after the load spends a minute of someone's time to arrive at
     # an answer that was knowable before it started.
-    from offgrid.dialect import Dialect
+    from offgrid.domain.dialect import Dialect
 
     runner.invoke(app, ["setup"])
     asked = answer_as_lm_studio(monkeypatch, cold={"a/other-7b": 8192})
@@ -568,7 +568,7 @@ def test_the_model_is_let_go_when_the_launch_cannot_be_built(
     # Between holding a model and starting the agent there is nothing a
     # person waits for, but it is the second after the longest wait in the
     # program, which is when a hand reaches for Ctrl-C.
-    from offgrid.dialect import Dialect
+    from offgrid.domain.dialect import Dialect
 
     runner.invoke(app, ["setup"])
     answer_as_an_agent(
@@ -683,7 +683,7 @@ def test_an_error_that_reaches_the_terminal_is_a_sentence_not_a_traceback(
     monkeypatch, capsys
 ):
     from offgrid.cli import main
-    from offgrid.exceptions import RuntimeUnreachableError
+    from offgrid.shared.exceptions import RuntimeUnreachableError
 
     def gone():
         raise RuntimeUnreachableError("the runtime went away mid-run")
@@ -850,8 +850,8 @@ def test_every_rule_that_drops_a_row_has_words_for_it():
     # A regression guard rather than a slice. A fourth rule added without
     # wording raises a KeyError the first time a table trips it, which is a
     # long way from where the rule was introduced.
-    from offgrid.recommendation import WHY_DROPPED
-    from offgrid.shortlist import Rule
+    from offgrid.domain.recommendation import WHY_DROPPED
+    from offgrid.domain.shortlist import Rule
 
     assert set(WHY_DROPPED) == set(Rule)
 
@@ -1230,7 +1230,7 @@ def test_recommend_attributes_no_figures_where_it_showed_none(here, monkeypatch)
 
 
 def test_recommend_says_what_stopped_it_rather_than_raising(here, monkeypatch):
-    from offgrid.exceptions import LeaderboardUnavailableError
+    from offgrid.shared.exceptions import LeaderboardUnavailableError
 
     def unreachable():
         raise LeaderboardUnavailableError("could not reach the leaderboard")

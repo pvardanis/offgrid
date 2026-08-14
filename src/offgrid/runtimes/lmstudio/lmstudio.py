@@ -4,14 +4,9 @@ import logging
 import time
 from dataclasses import dataclass, field
 
-from offgrid.capabilities import Capabilities
-from offgrid.dialect import Dialect
-from offgrid.exceptions import (
-    ModelNotHeldError,
-    ModelUnavailableError,
-    RuntimeUnreachableError,
-)
-from offgrid.model import Model
+from offgrid.domain.capabilities import Capabilities
+from offgrid.domain.dialect import Dialect
+from offgrid.domain.model import Model
 from offgrid.runtimes.lmstudio.catalogue import (
     get_catalogue_payload,
     get_loaded_models,
@@ -19,6 +14,11 @@ from offgrid.runtimes.lmstudio.catalogue import (
 )
 from offgrid.runtimes.lmstudio.config import LMStudioConfig
 from offgrid.runtimes.lmstudio.holding import TOOL, load, unload
+from offgrid.shared.exceptions import (
+    ModelNotHeldError,
+    ModelUnavailableError,
+    RuntimeUnreachableError,
+)
 
 # What LM Studio's API can be asked, rather than what this machine can reach:
 # a release commanded through `lms` needs the tool on PATH, which `unload`

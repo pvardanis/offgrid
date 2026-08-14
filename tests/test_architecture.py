@@ -25,13 +25,11 @@ DOC = ROOT / "docs" / "architecture.md"
 PYPROJECT = ROOT / "pyproject.toml"
 SOURCE = ROOT / "src" / "offgrid"
 
-ADAPTER_PACKAGES = ("agents", "leaderboards", "runtimes")
+# One name per layer, as the tree says it. A module belongs to the layer of the
+# package above it, so these stay this length however many modules there are.
+ADAPTERS = {"offgrid.agents", "offgrid.leaderboards", "offgrid.runtimes"}
 COMMAND_LINE = {"offgrid.cli"}
-
-# Held here rather than derived, so that calling a module shared is a decision
-# someone makes rather than something a heuristic infers. Anything shared is
-# reachable from every layer, which is a thing to be sure about.
-SHARED = {"offgrid.exceptions", "offgrid.say"}
+SHARED = {"offgrid.shared"}
 
 
 def _modules() -> set[str]:
@@ -67,9 +65,20 @@ def _domain_in_the_contract() -> set[str]:
     return set(forbidden["source_modules"])
 
 
-def _adapters(modules: set[str]) -> set[str]:
-    """The modules living inside an adapter package."""
-    return {module for module in modules if module.split(".")[1] in ADAPTER_PACKAGES}
+def _is_covered(module: str, named: set[str]) -> bool:
+    """Whether a module, or a package above it, is named as a layer.
+
+    Both contracts are stated over packages and cover everything beneath one,
+    so a module is placed by the first name above it that a layer claims.
+
+    :param module: The module to place.
+    :param named: Every name a layer is stated over.
+
+    :return: Whether the layer rule reaches it.
+    """
+    parts = module.split(".")
+
+    return any(".".join(parts[:depth]) in named for depth in range(1, len(parts) + 1))
 
 
 def _below(base: type[BaseModel]) -> list[type[BaseModel]]:
@@ -95,10 +104,11 @@ def test_the_doc_names_every_module_there_is():
 
 
 def test_every_module_is_covered_by_the_layer_rule():
-    written = _modules() | _packages()
-    classified = _domain_in_the_contract() | _adapters(written) | COMMAND_LINE | SHARED
+    named = _domain_in_the_contract() | ADAPTERS | COMMAND_LINE | SHARED
 
-    unclassified = sorted(written - classified)
+    unclassified = sorted(
+        module for module in _modules() | _packages() if not _is_covered(module, named)
+    )
 
     assert not unclassified, (
         f"{unclassified} sits in no layer, so the import contract does not "
@@ -111,7 +121,7 @@ def test_every_runtime_offgrid_names_has_an_adapter_bound_to_it():
     # Two places that cannot be one: an enum carrying its own factory would
     # be a domain type importing an adapter. A name with no entry raises a
     # KeyError at somebody's terminal, halfway through a run.
-    from offgrid.runtime import RuntimeName
+    from offgrid.domain.runtime import RuntimeName
     from offgrid.runtimes import RUNTIME_CONFIGS, RUNTIMES
 
     assert set(RUNTIMES) == set(RuntimeName)
@@ -119,8 +129,8 @@ def test_every_runtime_offgrid_names_has_an_adapter_bound_to_it():
 
 
 def test_every_agent_offgrid_names_has_an_adapter_bound_to_it():
-    from offgrid.agent import AgentName
     from offgrid.agents import AGENT_CONFIGS, AGENTS
+    from offgrid.domain.agent import AgentName
 
     assert set(AGENTS) == set(AgentName)
     assert set(AGENT_CONFIGS) == set(AgentName)
@@ -132,9 +142,9 @@ def test_every_config_an_adapter_declares_forbids_a_key_it_does_not_name():
     # once and every adapter inherits it — a subclass that set `extra` back to
     # `allow` would accept junk in silence, which is the failure this whole
     # area exists to prevent.
-    from offgrid.agent import AgentConfig
     from offgrid.agents import AGENTS
-    from offgrid.runtime import RuntimeConfig
+    from offgrid.domain.agent import AgentConfig
+    from offgrid.domain.runtime import RuntimeConfig
     from offgrid.runtimes import RUNTIMES
 
     # The registries are what import every adapter, and an adapter has to have

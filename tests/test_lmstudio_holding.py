@@ -13,13 +13,13 @@ import sys
 import httpx
 import pytest
 
-from offgrid.exceptions import (
+from offgrid.runtimes.lmstudio import connect
+from offgrid.runtimes.lmstudio.config import LMStudioConfig
+from offgrid.shared.exceptions import (
     ModelNotHeldError,
     ModelUnavailableError,
     RuntimeUnreachableError,
 )
-from offgrid.runtimes.lmstudio import connect
-from offgrid.runtimes.lmstudio.config import LMStudioConfig
 from tests.doubles import (
     answer_as_lm_studio,
     refuse_to_let_go,

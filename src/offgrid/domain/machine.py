@@ -4,7 +4,7 @@ import platform
 import subprocess
 from dataclasses import dataclass
 
-from offgrid.exceptions import UnsupportedMachineError
+from offgrid.shared.exceptions import UnsupportedMachineError
 
 # An estimate, and the weakest number here. Measured on one 64GB machine,
 # where the GPU was capped near 48GB until iogpu.wired_limit_mb was raised.

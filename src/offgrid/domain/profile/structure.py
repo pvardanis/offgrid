@@ -12,9 +12,9 @@ from pathlib import Path
 
 import yaml
 
-from offgrid.agent import AgentName
-from offgrid.exceptions import ProfileError
-from offgrid.runtime import RuntimeName
+from offgrid.domain.agent import AgentName
+from offgrid.domain.runtime import RuntimeName
+from offgrid.shared.exceptions import ProfileError
 
 # An address to show a shape with, rather than one to reach anything at.
 EXAMPLE_HOST = "127.0.0.1:1234"

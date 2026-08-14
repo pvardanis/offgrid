@@ -1,11 +1,11 @@
 import httpx
 import pytest
 
-from offgrid.exceptions import (
+from offgrid.leaderboards.onyx import TIMEOUT_SECONDS, URL, fetch, parse
+from offgrid.shared.exceptions import (
     LeaderboardUnreachableError,
     LeaderboardUnreadableError,
 )
-from offgrid.leaderboards.onyx import TIMEOUT_SECONDS, URL, fetch, parse
 from tests.doubles import serve_get
 
 

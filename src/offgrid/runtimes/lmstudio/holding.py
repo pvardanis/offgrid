@@ -9,7 +9,7 @@ import subprocess
 
 import httpx
 
-from offgrid.exceptions import RuntimeUnreachableError
+from offgrid.shared.exceptions import RuntimeUnreachableError
 
 MESSAGES = "/v1/messages"
 

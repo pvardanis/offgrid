@@ -8,8 +8,8 @@ that reports it.
 
 import pytest
 
-from offgrid.exceptions import OffgridError
 from offgrid.leaderboards.onyx import fetch, parse
+from offgrid.shared.exceptions import OffgridError
 
 pytestmark = pytest.mark.live
 

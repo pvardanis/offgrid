@@ -8,13 +8,13 @@ something knows which adapters there are.
 import pytest
 import yaml
 
-from offgrid.agent import AgentName
 from offgrid.agents import create_agent_config
 from offgrid.cli import read_profile
-from offgrid.exceptions import ProfileError
-from offgrid.profile import Profile, save_profile
-from offgrid.runtime import RuntimeName
+from offgrid.domain.agent import AgentName
+from offgrid.domain.profile import Profile, save_profile
+from offgrid.domain.runtime import RuntimeName
 from offgrid.runtimes import create_runtime_config
+from offgrid.shared.exceptions import ProfileError
 from tests.doubles import StandInAgentConfig
 
 HOST = "127.0.0.1:1234"

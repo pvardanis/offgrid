@@ -10,8 +10,11 @@ import json
 
 import httpx
 
-from offgrid.exceptions import LeaderboardUnreachableError, LeaderboardUnreadableError
-from offgrid.listing import Listing, Table
+from offgrid.domain.listing import Listing, Table
+from offgrid.shared.exceptions import (
+    LeaderboardUnreachableError,
+    LeaderboardUnreadableError,
+)
 
 URL = "https://onyx.app/best-llm-for-coding"
 

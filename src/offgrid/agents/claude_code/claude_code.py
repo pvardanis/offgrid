@@ -25,11 +25,11 @@ from offgrid.agents.claude_code.launching import (
     get_claude_args,
     get_dropped_settings_sources,
 )
-from offgrid.dialect import Dialect
-from offgrid.exceptions import AgentSettingsError
-from offgrid.hosted_tools import HostedToolsReport, HostedToolsStatus
-from offgrid.launch import Launch
-from offgrid.model import Model
+from offgrid.domain.dialect import Dialect
+from offgrid.domain.hosted_tools import HostedToolsReport, HostedToolsStatus
+from offgrid.domain.launch import Launch
+from offgrid.domain.model import Model
+from offgrid.shared.exceptions import AgentSettingsError
 
 
 @dataclass(frozen=True)

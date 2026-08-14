@@ -20,13 +20,13 @@ flowchart TD
         ag["agents/"]
         lb["leaderboards/"]
     end
-    subgraph domain [domain]
+    subgraph domain ["domain/"]
         answering[answering.py]
         ports["runtime.py · agent.py"]
-        rest["machine · fit · listing · speed · quality ·<br/>shortlist · recommendation · dialect · hosted_tools ·<br/>capabilities · declaring · profile · home · launch · model"]
+        rest["machine · fit · listing · speed · quality ·<br/>shortlist · recommendation · dialect · hosted_tools ·<br/>capabilities · profile · launch · model"]
     end
-    subgraph shared [shared]
-        sh["exceptions.py · say.py"]
+    subgraph shared ["shared/"]
+        sh["exceptions.py · say.py · home.py · declaring.py"]
     end
 
     cli --> adapters
@@ -40,6 +40,10 @@ flowchart TD
 Dependencies point inwards: adapters know about the domain, the domain knows
 nothing about adapters. The command line is outermost and may reach anything;
 `shared` is innermost and reaches nothing of offgrid's.
+
+Each of these is a folder, so the tree says which layer a module is in and a
+new one lands somewhere on purpose. It is also what lets both contracts be
+stated over four names rather than every module by hand.
 
 `answering.py` reaches `runtime.py`, which is a port and not an adapter: what
 satisfies it is bound to a name in `runtimes/`, and `cli.py` is where the two
@@ -109,39 +113,49 @@ leaderboards/      one module per published list
 **domain**
 
 ```
-machine.py         what this Mac is, and how to give its GPU more room
-fit.py             how much room it has
-model.py           a model the runtime describes
-listing.py         a model a published list describes, and which ones fit
-speed.py           how fast this machine reads a model's weights
-quality.py         how good a fit is, as one number and one word
-shortlist.py       what fits, ranked, and what each rule dropped
-recommendation.py  how that reads to whoever asked
-dialect.py         which API shapes can be paired
-declaring.py       reading a config as the adapter that declared it
-capabilities.py    what a runtime can be asked to do
-hosted_tools.py    what an agent can reach that offgrid cannot run here
-runtime.py         what offgrid asks of a runtime, and which ones there are
-agent.py           what offgrid asks of an agent, and which ones there are
-profile/           what is remembered between runs
-  profile.py       the file, and what is read out of it
-  refusing.py      what a section offgrid cannot read reads like
-  structure.py     whether it is built the way offgrid reads one
-home.py            where offgrid keeps it
-launch.py          an environment and an argument list, and running one
-answering.py       which model answers, and making it the one that does
+domain/
+  machine.py       what this Mac is, and how to give its GPU more room
+  fit.py           how much room it has
+  model.py         a model the runtime describes
+  listing.py       a model a published list describes, and which ones fit
+  speed.py         how fast this machine reads a model's weights
+  quality.py       how good a fit is, as one number and one word
+  shortlist.py     what fits, ranked, and what each rule dropped
+  recommendation.py  how that reads to whoever asked
+  dialect.py       which API shapes can be paired
+  capabilities.py  what a runtime can be asked to do
+  hosted_tools.py  what an agent can reach that offgrid cannot run here
+  runtime.py       what offgrid asks of a runtime, and which ones there are
+  agent.py         what offgrid asks of an agent, and which ones there are
+  profile/         what is remembered between runs
+    profile.py     the file, and what is read out of it
+    refusing.py    what a section offgrid cannot read reads like
+    structure.py   whether it is built the way offgrid reads one
+  launch.py        an environment and an argument list, and running one
+  answering.py     which model answers, and making it the one that does
 ```
 
 One more joins them when the leaderboard seam is built — `leaderboard.py`,
 holding what offgrid asks of a published list, as the two beside it do for a
 runtime and an agent.
 
+The tree is the layers, so a module's place says which one it is in and the
+contracts are stated over four names rather than every module by hand. It also
+puts `domain/runtime.py` a folder away from `runtimes/` instead of one letter.
+
 **shared**
 
 ```
-exceptions.py      the errors offgrid raises on purpose
-say.py             how offgrid talks to whoever ran it
+shared/
+  exceptions.py    the errors offgrid raises on purpose
+  say.py           how offgrid talks to whoever ran it
+  home.py          where offgrid keeps what it remembers
+  declaring.py     reading a config as the adapter that declared it
 ```
+
+Shared is what reaches nothing of offgrid's own, which is the test as well as
+the description: every one of these imports only the standard library or a
+dependency, so any layer may reach them without a cycle to think about.
 
 Files stay under 150 lines and are organised by domain rather than by kind, so
 a module that outgrows the limit is usually two ideas rather than one long one.
@@ -325,9 +339,9 @@ contract nobody can find is one a second adapter is written without: the module
 map is how this repo says where things are, and a `Runtime` inside `answering.py`
 has no line in it.
 
-The cost is that `offgrid/runtime.py` sits one letter from
-`offgrid/runtimes/`, and `cli.py` imports both — the port for its types, the
-registry to build one. Worth it for being findable, but worth knowing about.
+`cli.py` imports both — the port for its types, the registry to build one — and
+they read as what they are now that the layer is a folder: `domain/runtime.py`
+beside `runtimes/`, rather than two names one letter apart.
 
 ## The runtime seam — built
 

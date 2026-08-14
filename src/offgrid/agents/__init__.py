@@ -10,8 +10,8 @@ The two mappings are keyed alike and go together: one says what a name is
 built from, the other what it is started as.
 """
 
-from offgrid.agent import Agent, AgentConfig, AgentName, Prepare
 from offgrid.agents import claude_code
+from offgrid.domain.agent import Agent, AgentConfig, AgentName, Prepare
 
 AGENTS: dict[AgentName, Prepare] = {AgentName.CLAUDE_CODE: claude_code.prepare}
 

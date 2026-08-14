@@ -12,14 +12,14 @@ them.
 from dataclasses import dataclass
 from pathlib import Path
 
-from offgrid.exceptions import (
+from offgrid.domain.listing import Table
+from offgrid.leaderboards import cache
+from offgrid.leaderboards.onyx import fetch, parse
+from offgrid.shared.exceptions import (
     LeaderboardUnavailableError,
     LeaderboardUnreachableError,
     LeaderboardUnreadableError,
 )
-from offgrid.leaderboards import cache
-from offgrid.leaderboards.onyx import fetch, parse
-from offgrid.listing import Table
 
 
 @dataclass(frozen=True)
