@@ -654,6 +654,11 @@ runs. The token went with it, into `agents/claude_code/`: the local server
 ignores it and Claude Code refuses to start without one, which makes it a fact
 about that agent rather than about the run.
 
+A bad adapter key says to fix it by hand and stops there, where every other
+profile error offers `offgrid setup` as well. `setup` keeps what it finds, and
+a section is permissive where it reads one — so it loads the offending key and
+writes it straight back. Measured, not assumed.
+
 A profile in the flat shape is refused rather than migrated, naming the shape
 it now wants. v0.1 is a handful of people on a clone-and-run project, and a
 silent rewrite of a hand-edited file is worse than a clear refusal.
