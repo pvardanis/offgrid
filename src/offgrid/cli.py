@@ -7,7 +7,7 @@ from pathlib import Path
 
 import typer
 
-from offgrid.agent import AgentName
+from offgrid.agent import Agent, AgentName
 from offgrid.agents import create_agent_config, prepare_agent
 from offgrid.answering import get_resident_model, hold_model
 from offgrid.dialect import require_compatible
@@ -26,7 +26,7 @@ from offgrid.profile import (
     save_profile,
 )
 from offgrid.recommendation import summarize_findings
-from offgrid.runtime import RuntimeName
+from offgrid.runtime import Runtime, RuntimeName
 from offgrid.runtimes import connect_runtime, create_runtime_config
 from offgrid.say import say_on_stderr, tell
 
@@ -56,7 +56,7 @@ def setup(
 ) -> None:
     """Measure this machine and record how to reach the runtime."""
     machine = detect()
-    stored = _stored()
+    stored = _get_stored_profile()
     listening_at = host or (stored.runtime.host if stored else DEFAULT_HOST)
 
     # What was stored is carried over whole rather than rebuilt from the
@@ -113,10 +113,7 @@ def doctor() -> None:
     # a fault in any of them is reported as offgrid's own error rather than as
     # a traceback under four lines that already looked like an answer.
     with _reporting():
-        profile = read_profile(DEFAULT_PATH)
-
-        runtime = connect_runtime(profile.runtime)
-        agent = prepare_agent(profile.agent)
+        profile, runtime, agent = _read_the_run()
 
         model = get_resident_model(runtime)
         report = agent.read_hosted_tools()
@@ -166,11 +163,8 @@ def run(
     passthrough = tuple(context.args)
 
     with _reporting():
-        profile = read_profile(DEFAULT_PATH)
+        profile, runtime, agent = _read_the_run(passthrough)
         wanted = model_name or profile.model
-
-        runtime = connect_runtime(profile.runtime)
-        agent = prepare_agent(profile.agent, passthrough)
 
         # A dialect that cannot be paired and a run that would undo a
         # guarantee are both knowable before a load, and a load is tens of
@@ -217,7 +211,7 @@ def _reporting() -> Iterator[None]:
         raise typer.Exit(1) from error
 
 
-def _stored() -> Profile | None:
+def _get_stored_profile() -> Profile | None:
     """Read the profile already there, so a re-run does not undo an edit.
 
     :return: The stored profile, or ``None`` when there is none to keep.
@@ -242,6 +236,29 @@ def _cache() -> Path:
     :return: The path to it.
     """
     return DEFAULT_PATH.parent / "leaderboard.json"
+
+
+def _read_the_run(passthrough: tuple[str, ...] = ()) -> tuple[Profile, Runtime, Agent]:
+    """Read the profile, and bind both adapters it names.
+
+    What every command that talks to the runtime starts with. A command with
+    no arguments of its own — `doctor` — binds an agent that reports on its
+    configuration alone.
+
+    :param passthrough: Arguments handed to the agent unchanged.
+
+    :return: What was stored, the runtime, and the agent.
+
+    :raise ProfileError: When the profile is not one, or a section is not one
+        its adapter can read.
+    """
+    profile = read_profile(DEFAULT_PATH)
+
+    return (
+        profile,
+        connect_runtime(profile.runtime),
+        prepare_agent(profile.agent, passthrough),
+    )
 
 
 def read_profile(path: Path) -> Profile:

@@ -15,7 +15,7 @@ from offgrid.exceptions import ProfileError
 
 @contextmanager
 def refuse_profile_section(
-    said: dict, *, port: str, names: type[Enum]
+    section_dict: dict, *, port: str, names: type[Enum]
 ) -> Iterator[None]:
     """Say what a section was refused for, as a profile error.
 
@@ -23,7 +23,7 @@ def refuse_profile_section(
     same sentence every other profile error is. What the validator said is
     carried through as it wrote it, naming the fields it would not take.
 
-    :param said: What the profile says about this port.
+    :param section_dict: What the profile says about this port.
     :param port: Which section it is, as the file spells it.
     :param names: The adapters offgrid has for this port.
 
@@ -40,13 +40,13 @@ def refuse_profile_section(
         ) from error
     except ValidationError as error:
         raise ProfileError(
-            f"{_get_adapter_name(said)} cannot read the `{port}` section of "
+            f"{_get_adapter_name(section_dict)} cannot read the `{port}` section of "
             f"the profile:\n\n{error}\n\n"
             "Take it out of the file, or spell it the way that adapter does."
         ) from error
     except ValueError as error:
         raise ProfileError(
-            f"The `{port}` section names {said.get('name')}, which offgrid has "
+            f"The `{port}` section names {section_dict.get('name')}, which offgrid has "
             f"no adapter for. It has {_get_implemented_adapters(names)}."
         ) from error
     except TypeError as error:
@@ -56,14 +56,14 @@ def refuse_profile_section(
         ) from error
 
 
-def _get_adapter_name(said: dict) -> str:
+def _get_adapter_name(section_dict: dict) -> str:
     """Say which adapter a section asked for, as the file spells it.
 
-    :param said: What the profile says about this port.
+    :param section_dict: What the profile says about this port.
 
     :return: The adapter's name.
     """
-    return str(said["name"])
+    return str(section_dict["name"])
 
 
 def _get_implemented_adapters(names: type[Enum]) -> str:
