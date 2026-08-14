@@ -69,5 +69,15 @@ class AgentSettingsError(OffgridError):
     """The agent's settings would let it do something offgrid cannot back."""
 
 
+class HostedToolReachableError(OffgridError):
+    """A tool that runs on a vendor's servers can be reached from this run.
+
+    Named for what is true rather than for where it was found: a settings
+    file that permits one and an argument that stops that file being read
+    leave the same thing reachable, and a person reading the error cares
+    about the reach, not which of the two caused it.
+    """
+
+
 class ProfileError(OffgridError):
     """The stored profile is missing, unreadable, or fails validation."""

@@ -23,7 +23,7 @@ flowchart TD
     subgraph domain [domain]
         answering[answering.py]
         ports["runtime.py · agent.py"]
-        rest["machine · fit · listing · speed · quality ·<br/>shortlist · recommendation · dialect ·<br/>profile · launch · model"]
+        rest["machine · fit · listing · speed · quality ·<br/>shortlist · recommendation · dialect · hosted_tools ·<br/>profile · launch · model"]
     end
     subgraph shared [shared]
         sh["exceptions.py · say.py"]
@@ -95,8 +95,9 @@ runtimes/          one package per runtime
 agents/            one package per agent
   claude_code/
     claude_code.py what an agent is asked, in Claude Code's terms
-    configuring.py what offgrid writes into its directory, and refuses
-    launching.py   the arguments and the sizes it is started with
+    configuring.py what offgrid writes into its directory
+    launching.py   the arguments and sizes it is started with, and
+                   what is read back out of them
 leaderboards/      one module per published list
   onyx.py          fetching and parsing the page
   cache.py         keeping the last payload that parsed
@@ -115,6 +116,7 @@ quality.py         how good a fit is, as one number and one word
 shortlist.py       what fits, ranked, and what each rule dropped
 recommendation.py  how that reads to whoever asked
 dialect.py         which API shapes can be paired
+hosted_tools.py    what an agent can reach that offgrid cannot run here
 runtime.py         what offgrid asks of a runtime, and which ones there are
 agent.py           what offgrid asks of an agent, and which ones there are
 profile.py         what is remembered between runs
@@ -156,12 +158,14 @@ sequenceDiagram
     F-->>C: Profile — host, RuntimeName, AgentName, model
     C->>G: connect_runtime(profile)
     G-->>C: Runtime
-    C->>G: prepare_agent(profile)
+    C->>G: prepare_agent(profile, passthrough)
     G-->>C: Agent
     Note over C,G: the only place a name becomes an adapter
     C->>D: require_compatible(runtime.dialect, agent.dialect)
     C->>A: configure()
-    C->>A: require_hosted_tools_denied(passthrough)
+    C->>A: read_hosted_tools()
+    A-->>C: HostedToolsReport
+    C->>C: require_hosted_tools_denied(report)
     Note over C,A: everything knowable before a load, before the load
     C->>H: hold_model(runtime, wanted)
     Note over H: wanted may be none, which asks for<br/>whatever the runtime is already holding
@@ -169,7 +173,7 @@ sequenceDiagram
     Note over R: what "only this one" costs here is the adapter's<br/>problem: let go of the rest, load, read back
     R-->>H: Model, as served
     H-->>C: Model
-    C->>A: plan(model, host, token, passthrough)
+    C->>A: plan(model, host, token)
     A-->>C: Launch
     C->>L: start(launch)
     L-->>C: exit code
@@ -179,7 +183,7 @@ sequenceDiagram
 
 The order is the design here, not an accident of how the code was written.
 
-The dialect check and the agent's settings check both run *before* the load,
+The dialect check and the hosted-tool reading both run *before* the load,
 because both are knowable in advance and a load is tens of seconds nobody gets
 back. From the moment a model is held, letting go is owed whatever happens —
 so the launch sits in a `try`, `let_go` sits in the `finally`, and a failed
@@ -395,40 +399,52 @@ class Agent(Protocol):
     def dialect(self) -> Dialect: ...
 
     def configure(self) -> None: ...
-    def require_hosted_tools_denied(self, passthrough: list[str]) -> None: ...
+    def read_hosted_tools(self) -> HostedToolsReport: ...
     def plan(
         self,
         model: Model,
         *,
         host: str,
         token: str,
-        passthrough: list[str],
     ) -> Launch: ...
 ```
 
-**`configure` and the guarantee are separate calls** because they are separate
+The configuration directory and the arguments after `--` are both settled
+before a run starts, so an adapter is bound to both and `plan` takes only what
+the run discovers. What is read to decide whether a run is safe is then the
+same thing that gets launched.
+
+**`configure` and the reading are separate calls** because they are separate
 jobs. `configure` writes what is missing and leaves alone what a person edited
-— including settings the guard will refuse, which are an edit rather than
-something to write over. `require_hosted_tools_denied` refuses a run that would
-let the agent reach for a tool it cannot run, and is the privacy promise in
-`docs/decisions.md` made executable.
+— including settings the reading will call permitted, which are an edit rather
+than something to write over. `read_hosted_tools` says what this run could
+reach, and is the privacy promise in `docs/decisions.md` made legible.
 
 It is a slot in the port rather than one adapter's business because the failure
-it guards is silent. A hosted tool called against a local model returns invented
-prose that reads as an answer, with no error anywhere. Codex CLI carries
-`supports_standalone_web_search`, so the second agent has the same class of
-tool — and without a named slot, its adapter ships without the guard and
-nothing says so.
+it describes is silent. A hosted tool called against a local model returns
+invented prose that reads as an answer, with no error anywhere. Codex CLI
+carries `supports_standalone_web_search`, so the second agent has the same
+class of tool — and without a named slot, its adapter ships without the
+reading and nothing says so.
+
+**The adapter answers and offgrid decides**, the way `dialect` and
+`require_compatible` already divide. Which tools are hosted, what the
+configuration says and which arguments stop it being read are the adapter's
+knowledge; that a reachable one stops a run is offgrid's rule, and would tell
+a person nothing if it held for one agent and not another. That split is what
+lets `run` refuse and `doctor` report the same reading — and it is why an
+agent with no hosted tool answers `none offered` rather than implementing a
+guard that does nothing.
 
 **It reads the arguments as well as the configuration**, because a
 configuration only denies where the agent loads it, and the arguments after
-`--` decide whether it does. One member rather than two: what a caller wants to
-know is whether the run is safe, and neither half answers that alone.
+`--` decide whether it does. One reading rather than two: what a caller wants
+to know is whether the run is safe, and neither half answers that alone.
 
 Which arguments matter is the adapter's knowledge, and for Claude Code it is
 one. `--setting-sources` confines it to the sources it names, and offgrid
 writes the `user` source, so a list leaving that out never loads the deny —
-measured against claude 2.1.231, and refused in both spellings the agent takes.
+measured against claude 2.1.231, and read in both spellings the agent takes.
 What `--help` suggests would also defeat it does not: `deny` is applied where
 the tool list is built, so `--dangerously-skip-permissions`, `--permission-mode
 bypassPermissions`, `--allowedTools WebSearch` and a `--settings` file carrying
@@ -582,7 +598,7 @@ thing it has to learn. It is a property of the interface rather than of what is
 behind it, and it is what decides whether a seam is worth having.
 
 There are three deep interfaces here already.
-`plan(model, host, token, passthrough)` hides the environment, the argument
+`plan(model, host, token)` hides the environment, the argument
 list and the context sizing behind one call.
 `get_reading(path)` hides fetching, parsing, keeping the payload, falling back
 on a kept one, and the sentence saying how old it is.

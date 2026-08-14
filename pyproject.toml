@@ -78,6 +78,7 @@ source_modules = [
     "offgrid.dialect",
     "offgrid.answering",
     "offgrid.fit",
+    "offgrid.hosted_tools",
     "offgrid.launch",
     "offgrid.listing",
     "offgrid.machine",
