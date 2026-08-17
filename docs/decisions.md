@@ -216,10 +216,10 @@ that no longer parses counts as none, because offgrid's own file failing to
 read back is not a second thing to explain to somebody already being told the
 site is unreachable.
 
-Which table is answered from is `leaderboards/reading.py`'s, and it returns the
+Which table is answered from is `domain/sizing/reading.py`'s, and it returns the
 lines saying so rather than printing them, as `recommendation.py` does. The
 adapter beneath it owns fetching and parsing one list and knows nothing of a
-fall back; `leaderboards/cache.py` owns the file and names no list, so a second
+fall back; `domain/sizing/cache.py` owns the file and names no list, so a second
 list reuses it as it is.
 
 ## A list that will not answer is passed over before a stale one is read
@@ -814,3 +814,33 @@ which is what made the old pair worth paying down.
 noun offgrid uses everywhere and is truer to the ports — `agent.py` runs
 nothing, it says what offgrid asks of an agent — but the gerund pairs with
 `sizing/`, and the pair reads as the question each half answers.
+
+## Choosing between adapters is policy, and policy is the domain's
+
+`reading.py` decided which published list answers, and did it from inside
+`leaderboards/` — importing that package's own registry. Every other seam
+splits the same job the other way: `answering.py` is a domain module and is
+handed a `Runtime`, and `cli.py` is where the registry and the policy meet.
+
+The difference was invisible to the check that exists for it. The contract
+forbids `offgrid.domain` importing an adapter package, so a domain module
+reaching a registry fails `lint-imports` — and an adapter module doing it does
+not, because it is already on that side of the line. Coupling caught in one
+place and unremarked in the other is the shape of a rule that has stopped
+covering the thing it was written for.
+
+So `reading.py` moved to `domain/sizing/`, beside the port it reaches for, and
+takes the lists as an argument. `cli.py` hands it `LEADERBOARDS`. `cache.py`
+moved with it: it names no list, it keeps what offgrid remembers between runs,
+and `domain/profile/profile.py` already owns a file on exactly those terms —
+`shared/` would have filed a domain concept under the word for cross-cutting
+helpers.
+
+Proven the way the domain split was: by restoring the import and watching
+`lint-imports` refuse it with `offgrid.domain is not allowed to import
+offgrid.leaderboards`.
+
+What this leaves is three seams of one shape. `leaderboards/` holds published
+lists and the registry naming them, as `runtimes/` and `agents/` hold theirs,
+and the command line is the only module in the tree that imports any of the
+three.
