@@ -78,14 +78,22 @@ The first carried one exemption — `offgrid.hold -> offgrid.runtimes.lmstudio`
 — which the commit that built the runtime port deleted. It is stated without
 exemptions now.
 
-### What it tightens to — designed
+### What a contract cannot check — built
 
-The rule the domain is held to says nothing about `cli.py`, which is outermost
-and may import anything. It becomes **nothing may import a concrete adapter
-except its own registry**, the command line included, and each adapter package
-gains exactly one importer from outside it. All three now have a registry, so
-the rule is statable over all three; #56 is where it is stated, since a
-`forbidden` contract cannot express it on its own and a test has to carry it.
+The four contracts say nothing about `cli.py`, which is outermost and may
+import anything. The rule that holds over it too is **only a registry may
+import a concrete adapter**, the command line included, and each adapter
+package has exactly one importer from outside it: the registry in its own
+package's `__init__.py`.
+
+`import-linter` cannot state that one. It reads import statements as written,
+and `from offgrid.leaderboards import onyx` in the registry beside `onyx.py` is
+the same statement as `cli.py` writing it — a `forbidden` contract would refuse
+both or neither. So `tests/test_architecture.py` carries it instead, reading
+every import in `src/` against the adapters it finds in the tree. Finding them
+rather than listing them is what covers an adapter written later: the second
+runtime is inside the rule the day its directory exists, without anyone
+editing the test.
 
 The unit is the package rather than the module, because an adapter's own files
 import each other: `lmstudio/lmstudio.py` reaches `lmstudio/catalogue.py` for
