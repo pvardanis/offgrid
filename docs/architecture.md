@@ -825,7 +825,7 @@ in a domain module instead is #12's question, and it is answerable once the
 adapter imports have gone and `cli.py`'s real size is known rather than
 guessed. There is one caller today.
 
-## How this is tested — built, apart from the conformance suite
+## How this is tested — built, apart from the agent's conformance suite
 
 Three different things, and conflating them is how a suite ends up testing
 itself.
@@ -838,22 +838,49 @@ line, `answering.py` and the adapter alike. Each test then covers the ordering *
 the adapter's parsing. A fake satisfying `Runtime` would skip the parsing,
 which is the half most likely to be wrong.
 
-**Each adapter, against a conformance suite.** One suite states what being a
-runtime means behaviourally — that `ensure_only` answers with the model as
-*served* rather than as catalogued, that `read_held` reflects reality after a
-`let_go`, which error arrives when the host is unreachable — and every adapter
-runs it against payloads captured from that runtime, live. An adapter is done
-when it passes. `tests/test_lmstudio_holding.py` asks those questions of the
-one adapter there is; making them a suite every adapter runs waits for the
-second one, which is what would say which of them are LM Studio's and which
-are a runtime's.
+**Each adapter, against a conformance suite.** `tests/test_runtime_conformance.py`
+states what being a runtime means behaviourally, and every adapter runs it
+against payloads captured from that runtime, live. An adapter is done when it
+passes. It states twelve things, each of which a runtime that is not LM Studio
+still owes:
+
+- `ensure_only` answers with the model as *served* rather than as catalogued,
+  leaves only the named model held, and answers for one already held without
+  letting go of it first.
+- A model the runtime does not have is refused by name, with the address and
+  what to run to list what there is; a model it took and is not holding is
+  reported as that instead, since a caller branches on which arrived.
+- `read_catalogue` and `read_held` are separate questions and both answerable,
+  however many requests that costs the adapter.
+- `read_held` reflects a release rather than what offgrid believes it did.
+- `let_go` answers whether the memory came back, both ways, and answers rather
+  than raises where nothing can be reached — both its callers are cleanup, and
+  anything raised there replaces the outcome they were about to report.
+- An unreachable runtime arrives as `RuntimeUnreachableError` naming the
+  address, whichever of the three asking methods was called, while `dialect`
+  and `capabilities` still read: they were settled when the connection opened,
+  which is what lets `run` check the dialect before paying for a load.
+
+`tests/runtimes_under_test.py` is the parametrization, and a second adapter
+joins by writing one stand-in and adding a line there. A stand-in answers as
+its runtime's server and its runtime's tool rather than satisfying `Runtime`,
+so passing proves the adapter's parsing as well as its behaviour. `ty` holds
+the stand-ins to their own shape the same way it holds an adapter to its port.
+
+What one runtime does and another does not stays in that adapter's own file.
+`tests/test_lmstudio_holding.py` keeps LM Studio's: that it reaches "hold only
+this one" by letting go of each model in turn before it loads, what that costs
+and what it says while paying it, and a tool whose exit code cannot be taken at
+its word.
 
 An agent's questions are the same shape and sit in `tests/test_claude_code.py`:
 that `configure` writes what is missing and leaves an edit alone, that what it
 writes passes the adapter's own guard, that a configuration permitting a hosted
 tool is refused, and that `plan` leaves the directory as it found it. The last
 two are what a member whose body is `pass` would fail — which the type checker
-cannot see, and which is the silent failure the slot exists to prevent.
+cannot see, and which is the silent failure the slot exists to prevent. Making
+them a suite every agent adapter runs is #55, and it is what the header above
+means by the one part of this that is designed rather than built.
 
 **A fake `Runtime` only where the socket cannot reach.** It is the exception,
 not the default: something satisfying the Protocol proves how the domain
