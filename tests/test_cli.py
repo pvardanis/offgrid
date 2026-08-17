@@ -753,7 +753,7 @@ def _reads(monkeypatch, *fetches) -> None:
     covers the ordering and that parsing both.
     """
     monkeypatch.setattr(
-        "offgrid.leaderboards.reading.LEADERBOARDS",
+        "offgrid.cli.LEADERBOARDS",
         tuple(Leaderboard(fetch=fetch, parse=onyx.parse) for fetch in fetches),
     )
 
@@ -1368,7 +1368,7 @@ def test_recommend_reads_a_kept_table_back_with_whichever_list_can_read_it(
         )
     )
     monkeypatch.setattr(
-        "offgrid.leaderboards.reading.LEADERBOARDS",
+        "offgrid.cli.LEADERBOARDS",
         (
             Leaderboard(fetch=_refusing_to_answer, parse=onyx.parse),
             Leaderboard(fetch=_refusing_to_answer, parse=read_the_other_shape),

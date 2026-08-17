@@ -27,8 +27,9 @@ from offgrid.domain.running.launch import explain_why_it_would_not_start, start
 from offgrid.domain.running.runtime import Runtime, RuntimeName
 from offgrid.domain.sizing.fit import BYTES_PER_GB, get_sizes_that_fit
 from offgrid.domain.sizing.machine import detect, suggest_raising_the_gpu_limit
+from offgrid.domain.sizing.reading import get_reading
 from offgrid.domain.sizing.recommendation import summarize_findings
-from offgrid.leaderboards.reading import get_reading
+from offgrid.leaderboards import LEADERBOARDS
 from offgrid.runtimes import connect_runtime, create_runtime_config
 from offgrid.shared.exceptions import OffgridError, ProfileError
 from offgrid.shared.say import say_on_stderr, tell
@@ -141,7 +142,7 @@ def recommend() -> None:
     machine = detect()
 
     with _reporting():
-        reading = get_reading(_cache())
+        reading = get_reading(LEADERBOARDS, _cache())
 
     for line in reading.caveats:
         tell(line)

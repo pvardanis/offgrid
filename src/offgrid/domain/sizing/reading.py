@@ -5,6 +5,10 @@ no network at all. So there are two ways to arrive at a table — fetched now,
 or kept from the last run that managed to fetch one — and which of the two it
 was is something whoever asked has to be told.
 
+The lists to ask are handed in, as a runtime is handed to `answering.py`.
+Choosing between them is policy and belongs here; which ones exist is the
+adapter layer's answer, and `cli.py` is where the two meet.
+
 Nothing here says anything; it returns the lines and the command line says
 them.
 """
@@ -12,8 +16,9 @@ them.
 from dataclasses import dataclass
 from pathlib import Path
 
+from offgrid.domain.sizing import cache
+from offgrid.domain.sizing.leaderboard import Leaderboard
 from offgrid.domain.sizing.listing import Table
-from offgrid.leaderboards import LEADERBOARDS, cache
 from offgrid.shared.exceptions import (
     LeaderboardUnavailableError,
     LeaderboardUnreadableError,
@@ -35,17 +40,21 @@ class Reading:
     caveats: list[str]
 
 
-def get_reading(file_path: Path) -> Reading:
+def get_reading(leaderboards: tuple[Leaderboard, ...], file_path: Path) -> Reading:
     """Read a published list, falling back on the last table that was read.
 
-    The lists are asked in the order the registry holds them, and the first
-    with a table answers. A current table from a list further down beats a
-    stale one from the list above it, so what was kept is the last resort
-    rather than the first.
+    The lists are asked in the order they are given, and the first with a
+    table answers. A current table from a list further down beats a stale one
+    from the list above it, so what was kept is the last resort rather than
+    the first.
 
     A payload is kept only once it has parsed. Keeping one that did not would
     take the fall back away at the moment it is all the command has left.
 
+    :param leaderboards: The published lists to ask, in preference order.
+        Handed in rather than reached for: which lists offgrid has is the
+        adapter layer's to say, and a domain module that named them would be
+        importing the packages it exists to be independent of.
     :param file_path: Where the last table read is kept.
 
     :return: The table to recommend from, and what to say about it.
@@ -55,7 +64,7 @@ def get_reading(file_path: Path) -> Reading:
     """
     refusals: list[LeaderboardUnavailableError] = []
 
-    for leaderboard in LEADERBOARDS:
+    for leaderboard in leaderboards:
         try:
             payload = leaderboard.fetch()
             table = leaderboard.parse(payload)
@@ -69,7 +78,7 @@ def get_reading(file_path: Path) -> Reading:
             + _cache_payload(payload, file_path),
         )
 
-    return _get_cached_reading(refusals, file_path)
+    return _get_cached_reading(refusals, leaderboards, file_path)
 
 
 def _why_this_list(
@@ -123,7 +132,9 @@ def _cache_payload(payload: str, file_path: Path) -> list[str]:
 
 
 def _get_cached_reading(
-    refusals: list[LeaderboardUnavailableError], file_path: Path
+    refusals: list[LeaderboardUnavailableError],
+    leaderboards: tuple[Leaderboard, ...],
+    file_path: Path,
 ) -> Reading:
     """Read back the last table offgrid fetched, and say how old it is.
 
@@ -135,6 +146,8 @@ def _get_cached_reading(
     :param refusals: What each list did instead of answering, in the order
         they were asked. Never empty: every list there is has been asked by
         the time this is reached.
+    :param leaderboards: The lists that were asked, any of which may have
+        written what was kept.
     :param file_path: Where the last table read is kept.
 
     :return: The table as it stood when it was last read, and the lines
@@ -145,7 +158,7 @@ def _get_cached_reading(
         say is where numbers measured on this machine already are.
     """
     cached_payload = cache.load(file_path)
-    table = _reparsed(cached_payload)
+    table = _reparsed(cached_payload, leaderboards)
 
     # Nothing kept and nothing readable are the same answer here. Both halves
     # are stated because the date below is read off the record itself.
@@ -169,7 +182,9 @@ def _get_cached_reading(
     )
 
 
-def _reparsed(cached_payload: cache.Cached | None) -> Table | None:
+def _reparsed(
+    cached_payload: cache.Cached | None, leaderboards: tuple[Leaderboard, ...]
+) -> Table | None:
     """Read a kept payload back with whichever list can read it.
 
     One file holds whatever was kept last and any of the lists may have
@@ -177,6 +192,7 @@ def _reparsed(cached_payload: cache.Cached | None) -> Table | None:
     that is not its own, and the table it answers with names its own source.
 
     :param cached_payload: What was kept, if anything was.
+    :param leaderboards: The lists to offer it to.
 
     :return: The table it holds, or ``None`` where no list can read it. A
         payload kept before the parser knew what it knows now is no table,
@@ -185,7 +201,7 @@ def _reparsed(cached_payload: cache.Cached | None) -> Table | None:
     if cached_payload is None:
         return None
 
-    for leaderboard in LEADERBOARDS:
+    for leaderboard in leaderboards:
         try:
             return leaderboard.parse(cached_payload.payload)
         except LeaderboardUnreadableError:
