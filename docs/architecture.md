@@ -154,7 +154,8 @@ domain/
 
 `leaderboard.py` sits under `sizing/` rather than beside the other two ports
 because what it answers with is a `Table`, and a table is what fits. A port
-lives with the half of the domain that uses it.
+lives with the half of the domain that uses it, and `reading.py` beside it is
+what uses this one.
 
 The tree is the layers, so a module's place says which one it is in and the
 contracts are stated over four names rather than every module by hand. It also
@@ -255,9 +256,9 @@ sequenceDiagram
     actor P as person
     participant C as cli.py
     participant M as machine.py
-    participant G as leaderboards/reading.py
+    participant G as sizing/reading.py
     participant O as a list in LEADERBOARDS
-    participant K as leaderboards/cache.py
+    participant K as sizing/cache.py
     participant S as recommendation.py
 
     P->>C: offgrid recommend
@@ -558,8 +559,9 @@ Paired in a record rather than registered separately, because parsing one
 list's payload with another list's parser is nonsense and nothing else would
 stop it.
 
-`leaderboards/reading.py` composes these with `cache.py` and answers with a
-`Reading`. It reaches the registry rather than naming `onyx` directly.
+`domain/sizing/reading.py` composes these with `cache.py` and answers with a
+`Reading`. It is handed the lists rather than reaching for them, so it names
+no adapter and no registry — the same way `answering.py` is handed a `Runtime`.
 
 The two shapes cannot be mixed: a record of callables does not satisfy a
 Protocol whose members are methods, because a bare `Callable` takes its
@@ -676,17 +678,15 @@ A test asserts the rule directly: the only module outside
 `offgrid/runtimes/lmstudio/` importing anything under it is
 `offgrid/runtimes/__init__.py`, and likewise for the other two packages. That
 covers a new adapter automatically, where naming each concrete module in a
-contract would need editing every time one is added. All three hold to it now
-that `reading.py` reaches the registry rather than naming `onyx`. Writing the
-test is #56.
+contract would need editing every time one is added. All three hold to it, and
+in the same shape: what the command line imports is the package, and nothing
+outside an adapter package reaches into one. Writing the test is #56.
 
-The leaderboard holds to it in a different shape, and the difference is #48.
-A concrete runtime is a package and the command line imports `runtimes/`
-itself; the concrete list is a module, and what the command line imports is
-`leaderboards/reading.py` — inside the adapter package, reaching past its
-registry. `onyx` still has exactly one importer, so the rule is not broken.
-What it says is that `reading.py` is the piece sitting on the wrong side of a
-line, which is what #48 asks about and what a second list would settle.
+Getting there took a module out of `leaderboards/`. `reading.py` chose between
+lists from inside the package it was choosing over, which the layer rule could
+not see — a domain module importing a registry is caught, and an adapter module
+doing it is not. Moving it into the domain and handing it the lists put the
+choosing under the rule that was supposed to cover it (#48).
 
 This is what makes `profile.runtime` and `profile.agent` load-bearing: each was
 validated and then ignored, and offgrid spoke to LM Studio and launched Claude
@@ -760,12 +760,12 @@ absorbing looked like from outside, and `Runtime` is that absorption moved to
 the side of the seam that owns it: the payload now stays inside the adapter
 that speaks LM Studio's shape of it.
 
-`leaderboards/reading.py` is the counter-example in this repo. It composes two
+`domain/sizing/reading.py` is the counter-example in this repo. It composes two
 narrow modules — a list for the figures, `cache.py` for the file — into one
-deep call, and no payload reaches whoever asked. `get_reading(path)` is one
-parameter against fetching, parsing, falling through to the next list, keeping
-the payload, reading a kept one back, and the sentences saying which of those
-happened.
+deep call, and no payload reaches whoever asked. `get_reading(leaderboards,
+path)` is two parameters against fetching, parsing, falling through to the next
+list, keeping the payload, reading a kept one back, and the sentences saying
+which of those happened.
 
 ## The candidates the design answers to — built
 
@@ -805,9 +805,9 @@ asks each registry package for the `Runtime` and the `Agent` that profile
 names, and hands them to the code that uses them. It imports two functions and
 never `lmstudio` or `claude_code`, which is what makes the rule statable:
 **only a registry may import a concrete adapter**, the command line included. "Outermost, so it may import anything" is not something
-a contract can check. It holds for all three now: `cli.py` reaches
-`leaderboards/reading.py` for a table and `reading.py` reaches the registry,
-so `onyx` has exactly one importer.
+a contract can check. It holds for all three now: `cli.py` asks `leaderboards/`
+for the lists and hands them to `domain/sizing/reading.py`, exactly as it hands
+a `Runtime` to `answering.py`.
 
 It keeps the commands, the reporting and the exit codes, and it keeps the
 order of a run — the checks before the load, the `try`/`finally` that owes the
@@ -867,12 +867,6 @@ structural conformance needs no test at all.
   request, so it has no per-request knob; its levers are the agent's
   environment and whatever server-side default a runtime takes. Out of the
   ports, possibly a `doctor` warning.
-- Whether `leaderboards/reading.py` belongs in the adapter package or in the
-  domain beside the port it reaches for (#48). The registry has made the
-  question live — a module that dispatches over one is policy rather than an
-  adapter, and this one now dispatches — but a domain module may not import a
-  registry, so moving it means `cli.py` handing the lists in. A second list is
-  still what would force it, and #79 waits on the same answer.
 - Whether a cold prefill outlasts the agent's stream watchdog (#45), and what
   the auto-compact window should be when the agent clamps it above what the
   runtime serves (#46). Both are launch-time facts about a pairing, and both
