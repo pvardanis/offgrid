@@ -65,13 +65,14 @@ def get_reading(file_path: Path) -> Reading:
 
         return Reading(
             table=table,
-            caveats=_why_this_one(refusals, table) + _cache_payload(payload, file_path),
+            caveats=_why_this_list(refusals, table)
+            + _cache_payload(payload, file_path),
         )
 
     return _get_cached_reading(refusals, file_path)
 
 
-def _why_this_one(
+def _why_this_list(
     refusals: list[LeaderboardUnavailableError], table: Table
 ) -> list[str]:
     """Say what the lists above this one did, and name the one answering.
