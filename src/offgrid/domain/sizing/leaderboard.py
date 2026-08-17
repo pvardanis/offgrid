@@ -14,7 +14,6 @@ from dataclasses import dataclass
 from offgrid.domain.sizing.listing import Table
 
 Fetch = Callable[[], str]
-
 Parse = Callable[[str], Table]
 
 
