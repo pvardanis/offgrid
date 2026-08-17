@@ -688,7 +688,8 @@ A test asserts the rule directly: the only module outside
 covers a new adapter automatically, where naming each concrete module in a
 contract would need editing every time one is added. All three hold to it, and
 in the same shape: what the command line imports is the package, and nothing
-outside an adapter package reaches into one. Writing the test is #56.
+outside an adapter package reaches into one. `tests/test_architecture.py` is
+where that is asserted.
 
 Getting there took a module out of `leaderboards/`. `reading.py` chose between
 lists from inside the package it was choosing over, which the layer rule could
