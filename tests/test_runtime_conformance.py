@@ -11,7 +11,13 @@ second one joins, and it is the only edit to the suite that adding one takes.
 
 import pytest
 
-from offgrid.shared.exceptions import ModelUnavailableError, RuntimeUnreachableError
+from offgrid.domain.running.capabilities import Capabilities
+from offgrid.domain.running.dialect import Dialect
+from offgrid.shared.exceptions import (
+    ModelNotHeldError,
+    ModelUnavailableError,
+    RuntimeUnreachableError,
+)
 from tests.runtimes_under_test import RUNTIMES_UNDER_TEST, RuntimeUnderTest
 
 
@@ -82,6 +88,21 @@ def test_a_model_the_runtime_does_not_have_is_refused_by_name(
     assert "a/absent-7b" in said
     assert runtime.address in said
     assert "offgrid doctor" in said
+
+
+def test_a_model_the_runtime_took_and_does_not_hold_is_reported(
+    runtime: RuntimeUnderTest, monkeypatch: pytest.MonkeyPatch
+):
+    # A runtime that accepted the load and is holding nothing has answered
+    # every question but the one that matters, so reading back what is held is
+    # the only way to find out. Which error arrives says which of the two
+    # happened, and a caller branches on that.
+    runtime.arrange_taking_without_holding(monkeypatch, model="a/wanted-7b")
+
+    with pytest.raises(ModelNotHeldError) as reported:
+        runtime.connect().ensure_only("a/wanted-7b")
+
+    assert "a/wanted-7b" in str(reported.value)
 
 
 def test_what_is_held_is_a_different_question_from_what_there_is(
@@ -173,5 +194,5 @@ def test_what_a_connection_settled_is_readable_without_reaching_the_runtime(
     runtime.arrange_unreachable(monkeypatch)
     connection = runtime.connect()
 
-    assert connection.dialect is not None
-    assert connection.capabilities is not None
+    assert isinstance(connection.dialect, Dialect)
+    assert isinstance(connection.capabilities, Capabilities)

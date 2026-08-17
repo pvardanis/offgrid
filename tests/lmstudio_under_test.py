@@ -80,6 +80,24 @@ class LMStudioUnderTest:
         """
         refuse_to_let_go(monkeypatch, "it would not go")
 
+    def arrange_taking_without_holding(
+        self, monkeypatch: pytest.MonkeyPatch, *, model: str
+    ) -> None:
+        """Answer as a runtime that accepts a load and holds nothing.
+
+        The load is answered as LM Studio answers a load it took, while the
+        catalogue goes on saying the model is cold. The catalogue is the only
+        way to find that out, which is the whole reason it is read back.
+
+        :param monkeypatch: The test's patcher.
+        :param model: The model it takes and does not hold.
+        """
+        answer_as_lm_studio(monkeypatch, cold={model: 8192})
+        serve_post(
+            monkeypatch,
+            lambda request: httpx.Response(200, json={"model": model, "content": []}),
+        )
+
     def arrange_unreachable(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Answer as a runtime whose server nothing is listening for.
 
