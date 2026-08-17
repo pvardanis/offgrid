@@ -4,6 +4,11 @@ The server answers over HTTP and lets go through its own tool, so both are
 stood in for rather than the module's own functions: the orchestration and the
 parsing under it are the halves most likely to disagree, and patching between
 them would test neither.
+
+What any runtime owes is stated once, in `tests/test_runtime_conformance.py`.
+What is here is LM Studio's own: that it reaches "hold only this one" by
+letting go of each model in turn before it loads, what that costs and what it
+says while paying it, and a tool whose exit code cannot be taken at its word.
 """
 
 import logging
@@ -17,7 +22,6 @@ from offgrid.runtimes.lmstudio import connect
 from offgrid.runtimes.lmstudio.config import LMStudioConfig
 from offgrid.shared.exceptions import (
     ModelNotHeldError,
-    ModelUnavailableError,
     RuntimeUnreachableError,
 )
 from tests.doubles import (
@@ -28,15 +32,6 @@ from tests.doubles import (
 )
 
 HOST = "127.0.0.1:1234"
-
-
-def test_a_model_the_runtime_does_not_have_names_what_lists_them(monkeypatch):
-    answer_as_lm_studio(monkeypatch, holding={"a/held-7b": 8192})
-
-    with pytest.raises(ModelUnavailableError, match="offgrid doctor") as refused:
-        connect(LMStudioConfig(host=HOST)).ensure_only("a/absent-7b")
-
-    assert HOST in str(refused.value)
 
 
 def test_what_a_swap_costs_is_said_before_it_is_paid(monkeypatch, caplog):
@@ -191,21 +186,6 @@ def test_a_load_that_is_interrupted_lets_go_of_what_it_started(monkeypatch):
     assert "a/other-7b" in asked["let_go"]
 
 
-def test_letting_go_says_whether_the_memory_came_back(monkeypatch):
-    # A log record is for a person. A caller embedding offgrid needs an
-    # answer it can branch on.
-    answer_as_lm_studio(monkeypatch, holding={"a/held-7b": 8192})
-
-    assert connect(LMStudioConfig(host=HOST)).let_go("a/held-7b") is True
-
-
-def test_letting_go_says_when_the_memory_did_not_come_back(monkeypatch):
-    answer_as_lm_studio(monkeypatch, holding={"a/held-7b": 8192})
-    refuse_to_let_go(monkeypatch, "it would not go")
-
-    assert connect(LMStudioConfig(host=HOST)).let_go("a/held-7b") is False
-
-
 def test_a_runtime_that_will_not_let_go_is_said_rather_than_raised(monkeypatch, caplog):
     # A run that has already finished is not worth failing over, but memory
     # still held is worth saying out loud.
@@ -230,33 +210,6 @@ def test_a_tool_that_freed_nothing_is_not_taken_at_its_word(monkeypatch, caplog)
 
     assert came_back is False
     assert any("still holding" in record.getMessage() for record in caplog.records)
-
-
-def test_what_is_held_is_read_back_as_it_is_served(monkeypatch):
-    answer_as_lm_studio(
-        monkeypatch, holding={"a/held-7b": 8192}, cold={"a/other-7b": 8192}
-    )
-
-    connection = connect(LMStudioConfig(host=HOST))
-
-    assert [model.identifier for model in connection.read_held()] == ["a/held-7b"]
-    assert [model.identifier for model in connection.read_catalogue()] == [
-        "a/held-7b",
-        "a/other-7b",
-    ]
-
-
-def test_a_model_is_answered_for_as_it_is_served_not_as_it_is_catalogued(monkeypatch):
-    # A catalogue entry states a model's ceiling until it is loaded, and the
-    # window it is served at once it is. Sizing an agent's context from the
-    # ceiling means never compacting, and the runtime truncates the prefix
-    # instead — which is the failure compacting exists to avoid.
-    answer_as_lm_studio(monkeypatch, cold={"a/other-7b": 32768})
-
-    model = connect(LMStudioConfig(host=HOST)).ensure_only("a/other-7b")
-
-    assert model.identifier == "a/other-7b"
-    assert model.context_limit == 32768
 
 
 def test_progress_is_silent_for_a_caller_that_configured_nothing():
