@@ -7,8 +7,14 @@ import yaml
 from typer.testing import CliRunner
 
 from offgrid.cli import app, read_profile
+from offgrid.domain.sizing.leaderboard import Leaderboard
+from offgrid.domain.sizing.listing import Listing, Table
 from offgrid.domain.sizing.machine import Machine
-from offgrid.shared.exceptions import LeaderboardUnreachableError
+from offgrid.leaderboards import onyx
+from offgrid.shared.exceptions import (
+    LeaderboardUnreachableError,
+    LeaderboardUnreadableError,
+)
 from tests.doubles import (
     StandInAgent,
     answer_as_a_mac,
@@ -740,11 +746,21 @@ def _flight(models: list[dict], dated: str) -> str:
     )
 
 
+def _reads(monkeypatch, *fetches) -> None:
+    """Stand in for the lists offgrid reads, in the order it reads them.
+
+    Each fetch is paired with the parser of the one real list, so a test
+    covers the ordering and that parsing both.
+    """
+    monkeypatch.setattr(
+        "offgrid.leaderboards.reading.LEADERBOARDS",
+        tuple(Leaderboard(fetch=fetch, parse=onyx.parse) for fetch in fetches),
+    )
+
+
 def _leaderboard(monkeypatch, *, models: list[dict], dated: str = "2026-07-20") -> None:
     """Answer for the published table, without reaching for it."""
-    monkeypatch.setattr(
-        "offgrid.leaderboards.reading.fetch", lambda: _flight(models, dated)
-    )
+    _reads(monkeypatch, lambda: _flight(models, dated))
 
 
 def _kept(
@@ -1117,7 +1133,7 @@ def test_recommend_reaches_the_shortlist_docs_models_arrived_at_by_hand(
     # by hand that the mixture at 4-bit is the model for this machine, above
     # a dense model with a higher published score. Nothing here read it.
     fixture = pathlib.Path(__file__).parent / "fixtures" / "onyx_leaderboard.txt"
-    monkeypatch.setattr("offgrid.leaderboards.reading.fetch", fixture.read_text)
+    _reads(monkeypatch, fixture.read_text)
 
     result = runner.invoke(app, ["recommend"])
 
@@ -1235,7 +1251,7 @@ def test_recommend_says_what_stopped_it_rather_than_raising(here, monkeypatch):
     def unreachable():
         raise LeaderboardUnavailableError("could not reach the leaderboard")
 
-    monkeypatch.setattr("offgrid.leaderboards.reading.fetch", unreachable)
+    _reads(monkeypatch, unreachable)
 
     result = runner.invoke(app, ["recommend"])
 
@@ -1260,7 +1276,110 @@ def _unreachable(monkeypatch) -> None:
     def refuse():
         raise LeaderboardUnreachableError("Could not reach the table: no route")
 
-    monkeypatch.setattr("offgrid.leaderboards.reading.fetch", refuse)
+    _reads(monkeypatch, refuse)
+
+
+def _refusing_to_answer():
+    """Stand in for a list whose site is down."""
+    raise LeaderboardUnreachableError("Could not reach the first list: no route")
+
+
+def test_recommend_reads_the_next_list_when_the_first_will_not_answer(
+    here, monkeypatch
+):
+    # A current table from the next list beats a stale one from the first,
+    # so the fall back to what was kept is the last resort rather than the
+    # first. What stopped the list above is said either way: the figures
+    # below are somebody else's, and which site published them decides
+    # whether they are comparable to what was read last week.
+    _reads(
+        monkeypatch,
+        _refusing_to_answer,
+        lambda: _flight([_listed("A-Model-35B", "35B")], "2026-07-20"),
+    )
+
+    result = runner.invoke(app, ["recommend"])
+
+    assert result.exit_code == 0
+    assert "A-Model-35B" in result.stderr
+    assert "Could not reach the first list: no route" in result.stderr
+    assert "read on" not in result.stderr
+
+
+def test_recommend_reads_the_next_list_when_the_first_stops_parsing(here, monkeypatch):
+    # A page that has been redesigned is the failure a second list exists
+    # for, as much as a site that is down.
+    _reads(
+        monkeypatch,
+        lambda: "a page, and not the table",
+        lambda: _flight([_listed("A-Model-35B", "35B")], "2026-07-20"),
+    )
+
+    result = runner.invoke(app, ["recommend"])
+
+    assert result.exit_code == 0
+    assert "A-Model-35B" in result.stderr
+    assert "Read https://onyx.app/best-llm-for-coding by hand" in result.stderr
+
+
+def test_recommend_says_nothing_extra_when_the_first_list_answers(here, monkeypatch):
+    # The ordinary run is the one that needs no words. A line about a list
+    # that was never asked would be noise on every run that worked.
+    _leaderboard(monkeypatch, models=[_listed("A-Model-35B", "35B")])
+
+    result = runner.invoke(app, ["recommend"])
+
+    assert "Could not reach" not in result.stderr
+    assert "instead" not in result.stderr
+
+
+def test_recommend_reads_a_kept_table_back_with_whichever_list_can_read_it(
+    here, monkeypatch
+):
+    # One file holds whatever was kept last, and any of the lists may have
+    # written it. A parser refuses a payload that is not its own, so offering
+    # the kept one to each of them in turn is what makes a single file safe
+    # to share — and the table names its own source either way.
+    another = Table(
+        source="https://another.example/coding",
+        dated="2026-07-19",
+        listings=[
+            Listing(
+                name="A-Model-35B",
+                parameters=35e9,
+                active_parameters=35e9,
+                coding_score=70.0,
+                context_window=262144,
+                license="Apache 2.0",
+            )
+        ],
+        unsized_rows=0,
+    )
+
+    def read_the_other_shape(payload: str) -> Table:
+        if payload != "another list's page":
+            raise LeaderboardUnreadableError("that is not this list's page")
+
+        return another
+
+    (here / "leaderboard.json").write_text(
+        json.dumps(
+            {"payload": "another list's page", "fetched_at": "2026-08-05T09:12:00"}
+        )
+    )
+    monkeypatch.setattr(
+        "offgrid.leaderboards.reading.LEADERBOARDS",
+        (
+            Leaderboard(fetch=_refusing_to_answer, parse=onyx.parse),
+            Leaderboard(fetch=_refusing_to_answer, parse=read_the_other_shape),
+        ),
+    )
+
+    result = runner.invoke(app, ["recommend"])
+
+    assert result.exit_code == 0
+    assert "A-Model-35B" in result.stderr
+    assert "read on 2026-08-05" in result.stderr
 
 
 def test_recommend_answers_from_the_last_table_it_read_when_nothing_answers(
@@ -1330,9 +1449,7 @@ def test_recommend_shows_the_last_table_when_the_page_stops_parsing(here, monkey
     # week, and it is every reason to say so: a silent fall back to a table
     # months old is the feature dying without anybody noticing.
     _kept(here, models=[_listed("A-Model-35B", "35B")])
-    monkeypatch.setattr(
-        "offgrid.leaderboards.reading.fetch", lambda: "a page, and not the table"
-    )
+    _reads(monkeypatch, lambda: "a page, and not the table")
 
     result = runner.invoke(app, ["recommend"])
 
@@ -1362,9 +1479,7 @@ def test_recommend_names_the_page_when_it_stops_parsing_and_nothing_was_kept(
     # The same redesign, on a machine that has never reached the page. There
     # is nothing to show, so what is left is what the maintainer needs to tell
     # a redesign from a bug, and where a person can read numbers today.
-    monkeypatch.setattr(
-        "offgrid.leaderboards.reading.fetch", lambda: "a page, and not the table"
-    )
+    _reads(monkeypatch, lambda: "a page, and not the table")
 
     result = runner.invoke(app, ["recommend"])
 
@@ -1392,9 +1507,7 @@ def test_recommend_keeps_the_last_table_it_read_when_the_next_will_not_parse(
     _kept(
         here, models=[_listed("A-Model-35B", "35B")], fetched_at="2026-08-05T09:12:00"
     )
-    monkeypatch.setattr(
-        "offgrid.leaderboards.reading.fetch", lambda: "a page, and not the table"
-    )
+    _reads(monkeypatch, lambda: "a page, and not the table")
     runner.invoke(app, ["recommend"])
 
     _unreachable(monkeypatch)

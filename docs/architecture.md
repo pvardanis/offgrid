@@ -120,7 +120,8 @@ agents/            one package per agent
 leaderboards/      one module per published list
   onyx.py          fetching and parsing the page
   cache.py         keeping the last payload that parsed
-  reading.py       which table to answer from, and what to say about it
+  reading.py       which list and which table to answer from, and what
+                   to say about it
 ```
 
 **domain**
@@ -131,6 +132,7 @@ domain/
     machine.py     what this Mac is, and how to give its GPU more room
     fit.py         how much room it has
     listing.py     a model a published list describes, and which ones fit
+    leaderboard.py what offgrid asks of a published list
     speed.py       how fast this machine reads a model's weights
     quality.py     how good a fit is, as one number and one word
     shortlist.py   what fits, ranked, and what each rule dropped
@@ -150,9 +152,9 @@ domain/
     structure.py   whether it is built the way offgrid reads one
 ```
 
-One more joins them when the leaderboard seam is built — `leaderboard.py`,
-holding what offgrid asks of a published list, as the two beside it do for a
-runtime and an agent.
+`leaderboard.py` sits under `sizing/` rather than beside the other two ports
+because what it answers with is a `Table`, and a table is what fits. A port
+lives with the half of the domain that uses it.
 
 The tree is the layers, so a module's place says which one it is in and the
 contracts are stated over four names rather than every module by hand. It also
