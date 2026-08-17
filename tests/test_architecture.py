@@ -141,6 +141,16 @@ def test_every_agent_offgrid_names_has_an_adapter_bound_to_it():
     assert set(AGENT_CONFIGS) == set(AgentName)
 
 
+def test_offgrid_has_at_least_one_published_list_to_read():
+    # Nothing names a leaderboard — no profile key, no argument — so the
+    # registry is the whole statement of which lists there are. An empty one
+    # sends every `recommend` down the fall back with nothing to say about
+    # why, which is a long way from where the entry was dropped.
+    from offgrid.leaderboards import LEADERBOARDS
+
+    assert LEADERBOARDS
+
+
 def test_every_config_an_adapter_declares_forbids_a_key_it_does_not_name():
     # A config declares what its adapter reads and refuses the rest, so that a
     # typo under a section is reported rather than dropped. The base says so
