@@ -29,9 +29,12 @@ class Leaderboard:
     :param fetch: Ask the site for whatever the table is published in. Raises
         ``LeaderboardUnreachableError`` where nothing answers.
     :param parse: Read a table out of what came back. Raises
-        ``LeaderboardUnreadableError`` where the payload is not this list's,
-        which is what makes a payload kept from one list safe to offer to
-        every parser there is.
+        ``LeaderboardUnreadableError`` where it holds no table this list can
+        read — a page that has been redesigned, and equally a payload that is
+        another list's altogether. Refusing that second one is what makes a
+        kept payload safe to offer to every parser there is, so a parser that
+        answered with an empty table instead would break the one file the
+        lists share.
     """
 
     fetch: Fetch
