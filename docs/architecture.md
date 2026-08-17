@@ -21,7 +21,7 @@ flowchart TD
         lb["leaderboards/"]
     end
     subgraph domain ["domain/"]
-        sizing["sizing/<br/>machine · fit · listing · speed ·<br/>quality · shortlist · recommendation"]
+        sizing["sizing/<br/>machine · fit · listing · leaderboard · speed ·<br/>quality · shortlist · recommendation"]
         running["running/<br/>model · dialect · capabilities · hosted_tools ·<br/>launch · runtime · agent · answering"]
         profile["profile/"]
     end
@@ -47,9 +47,9 @@ stated over one name per layer rather than every module by hand.
 
 `running/answering.py` reaches `running/runtime.py`, which is a port and not an
 adapter: what satisfies it is bound to a name in `runtimes/`, and `cli.py` is
-where the two meet. `running/agent.py` stands the same way to `agents/`. One
-seam is still a folder rather than a port — `leaderboards/` — and the section
-below says what it becomes.
+where the two meet. `running/agent.py` stands the same way to `agents/`, and
+`sizing/leaderboard.py` to `leaderboards/`. All three seams are ports with a
+registry behind them.
 
 ### What checks this — built
 
@@ -81,11 +81,11 @@ exemptions now.
 ### What it tightens to — designed
 
 The rule the domain is held to says nothing about `cli.py`, which is outermost
-and may import anything. Once the leaderboard has a registry too, it becomes
-**nothing may import a concrete adapter except its own registry**, the command
-line included, and each adapter package gains exactly one importer from
-outside it. `runtimes/lmstudio/` and `agents/claude_code/` already have one; a
-contract cannot be stated over all three until `leaderboards/` does.
+and may import anything. It becomes **nothing may import a concrete adapter
+except its own registry**, the command line included, and each adapter package
+gains exactly one importer from outside it. All three now have a registry, so
+the rule is statable over all three; #56 is where it is stated, since a
+`forbidden` contract cannot express it on its own and a test has to carry it.
 
 The unit is the package rather than the module, because an adapter's own files
 import each other: `lmstudio/lmstudio.py` reaches `lmstudio/catalogue.py` for
@@ -256,22 +256,25 @@ sequenceDiagram
     participant C as cli.py
     participant M as machine.py
     participant G as leaderboards/reading.py
-    participant O as leaderboards/onyx.py
+    participant O as a list in LEADERBOARDS
     participant K as leaderboards/cache.py
     participant S as recommendation.py
 
     P->>C: offgrid recommend
     C->>M: detect()
     C->>G: get_reading(path)
-    G->>O: fetch()
-    alt the page answered, and parsed
-        G->>O: parse(payload)
+    loop each list, in the order the registry holds them
+        G->>O: fetch() · parse(payload)
+        Note over G,O: the first with a table answers, and<br/>every list above it is a line somebody reads
+    end
+    alt a list answered
         G->>K: save(payload)
         Note over G,K: nowhere to write is said, not raised —<br/>a table in hand is not thrown away over it
-    else nothing answered, or the page changed shape
+    else none of them did
         G->>K: load(path)
         G->>O: parse(what was kept)
-        Note over G: says what stopped this run,<br/>and which day this table was read
+        Note over G,O: offered to each parser, since any list<br/>may have written the one file there is
+        Note over G: says what stopped each list,<br/>and which day this table was read
     end
     G-->>C: Reading(table, caveats)
     C->>S: summarize_findings(table, machine)
@@ -284,6 +287,12 @@ no network at all. So a stale table answers when a current one cannot, and how
 old it is is said every time it is used. A payload is kept only once it has
 parsed — keeping one that did not would take the fall back away at the moment
 it is all the command has left.
+
+The kept table is the last resort rather than the second option, because a
+current table from a list further down the registry beats one read a fortnight
+ago. Which list the figures came from is then said, since two lists score on
+different benchmarks and a row is only comparable to the rest of its own
+table.
 
 `setup` and `doctor` are linear and need no diagram. `setup` measures the
 machine, writes the profile and says what fits. `doctor` asks the runtime what
@@ -326,7 +335,7 @@ value.
 This settles #42 for every runtime rather than one: a limit read at the point
 of use is right even when a runtime moves it at startup, which oMLX does.
 
-## Where a port lives — built for the runtime and the agent
+## Where a port lives — built
 
 `Runtime`, `Agent`, `Capabilities` and `Leaderboard` are domain types. They sit
 beside the code that needs them, and never inside `runtimes/`, `agents/` or
@@ -528,7 +537,7 @@ Claude Code entirely through environment variables, OpenCode through an
 `~/.codex/config.toml` — and that difference belongs inside `configure`, not
 smuggled into `plan` as a side effect.
 
-## The leaderboard seam — designed
+## The leaderboard seam — built
 
 Not a Protocol, and the difference is the point. A published list holds no
 state and answers two questions, so it is two typed callables kept together
@@ -549,13 +558,37 @@ Paired in a record rather than registered separately, because parsing one
 list's payload with another list's parser is nonsense and nothing else would
 stop it.
 
-`leaderboards/reading.py` composes one of these with `cache.py` and answers
-with a `Reading`. It reaches the registry rather than naming `onyx` directly.
+`leaderboards/reading.py` composes these with `cache.py` and answers with a
+`Reading`. It reaches the registry rather than naming `onyx` directly.
 
 The two shapes cannot be mixed: a record of callables does not satisfy a
 Protocol whose members are methods, because a bare `Callable` takes its
 parameters positionally where a method permits them by name. Each seam is one
 or the other.
+
+**The registry is an ordered tuple, not a dict keyed by an enum.** The other
+two are dicts because a profile carries a hand-typed name and the enum is what
+refuses a typo when the file is read, naming the field. Nothing names a
+published list — no profile key, no argument — so an enum here would be a key
+nobody looks up, and `reading.py` indexing one by name would be the coupling
+this seam removes. What the registry states instead is order, and order is
+preference: each list is asked in turn and the first with a table answers.
+
+**A second list is redundancy, not coverage.** Falling through to the next
+site when one is down or has been rewritten is what a registry of lists buys,
+and it is one module and one line. Merging two tables into one ranking is not:
+`Listing.coding_score` is `swe_bench_verified` on onyx, and a list scoring on
+something else makes the ranking incomparable. That is #34's question and it
+needs a decision about what a score means across sources, which no registry
+answers.
+
+**One kept payload, offered to every parser.** The file `cache.py` owns holds
+whatever was kept last, and any list may have written it. A parser refuses a
+payload that is not its own — `onyx.parse` raises `LeaderboardUnreadableError`
+without `"config":{` in it — and the table a parser answers with names its own
+source, so reading a kept payload back by trying each list in turn attributes
+it correctly with no name to key on. Which is the other reason the enum buys
+nothing: a per-list cache file is what would have needed one.
 
 ## Choosing an adapter — built for runtimes and agents
 
@@ -639,13 +672,21 @@ Re-exports earn their place in a library with an API to curate.
 so the submodule layout is not a detail to hide — it is what the contract is
 stated over.
 
-A test asserts the rule directly once all three have registries: the only
-module outside `offgrid/runtimes/lmstudio/` importing anything under it is
+A test asserts the rule directly: the only module outside
+`offgrid/runtimes/lmstudio/` importing anything under it is
 `offgrid/runtimes/__init__.py`, and likewise for the other two packages. That
 covers a new adapter automatically, where naming each concrete module in a
-contract would need editing every time one is added. `runtimes/` and `agents/`
-hold to it today; `reading.py` still names `onyx`, so the test comes with the
-seam that makes it pass.
+contract would need editing every time one is added. All three hold to it now
+that `reading.py` reaches the registry rather than naming `onyx`. Writing the
+test is #56.
+
+The leaderboard holds to it in a different shape, and the difference is #48.
+A concrete runtime is a package and the command line imports `runtimes/`
+itself; the concrete list is a module, and what the command line imports is
+`leaderboards/reading.py` — inside the adapter package, reaching past its
+registry. `onyx` still has exactly one importer, so the rule is not broken.
+What it says is that `reading.py` is the piece sitting on the wrong side of a
+line, which is what #48 asks about and what a second list would settle.
 
 This is what makes `profile.runtime` and `profile.agent` load-bearing: each was
 validated and then ignored, and offgrid spoke to LM Studio and launched Claude
@@ -673,7 +714,7 @@ do not exist, and a dotted path in a hand-edited YAML file is an import
 statement in a config file. Adding an adapter is a module and one line, in a
 place `rg` finds.
 
-## What crosses a seam — built for the runtime and the agent
+## What crosses a seam — built
 
 `Model`, `Dialect`, `Capabilities`, `Launch`, `Table` — domain types, all of
 them. No vendor payload, no `dict`, no HTTP object.
@@ -719,10 +760,12 @@ absorbing looked like from outside, and `Runtime` is that absorption moved to
 the side of the seam that owns it: the payload now stays inside the adapter
 that speaks LM Studio's shape of it.
 
-`leaderboards/reading.py` is the counter-example in this repo, and the one
-still standing. It composes two narrow modules — `onyx.py` for one list,
-`cache.py` for the file — into one deep call, and no payload reaches whoever
-asked. It names `onyx` directly to do it, which is what its own seam is for.
+`leaderboards/reading.py` is the counter-example in this repo. It composes two
+narrow modules — a list for the figures, `cache.py` for the file — into one
+deep call, and no payload reaches whoever asked. `get_reading(path)` is one
+parameter against fetching, parsing, falling through to the next list, keeping
+the payload, reading a kept one back, and the sentences saying which of those
+happened.
 
 ## The candidates the design answers to — built
 
@@ -750,7 +793,7 @@ What `Dialect` cannot express is that LM Studio answers `200` to
 which is worse than a `404` because a caller cannot tell "counted zero" from
 "not implemented". That is what `Capabilities` is for (#43).
 
-## What follows outside the ports — built for the runtime and the agent
+## What follows outside the ports — built
 
 **The profile carries a name, not a string.** `runtime` and `agent` are the
 enums above, so a hand-edited typo is refused when the profile is read and each
@@ -762,8 +805,9 @@ asks each registry package for the `Runtime` and the `Agent` that profile
 names, and hands them to the code that uses them. It imports two functions and
 never `lmstudio` or `claude_code`, which is what makes the rule statable:
 **only a registry may import a concrete adapter**, the command line included. "Outermost, so it may import anything" is not something
-a contract can check. It holds for the runtime and the agent today, and not yet
-for the leaderboard.
+a contract can check. It holds for all three now: `cli.py` reaches
+`leaderboards/reading.py` for a table and `reading.py` reaches the registry,
+so `onyx` has exactly one importer.
 
 It keeps the commands, the reporting and the exit codes, and it keeps the
 order of a run — the checks before the load, the `try`/`finally` that owes the
@@ -823,10 +867,12 @@ structural conformance needs no test at all.
   request, so it has no per-request knob; its levers are the agent's
   environment and whatever server-side default a runtime takes. Out of the
   ports, possibly a `doctor` warning.
-- Whether `leaderboards/reading.py` belongs in the adapter package or beside
-  `answering.py` in the domain (#48). Nothing forces it while there is one list;
-  the registry makes it live, since a module that dispatches over one is
-  policy rather than an adapter.
+- Whether `leaderboards/reading.py` belongs in the adapter package or in the
+  domain beside the port it reaches for (#48). The registry has made the
+  question live — a module that dispatches over one is policy rather than an
+  adapter, and this one now dispatches — but a domain module may not import a
+  registry, so moving it means `cli.py` handing the lists in. A second list is
+  still what would force it, and #79 waits on the same answer.
 - Whether a cold prefill outlasts the agent's stream watchdog (#45), and what
   the auto-compact window should be when the agent clamps it above what the
   runtime serves (#46). Both are launch-time facts about a pairing, and both

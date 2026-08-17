@@ -216,11 +216,39 @@ that no longer parses counts as none, because offgrid's own file failing to
 read back is not a second thing to explain to somebody already being told the
 site is unreachable.
 
-Which of the two tables is answered from is `leaderboards/reading.py`'s, and it
-returns the lines saying so rather than printing them, as `recommendation.py`
-does. The adapter beneath it owns fetching and parsing one list and knows
-nothing of a fall back; `leaderboards/cache.py` owns the file and names no
-list, so a second list reuses it as it is.
+Which table is answered from is `leaderboards/reading.py`'s, and it returns the
+lines saying so rather than printing them, as `recommendation.py` does. The
+adapter beneath it owns fetching and parsing one list and knows nothing of a
+fall back; `leaderboards/cache.py` owns the file and names no list, so a second
+list reuses it as it is.
+
+## A list that will not answer is passed over before a stale one is read
+
+The registry holds the published lists in the order they are asked, and the
+first with a table answers. What was kept is reached only when none of them
+did, because a current table from a list further down beats one read a
+fortnight ago — the fall back exists for the machine with no network, not for
+the site that is down this morning.
+
+So a second list buys redundancy, and that is the whole of what it buys.
+Merging two into one ranking is a different question: `Listing.coding_score` is
+onyx's `swe_bench_verified`, and a list scoring on something else makes the
+rows incomparable. Which is why the list that answered is named whenever it was
+not the first — the figures below are somebody else's, and that decides whether
+they can be read against what was seen last week.
+
+The registry is an ordered tuple rather than a dict keyed by an enum, which is
+where it parts company with the runtime and the agent. Theirs are enums because
+a profile carries a hand-typed name and the enum is what refuses a typo when
+the file is read. Nothing names a published list, so an enum here would be a
+key nobody looks up, and `reading.py` indexing one by name would be the
+coupling this seam removes. Order is the only thing the registry has to state.
+
+One kept payload serves every list, because a parser refuses a payload that is
+not its own and the table it answers with names its own source. Reading a kept
+one back by offering it to each list in turn therefore attributes it correctly
+with no name to key on — which is the other thing a per-list name would have
+been for.
 
 ## The module map has one home, and the rule it states is checked
 
