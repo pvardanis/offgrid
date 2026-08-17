@@ -15,6 +15,7 @@ from typing import Protocol
 import pytest
 
 from offgrid.domain.running.runtime import Runtime
+from tests.doubles import CEILING
 from tests.lmstudio_under_test import LMStudioUnderTest
 
 
@@ -51,7 +52,7 @@ class RuntimeUnderTest(Protocol):
         *,
         holding: dict[str, int] | None = None,
         cold: dict[str, int] | None = None,
-        catalogued: int = 262144,
+        catalogued: int = CEILING,
     ) -> None:
         """Answer as a runtime with these models, holding these of them.
 
@@ -73,6 +74,16 @@ class RuntimeUnderTest(Protocol):
         """Answer as a runtime that will not let go of anything.
 
         :param monkeypatch: The test's patcher.
+        """
+        ...
+
+    def arrange_taking_without_holding(
+        self, monkeypatch: pytest.MonkeyPatch, *, model: str
+    ) -> None:
+        """Answer as a runtime that accepts a load and holds nothing.
+
+        :param monkeypatch: The test's patcher.
+        :param model: The model it takes and does not hold.
         """
         ...
 
