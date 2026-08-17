@@ -9,11 +9,18 @@ of them by being forgotten — but a whole package can, by landing outside every
 layer. That module is outside the check rather than passing it, and nothing
 else would say so.
 
+One rule no contract can carry at all is that only a registry may import a
+concrete adapter. `import-linter` reads import statements as written, and a
+registry importing the adapter beside it is the same statement shape as anyone
+else importing it, so the rule is a test here instead.
+
 This is a regression guard, not a slice: it passes the day it is written. It
-was checked by taking a module out of the map, and a package out of every
-layer, and watching each fail.
+was checked by taking a module out of the map, a package out of every layer, a
+registry entry out of its dict, and by pointing a module at a concrete adapter
+— and watching each fail.
 """
 
+import ast
 import tomllib
 from pathlib import Path
 
@@ -58,6 +65,87 @@ def _packages() -> set[str]:
         for path in SOURCE.rglob("__init__.py")
         if path.parent != SOURCE
     }
+
+
+def _named(path: Path) -> str:
+    """A file in the tree, as an import statement names it.
+
+    A package is named by its directory: the registry in `runtimes/__init__.py`
+    is `offgrid.runtimes`, the name the rest of the tree legitimately imports.
+    """
+    parts = path.relative_to(SOURCE).with_suffix("").parts
+
+    if parts[-1] == "__init__":
+        parts = parts[:-1]
+
+    return ".".join(("offgrid", *parts))
+
+
+def _adapters() -> set[str]:
+    """Every concrete adapter there is, as an import statement names it.
+
+    Read from the tree rather than listed, so an adapter written after this is
+    covered by existing rather than by somebody remembering to come back here.
+    """
+    return {
+        f"{package}.{adapter.stem}"
+        for package in ADAPTERS
+        for adapter in (SOURCE / package.rsplit(".", 1)[-1]).iterdir()
+        if adapter.name != "__init__.py"
+        and (adapter.suffix == ".py" or (adapter / "__init__.py").exists())
+    }
+
+
+def _imported(path: Path) -> set[str]:
+    """Every module a file imports, as an import statement names it.
+
+    A name imported from a package may itself be a module — `from
+    offgrid.runtimes import lmstudio` reaches the adapter as surely as naming
+    it in full — so both readings of a `from` are collected.
+    """
+    reached: set[str] = set()
+
+    for node in ast.walk(ast.parse(path.read_text())):
+        if isinstance(node, ast.Import):
+            reached.update(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.module:
+            reached.add(node.module)
+            reached.update(f"{node.module}.{alias.name}" for alias in node.names)
+
+    return reached
+
+
+def _is_within(module: str, package: str) -> bool:
+    """Whether a name is a package or something underneath it."""
+    return module == package or module.startswith(f"{package}.")
+
+
+def _reaches_past_a_registry(module: str, reached: str, adapters: set[str]) -> bool:
+    """Whether an import names a concrete adapter from outside it.
+
+    The unit is the adapter package rather than the module, because an
+    adapter's own files import each other: `lmstudio/lmstudio.py` reaches
+    `lmstudio/catalogue.py` for the payload it reads. What is forbidden is
+    reaching *into* an adapter from outside, which the registry beside it may
+    do and nobody else — the command line included.
+
+    :param module: The module the import is written in.
+    :param reached: What that import names.
+    :param adapters: Every concrete adapter in the tree.
+
+    :return: Whether the import is one only a registry may make.
+    """
+    return any(
+        _is_within(reached, adapter)
+        and not _is_within(module, adapter)
+        and module != adapter.rsplit(".", 1)[0]
+        for adapter in adapters
+    )
+
+
+def _adrift[Name](names: set[Name], bound: set[Name]) -> list[str]:
+    """Every name an enum and its registry do not both hold."""
+    return sorted(str(key) for key in names ^ bound)
 
 
 def _domain_in_the_contract() -> set[str]:
@@ -122,6 +210,26 @@ def test_every_module_is_covered_by_the_layer_rule():
     )
 
 
+def test_only_a_registry_imports_a_concrete_adapter():
+    adapters = _adapters()
+
+    assert adapters, "no adapter is in the tree, so this checks nothing"
+
+    reaching = sorted(
+        f"{_named(path)} imports {reached}"
+        for path in SOURCE.rglob("*.py")
+        for reached in _imported(path)
+        if _reaches_past_a_registry(_named(path), reached, adapters)
+    )
+
+    assert not reaching, (
+        f"{reaching} reaches into an adapter from outside it. Remove each "
+        "import: a concrete adapter is named by the registry in its own "
+        "package's __init__.py and nowhere else, the command line included. "
+        "Ask that registry for one instead."
+    )
+
+
 def test_every_runtime_offgrid_names_has_an_adapter_bound_to_it():
     # Two places that cannot be one: an enum carrying its own factory would
     # be a domain type importing an adapter. A name with no entry raises a
@@ -129,16 +237,33 @@ def test_every_runtime_offgrid_names_has_an_adapter_bound_to_it():
     from offgrid.domain.running.runtime import RuntimeName
     from offgrid.runtimes import RUNTIME_CONFIGS, RUNTIMES
 
-    assert set(RUNTIMES) == set(RuntimeName)
-    assert set(RUNTIME_CONFIGS) == set(RuntimeName)
+    assert set(RUNTIMES) == set(RuntimeName), (
+        f"{_adrift(set(RuntimeName), set(RUNTIMES))} is in one of RuntimeName "
+        "and RUNTIMES and not the other. Add the entry to RUNTIMES in "
+        "offgrid/runtimes/__init__.py, or take the name out of RuntimeName."
+    )
+    assert set(RUNTIME_CONFIGS) == set(RuntimeName), (
+        f"{_adrift(set(RuntimeName), set(RUNTIME_CONFIGS))} is in one of "
+        "RuntimeName and RUNTIME_CONFIGS and not the other. Add the entry to "
+        "RUNTIME_CONFIGS in offgrid/runtimes/__init__.py, or take the name "
+        "out of RuntimeName."
+    )
 
 
 def test_every_agent_offgrid_names_has_an_adapter_bound_to_it():
     from offgrid.agents import AGENT_CONFIGS, AGENTS
     from offgrid.domain.running.agent import AgentName
 
-    assert set(AGENTS) == set(AgentName)
-    assert set(AGENT_CONFIGS) == set(AgentName)
+    assert set(AGENTS) == set(AgentName), (
+        f"{_adrift(set(AgentName), set(AGENTS))} is in one of AgentName and "
+        "AGENTS and not the other. Add the entry to AGENTS in "
+        "offgrid/agents/__init__.py, or take the name out of AgentName."
+    )
+    assert set(AGENT_CONFIGS) == set(AgentName), (
+        f"{_adrift(set(AgentName), set(AGENT_CONFIGS))} is in one of AgentName "
+        "and AGENT_CONFIGS and not the other. Add the entry to AGENT_CONFIGS "
+        "in offgrid/agents/__init__.py, or take the name out of AgentName."
+    )
 
 
 def test_offgrid_has_at_least_one_published_list_to_read():
@@ -148,7 +273,11 @@ def test_offgrid_has_at_least_one_published_list_to_read():
     # why, which is a long way from where the entry was dropped.
     from offgrid.leaderboards import LEADERBOARDS
 
-    assert LEADERBOARDS
+    assert LEADERBOARDS, (
+        "offgrid reads no published list at all. Add a Leaderboard to "
+        "LEADERBOARDS in offgrid/leaderboards/__init__.py, pairing one "
+        "module's fetch with the same module's parse."
+    )
 
 
 def test_every_config_an_adapter_declares_forbids_a_key_it_does_not_name():
