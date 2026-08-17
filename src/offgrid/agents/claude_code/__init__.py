@@ -8,11 +8,11 @@ beside it.
 
 from offgrid.agents.claude_code.claude_code import ClaudeCode
 from offgrid.agents.claude_code.config import ClaudeCodeConfig
-from offgrid.domain.running.agent import Agent, AgentConfig
+from offgrid.domain.running.agent import Agent, AgentConfig, Passthrough
 from offgrid.shared.declaring import as_declared
 
 
-def prepare(config: AgentConfig, passthrough: tuple[str, ...]) -> Agent:
+def prepare(config: AgentConfig, passthrough: Passthrough) -> Agent:
     """Bind what Claude Code is run out of and started with.
 
     :param config: What the profile settled for this agent.

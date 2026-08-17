@@ -147,4 +147,7 @@ class Agent(Protocol):
         ...
 
 
-Prepare = Callable[[AgentConfig, tuple[str, ...]], Agent]
+Passthrough = tuple[str, ...]
+"""Arguments handed to the agent unchanged, as they were typed."""
+
+Prepare = Callable[[AgentConfig, Passthrough], Agent]

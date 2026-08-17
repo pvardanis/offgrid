@@ -16,7 +16,7 @@ from offgrid.domain.profile import (
     refuse_profile_section,
     save_profile,
 )
-from offgrid.domain.running.agent import Agent, AgentName
+from offgrid.domain.running.agent import Agent, AgentName, Passthrough
 from offgrid.domain.running.answering import get_resident_model, hold_model
 from offgrid.domain.running.dialect import require_compatible
 from offgrid.domain.running.hosted_tools import (
@@ -241,7 +241,7 @@ def _cache() -> Path:
     return DEFAULT_PATH.parent / "leaderboard.json"
 
 
-def _read_the_run(passthrough: tuple[str, ...] = ()) -> tuple[Profile, Runtime, Agent]:
+def _read_the_run(passthrough: Passthrough = ()) -> tuple[Profile, Runtime, Agent]:
     """Read the profile, and bind both adapters it names.
 
     What every command that talks to the runtime starts with. A command with
