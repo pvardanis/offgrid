@@ -85,7 +85,15 @@ against each rule that dropped a row, and who stands behind each figure.
 offgrid says what is worth trying. Downloading it, and choosing between what
 is left, stay a person's.
 
+**published list** — a leaderboard somebody else keeps, which offgrid asks two
+things of: fetch whatever the table is published in, and read a **table** out
+of it. offgrid holds the ones it knows in the order it asks them, and the
+first with a table answers; a list further down is what answers when the site
+above it is down or its page has been rewritten. Which one the figures came
+from is said whenever it was not the first, because two lists score on
+different benchmarks.
+
 **the last table read** — the payload a published list answered with, kept
-beside the profile with the day it was read, and answered from when nothing
-answers now. A stale table beats none on a machine with no network, and how
-old it is is said every time it is used.
+beside the profile with the day it was read, and answered from when none of
+them answers now. A stale table beats none on a machine with no network, and
+how old it is is said every time it is used.
