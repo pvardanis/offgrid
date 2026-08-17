@@ -11,7 +11,13 @@ built from, the other what it is started as.
 """
 
 from offgrid.agents import claude_code
-from offgrid.domain.running.agent import Agent, AgentConfig, AgentName, Prepare
+from offgrid.domain.running.agent import (
+    Agent,
+    AgentConfig,
+    AgentName,
+    Passthrough,
+    Prepare,
+)
 
 AGENTS: dict[AgentName, Prepare] = {AgentName.CLAUDE_CODE: claude_code.prepare}
 
@@ -45,7 +51,7 @@ def create_agent_config(agent_dict: dict, *, runtime_host: str) -> AgentConfig:
     return AGENT_CONFIGS[name](**kwargs, runtime_host=runtime_host)
 
 
-def prepare_agent(config: AgentConfig, passthrough: tuple[str, ...] = ()) -> Agent:
+def prepare_agent(config: AgentConfig, passthrough: Passthrough = ()) -> Agent:
     """Bind the agent the config is for to what a run has settled for it.
 
     Looked up by the config's own name, so a config cannot reach an adapter

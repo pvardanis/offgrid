@@ -25,6 +25,7 @@ from offgrid.agents.claude_code.launching import (
     get_claude_args,
     get_dropped_settings_sources,
 )
+from offgrid.domain.running.agent import Passthrough
 from offgrid.domain.running.dialect import Dialect
 from offgrid.domain.running.hosted_tools import HostedToolsReport, HostedToolsStatus
 from offgrid.domain.running.launch import Launch
@@ -48,7 +49,7 @@ class ClaudeCode:
     """
 
     config: ClaudeCodeConfig
-    passthrough: tuple[str, ...] = ()
+    passthrough: Passthrough = ()
     dialect: Dialect = field(init=False, default=Dialect.ANTHROPIC)
 
     def configure(self) -> None:

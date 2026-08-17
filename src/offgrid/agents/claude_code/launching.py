@@ -5,6 +5,8 @@ argument decides whether the settings file is loaded at all — and a deny in a
 file nothing loads protects nothing.
 """
 
+from offgrid.domain.running.agent import Passthrough
+
 # Decode runs at tens of tokens per second, so thinking and long replies cost
 # wall time directly.
 MAX_OUTPUT_TOKENS = 8192
@@ -24,7 +26,7 @@ SOURCES = "--setting-sources"
 WRITTEN_SOURCE = "user"
 
 
-def get_claude_args(passthrough: tuple[str, ...]) -> list[str]:
+def get_claude_args(passthrough: Passthrough) -> list[str]:
     """Settle the command line Claude Code is started with.
 
     :param passthrough: Arguments handed to the agent unchanged.
@@ -42,7 +44,7 @@ def get_claude_args(passthrough: tuple[str, ...]) -> list[str]:
     ]
 
 
-def get_dropped_settings_sources(arguments: tuple[str, ...]) -> list[str] | None:
+def get_dropped_settings_sources(passthrough: Passthrough) -> list[str] | None:
     """List the sources an argument confines the agent to, where it drops ours.
 
     A deny only binds where the file carrying it is loaded, and one argument
@@ -51,12 +53,12 @@ def get_dropped_settings_sources(arguments: tuple[str, ...]) -> list[str] | None
     is built, so bypassing the permission checks never puts a denied tool
     back, and an `allow` loses to it.
 
-    :param arguments: What was handed to the agent unchanged.
+    :param passthrough: What was handed to the agent unchanged.
 
     :return: The sources named, where they leave out the one offgrid writes —
         and none where the arguments still load it, or name none at all.
     """
-    named = _read_setting_sources(arguments)
+    named = _read_setting_sources(passthrough)
 
     if named is None or WRITTEN_SOURCE in named:
         return None
@@ -64,7 +66,7 @@ def get_dropped_settings_sources(arguments: tuple[str, ...]) -> list[str] | None
     return named
 
 
-def _read_setting_sources(arguments: tuple[str, ...]) -> list[str] | None:
+def _read_setting_sources(passthrough: Passthrough) -> list[str] | None:
     """List the settings sources the arguments confine the agent to.
 
     The last of them, because that is the one Claude Code acts on: given the
@@ -73,17 +75,17 @@ def _read_setting_sources(arguments: tuple[str, ...]) -> list[str] | None:
     read, and matching the flag at the start of an argument rather than
     anywhere inside one keeps a prompt that quotes it from counting as one.
 
-    :param arguments: What was handed to the agent unchanged.
+    :param passthrough: What was handed to the agent unchanged.
 
     :return: The sources named last, or none where the arguments name none.
     """
     named = None
 
-    for index, argument in enumerate(arguments):
+    for index, argument in enumerate(passthrough):
         if argument.startswith(f"{SOURCES}="):
             named = _split_sources(argument.split("=", 1)[1])
-        elif argument == SOURCES and index + 1 < len(arguments):
-            named = _split_sources(arguments[index + 1])
+        elif argument == SOURCES and index + 1 < len(passthrough):
+            named = _split_sources(passthrough[index + 1])
 
     return named
 
