@@ -132,6 +132,19 @@ def test_letting_go_says_when_the_memory_did_not_come_back(
     assert runtime.connect().let_go("a/held-7b") is False
 
 
+def test_letting_go_answers_rather_than_raises_where_nothing_can_be_reached(
+    runtime: RuntimeUnderTest, monkeypatch: pytest.MonkeyPatch
+):
+    # Both callers are cleanup — the `finally` at the end of a run, and the
+    # release after a load that failed — so anything raised here replaces the
+    # outcome the caller was about to report with the failure of tidying up
+    # after it. A release that cannot be confirmed is a release that did not
+    # happen, which is the answer that sends someone to look.
+    runtime.arrange_unreachable(monkeypatch)
+
+    assert runtime.connect().let_go("a/held-7b") is False
+
+
 def test_a_runtime_that_cannot_be_reached_is_offgrids_error_naming_the_address(
     runtime: RuntimeUnderTest, monkeypatch: pytest.MonkeyPatch
 ):
