@@ -117,11 +117,8 @@ agents/            one package per agent
     configuring.py what offgrid writes into its directory
     launching.py   the arguments and sizes it is started with, and
                    what is read back out of them
-leaderboards/      one module per published list
+leaderboards/      one module per published list, and the registry
   onyx.py          fetching and parsing the page
-  cache.py         keeping the last payload that parsed
-  reading.py       which list and which table to answer from, and what
-                   to say about it
 ```
 
 **domain**
@@ -133,6 +130,9 @@ domain/
     fit.py         how much room it has
     listing.py     a model a published list describes, and which ones fit
     leaderboard.py what offgrid asks of a published list
+    reading.py     which list and which table to answer from, and what
+                   to say about it
+    cache.py       keeping the last payload that parsed
     speed.py       how fast this machine reads a model's weights
     quality.py     how good a fit is, as one number and one word
     shortlist.py   what fits, ranked, and what each rule dropped
