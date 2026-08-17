@@ -456,7 +456,9 @@ it answers with is a frozen dataclass holding that config, with methods,
 inheriting nothing.
 
 ```python
-Prepare = Callable[[AgentConfig, tuple[str, ...]], Agent]
+type Passthrough = tuple[str, ...]
+
+Prepare = Callable[[AgentConfig, Passthrough], Agent]
 
 
 class Agent(Protocol):

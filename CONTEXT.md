@@ -24,6 +24,11 @@ server-side executor answers it, and the agent renders the call as a result.
 An invented answer, with no error. An agent is launched with its hosted tools
 denied.
 
+**passthrough** — the arguments a person types after offgrid's own, handed to
+the agent unchanged. offgrid reads them as well as passing them: one of them
+decides whether the agent loads the settings offgrid wrote, so a run is refused
+rather than started with its hosted tools reachable.
+
 **dialect** — the HTTP API shape a runtime serves and an agent expects,
 `anthropic` or `openai`. A runtime and an agent may only be paired when their
 dialects match; offgrid refuses the pair rather than translating between them.
