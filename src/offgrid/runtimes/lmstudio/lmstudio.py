@@ -135,17 +135,23 @@ class LMStudio:
         record is for whoever is watching, the answer is for whoever has to
         decide what to do next.
 
+        Reading the catalogue back can fail too, and a release that cannot be
+        confirmed is answered for as one that did not happen. Both callers are
+        cleanup, so raising here would replace what they were about to report
+        with the failure of tidying up after it.
+
         :param identifier: The model to let go of.
 
         :return: Whether the memory came back.
         """
         try:
             said = unload(identifier)
+            in_memory = self.read_held()
         except RuntimeUnreachableError as error:
             log.warning("  The runtime is still holding %s: %s", identifier, error)
             return False
 
-        if any(model.identifier == identifier for model in self.read_held()):
+        if any(model.identifier == identifier for model in in_memory):
             log.warning(
                 "  The runtime is still holding %s: %s exited cleanly, but "
                 "http://%s has it loaded — it said %s. Let it go in LM Studio "
