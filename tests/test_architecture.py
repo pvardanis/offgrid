@@ -12,7 +12,11 @@ else would say so.
 One rule no contract can carry at all is that only a registry may import a
 concrete adapter. `import-linter` reads import statements as written, and a
 registry importing the adapter beside it is the same statement shape as anyone
-else importing it, so the rule is a test here instead.
+else importing it, so the rule is a test here instead. It reads the imports
+each file writes, so a name reached at runtime — `importlib.import_module`, or
+walking to `offgrid.runtimes.lmstudio` as an attribute of the package — is out
+of its sight. Both are deliberate work to write, which the rule is not there to
+stop; what it catches is the import somebody adds without thinking.
 
 This is a regression guard, not a slice: it passes the day it is written. It
 was checked by taking a module out of the map, a package out of every layer, a
@@ -86,14 +90,38 @@ def _adapters() -> set[str]:
 
     Read from the tree rather than listed, so an adapter written after this is
     covered by existing rather than by somebody remembering to come back here.
+    A directory counts whether or not it holds an `__init__.py`, since Python
+    imports one either way and an adapter laid out without one would otherwise
+    be outside the rule rather than passing it.
     """
     return {
         f"{package}.{adapter.stem}"
         for package in ADAPTERS
         for adapter in (SOURCE / package.rsplit(".", 1)[-1]).iterdir()
         if adapter.name != "__init__.py"
-        and (adapter.suffix == ".py" or (adapter / "__init__.py").exists())
+        and adapter.name != "__pycache__"
+        and (adapter.suffix == ".py" or adapter.is_dir())
     }
+
+
+def _reached_by(node: ast.ImportFrom, within: str) -> str:
+    """Where a `from` import reaches, as an absolute name.
+
+    A relative import names the same module as an absolute one and is only
+    written differently, so it is resolved rather than skipped: `from
+    .runtimes import lmstudio` in `cli.py` reaches the adapter exactly as far.
+
+    :param node: The import to place.
+    :param within: The package the file holding it belongs to.
+
+    :return: The module the names are imported from.
+    """
+    if not node.level:
+        return node.module or ""
+
+    base = within.rsplit(".", node.level - 1)[0]
+
+    return f"{base}.{node.module}" if node.module else base
 
 
 def _imported(path: Path) -> set[str]:
@@ -103,14 +131,17 @@ def _imported(path: Path) -> set[str]:
     offgrid.runtimes import lmstudio` reaches the adapter as surely as naming
     it in full — so both readings of a `from` are collected.
     """
+    module = _named(path)
+    within = module if path.name == "__init__.py" else module.rsplit(".", 1)[0]
     reached: set[str] = set()
 
     for node in ast.walk(ast.parse(path.read_text())):
         if isinstance(node, ast.Import):
             reached.update(alias.name for alias in node.names)
-        elif isinstance(node, ast.ImportFrom) and node.module:
-            reached.add(node.module)
-            reached.update(f"{node.module}.{alias.name}" for alias in node.names)
+        elif isinstance(node, ast.ImportFrom):
+            base = _reached_by(node, within)
+            reached.add(base)
+            reached.update(f"{base}.{alias.name}" for alias in node.names)
 
     return reached
 
@@ -143,9 +174,30 @@ def _reaches_past_a_registry(module: str, reached: str, adapters: set[str]) -> b
     )
 
 
-def _adrift[Name](names: set[Name], bound: set[Name]) -> list[str]:
-    """Every name an enum and its registry do not both hold."""
-    return sorted(str(key) for key in names ^ bound)
+def _say_what_to_bind[Name](
+    names: set[Name],
+    bound: set[Name],
+    *,
+    enum: str,
+    registry: str,
+    module: str,
+) -> str:
+    """What to do about an enum and a registry naming different sets.
+
+    :param names: Every name the enum holds.
+    :param bound: Every name the registry has an entry for.
+    :param enum: What the enum is called, to say it in the sentence.
+    :param registry: What the registry is called.
+    :param module: Where the registry lives, as a path to open.
+
+    :return: The sentence naming what is adrift and what to do about it.
+    """
+    adrift = sorted(str(name) for name in names ^ bound)
+
+    return (
+        f"{adrift} is in one of {enum} and {registry} and not the other. Add "
+        f"the entry to {registry} in {module}, or take the name out of {enum}."
+    )
 
 
 def _domain_in_the_contract() -> set[str]:
@@ -237,16 +289,19 @@ def test_every_runtime_offgrid_names_has_an_adapter_bound_to_it():
     from offgrid.domain.running.runtime import RuntimeName
     from offgrid.runtimes import RUNTIME_CONFIGS, RUNTIMES
 
-    assert set(RUNTIMES) == set(RuntimeName), (
-        f"{_adrift(set(RuntimeName), set(RUNTIMES))} is in one of RuntimeName "
-        "and RUNTIMES and not the other. Add the entry to RUNTIMES in "
-        "offgrid/runtimes/__init__.py, or take the name out of RuntimeName."
+    assert set(RUNTIMES) == set(RuntimeName), _say_what_to_bind(
+        set(RuntimeName),
+        set(RUNTIMES),
+        enum="RuntimeName",
+        registry="RUNTIMES",
+        module="offgrid/runtimes/__init__.py",
     )
-    assert set(RUNTIME_CONFIGS) == set(RuntimeName), (
-        f"{_adrift(set(RuntimeName), set(RUNTIME_CONFIGS))} is in one of "
-        "RuntimeName and RUNTIME_CONFIGS and not the other. Add the entry to "
-        "RUNTIME_CONFIGS in offgrid/runtimes/__init__.py, or take the name "
-        "out of RuntimeName."
+    assert set(RUNTIME_CONFIGS) == set(RuntimeName), _say_what_to_bind(
+        set(RuntimeName),
+        set(RUNTIME_CONFIGS),
+        enum="RuntimeName",
+        registry="RUNTIME_CONFIGS",
+        module="offgrid/runtimes/__init__.py",
     )
 
 
@@ -254,15 +309,19 @@ def test_every_agent_offgrid_names_has_an_adapter_bound_to_it():
     from offgrid.agents import AGENT_CONFIGS, AGENTS
     from offgrid.domain.running.agent import AgentName
 
-    assert set(AGENTS) == set(AgentName), (
-        f"{_adrift(set(AgentName), set(AGENTS))} is in one of AgentName and "
-        "AGENTS and not the other. Add the entry to AGENTS in "
-        "offgrid/agents/__init__.py, or take the name out of AgentName."
+    assert set(AGENTS) == set(AgentName), _say_what_to_bind(
+        set(AgentName),
+        set(AGENTS),
+        enum="AgentName",
+        registry="AGENTS",
+        module="offgrid/agents/__init__.py",
     )
-    assert set(AGENT_CONFIGS) == set(AgentName), (
-        f"{_adrift(set(AgentName), set(AGENT_CONFIGS))} is in one of AgentName "
-        "and AGENT_CONFIGS and not the other. Add the entry to AGENT_CONFIGS "
-        "in offgrid/agents/__init__.py, or take the name out of AgentName."
+    assert set(AGENT_CONFIGS) == set(AgentName), _say_what_to_bind(
+        set(AgentName),
+        set(AGENT_CONFIGS),
+        enum="AgentName",
+        registry="AGENT_CONFIGS",
+        module="offgrid/agents/__init__.py",
     )
 
 
