@@ -443,6 +443,20 @@ def test_run_holds_the_model_at_the_window_asked_for(here, monkeypatch):
     assert "window 8000" in result.stderr
 
 
+def test_run_refuses_a_window_that_is_not_one(here, monkeypatch):
+    # Zero is not a small window, it is not a window. Left to reach the
+    # runtime it becomes `context_length: 0`, and what a server does with
+    # that is nobody's guess.
+    runner.invoke(app, ["setup"])
+    asked = answer_as_lm_studio(monkeypatch, cold={"a/other-7b": 32768})
+    _launched(monkeypatch)
+
+    result = runner.invoke(app, ["run", "-m", "a/other-7b", "--context-window", "0"])
+
+    assert result.exit_code != 0
+    assert asked["order"] == []
+
+
 def test_run_sends_no_window_when_none_is_asked_for(here, monkeypatch):
     # Saying nothing keeps what a person configured in the runtime, and
     # reports it. A default would replace their number with offgrid's.
