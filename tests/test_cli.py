@@ -691,11 +691,11 @@ def test_compaction_is_sized_from_what_the_runtime_serves(here, monkeypatch):
     # serves a smaller window than that, and compacting against the ceiling
     # means never compacting: the server truncates the prefix instead.
     runner.invoke(app, ["setup"])
-    answer_as_lm_studio(monkeypatch, cold={"a/big-7b": 32768}, ceiling=262144)
+    answer_as_lm_studio(monkeypatch, cold={"a/big-7b": 131072}, ceiling=262144)
     started = _launched(monkeypatch)
 
     runner.invoke(app, ["run", "-m", "a/big-7b"])
-    assert started["env"]["CLAUDE_CODE_AUTO_COMPACT_WINDOW"] == "32768"
+    assert started["env"]["CLAUDE_CODE_AUTO_COMPACT_WINDOW"] == "131072"
 
 
 def test_the_command_line_beats_the_profile(here, monkeypatch):

@@ -8,6 +8,10 @@ before anything runs.
 import json
 from dataclasses import dataclass, field
 
+from offgrid.agents.claude_code.compacting import (
+    explain_what_will_not_compact,
+    get_compaction_setting,
+)
 from offgrid.agents.claude_code.config import ClaudeCodeConfig
 from offgrid.agents.claude_code.configuring import (
     INSTRUCTIONS,
@@ -18,7 +22,6 @@ from offgrid.agents.claude_code.configuring import (
 )
 from offgrid.agents.claude_code.launching import (
     CONTEXT_FLOOR,
-    FALLBACK_CONTEXT,
     MAX_OUTPUT_TOKENS,
     SOURCES,
     TOKEN,
@@ -129,9 +132,11 @@ class ClaudeCode:
 
         :param model: The model that will answer.
 
-        :return: The environment and command to run.
+        :return: The environment and command to run, and what a person is
+            owed about the window it will run in.
         """
-        context = model.context_window or FALLBACK_CONTEXT
+        served = model.context_window
+        compaction, dropped = get_compaction_setting(served)
 
         env = {
             "CLAUDE_CONFIG_DIR": str(self.config.config_dir),
@@ -143,14 +148,17 @@ class ClaudeCode:
             "ANTHROPIC_DEFAULT_HAIKU_MODEL": model.identifier,
             "MAX_THINKING_TOKENS": "0",
             "CLAUDE_CODE_MAX_OUTPUT_TOKENS": str(MAX_OUTPUT_TOKENS),
-            # Compact before the server truncates the prefix and voids its
-            # cache.
-            "CLAUDE_CODE_AUTO_COMPACT_WINDOW": str(context),
             "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
             "CLAUDE_CODE_DISABLE_1M_CONTEXT": "1",
+            **compaction,
         }
 
-        return Launch(env=env, argv=get_claude_args(self.passthrough))
+        return Launch(
+            env=env,
+            argv=get_claude_args(self.passthrough),
+            dropped=dropped,
+            caution=explain_what_will_not_compact(served),
+        )
 
     def _write_missing(self, name: str, content: str) -> None:
         """Write one file of the configuration, unless it is already there.

@@ -237,6 +237,10 @@ def test_a_launch_can_be_shown_rather_than_started(
     assert isinstance(launch, Launch)
     assert all(isinstance(value, str) for value in launch.env.values())
     assert launch.argv and all(isinstance(argument, str) for argument in launch.argv)
+    # What a person is owed before it starts travels with it, so an agent that
+    # will do something they would otherwise meet mid-session says so where
+    # the launch can still be shown rather than run.
+    assert launch.caution is None or launch.caution.strip()
 
 
 def test_the_model_that_will_answer_reaches_the_launch(

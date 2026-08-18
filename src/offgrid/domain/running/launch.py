@@ -17,14 +17,23 @@ STOPS = (signal.SIGTERM, signal.SIGHUP)
 
 @dataclass(frozen=True)
 class Launch:
-    """Everything needed to start an agent.
+    """Everything needed to start an agent, and what to say before starting.
 
     :param env: Environment variables to add to the caller's own.
     :param argv: The command and its arguments.
+    :param dropped: Variables the agent is started without, whatever the
+        caller's own environment says. Asking for nothing is a claim about
+        what the agent reads, and an agent inherits what offgrid does not
+        name.
+    :param caution: What a person is owed before this runs, where the agent
+        will do something they would otherwise meet mid-session. Nothing for
+        an agent with nothing to say, which is most launches.
     """
 
     env: dict[str, str]
     argv: list[str]
+    dropped: frozenset[str] = frozenset()
+    caution: str | None = None
 
 
 def start(launch: Launch) -> int:
@@ -36,6 +45,10 @@ def start(launch: Launch) -> int:
     reason: an agent left running would be talking to a model offgrid is
     about to let go of.
 
+    The agent inherits this process's environment, so what a launch drops is
+    taken back out after the two are merged: a setting offgrid deliberately
+    did not make is one an exported variable would otherwise make for it.
+
     :param launch: The environment and command to run.
 
     :return: The agent's exit code, or what a shell reports for the signal
@@ -43,7 +56,12 @@ def start(launch: Launch) -> int:
 
     :raise OSError: When the agent cannot be started at all.
     """
-    agent = subprocess.Popen(launch.argv, env={**os.environ, **launch.env})
+    inherited: dict[str, str] = {**os.environ, **launch.env}
+
+    for name in launch.dropped:
+        inherited.pop(name, None)
+
+    agent = subprocess.Popen(launch.argv, env=inherited)
 
     def pass_on(number: int, frame: object) -> None:
         """Stop the agent, so offgrid outlives it and can let the model go."""
