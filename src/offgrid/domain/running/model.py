@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class Model:
     """One model available on a runtime.
 
