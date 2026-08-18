@@ -91,7 +91,7 @@ def parse_models_from_payload(payload: dict) -> list[Model]:
         models.append(
             Model(
                 identifier=identifier,
-                context_ceiling=entry.get("max_context_length") or 0,
+                context_ceiling=entry.get("max_context_length"),
                 context_window=entry.get("loaded_context_length"),
             )
         )

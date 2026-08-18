@@ -108,7 +108,7 @@ def test_a_model_the_api_describes_sparsely_still_parses():
     sparse = {"data": [{"id": "a/mystery", "type": "llm", "state": "not-loaded"}]}
     (model,) = parse_models_from_payload(sparse)
     assert model.identifier == "a/mystery"
-    assert model.context_ceiling == 0
+    assert model.context_ceiling is None
     assert model.context_window is None
 
 
