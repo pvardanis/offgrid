@@ -353,6 +353,34 @@ def test_doctor_reports_the_model_that_would_answer(here):
     assert RESIDENT in result.stderr
 
 
+def test_doctor_prints_what_the_model_could_serve_and_what_it_is_served_at(here):
+    # Two different statements, and one number cannot make both: the ceiling
+    # is a capability the model has whether or not anything holds it, and the
+    # window is what it is being served at now.
+    runner.invoke(app, ["setup"])
+
+    result = runner.invoke(app, ["doctor"])
+
+    assert "  ceiling   262144" in result.stderr
+    assert "  window    212224" in result.stderr
+
+
+def test_doctor_prints_the_window_the_agent_needs_to_start(here, monkeypatch):
+    # The agent's own number, asked of the agent: a second adapter that starts
+    # in a window Claude Code cannot would otherwise be reported as Claude
+    # Code's.
+    from offgrid.domain.running.dialect import Dialect
+
+    answer_as_an_agent(
+        monkeypatch, StandInAgent(dialect=Dialect.ANTHROPIC, context_floor=9000)
+    )
+    runner.invoke(app, ["setup"])
+
+    result = runner.invoke(app, ["doctor"])
+
+    assert "  floor     9000" in result.stderr
+
+
 def test_doctor_says_when_the_runtime_holds_nothing(here, monkeypatch):
     runner.invoke(app, ["setup"])
     answer_as_lm_studio(monkeypatch, cold={"a/cold-7b": 8192})
