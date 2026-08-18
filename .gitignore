@@ -15,5 +15,9 @@ wheels/
 .hypothesis/
 .coverage
 
-# Agent settings, and the worktrees agents are given to work in
-.claude/
+# The worktrees agents are given to work in, and whatever settings one machine
+# keeps to itself. The hooks and the settings that register them are versioned,
+# because they enforce what CLAUDE.md states.
+.claude/*
+!.claude/hooks/
+!.claude/settings.json
