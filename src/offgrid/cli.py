@@ -120,8 +120,10 @@ def doctor() -> None:
         f"  runtime   {profile.runtime.name.value} at {profile.runtime.host}, reachable"
     )
     tell(f"  model     {model.identifier}")
-    tell(f"  context   {model.context_window or 'unstated'}")
+    tell(f"  ceiling   {model.context_ceiling or 'unstated'}")
+    tell(f"  window    {model.context_window or 'unstated'}")
     tell(f"  agent     {profile.agent.name.value}, speaking {agent.dialect.value}")
+    tell(f"  floor     {agent.context_floor}")
     tell(f"  hosted    {report.status}")
 
     # What a run would refuse with, said here instead of after the load it
