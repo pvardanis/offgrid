@@ -48,6 +48,15 @@ pool of memory, and how a runtime reaches that state differs enough that it
 cannot be directed from outside. Naming no model is asking for whatever is
 resident, which costs no load.
 
+**context_ceiling** — the most a model could be served at. The model's own
+number, true whether or not anything is held, and what every window asked for
+is measured against.
+
+**context_window** — what a model is being served at now, and empty when
+nothing is held. Everywhere outside this project the phrase names the maximum,
+which is what offgrid calls the ceiling; the two together are unambiguous, so a
+document quoting either one alone says which it means.
+
 **launch** — an environment and an argument list, built before anything runs,
 so it can be shown rather than guessed at.
 
@@ -58,8 +67,8 @@ machine.
 within the memory the GPU may use. offgrid says how much room there is.
 
 **listing** — a model as a published list describes it: a name, a parameter
-count, what is active of it, a context window and a benchmark score. Nothing
-about this machine, and nothing about whether it has been downloaded. A
+count, what is active of it, a **context_ceiling** and a benchmark score.
+Nothing about this machine, and nothing about whether it has been downloaded. A
 **model** is what the runtime describes; a listing is what someone else
 published.
 
@@ -72,7 +81,7 @@ counts are carried separately and why speed is estimated from the second.
 
 **quality** — what a fit is worth here, as a score out of 97 and a word for
 it. Four terms: the room left after the weights, the published coding score,
-the speed on this machine, and the context window. A composite, not a
+the speed on this machine, and the **context_ceiling**. A composite, not a
 measurement, and what the ranking sorts on.
 
 **shortlist** — what survives the three rules that drop a published row, in
