@@ -21,7 +21,7 @@ def test_a_load_is_waited_on_for_as_long_as_it_is_given(
 
     def answer(request: httpx.Request) -> httpx.Response:
         asked["timeout"] = request.extensions["timeout"]["read"]
-        return httpx.Response(200, json={"model": "a/model-7b", "content": []})
+        return httpx.Response(200, json={"instance_id": "a/model-7b"})
 
     serve_post(monkeypatch, answer)
     load_model(HOST, "a/model-7b")
@@ -29,7 +29,9 @@ def test_a_load_is_waited_on_for_as_long_as_it_is_given(
     assert asked["timeout"] == LOAD_TIMEOUT_SECONDS
 
 
-def test_loading_a_model_asks_it_for_one_token(monkeypatch: pytest.MonkeyPatch):
+def test_loading_a_model_names_it_to_the_endpoint_that_takes_weights(
+    monkeypatch: pytest.MonkeyPatch,
+):
     from offgrid.runtimes.lmstudio.holding import load_model
 
     asked = {}
@@ -37,55 +39,50 @@ def test_loading_a_model_asks_it_for_one_token(monkeypatch: pytest.MonkeyPatch):
     def answer(request: httpx.Request) -> httpx.Response:
         asked["url"] = str(request.url)
         asked["body"] = json.loads(request.content)
-        return httpx.Response(200, json={"content": []})
+        return httpx.Response(200, json={"instance_id": "a/model-7b"})
 
     serve_post(monkeypatch, answer)
     load_model(HOST, "a/model-7b", timeout=5)
 
-    assert asked["url"].endswith("/v1/messages")
+    assert asked["url"].endswith("/api/v1/models/load")
     assert asked["body"]["model"] == "a/model-7b"
-    assert asked["body"]["max_tokens"] == 1
 
 
-def test_a_load_another_model_answers_is_refused(monkeypatch: pytest.MonkeyPatch):
-    # Captured from the live server: asked for a name it does not have while
-    # google/gemma-4-e4b was loaded, it answered 200 as gemma.
-    from offgrid.runtimes.lmstudio.holding import load_model
-
-    answered_as = {
-        "id": "msg_7awwpgbekenxou8epgv27q",
-        "type": "message",
-        "role": "assistant",
-        "content": [],
-        "model": "google/gemma-4-e4b",
-        "stop_reason": "max_tokens",
-    }
-    serve_post(monkeypatch, lambda request: httpx.Response(200, json=answered_as))
-
-    with pytest.raises(RuntimeUnreachableError, match="google/gemma-4-e4b") as raised:
-        load_model(HOST, "totally/made-up-model-9000", timeout=5)
-
-    assert "totally/made-up-model-9000" in str(raised.value)
-
-
-def test_a_load_the_right_model_answers_is_accepted(monkeypatch: pytest.MonkeyPatch):
-    from offgrid.runtimes.lmstudio.holding import load_model
-
-    served = {"content": [], "model": "a/model-7b"}
-    serve_post(monkeypatch, lambda request: httpx.Response(200, json=served))
-
-    load_model(HOST, "a/model-7b", timeout=5)
-
-
-def test_a_load_answered_with_something_other_than_json_says_so(
+def test_a_load_asked_for_a_window_says_so_in_the_request(
     monkeypatch: pytest.MonkeyPatch,
 ):
+    # The window travels with the weights: it is settled as the model comes
+    # into memory, and nothing afterwards changes what it is served at.
     from offgrid.runtimes.lmstudio.holding import load_model
 
-    serve_post(monkeypatch, lambda request: httpx.Response(200, html="<h1>hello</h1>"))
+    asked = {}
 
-    with pytest.raises(RuntimeUnreachableError, match="not JSON"):
-        load_model(HOST, "a/model-7b", timeout=5)
+    def answer(request: httpx.Request) -> httpx.Response:
+        asked["body"] = json.loads(request.content)
+        return httpx.Response(200, json={"instance_id": "a/model-7b"})
+
+    serve_post(monkeypatch, answer)
+    load_model(HOST, "a/model-7b", window=8000, timeout=5)
+
+    assert asked["body"]["context_length"] == 8000
+
+
+def test_a_load_asked_for_no_window_names_none(monkeypatch: pytest.MonkeyPatch):
+    # Saying nothing is how a run inherits: the runtime serves whatever its
+    # own configuration last remembered, and a number offgrid made up would
+    # replace a person's choice with one nobody made.
+    from offgrid.runtimes.lmstudio.holding import load_model
+
+    asked = {}
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        asked["body"] = json.loads(request.content)
+        return httpx.Response(200, json={"instance_id": "a/model-7b"})
+
+    serve_post(monkeypatch, answer)
+    load_model(HOST, "a/model-7b", timeout=5)
+
+    assert "context_length" not in asked["body"]
 
 
 def test_a_load_that_never_finishes_says_so(monkeypatch: pytest.MonkeyPatch):
@@ -117,5 +114,29 @@ def test_a_refused_load_reports_what_the_server_said(monkeypatch: pytest.MonkeyP
     from offgrid.runtimes.lmstudio.holding import load_model
 
     serve_post(monkeypatch, lambda request: httpx.Response(400, text="no such model"))
-    with pytest.raises(RuntimeUnreachableError, match="400"):
+    with pytest.raises(RuntimeUnreachableError, match="400") as refused:
         load_model(HOST, "a/model-7b", timeout=5)
+
+    assert "no such model" in str(refused.value)
+
+
+def test_a_load_of_a_name_the_runtime_does_not_have_says_which_name(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    # Captured from the live server: the load endpoint answers 404 for a name
+    # it does not have, where the messages endpoint answered 200 as whatever
+    # happened to be loaded.
+    from offgrid.runtimes.lmstudio.holding import load_model
+
+    not_found = {
+        "error": {
+            "type": "model_not_found",
+            "message": "Model totally/made-up-9000 not found in downloaded models",
+        }
+    }
+    serve_post(monkeypatch, lambda request: httpx.Response(404, json=not_found))
+
+    with pytest.raises(RuntimeUnreachableError, match="404") as refused:
+        load_model(HOST, "totally/made-up-9000", timeout=5)
+
+    assert "not found in downloaded models" in str(refused.value)

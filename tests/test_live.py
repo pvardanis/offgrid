@@ -24,18 +24,12 @@ from offgrid.runtimes.lmstudio.catalogue import (
     parse_models_from_payload,
 )
 from offgrid.runtimes.lmstudio.config import LMStudioConfig
-from offgrid.runtimes.lmstudio.holding import LOAD_TIMEOUT_SECONDS, unload_model
+from offgrid.runtimes.lmstudio.holding import LOAD, LOAD_TIMEOUT_SECONDS, unload_model
 from offgrid.shared.exceptions import OffgridError
 
 pytestmark = pytest.mark.live
 
 ANSWER_SECONDS = 600
-
-# Loading the same model again is how a second copy of it comes to be held,
-# and the messages endpoint offgrid loads through will not do it: it serves
-# the copy that is already there. Arranging the state needs the endpoint that
-# does, which offgrid itself has no reason to call.
-LOAD = "/api/v1/models/load"
 
 
 @pytest.fixture

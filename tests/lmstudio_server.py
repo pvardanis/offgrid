@@ -38,11 +38,12 @@ def answer_as_lm_studio(
     :param cold: Models it has and is not holding.
     :param ceiling: The context every model states before it is loaded.
 
-    :return: What it was asked to load and let go of, and in what order.
+    :return: What it was asked to load, at what window, what it was asked to
+        let go of, and in what order.
     """
     served = {**(holding or {}), **(cold or {})}
     in_memory = dict.fromkeys(holding or {}, True) | dict.fromkeys(cold or {}, False)
-    asked: dict = {"loaded": None, "let_go": [], "order": []}
+    asked: dict = {"loaded": None, "window": None, "let_go": [], "order": []}
 
     def catalogue(request: httpx.Request) -> httpx.Response:
         return httpx.Response(
@@ -55,12 +56,18 @@ def answer_as_lm_studio(
             },
         )
 
-    def load(identifier: str) -> httpx.Response:
-        in_memory[identifier] = True
+    def load(identifier: str, window: int | None) -> httpx.Response:
+        # A load does not replace what is held: LM Studio serves a second copy
+        # beside the first, at the new window, and ids it with a suffix.
+        instance = f"{identifier}:2" if in_memory.get(identifier) else identifier
+
+        in_memory[instance] = True
+        served[instance] = window or served[identifier]
         asked["loaded"] = identifier
+        asked["window"] = window
         asked["order"].append(("loaded", identifier))
 
-        return httpx.Response(200, json={"model": identifier, "content": []})
+        return httpx.Response(200, json={"instance_id": instance})
 
     def let_go(instance: str) -> httpx.Response:
         asked["let_go"].append(instance)
@@ -88,7 +95,7 @@ def answer_as_lm_studio(
         if request.url.path == UNLOAD:
             return let_go(body["instance_id"])
 
-        return load(body["model"])
+        return load(body["model"], body.get("context_length"))
 
     serve_get(monkeypatch, catalogue)
     serve_post(monkeypatch, posted)

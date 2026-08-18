@@ -9,7 +9,7 @@ test did not arrange goes on being answered.
 import httpx
 import pytest
 
-from offgrid.runtimes.lmstudio.holding import MESSAGES, UNLOAD
+from offgrid.runtimes.lmstudio.holding import LOAD, UNLOAD
 
 
 def refuse_to_let_go(monkeypatch: pytest.MonkeyPatch, complaint: str) -> None:
@@ -53,7 +53,7 @@ def answer_the_load(monkeypatch: pytest.MonkeyPatch, answer) -> None:
     :param monkeypatch: The test's patcher.
     :param answer: Called with the model, answering with a response.
     """
-    _take_over(monkeypatch, MESSAGES, lambda body: answer(body["model"]))
+    _take_over(monkeypatch, LOAD, lambda body: answer(body["model"]))
 
 
 def _take_over(monkeypatch: pytest.MonkeyPatch, path: str, answer) -> None:
