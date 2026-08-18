@@ -42,6 +42,10 @@ model answers immediately; anything else costs a load first.
 **load**, **let go** — putting a model into memory and taking it out again.
 Loading is tens of seconds and evicts whatever prompt prefix was cached.
 
+**instance** — one copy of a model in memory. A runtime may hold the same model
+more than once, and each copy costs its own memory and is let go of on its own,
+so letting go of a model means letting go of every instance of it.
+
 **hold** — to make a named model the resident one, letting go of whatever else
 the runtime has. What it costs is the runtime's business: one machine has one
 pool of memory, and how a runtime reaches that state differs enough that it

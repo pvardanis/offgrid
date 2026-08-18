@@ -424,9 +424,9 @@ with `protocol member capabilities is incompatible — the member does not accep
 writes`. A caller reads `runtime.dialect` either way.
 
 A Protocol rather than typed callables because a connection carries state —
-the host, LM Studio's `instance_id`, the capabilities probed when it opened —
-and because six related members read better named than positional. The
-leaderboard seam below carries neither and is shaped differently for it.
+the host, the capabilities probed when it opened — and because six related
+members read better named than positional. The leaderboard seam below carries
+neither and is shaped differently for it.
 
 **`ensure_only` states an intent, not a mechanism.** The domain wants one model
 in memory on a machine with one pool; how a runtime reaches that differs

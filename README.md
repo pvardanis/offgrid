@@ -267,10 +267,12 @@ needs an agent on the same side or a proxy of your own between them.
 
 <br>
 
-Reached over HTTP at the `host` in your profile, plus its own `lms` command for
-unloading, which is not part of the HTTP API. It serves Anthropic's
-`/v1/messages` alongside OpenAI's, so an Anthropic-dialect agent needs no
-translating proxy.
+Reached over HTTP at the `host` in your profile, and nowhere else: nothing
+offgrid does needs LM Studio's `lms` command on your `PATH`. That wants
+**LM Studio 0.4.0 or newer**, which is where the unload endpoint arrived — an
+older one answers the release with a 404 at the end of a run, after the agent
+has finished. It serves Anthropic's `/v1/messages` alongside OpenAI's, so an
+Anthropic-dialect agent needs no translating proxy.
 
 - **Catalogue** — `GET /api/v0/models`, which states each model's
   `max_context_length` and, once loaded, the `loaded_context_length` it is
@@ -278,7 +280,10 @@ translating proxy.
 - **Loading** — a one-token request to `/v1/messages`. Doing it here rather
   than leaving it to the agent's first message makes the wait visible and
   attributable instead of a silence mid-turn.
-- **Unloading** — `lms unload`, then the catalogue is read back.
+- **Unloading** — `POST /api/v1/models/unload`, once per copy held and once
+  for the name asked about whether it is listed or not, because a load that
+  failed may have left weights the catalogue does not show yet. The catalogue
+  is read back afterwards, and it is what says whether the memory came back.
 
 Two behaviours are worth knowing, both reproduced against a live server, and
 both the reason for the checks above:
@@ -288,9 +293,10 @@ loaded, a request for `totally/made-up-model-9000` came back `200`, body saying
 `"model": "google/gemma-4-e4b"`. The model named in the reply is the only thing
 that gives it away.
 
-**`lms unload` exits 0 having freed nothing.** An unknown name prints `Model
-Not Found` and still exits 0, so the exit code cannot say whether memory came
-back. The catalogue can.
+**A model loaded twice is held twice.** The second load does not replace the
+first: both copies stay in memory, and the catalogue lists each as its own
+entry with the second suffixed `:2`. Those ids are what the release takes, so
+letting go of a model means letting go of every one of them.
 
 </details>
 
