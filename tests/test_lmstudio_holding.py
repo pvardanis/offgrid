@@ -92,6 +92,33 @@ def test_every_model_held_is_let_go_not_only_the_first(monkeypatch):
     ]
 
 
+def test_a_window_is_changed_by_letting_go_first_and_loading_after(monkeypatch):
+    # A second load does not replace the first here: LM Studio serves both
+    # copies, at both windows, and ids the second `:2`. So the only way to
+    # change a window is to free the copy that is held before asking again.
+    asked = answer_as_lm_studio(monkeypatch, holding={"a/wanted-7b": 8000})
+
+    connect(LMStudioConfig(host=HOST)).ensure_only("a/wanted-7b", 16000)
+
+    assert asked["order"] == [
+        ("let_go", "a/wanted-7b"),
+        ("loaded", "a/wanted-7b"),
+    ]
+    assert asked["window"] == 16000
+
+
+def test_a_window_that_will_not_be_freed_is_not_loaded_on_top_of(monkeypatch):
+    # The copy at the old window is still holding its memory, and loading
+    # again would leave the machine serving the model twice over.
+    asked = answer_as_lm_studio(monkeypatch, holding={"a/wanted-7b": 8000})
+    refuse_to_let_go(monkeypatch, "it would not go")
+
+    with pytest.raises(RuntimeUnreachableError, match="still holding"):
+        connect(LMStudioConfig(host=HOST)).ensure_only("a/wanted-7b", 16000)
+
+    assert asked["loaded"] is None
+
+
 def test_a_swap_that_freed_nothing_does_not_load_on_top_of_it(monkeypatch):
     # The model that would not go is still holding its memory. Asking the
     # runtime for another one either fails the load or starts the machine

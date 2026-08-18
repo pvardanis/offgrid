@@ -70,23 +70,26 @@ class LMStudio:
         """
         return get_loaded_models(get_catalogue_payload(self.config.host))
 
-    def ensure_only(self, identifier: str) -> Model:
-        """Hold the named model, whatever the runtime is holding now.
+    def ensure_only(self, identifier: str, window: int | None = None) -> Model:
+        """Hold the named model at a window, whatever the runtime holds now.
 
         A model that will not go is said out loud and this answers anyway
-        where the wanted one is already in memory: nothing is being loaded, so
-        there is nothing to refuse. Where a load is needed, it is refused
-        rather than paid into a pool that is still full.
+        where the wanted one is already in memory at the window asked for:
+        nothing is being loaded, so there is nothing to refuse. Where a load
+        is needed, it is refused rather than paid into a pool that is still
+        full.
 
         :param identifier: The model that will answer.
+        :param window: The context to serve it at, or ``None`` to inherit
+            whatever it is already served at.
 
         :return: The model as LM Studio now serves it.
 
         :raise ModelUnavailableError: When it does not have it.
         :raise ModelNotHeldError: When it took the load and is not holding it.
         :raise RuntimeUnreachableError: When it cannot be reached, when the
-            load fails, when another model answers, or when what is already
-            held will not go and this one would be loaded on top of it.
+            load fails, or when what is already held will not go and the
+            wanted one would be loaded on top of it.
         """
         # One payload read twice, rather than `read_catalogue` and `read_held`,
         # which fetch one each. Two fetches are two moments: a model can be let
@@ -110,8 +113,17 @@ class LMStudio:
         # what matters is whether this one is among them, not whether it
         # happens to be first.
         in_memory = {model.identifier: model for model in get_loaded_models(payload)}
-        if identifier in in_memory:
-            return in_memory[identifier]
+        held = in_memory.get(identifier)
+
+        if held and _is_served_at(held, window):
+            return held
+
+        # A second load does not replace the first: LM Studio serves both
+        # copies of the model, at both windows. So a window that differs is
+        # reached by letting go and loading again, and a release that would
+        # not go leaves nothing to load onto.
+        if held and not self.let_go(identifier):
+            stuck.append(identifier)
 
         if stuck:
             raise RuntimeUnreachableError(
@@ -121,7 +133,7 @@ class LMStudio:
                 "the runtime."
             )
 
-        return self._load(identifier)
+        return self._load(identifier, window)
 
     def let_go(self, identifier: str) -> bool:
         """Let go of a model, saying so if the runtime will not.
@@ -200,10 +212,15 @@ class LMStudio:
 
         return refusals
 
-    def _load(self, identifier: str) -> Model:
+    def _load(self, identifier: str, window: int | None) -> Model:
         """Wait for a model's weights, and read back what is being served.
 
+        What is served is read from the catalogue rather than taken from the
+        load's own answer: a load LM Studio accepted is not a model it is
+        holding, and only the catalogue says which of the two happened.
+
         :param identifier: The model to load.
+        :param window: The context to serve it at, or ``None`` to inherit.
 
         :return: The model as LM Studio now serves it.
 
@@ -214,7 +231,7 @@ class LMStudio:
         started = time.monotonic()
 
         try:
-            load_model(self.config.host, identifier)
+            load_model(self.config.host, identifier, window)
             log.info("  ready in %.0fs", time.monotonic() - started)
 
             return self._now_holding(identifier)
@@ -265,3 +282,17 @@ class LMStudio:
                 stuck.append(model.identifier)
 
         return stuck
+
+
+def _is_served_at(model: Model, window: int | None) -> bool:
+    """Say whether a model in memory is already being served at a window.
+
+    Asking for none is asking for whatever it has, so anything held answers
+    it: that is how a run that says nothing about a window costs no load.
+
+    :param model: The model the runtime is holding.
+    :param window: The context asked for, or ``None`` for whatever it has.
+
+    :return: Whether it is already what was asked for.
+    """
+    return window is None or model.context_window == window
