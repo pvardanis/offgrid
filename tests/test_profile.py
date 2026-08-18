@@ -234,6 +234,9 @@ def test_the_window_an_agent_needs_to_start_is_not_a_profile_key(tmp_path):
     # The floor is what the agent needs, not what anyone prefers, so a file
     # naming it could only assert something false about the agent — bought
     # with a failed launch after a load that has already been paid for.
+    #
+    # A guard rather than a slice: a key no adapter reads was refused before
+    # the floor existed, and this pins the floor among them.
     path = tmp_path / "profile.yaml"
     path.write_text(
         f"runtime:\n  name: lmstudio\n  host: {HOST}\n"

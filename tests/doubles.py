@@ -85,7 +85,9 @@ class StandInAgent:
     """
 
     dialect: Dialect
-    context_floor: int = 25_000
+    # Its own number, not the one the written adapter states: a test that
+    # passed on either would be proving nothing about which was asked.
+    context_floor: int = 12_000
     refusal: Exception | None = None
 
     def configure(self) -> None:
