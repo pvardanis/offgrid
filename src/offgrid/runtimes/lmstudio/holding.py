@@ -71,6 +71,17 @@ def load_model(
             f"{_read_the_complaint(response)}"
         )
 
+    # A success carries the instance it loaded. LM Studio answers 200 for an
+    # endpoint it does not have, so a version without this one would otherwise
+    # read as a load that worked, and be reported afterwards as a model the
+    # runtime took and is not holding.
+    if not _names_an_instance(response):
+        raise RuntimeUnreachableError(
+            f"{url} took {identifier} and named no instance, so nothing there "
+            f"loaded it. Check http://{host} is LM Studio, and new enough to "
+            "serve its model endpoints."
+        )
+
 
 def unload_model(
     host: str, instance: str, timeout: float = UNLOAD_TIMEOUT_SECONDS
@@ -106,6 +117,21 @@ def unload_model(
             f"The runtime answered {response.status_code} letting go of "
             f"{instance}: {_read_the_complaint(response)}"
         )
+
+
+def _names_an_instance(response: httpx.Response) -> bool:
+    """Say whether an answer to a load names what it loaded.
+
+    :param response: What the runtime answered with.
+
+    :return: Whether it carries an instance id.
+    """
+    try:
+        body = response.json()
+    except ValueError:
+        return False
+
+    return isinstance(body, dict) and bool(body.get("instance_id"))
 
 
 def _read_the_complaint(response: httpx.Response) -> str:
