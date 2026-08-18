@@ -627,7 +627,7 @@ def test_an_agent_that_is_there_but_not_executable_is_not_called_missing(
 
 def test_a_runtime_that_will_not_let_go_is_reported_not_hidden(here, monkeypatch):
     runner.invoke(app, ["setup"])
-    refuse_to_let_go(monkeypatch, "lms would not unload it")
+    refuse_to_let_go(monkeypatch, "it would not go")
     _launched(monkeypatch)
 
     result = runner.invoke(app, ["run"])

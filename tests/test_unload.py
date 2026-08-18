@@ -1,43 +1,56 @@
-import subprocess
+import json
 
+import httpx
 import pytest
 
 from offgrid.runtimes.lmstudio.holding import unload
 from offgrid.shared.exceptions import RuntimeUnreachableError
-from tests.doubles import run_tool
+from tests.doubles import serve_post
+
+HOST = "127.0.0.1:1234"
 
 
-def test_unloading_asks_the_runtime_to_let_go(monkeypatch):
-    asked = run_tool(monkeypatch)
+def test_letting_go_names_the_instance_the_runtime_is_holding(monkeypatch):
+    asked: dict = {}
 
-    unload("a/model-7b")
+    def release(request: httpx.Request) -> httpx.Response:
+        asked["url"] = str(request.url)
+        asked["body"] = json.loads(request.content)
 
-    assert asked["argv"][1:] == ["unload", "a/model-7b"]
-    assert asked["check"] is False
-    assert asked["capture_output"] is True
-    assert asked["text"] is True
+        return httpx.Response(200, json={"instance_id": "a/model-7b"})
 
+    serve_post(monkeypatch, release)
 
-def test_a_runtime_without_its_tool_says_which_tool(monkeypatch):
-    def missing(argv, **kwargs):
-        raise FileNotFoundError(2, "No such file or directory")
+    unload(HOST, "a/model-7b")
 
-    monkeypatch.setattr(subprocess, "run", missing)
-    with pytest.raises(RuntimeUnreachableError, match="lms"):
-        unload("a/model-7b")
+    assert asked["url"] == f"http://{HOST}/api/v1/models/unload"
+    assert asked["body"] == {"instance_id": "a/model-7b"}
 
 
-def test_a_refused_unload_reports_what_the_tool_said(monkeypatch):
-    run_tool(monkeypatch, returncode=1, stderr="no such model")
+def test_a_release_the_runtime_refuses_says_what_it_said(monkeypatch):
+    serve_post(
+        monkeypatch,
+        lambda request: httpx.Response(
+            404,
+            json={
+                "error": {
+                    "type": "model_not_found",
+                    "message": "Model with instance identifier 'a/model-7b' is "
+                    "not loaded.",
+                }
+            },
+        ),
+    )
 
-    with pytest.raises(RuntimeUnreachableError, match="no such model"):
-        unload("a/model-7b")
+    with pytest.raises(RuntimeUnreachableError, match="is not loaded"):
+        unload(HOST, "a/model-7b")
 
 
-def test_what_the_tool_said_comes_back_for_whoever_checks(monkeypatch):
-    # `lms unload` exits 0 for a name it does not know, printing "Model Not
-    # Found" and freeing nothing. Its exit code cannot say so; what it printed
-    # is what the caller has to go on, alongside the catalogue.
-    run_tool(monkeypatch, returncode=0, stdout="Model Not Found\n")
+def test_a_release_that_never_arrived_says_where_it_was_sent(monkeypatch):
+    def refuse(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("connection refused", request=request)
 
-    assert unload("a/model-7b") == "Model Not Found"
+    serve_post(monkeypatch, refuse)
+
+    with pytest.raises(RuntimeUnreachableError, match=f"http://{HOST}"):
+        unload(HOST, "a/model-7b")

@@ -1,27 +1,23 @@
 """Taking a model into memory, and letting one go.
 
-The two calls that move weights, and they move them differently: a load is a
-request to the server, and a release is LM Studio's own tool, talking to the
-copy running on this machine.
+The two calls that move weights. Both are requests to the server, so nothing
+here needs a program on this machine's PATH.
 """
-
-import subprocess
 
 import httpx
 
 from offgrid.shared.exceptions import RuntimeUnreachableError
 
 MESSAGES = "/v1/messages"
+UNLOAD = "/api/v1/models/unload"
 
 # Weights come off disk at gigabytes a second, so a large model takes tens of
 # seconds and a cold cache takes longer.
 LOAD_TIMEOUT_SECONDS = 300
 
-# LM Studio has an HTTP unload and has since 0.4.0, but it takes an
-# `instance_id` that the `/api/v0` catalogue this adapter reads does not carry.
-# Its own tool takes a model name, and talks to the copy running on this
-# machine.
-TOOL = "lms"
+# Freeing memory is the runtime dropping what it already has, so this is a
+# ceiling on a machine that is swapping rather than a wait anyone should see.
+UNLOAD_TIMEOUT_SECONDS = 30
 
 
 def load(host: str, identifier: str, timeout: float = LOAD_TIMEOUT_SECONDS) -> None:
@@ -80,45 +76,61 @@ def load(host: str, identifier: str, timeout: float = LOAD_TIMEOUT_SECONDS) -> N
         )
 
 
-def unload(identifier: str) -> str:
-    """Ask LM Studio's own tool to let go of a model.
+def unload(host: str, instance: str, timeout: float = UNLOAD_TIMEOUT_SECONDS) -> None:
+    """Ask the runtime to let go of one instance it is holding.
 
-    The tool talks to the copy running on this machine, so this is the one
-    call offgrid makes to LM Studio that does not go over the network.
+    The endpoint names an instance rather than a model, because LM Studio can
+    hold the same model more than once and freeing memory is per copy.
 
-    Its exit code cannot say whether anything was freed: it exits 0 for a name
-    it does not know, printing ``Model Not Found``. So what it said comes back
-    for whoever asked, and confirming the memory came back is theirs to do.
+    Whether the memory actually came back is the catalogue's answer rather
+    than this one, so a caller that needs to know reads it back.
 
-    :param identifier: The model to unload.
+    :param host: Address the runtime listens on.
+    :param instance: The instance to let go of, as the catalogue ids it.
+    :param timeout: How long to wait before giving up.
 
-    :return: What the tool printed, which is what it has to say about a
-        release that freed nothing.
-
-    :raise RuntimeUnreachableError: When the tool is missing, or refuses.
+    :raise RuntimeUnreachableError: When the runtime cannot be reached, or
+        refuses the release. An instance it is not holding is a 404 saying so,
+        which is how a release that freed nothing announces itself.
     """
+    url = f"http://{host}{UNLOAD}"
+
     try:
-        finished = subprocess.run(
-            [TOOL, "unload", identifier],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-    except OSError as error:
+        response = httpx.post(url, json={"instance_id": instance}, timeout=timeout)
+    except httpx.RequestError as error:
         raise RuntimeUnreachableError(
-            f"Could not run {TOOL} to unload {identifier}: {error}. "
-            "It ships with LM Studio; check it is on PATH."
+            f"The release of {instance} did not reach http://{host}: {error}. "
+            "Check what is listening there."
         ) from error
 
-    if finished.returncode != 0:
-        complaint = (
-            finished.stderr.strip() or finished.stdout.strip() or "no reason given"
-        )
+    if response.is_error:
         raise RuntimeUnreachableError(
-            f"{TOOL} would not unload {identifier}: {complaint}"
+            f"The runtime answered {response.status_code} letting go of "
+            f"{instance}: {_read_the_complaint(response)}"
         )
 
-    return finished.stdout.strip()
+
+def _read_the_complaint(response: httpx.Response) -> str:
+    """Read the reason out of a refusal.
+
+    LM Studio answers one with ``{"error": {"message": ...}}``. Anything else
+    — a proxy's error page, a body carrying no reason — comes back as it
+    arrived, which is more than nothing to go on.
+
+    :param response: What the runtime answered with.
+
+    :return: What it said about refusing.
+    """
+    try:
+        body = response.json()
+    except ValueError:
+        body = None
+
+    said = None
+    if isinstance(body, dict) and isinstance(body.get("error"), dict):
+        said = body["error"].get("message")
+
+    return str(said or response.text.strip() or "no reason given")
 
 
 def _explain_why_the_load_did_not_arrive(

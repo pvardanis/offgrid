@@ -1,13 +1,12 @@
 """LM Studio, stood in for well enough to ask it what a runtime must do.
 
-Its catalogue and its loads come over HTTP and it lets go through its own tool,
-so all three are answered for. Every payload is shaped as the capture in
+Its catalogue, its loads and its releases all come over HTTP, so all three are
+answered for. Every payload is shaped as the capture in
 `tests/fixtures/lmstudio_models.json` shapes it — a live server's answer, never
 a transcription of the documentation, which describes a version the app has
 moved past.
 """
 
-import subprocess
 from dataclasses import dataclass
 
 import httpx
@@ -19,6 +18,7 @@ from offgrid.runtimes.lmstudio.config import LMStudioConfig
 from tests.doubles import (
     CEILING,
     answer_as_lm_studio,
+    answer_the_load,
     refuse_to_let_go,
     serve_get,
     serve_post,
@@ -74,7 +74,7 @@ class LMStudioUnderTest:
         answer_as_lm_studio(monkeypatch, holding=holding, cold=cold, ceiling=catalogued)
 
     def arrange_stuck(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Answer as a runtime whose tool frees nothing it is asked to free.
+        """Answer as a runtime that frees nothing it is asked to free.
 
         :param monkeypatch: The test's patcher.
         """
@@ -93,18 +93,16 @@ class LMStudioUnderTest:
         :param model: The model it takes and does not hold.
         """
         answer_as_lm_studio(monkeypatch, cold={model: 8192})
-        serve_post(
+        answer_the_load(
             monkeypatch,
-            lambda request: httpx.Response(200, json={"model": model, "content": []}),
+            lambda served: httpx.Response(200, json={"model": served, "content": []}),
         )
 
     def arrange_unreachable(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Answer as a runtime whose server nothing is listening for.
 
-        The tool still exits cleanly, because it talks to the copy on this
-        machine rather than to the server that stopped answering. That is the
-        state a release has to survive: what it said is not what settles
-        whether the memory came back.
+        Every call goes to it, the release included, so a release against it is
+        one that cannot be confirmed rather than one that failed.
 
         :param monkeypatch: The test's patcher.
         """
@@ -114,8 +112,3 @@ class LMStudioUnderTest:
 
         serve_get(monkeypatch, refuse)
         serve_post(monkeypatch, refuse)
-        monkeypatch.setattr(
-            subprocess,
-            "run",
-            lambda argv, **kwargs: subprocess.CompletedProcess(list(argv), 0, "", ""),
-        )
