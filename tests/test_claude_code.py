@@ -73,6 +73,14 @@ def test_claude_code_speaks_the_anthropic_dialect(agent):
     assert agent.dialect is Dialect.ANTHROPIC
 
 
+def test_claude_code_will_not_start_in_a_window_under_25k(agent):
+    # Its system prompt and tool definitions do not fit below this, and what
+    # is on the other side is a failure at startup rather than a cramped
+    # session. The number is written out here rather than read from the
+    # source, so that changing the source is a decision this test asks about.
+    assert agent.context_floor == 25_000
+
+
 def test_the_agent_is_pointed_at_the_local_server(launch):
     assert launch.env["ANTHROPIC_BASE_URL"] == f"http://{HOST}"
 
@@ -116,13 +124,15 @@ def test_volatile_prompt_sections_stay_out_of_the_cached_prefix(launch):
     assert "--exclude-dynamic-system-prompt-sections" in launch.argv
 
 
-def test_a_model_nothing_is_holding_is_not_sized_from_its_ceiling(agent):
+def test_a_model_whose_window_is_unstated_is_not_sized_from_its_ceiling(agent):
     # The ceiling is what the model could be served at, not what it is being
     # served at, and compacting against a window nothing is serving is the
     # truncation that reading the window exists to avoid.
-    not_held = Model(identifier="a/b", context_ceiling=262144, context_window=None)
+    unstated_window = Model(
+        identifier="a/b", context_ceiling=262144, context_window=None
+    )
 
-    launch = agent.plan(not_held)
+    launch = agent.plan(unstated_window)
 
     assert launch.env["CLAUDE_CODE_AUTO_COMPACT_WINDOW"] == str(FALLBACK_CONTEXT)
 

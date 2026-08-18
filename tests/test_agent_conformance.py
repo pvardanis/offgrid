@@ -106,7 +106,10 @@ def test_an_agent_states_the_smallest_window_it_can_start_in(
     #
     # It is what the agent needs rather than what anyone prefers, so what a
     # person typed does not move it: an argument that did would buy a failed
-    # launch after a load that had already been paid for.
+    # launch after a load that had already been paid for. That half is a guard
+    # rather than a slice — an adapter settling its floor at binding time
+    # cannot read an argument — and it is here for the adapter that parses its
+    # passthrough and could.
     agent = agent_under_test.prepare(monkeypatch, home)
     told = agent_under_test.prepare(
         monkeypatch, home, passthrough=("--context-floor", "1")
