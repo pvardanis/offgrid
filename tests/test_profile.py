@@ -1,15 +1,14 @@
 """What a hand-edited profile does, and which ones are refused.
 
-Read through the command line, because that is the one place that has both
-registries — a section only becomes the config an adapter is built from once
-something knows which adapters there are.
+Read through `binding.py`, because a section only becomes the config an adapter
+is built from once something knows which adapters there are.
 """
 
 import pytest
 import yaml
 
 from offgrid.agents import create_agent_config
-from offgrid.cli import read_profile
+from offgrid.binding import read_profile
 from offgrid.domain.profile import Profile, save_profile
 from offgrid.domain.running.agent import AgentName
 from offgrid.domain.running.runtime import RuntimeName

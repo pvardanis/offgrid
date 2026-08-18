@@ -7,16 +7,10 @@ from pathlib import Path
 
 import typer
 
-from offgrid.agents import create_agent_config, prepare_agent
-from offgrid.domain.profile import (
-    DEFAULT_PATH,
-    Profile,
-    create_profile,
-    load_yaml,
-    refuse_profile_section,
-    save_profile,
-)
-from offgrid.domain.running.agent import Agent, AgentName, Passthrough
+from offgrid.agents import create_agent_config
+from offgrid.binding import bind_run, read_profile
+from offgrid.domain.profile import DEFAULT_PATH, Profile, save_profile
+from offgrid.domain.running.agent import AgentName
 from offgrid.domain.running.answering import get_resident_model, hold_model
 from offgrid.domain.running.dialect import require_compatible
 from offgrid.domain.running.hosted_tools import (
@@ -24,13 +18,13 @@ from offgrid.domain.running.hosted_tools import (
     require_hosted_tools_denied,
 )
 from offgrid.domain.running.launch import explain_why_it_would_not_start, start
-from offgrid.domain.running.runtime import Runtime, RuntimeName
+from offgrid.domain.running.runtime import RuntimeName
 from offgrid.domain.sizing.fit import BYTES_PER_GB, get_sizes_that_fit
 from offgrid.domain.sizing.machine import detect, suggest_raising_the_gpu_limit
 from offgrid.domain.sizing.reading import get_reading
 from offgrid.domain.sizing.recommendation import summarize_findings
 from offgrid.leaderboards import LEADERBOARDS
-from offgrid.runtimes import connect_runtime, create_runtime_config
+from offgrid.runtimes import create_runtime_config
 from offgrid.shared.exceptions import OffgridError, ProfileError
 from offgrid.shared.say import say_on_stderr, tell
 
@@ -117,7 +111,7 @@ def doctor() -> None:
     # a fault in any of them is reported as offgrid's own error rather than as
     # a traceback under four lines that already looked like an answer.
     with _reporting():
-        profile, runtime, agent = _read_the_run()
+        profile, runtime, agent = bind_run(DEFAULT_PATH)
 
         model = get_resident_model(runtime)
         report = agent.read_hosted_tools()
@@ -167,7 +161,7 @@ def run(
     passthrough = tuple(context.args)
 
     with _reporting():
-        profile, runtime, agent = _read_the_run(passthrough)
+        profile, runtime, agent = bind_run(DEFAULT_PATH, passthrough)
         wanted = model_name or profile.model
 
         # A dialect that cannot be paired and a run that would undo a
@@ -240,53 +234,6 @@ def _cache() -> Path:
     :return: The path to it.
     """
     return DEFAULT_PATH.parent / "leaderboard.json"
-
-
-def _read_the_run(passthrough: Passthrough = ()) -> tuple[Profile, Runtime, Agent]:
-    """Read the profile, and bind both adapters it names.
-
-    What every command that talks to the runtime starts with. A command with
-    no arguments of its own — `doctor` — binds an agent that reports on its
-    configuration alone.
-
-    :param passthrough: Arguments handed to the agent unchanged.
-
-    :return: What was stored, the runtime, and the agent.
-
-    :raise ProfileError: When the profile is not one, or a section is not one
-        its adapter can read.
-    """
-    profile = read_profile(DEFAULT_PATH)
-
-    runtime = connect_runtime(profile.runtime)
-    agent = prepare_agent(profile.agent, passthrough)
-
-    return profile, runtime, agent
-
-
-def read_profile(path: Path) -> Profile:
-    """Read a profile, asking each registry to read the section that is its own.
-
-    This is the one place that has both registries, so it is the one place a
-    section can become the config an adapter is built from.
-
-    :param path: Where to read it from.
-
-    :return: What a run is made from.
-
-    :raise ProfileError: When the file is not one, or a section is not one its
-        adapter can read.
-    """
-    body = load_yaml(path)
-    said = {port: body.get(port, {}) for port in ("runtime", "agent")}
-
-    with refuse_profile_section(said["runtime"], port="runtime", names=RuntimeName):
-        runtime = create_runtime_config(said["runtime"])
-
-    with refuse_profile_section(said["agent"], port="agent", names=AgentName):
-        agent = create_agent_config(said["agent"], runtime_host=runtime.host)
-
-    return create_profile(body, runtime=runtime, agent=agent)
 
 
 def main() -> None:

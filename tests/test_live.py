@@ -12,7 +12,7 @@ import subprocess
 
 import pytest
 
-from offgrid.cli import read_profile
+from offgrid.binding import read_profile
 from offgrid.domain.profile import DEFAULT_PATH
 from offgrid.runtimes.lmstudio.catalogue import (
     get_catalogue_payload,
