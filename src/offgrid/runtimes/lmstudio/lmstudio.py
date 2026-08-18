@@ -14,7 +14,7 @@ from offgrid.runtimes.lmstudio.catalogue import (
     parse_models_from_payload,
 )
 from offgrid.runtimes.lmstudio.config import LMStudioConfig
-from offgrid.runtimes.lmstudio.holding import load, unload
+from offgrid.runtimes.lmstudio.holding import load_model, unload_model
 from offgrid.shared.exceptions import (
     ModelNotHeldError,
     ModelUnavailableError,
@@ -189,7 +189,7 @@ class LMStudio:
 
         for instance in dict.fromkeys([identifier, *held]):
             try:
-                unload(self.config.host, instance)
+                unload_model(self.config.host, instance)
             except RuntimeUnreachableError as error:
                 # Only for a copy something saw held. The one asked after on
                 # the chance the catalogue was behind answers 404 when it was
@@ -214,7 +214,7 @@ class LMStudio:
         started = time.monotonic()
 
         try:
-            load(self.config.host, identifier)
+            load_model(self.config.host, identifier)
             log.info("  ready in %.0fs", time.monotonic() - started)
 
             return self._now_holding(identifier)

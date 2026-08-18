@@ -3,7 +3,7 @@ import json
 import httpx
 import pytest
 
-from offgrid.runtimes.lmstudio.holding import unload
+from offgrid.runtimes.lmstudio.holding import unload_model
 from offgrid.shared.exceptions import RuntimeUnreachableError
 from tests.doubles import serve_post
 
@@ -21,7 +21,7 @@ def test_letting_go_names_the_instance_the_runtime_is_holding(monkeypatch):
 
     serve_post(monkeypatch, release)
 
-    unload(HOST, "a/model-7b")
+    unload_model(HOST, "a/model-7b")
 
     assert asked["url"] == f"http://{HOST}/api/v1/models/unload"
     assert asked["body"] == {"instance_id": "a/model-7b"}
@@ -43,7 +43,7 @@ def test_a_release_the_runtime_refuses_says_what_it_said(monkeypatch):
     )
 
     with pytest.raises(RuntimeUnreachableError, match="is not loaded"):
-        unload(HOST, "a/model-7b")
+        unload_model(HOST, "a/model-7b")
 
 
 def test_a_release_that_never_arrived_says_where_it_was_sent(monkeypatch):
@@ -53,4 +53,4 @@ def test_a_release_that_never_arrived_says_where_it_was_sent(monkeypatch):
     serve_post(monkeypatch, refuse)
 
     with pytest.raises(RuntimeUnreachableError, match=f"http://{HOST}"):
-        unload(HOST, "a/model-7b")
+        unload_model(HOST, "a/model-7b")
