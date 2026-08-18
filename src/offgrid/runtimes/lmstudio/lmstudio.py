@@ -25,10 +25,13 @@ from offgrid.shared.exceptions import (
 # endpoint or method`, so a caller cannot tell a count of zero from an endpoint
 # that is not there.
 #
-# Memory it manages itself: the load endpoint takes no `ttl`, so a model
-# offgrid loads takes the app's own default rather than staying until someone
-# asks for it back. `docs/research/adapter-surfaces.md` records it. So this
-# runtime lets go of things nobody asked it to.
+# Memory it may manage itself, and which is unsettled. The TTL and the
+# Auto-Evict that `docs/research/adapter-surfaces.md` records both belong to a
+# JIT load — one the runtime does on its own initiative to answer a request —
+# and the load endpoint offgrid asks is not that. Whether a model it loads is
+# ever dropped underneath it needs an hour against a live server to answer, so
+# the claim is left at the reading that costs a caller a wasted check rather
+# than a promise offgrid cannot keep. Issue #109.
 CAPABILITIES = Capabilities(
     counts_tokens=False,
     release_can_be_commanded=True,
@@ -118,19 +121,25 @@ class LMStudio:
         if held and _is_served_at(held, window):
             return held
 
-        # A second load does not replace the first: LM Studio serves both
-        # copies of the model, at both windows. So a window that differs is
-        # reached by letting go and loading again, and a release that would
-        # not go leaves nothing to load onto.
-        if held and not self.let_go(identifier):
-            stuck.append(identifier)
-
+        # Settled before the wanted model is touched: a load that is going to
+        # be refused anyway must not cost the copy that is answering now.
         if stuck:
             raise RuntimeUnreachableError(
                 f"The runtime at {self.config.host} is still holding "
                 f"{', '.join(stuck)}, so {identifier} is not being loaded on "
                 "top of it. Let go of it in the runtime directly, or restart "
                 "the runtime."
+            )
+
+        # A second load does not replace the first: LM Studio serves both
+        # copies of the model, at both windows. So a window that differs is
+        # reached by letting go and loading again.
+        if held and not self.let_go(identifier):
+            raise RuntimeUnreachableError(
+                f"The runtime at {self.config.host} is serving {identifier} at "
+                f"{held.context_window} and will not let it go, so it cannot be "
+                f"held at {window} instead. Let it go in the runtime directly, "
+                "or run at the window it is already serving."
             )
 
         return self._load(identifier, window)
