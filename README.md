@@ -341,6 +341,13 @@ Plus `--strict-mcp-config` with no config, so no MCP servers load at all, and
 `--exclude-dynamic-system-prompt-sections`, so the cached prefix stays
 identical between turns.
 
+The compaction window is set only at 100,000 and above, because Claude Code
+raises anything smaller to 100,000 — asking for 32,768 gets 100,000 back, and
+the agent then runs to 100k before compacting while the runtime truncates at
+32k. Below that, and when the runtime states no window at all, offgrid sets
+none, takes any you exported back out of what the agent inherits, and says so
+before the run: `/compact` is the recovery there.
+
 **Its profile lives in `~/.offgrid/claude-code/`**, separate from your own
 `~/.claude`, which is what keeps your plugins, servers and hooks out of a
 prefix you pay to prefill on every cold request. offgrid writes two files there

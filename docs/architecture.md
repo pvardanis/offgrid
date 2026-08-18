@@ -551,11 +551,24 @@ Refusing them would cost someone a run for nothing.
 
 **`plan` returns a `Launch` and writes nothing.** An environment and an
 argument list can be shown before anything runs, which is the whole reason
-`Launch` exists. Three agents configure themselves three different ways —
-Claude Code entirely through environment variables, OpenCode through an
-`opencode.json` provider block, Codex through a `[model_providers.*]` table in
-`~/.codex/config.toml` — and that difference belongs inside `configure`, not
-smuggled into `plan` as a side effect.
+`Launch` exists. What a person is owed about the run travels in it rather than
+on the port, because what there is to say is one agent's own: Claude Code
+raises a compaction window under 100,000 to 100,000, while Codex documents a
+`model_context_window` with no clamp stated and OpenCode's was not established
+at all — so a member every adapter had to answer would be one vendor's quirk
+asked of all of them. An agent with nothing to say builds a `Launch` without
+it.
+
+A launch also names what the agent is started *without*. The agent inherits
+offgrid's own environment, so a setting deliberately not made is one an
+exported variable makes on offgrid's behalf; naming it is how "offgrid asked
+for nothing here" stays a fact about what the agent reads.
+
+Three agents configure themselves three different ways — Claude Code entirely
+through environment variables, OpenCode through an `opencode.json` provider
+block, Codex through a `[model_providers.*]` table in `~/.codex/config.toml` —
+and that difference belongs inside `configure`, not smuggled into `plan` as a
+side effect.
 
 ## The leaderboard seam — built
 
@@ -950,7 +963,6 @@ structural conformance needs no test at all.
   request, so it has no per-request knob; its levers are the agent's
   environment and whatever server-side default a runtime takes. Out of the
   ports, possibly a `doctor` warning.
-- Whether a cold prefill outlasts the agent's stream watchdog (#45), and what
-  the auto-compact window should be when the agent clamps it above what the
-  runtime serves (#46). Both are launch-time facts about a pairing, and both
-  need a live run rather than more reading.
+- Whether a cold prefill outlasts the agent's stream watchdog (#45). A
+  launch-time fact about a pairing, and one a live run settles rather than
+  more reading.

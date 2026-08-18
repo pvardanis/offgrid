@@ -919,3 +919,44 @@ which is why it stays:
 Proven live: two copies held, `let_go` called once, the catalogue empty after.
 A fixture cannot make that claim — it can only repeat the `:2` convention it
 was told.
+
+## A caution rides on the launch, not on the agent port
+
+Where offgrid will not size the agent's compaction, a person has to be told
+before the run rather than mid-session. The words are the agent's own —
+`/compact` is Claude Code's command, and the 100,000 it raises anything smaller
+to is Claude Code's number — so the domain cannot write the sentence and the
+command line cannot either.
+
+A member on the agent port was the first shape and is rejected. The survey in
+`docs/research/adapter-surfaces.md` has Codex documenting a
+`model_context_window` with no clamp stated, and OpenCode's not established at
+all — the doc that would say is recorded there as unread. That is enough: a
+`read_compaction` every adapter had to answer would be one vendor's quirk asked
+of all of them, and answered `None` forever by an adapter with no clamp to
+speak of.
+
+So `Launch` carries it. An agent with nothing to say builds a `Launch` without
+it, which is the default. `plan` writes nothing and starts nothing, so `doctor`
+could show the same sentence `run` does without paying for a load; today only
+`run` prints it, and #93's story 16 is where that gets settled.
+
+Not setting the variable is a claim about what the agent reads, so the launch
+names it as dropped and it is taken back out of the environment the agent
+inherits. Left merely unwritten, a `CLAUDE_CODE_AUTO_COMPACT_WINDOW` exported in
+someone's shell would answer in offgrid's place — and it is the people who
+followed a setup guide who are likeliest to have exported one, which is the
+population this sentence exists for.
+
+Where the runtime states no window at all, nothing is asked for either, and the
+sentence says so rather than guessing. The old fallback asked for 32,768 there,
+which Claude Code raised to 100,000 — a number picked by neither offgrid nor the
+runtime, describing nothing. When the agent compacts is then Claude Code's own
+business, which is worse than a window offgrid chose and better than one it
+invented.
+
+The number it turns on is not configurable and does not want to be. It is what
+Claude Code does to what it is given, not a preference: asking for 32,768 gets
+100,000 back, which is the truncation that reading the served window exists to
+prevent. That is why nothing is asked for below it, rather than a smaller number
+being asked for and hoped over.

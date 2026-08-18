@@ -66,7 +66,13 @@ needs rather than what anyone prefers: below it the agent's own prompt does not
 fit and it fails at startup, so the agent states it and nobody sets it.
 
 **launch** — an environment and an argument list, built before anything runs,
-so it can be shown rather than guessed at.
+so it can be shown rather than guessed at. It carries the caution below, where
+there is one.
+
+**caution** — what a person is owed before a run starts, because the agent will
+otherwise do something they meet mid-session. An agent's own words, since only
+it knows what it will do and which of its commands is the way out. Claude Code's
+is about compaction; most launches carry none.
 
 **profile** — what offgrid remembers between runs. YAML, hand-editable, one per
 machine.
