@@ -1,6 +1,10 @@
-"""Stand-ins for what offgrid talks to: a server, and a Mac."""
+"""Stand-ins for what any run talks to: a Mac, an agent, and the transport.
 
-import json
+One runtime's server is answered for in `tests/lmstudio_server.py`, beside the
+adapter that talks to it, so that a second runtime's stand-in lands beside its
+own rather than in here.
+"""
+
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -15,7 +19,6 @@ from offgrid.domain.running.launch import Launch
 from offgrid.domain.running.model import Model
 from offgrid.domain.running.runtime import RuntimeConfig, RuntimeName
 from offgrid.domain.sizing.machine import Machine
-from offgrid.runtimes.lmstudio.holding import MESSAGES, UNLOAD
 
 GIB = 1024**3
 MACHINE = Machine(
@@ -175,185 +178,5 @@ def serve_post(monkeypatch: pytest.MonkeyPatch, handler) -> None:
     def post(url: str, json: dict, timeout: float = 0) -> httpx.Response:
         with httpx.Client(transport=transport) as client:
             return client.post(url, json=json, timeout=timeout)
-
-    monkeypatch.setattr(httpx, "post", post)
-
-
-def _entry(identifier: str, *, served: int, ceiling: int, in_memory: bool) -> dict:
-    """Describe one model the way LM Studio's catalogue does.
-
-    :param identifier: The model's id.
-    :param served: The context it is served at once it is loaded.
-    :param ceiling: The context it states before anything loads it.
-    :param in_memory: Whether it is held.
-
-    :return: One catalogue entry.
-    """
-    entry = {
-        "id": identifier,
-        "type": "llm",
-        "state": "loaded" if in_memory else "not-loaded",
-        "max_context_length": ceiling,
-    }
-    if in_memory:
-        entry["loaded_context_length"] = served
-
-    return entry
-
-
-def answer_as_lm_studio(
-    monkeypatch: pytest.MonkeyPatch,
-    *,
-    holding: dict[str, int] | None = None,
-    cold: dict[str, int] | None = None,
-    ceiling: int = CEILING,
-) -> dict:
-    """Answer for LM Studio, as what it holds changes.
-
-    Its catalogue, its loads and its releases all come over HTTP, so all three
-    are answered for here. Each mapping is a model against the context it is
-    served at; a cold model states only its ceiling until something loads it,
-    which is what makes the two numbers differ.
-
-    :param monkeypatch: The test's patcher.
-    :param holding: Models in memory, against the context each is served at.
-    :param cold: Models it has and is not holding.
-    :param ceiling: The context every model states before it is loaded.
-
-    :return: What it was asked to load and let go of, and in what order.
-    """
-    served = {**(holding or {}), **(cold or {})}
-    in_memory = dict.fromkeys(holding or {}, True) | dict.fromkeys(cold or {}, False)
-    asked: dict = {"loaded": None, "let_go": [], "order": []}
-
-    def catalogue(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(
-            200,
-            json={
-                "data": [
-                    _entry(name, served=served[name], ceiling=ceiling, in_memory=state)
-                    for name, state in in_memory.items()
-                ]
-            },
-        )
-
-    def load(identifier: str) -> httpx.Response:
-        in_memory[identifier] = True
-        asked["loaded"] = identifier
-        asked["order"].append(("loaded", identifier))
-
-        return httpx.Response(200, json={"model": identifier, "content": []})
-
-    def let_go(instance: str) -> httpx.Response:
-        asked["let_go"].append(instance)
-        asked["order"].append(("let_go", instance))
-
-        if not in_memory.get(instance):
-            return httpx.Response(
-                404,
-                json={
-                    "error": {
-                        "type": "model_not_found",
-                        "message": f"Model with instance identifier "
-                        f"'{instance}' is not loaded.",
-                    }
-                },
-            )
-
-        in_memory[instance] = False
-
-        return httpx.Response(200, json={"instance_id": instance})
-
-    def posted(request: httpx.Request) -> httpx.Response:
-        body = json.loads(request.content)
-
-        if request.url.path == UNLOAD:
-            return let_go(body["instance_id"])
-
-        return load(body["model"])
-
-    serve_get(monkeypatch, catalogue)
-    serve_post(monkeypatch, posted)
-
-    return asked
-
-
-def refuse_to_let_go(monkeypatch: pytest.MonkeyPatch, complaint: str) -> None:
-    """Answer as a runtime that will not let go of anything it is holding.
-
-    :param monkeypatch: The test's patcher.
-    :param complaint: What the runtime says about it.
-    """
-    answer_the_release(
-        monkeypatch,
-        lambda instance: httpx.Response(500, json={"error": {"message": complaint}}),
-    )
-
-
-def take_the_release_and_free_nothing(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Answer as a runtime that accepts a release and goes on holding the model.
-
-    :param monkeypatch: The test's patcher.
-    """
-    answer_the_release(
-        monkeypatch,
-        lambda instance: httpx.Response(200, json={"instance_id": instance}),
-    )
-
-
-def answer_the_release(monkeypatch: pytest.MonkeyPatch, answer) -> None:
-    """Answer the release however a test wants, leaving the rest as it was.
-
-    The catalogue is left saying what it said, which is how a release that
-    freed nothing is arranged at all.
-
-    :param monkeypatch: The test's patcher.
-    :param answer: Called with the instance id, answering with a response.
-    """
-    _take_over(monkeypatch, UNLOAD, lambda body: answer(body["instance_id"]))
-
-
-def answer_the_load(monkeypatch: pytest.MonkeyPatch, answer) -> None:
-    """Answer the load however a test wants, leaving the rest as it was.
-
-    :param monkeypatch: The test's patcher.
-    :param answer: Called with the model, answering with a response.
-    """
-    _take_over(monkeypatch, MESSAGES, lambda body: answer(body["model"]))
-
-
-def _take_over(monkeypatch: pytest.MonkeyPatch, path: str, answer) -> None:
-    """Answer one endpoint, leaving whatever was arranged before it serving.
-
-    A test that replaced `httpx.post` outright would answer the load and the
-    release with the same handler, and lose whichever of the two it was not
-    arranging.
-
-    So this composes onto what is already standing in, and a server has to be
-    standing in first. Refused rather than allowed, because arranging one
-    endpoint against the real `httpx.post` reaches the network guard on the
-    call this takes over and nowhere else — a double that answers one request
-    and abandons the rest is a test that proves less than it reads as.
-
-    :param monkeypatch: The test's patcher.
-    :param path: The endpoint to take over.
-    :param answer: Called with the decoded body, answering with a response.
-
-    :raise AssertionError: When no server has been stood in yet.
-    """
-    serving = httpx.post
-
-    if getattr(serving, "__module__", None) != __name__:
-        raise AssertionError(
-            f"Nothing is standing in for the server, so taking over {path} "
-            "would leave every other call reaching for one. Call "
-            "answer_as_lm_studio first."
-        )
-
-    def post(url: str, json: dict, timeout: float = 0) -> httpx.Response:
-        if url.endswith(path):
-            return answer(json)
-
-        return serving(url, json=json, timeout=timeout)
 
     monkeypatch.setattr(httpx, "post", post)

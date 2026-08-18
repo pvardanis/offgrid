@@ -17,13 +17,9 @@ from offgrid.shared.exceptions import (
     LeaderboardUnreachableError,
     LeaderboardUnreadableError,
 )
-from tests.doubles import (
-    StandInAgent,
-    answer_as_a_mac,
-    answer_as_an_agent,
-    answer_as_lm_studio,
-    refuse_to_let_go,
-)
+from tests.doubles import StandInAgent, answer_as_a_mac, answer_as_an_agent
+from tests.lmstudio_endpoint import refuse_to_let_go
+from tests.lmstudio_server import answer_as_lm_studio
 
 GIB = 1024**3
 RESIDENT = "qwen/qwen3.6-35b-a3b"

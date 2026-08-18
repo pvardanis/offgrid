@@ -16,7 +16,7 @@ from offgrid.domain.running.answering import get_resident_model, hold_model
 from offgrid.runtimes.lmstudio import connect
 from offgrid.runtimes.lmstudio.config import LMStudioConfig
 from offgrid.shared.exceptions import ModelUnavailableError
-from tests.doubles import answer_as_lm_studio
+from tests.lmstudio_server import answer_as_lm_studio
 
 HOST = "127.0.0.1:1234"
 RESIDENT = "a/held-7b"
