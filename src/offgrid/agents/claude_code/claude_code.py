@@ -129,7 +129,7 @@ class ClaudeCode:
 
         :return: The environment and command to run.
         """
-        context = model.context_limit or FALLBACK_CONTEXT
+        context = model.context_window or FALLBACK_CONTEXT
 
         env = {
             "CLAUDE_CONFIG_DIR": str(self.config.config_dir),

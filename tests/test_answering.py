@@ -60,5 +60,5 @@ def test_the_model_asked_for_is_held_alone(monkeypatch):
     model = hold_model(connect(LMStudioConfig(host=HOST)), "a/other-7b")
 
     assert model.identifier == "a/other-7b"
-    assert model.context_limit == 32768
+    assert model.context_window == 32768
     assert asked["let_go"] == [RESIDENT]

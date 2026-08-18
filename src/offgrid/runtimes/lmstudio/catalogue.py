@@ -91,9 +91,8 @@ def parse_models_from_payload(payload: dict) -> list[Model]:
         models.append(
             Model(
                 identifier=identifier,
-                context_limit=entry.get("loaded_context_length")
-                or entry.get("max_context_length")
-                or 0,
+                context_ceiling=entry.get("max_context_length") or 0,
+                context_window=entry.get("loaded_context_length"),
             )
         )
 
@@ -108,8 +107,8 @@ def get_loaded_models(payload: dict) -> list[Model]:
 
     :param payload: A decoded response from the catalogue endpoint.
 
-    :return: Every loaded model, in catalogue order, described by the context
-        the runtime serves it at rather than its ceiling.
+    :return: Every loaded model, in catalogue order, each stating the window
+        it is served at as well as its ceiling.
     """
     # Read through `parse_models` rather than the payload, so an entry with
     # no id is the error it names rather than a `KeyError` from in here.

@@ -44,7 +44,7 @@ def test_a_model_is_answered_for_as_it_is_served_not_as_it_is_catalogued(
     model = runtime.connect().ensure_only("a/wanted-7b")
 
     assert model.identifier == "a/wanted-7b"
-    assert model.context_limit == 32768
+    assert (model.context_window, model.context_ceiling) == (32768, 262144)
 
 
 def test_only_the_model_that_will_answer_is_held_afterwards(

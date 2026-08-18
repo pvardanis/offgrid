@@ -29,6 +29,7 @@ from tests.agents_under_test import AGENTS_UNDER_TEST, AgentUnderTest
 
 WANTED = "a/wanted-7b"
 CONTEXT = 32768
+CEILING = 262144
 
 
 @pytest.fixture(params=AGENTS_UNDER_TEST, ids=lambda under_test: under_test.name)
@@ -78,7 +79,9 @@ def _plan_for_a_model(agent: Agent) -> Launch:
 
     :return: The environment and command it answered with.
     """
-    return agent.plan(Model(identifier=WANTED, context_limit=CONTEXT))
+    return agent.plan(
+        Model(identifier=WANTED, context_ceiling=CEILING, context_window=CONTEXT)
+    )
 
 
 def test_what_an_agent_speaks_is_readable_before_anything_is_written(

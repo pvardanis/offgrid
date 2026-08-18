@@ -44,8 +44,8 @@ def hold_model(runtime: Runtime, identifier: str | None) -> Model:
     :param runtime: The runtime to ask.
     :param identifier: The model asked for, or ``None`` for the resident one.
 
-    :return: The model that will answer, described by the context the runtime
-        serves it at.
+    :return: The model that will answer, stating the window the runtime serves
+        it at as well as its ceiling.
 
     :raise ModelUnavailableError: When the runtime does not have it, or when
         none was named and it is holding nothing.
