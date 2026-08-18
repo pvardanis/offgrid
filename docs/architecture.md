@@ -14,6 +14,7 @@ target, not as the code.
 flowchart TD
     subgraph cmd [command line]
         cli[cli.py]
+        binding[binding.py]
     end
     subgraph adapters [adapters]
         rt["runtimes/"]
@@ -107,6 +108,7 @@ would be doing.
 
 ```
 cli.py             setup, doctor, recommend, run
+binding.py         the profile read, and both adapters it names bound
 ```
 
 **adapters**
