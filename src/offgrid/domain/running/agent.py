@@ -156,7 +156,9 @@ class Agent(Protocol):
 
         :param model: The model that will answer.
 
-        :return: The environment and command to run.
+        :return: The environment and command to run, what to take back out of
+            what the agent inherits, and anything a person is owed before it
+            starts — nothing, for an agent with nothing to say.
         """
         ...
 

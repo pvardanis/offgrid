@@ -127,6 +127,8 @@ agents/            one package per agent
     configuring.py what offgrid writes into its directory
     launching.py   the arguments and sizes it is started with, and
                    what is read back out of them
+    compacting.py  what it compacts against, and what is said where
+                   it will not
 leaderboards/      one module per published list, and the registry
   onyx.py          fetching and parsing the page
 ```

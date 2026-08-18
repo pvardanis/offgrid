@@ -65,6 +65,24 @@ def test_the_agent_keeps_the_rest_of_the_callers_environment(monkeypatch):
     assert started["env"]["EXAMPLE_FROM_THE_CALLER"] == "kept"
 
 
+def test_a_setting_offgrid_drops_does_not_reach_the_agent(monkeypatch):
+    # An agent inherits what offgrid does not name, so leaving a variable
+    # unwritten leaves whatever a person exported answering in offgrid's
+    # place — while offgrid tells them nothing was set.
+    monkeypatch.setenv("EXAMPLE_FROM_THE_CALLER", "exported")
+    started = _agent(monkeypatch, _Agent())
+
+    start(
+        Launch(
+            env={},
+            argv=["claude"],
+            dropped=frozenset({"EXAMPLE_FROM_THE_CALLER"}),
+        )
+    )
+
+    assert "EXAMPLE_FROM_THE_CALLER" not in started["env"]
+
+
 def test_the_agents_exit_code_comes_back(monkeypatch):
     _agent(monkeypatch, _Agent(code=3))
 

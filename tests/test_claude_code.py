@@ -13,7 +13,6 @@ import pytest
 
 from offgrid.agents import create_agent_config
 from offgrid.agents.claude_code import prepare
-from offgrid.agents.claude_code.launching import FALLBACK_CONTEXT
 from offgrid.domain.running.dialect import Dialect
 from offgrid.domain.running.hosted_tools import HostedToolsStatus
 from offgrid.domain.running.model import Model
@@ -134,14 +133,64 @@ def test_a_model_whose_window_is_unstated_is_not_sized_from_its_ceiling(agent):
 
     launch = agent.plan(unstated_window)
 
-    assert launch.env["CLAUDE_CODE_AUTO_COMPACT_WINDOW"] == str(FALLBACK_CONTEXT)
+    assert "CLAUDE_CODE_AUTO_COMPACT_WINDOW" not in launch.env
+    assert launch.caution and "262144" not in launch.caution
 
 
-def test_a_model_with_no_stated_context_gets_a_workable_default(agent):
+def test_a_model_with_no_stated_context_is_said_to_compact_too_late(agent):
+    # Nothing to size compaction to and nothing to guess with: what is left is
+    # saying so, since the person meets it as a truncated prefix otherwise.
     unstated = Model(identifier="a/b", context_ceiling=None, context_window=None)
+
     launch = agent.plan(unstated)
 
-    assert launch.env["CLAUDE_CODE_AUTO_COMPACT_WINDOW"] == str(FALLBACK_CONTEXT)
+    assert "CLAUDE_CODE_AUTO_COMPACT_WINDOW" not in launch.env
+    assert launch.caution and "no window" in launch.caution
+    assert "/compact" in launch.caution
+
+
+def test_a_window_under_the_one_that_is_honoured_is_not_asked_for(agent):
+    # Claude Code raises anything under 100,000 to 100,000, so a run served at
+    # 32,768 that asked for it would compact at 100k while the runtime
+    # truncated the prefix at 32k. What a person reads names both numbers,
+    # because neither of them is guessable from the other.
+    served_small = Model(identifier="a/b", context_ceiling=262144, context_window=32768)
+
+    launch = agent.plan(served_small)
+
+    assert "CLAUDE_CODE_AUTO_COMPACT_WINDOW" not in launch.env
+    assert "32768" in launch.caution
+    assert "100000" in launch.caution
+    assert "/compact" in launch.caution
+
+
+@pytest.mark.parametrize("window", [None, 1, 8192, 32768, 99_999, 100_000, 262144])
+def test_a_window_is_either_asked_for_or_spoken_about(agent, window):
+    # The pair either way round is the failure: a window set beside a sentence
+    # saying none was sends someone to /compact for nothing, and a window
+    # unset with nothing said is the truncation this exists to prevent. One
+    # decision, so the two halves are the same answer read twice.
+    launch = agent.plan(
+        Model(identifier="a/b", context_ceiling=262144, context_window=window)
+    )
+
+    asked_for = "CLAUDE_CODE_AUTO_COMPACT_WINDOW" in launch.env
+
+    assert asked_for is (launch.caution is None)
+    assert asked_for is ("CLAUDE_CODE_AUTO_COMPACT_WINDOW" not in launch.dropped)
+
+
+def test_the_smallest_honoured_window_is_asked_for(agent):
+    # The boundary itself: at 100,000 the number asked for is the number
+    # served, so it is set rather than withheld, and nothing is said.
+    served_at_the_floor = Model(
+        identifier="a/b", context_ceiling=262144, context_window=100_000
+    )
+
+    launch = agent.plan(served_at_the_floor)
+
+    assert launch.env["CLAUDE_CODE_AUTO_COMPACT_WINDOW"] == "100000"
+    assert launch.caution is None
 
 
 def test_the_configuration_denies_the_search_that_cannot_work(agent, config_dir):
