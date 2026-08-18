@@ -325,11 +325,26 @@ def _take_over(monkeypatch: pytest.MonkeyPatch, path: str, answer) -> None:
     release with the same handler, and lose whichever of the two it was not
     arranging.
 
+    So this composes onto what is already standing in, and a server has to be
+    standing in first. Refused rather than allowed, because arranging one
+    endpoint against the real `httpx.post` reaches the network guard on the
+    call this takes over and nowhere else — a double that answers one request
+    and abandons the rest is a test that proves less than it reads as.
+
     :param monkeypatch: The test's patcher.
     :param path: The endpoint to take over.
     :param answer: Called with the decoded body, answering with a response.
+
+    :raise AssertionError: When no server has been stood in yet.
     """
     serving = httpx.post
+
+    if getattr(serving, "__module__", None) != __name__:
+        raise AssertionError(
+            f"Nothing is standing in for the server, so taking over {path} "
+            "would leave every other call reaching for one. Call "
+            "answer_as_lm_studio first."
+        )
 
     def post(url: str, json: dict, timeout: float = 0) -> httpx.Response:
         if url.endswith(path):

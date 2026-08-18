@@ -6,17 +6,25 @@ import pytest
 from offgrid.domain.running.dialect import Dialect
 from offgrid.runtimes.lmstudio import connect
 from offgrid.runtimes.lmstudio.catalogue import (
+    get_held_instances,
     get_loaded_models,
     parse_models_from_payload,
 )
 from offgrid.runtimes.lmstudio.config import LMStudioConfig
 
-FIXTURE = pathlib.Path(__file__).parent / "fixtures" / "lmstudio_models.json"
+FIXTURES = pathlib.Path(__file__).parent / "fixtures"
+FIXTURE = FIXTURES / "lmstudio_models.json"
+HELD_TWICE = FIXTURES / "lmstudio_models_held_twice.json"
 
 
 @pytest.fixture(scope="session")
 def payload() -> dict:
     return json.loads(FIXTURE.read_text())
+
+
+@pytest.fixture(scope="session")
+def held_twice() -> dict:
+    return json.loads(HELD_TWICE.read_text())
 
 
 def test_embeddings_are_not_offered_as_chat_models(payload: dict):
@@ -68,6 +76,28 @@ def test_every_model_in_memory_is_reported():
         "a/first-7b",
         "a/second-7b",
     ]
+
+
+def test_a_model_held_twice_is_two_instances_to_let_go_of(held_twice: dict):
+    # Loading the same model again does not replace it: LM Studio serves both
+    # copies and lists each as its own entry, the second suffixed `:2`. That
+    # id is what the release endpoint takes, so it is what has to be found.
+    assert get_held_instances(held_twice, "qwen3-0.6b-mlx") == [
+        "qwen3-0.6b-mlx",
+        "qwen3-0.6b-mlx:2",
+    ]
+
+
+def test_one_instance_of_a_model_is_the_only_one_named_by_its_own_id(
+    held_twice: dict,
+):
+    # Whoever already has an instance id in hand asked about that copy, not
+    # about every copy of the model it belongs to.
+    assert get_held_instances(held_twice, "qwen3-0.6b-mlx:2") == ["qwen3-0.6b-mlx:2"]
+
+
+def test_a_model_nothing_is_holding_has_no_instances(held_twice: dict):
+    assert get_held_instances(held_twice, "google/gemma-4-e4b") == []
 
 
 def test_no_model_is_in_memory_when_none_is_loaded():

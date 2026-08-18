@@ -8,6 +8,8 @@ Why a call did not arrive is a table per call, so the three sentences read
 beside each other rather than down a ladder of `except` branches.
 """
 
+import re
+
 import httpx
 
 from offgrid.domain.running.model import Model
@@ -15,6 +17,10 @@ from offgrid.shared.exceptions import RuntimeUnreachableError
 
 CATALOGUE = "/api/v0/models"
 TIMEOUT_SECONDS = 5
+
+# What tells the second copy of a model from the model itself. A model id is
+# a publisher and a name, so the suffix cannot be mistaken for part of one.
+INSTANCE_SUFFIX = re.compile(r":\d+$")
 
 
 def get_catalogue_payload(host: str) -> dict:
@@ -117,6 +123,31 @@ def get_loaded_models(payload: dict) -> list[Model]:
         model
         for model in parse_models_from_payload(payload)
         if model.identifier in held
+    ]
+
+
+def get_held_instances(payload: dict, identifier: str) -> list[str]:
+    """Find every copy of one model that the runtime is holding.
+
+    Loading a model that is already loaded does not replace it: LM Studio
+    serves both copies, and the catalogue lists each as its own entry, the
+    second and later ones carrying the model's id with a ``:2``, ``:3``
+    suffix. Each of those ids is an ``instance_id``, which is what a release
+    names, so letting go of a model means letting go of all of them.
+
+    An id that already names one instance answers with that one alone —
+    whoever holds it asked about that copy rather than about the model.
+
+    :param payload: A decoded response from the catalogue endpoint.
+    :param identifier: The model, or one instance of it, to let go of.
+
+    :return: The instances held, in catalogue order.
+    """
+    return [
+        model.identifier
+        for model in get_loaded_models(payload)
+        if model.identifier == identifier
+        or INSTANCE_SUFFIX.sub("", model.identifier) == identifier
     ]
 
 

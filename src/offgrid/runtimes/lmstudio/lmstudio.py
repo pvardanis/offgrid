@@ -9,6 +9,7 @@ from offgrid.domain.running.dialect import Dialect
 from offgrid.domain.running.model import Model
 from offgrid.runtimes.lmstudio.catalogue import (
     get_catalogue_payload,
+    get_held_instances,
     get_loaded_models,
     parse_models_from_payload,
 )
@@ -125,7 +126,10 @@ class LMStudio:
     def let_go(self, identifier: str) -> bool:
         """Let go of a model, saying so if the runtime will not.
 
-        What the release answered is not what settles this — the catalogue is.
+        Every copy of it, because a release names one instance and LM Studio
+        serves a model twice over where it was loaded twice.
+
+        What a release answered is not what settles this — the catalogue is.
         Memory that stays held is worth saying out loud, and worth answering
         for: the log record is for whoever is watching, the answer is for
         whoever has to decide what to do next.
@@ -140,22 +144,61 @@ class LMStudio:
         :return: Whether the memory came back.
         """
         try:
-            unload(self.config.host, identifier)
-            in_memory = self.read_held()
+            refusals = self._release_every_instance(identifier)
+            still_held = get_held_instances(
+                get_catalogue_payload(self.config.host), identifier
+            )
         except RuntimeUnreachableError as error:
             log.warning("  The runtime is still holding %s: %s", identifier, error)
             return False
 
-        if any(model.identifier == identifier for model in in_memory):
+        if still_held:
             log.warning(
-                "  The runtime is still holding %s: http://%s took the release "
-                "and still has it loaded. Let it go in LM Studio directly.",
+                "  The runtime is still holding %s: http://%s has %s loaded — "
+                "%s. Let it go in LM Studio directly.",
                 identifier,
                 self.config.host,
+                ", ".join(still_held),
+                "; ".join(refusals) or "it took the release and freed nothing",
             )
             return False
 
         return True
+
+    def _release_every_instance(self, identifier: str) -> list[str]:
+        """Ask the runtime to let go of each copy of a model it is holding.
+
+        The model is named alongside them whether the catalogue lists it or
+        not: a load that failed may have left weights behind that the
+        catalogue does not show, and nobody downstream of here knows to ask
+        again. What that costs where there really is nothing is one request
+        answered 404.
+
+        A refusal is collected rather than raised, so that one copy that will
+        not go does not leave the others held.
+
+        :param identifier: The model to let go of.
+
+        :return: What the runtime said about the copies it would not free.
+
+        :raise RuntimeUnreachableError: When the catalogue cannot be read, so
+            that what is held is unknown rather than empty.
+        """
+        held = get_held_instances(get_catalogue_payload(self.config.host), identifier)
+        refusals = []
+
+        for instance in dict.fromkeys([identifier, *held]):
+            try:
+                unload(self.config.host, instance)
+            except RuntimeUnreachableError as error:
+                # Only for a copy something saw held. The one asked after on
+                # the chance the catalogue was behind answers 404 when it was
+                # not, and reporting that beside a real refusal explains
+                # memory that is stuck with a non-event.
+                if instance in held:
+                    refusals.append(str(error))
+
+        return refusals
 
     def _load(self, identifier: str) -> Model:
         """Wait for a model's weights, and read back what is being served.

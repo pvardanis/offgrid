@@ -2,28 +2,40 @@
 
 Opt-in, with `uv run pytest -m live`. Everything else in the suite answers
 with a double, which cannot tell the truth about a server that takes a name
-it does not have, or a tool that reports success having freed nothing. This
-is the check that no double can stand in for.
+it does not have, or that ids the second copy of a model the way a double was
+told it does. This is the check that no double can stand in for.
 
 It lets go of whatever the runtime is holding, which is what a run does.
 """
 
 import subprocess
+from collections.abc import Iterator
 
+import httpx
 import pytest
 
 from offgrid.binding import read_profile
 from offgrid.domain.profile import DEFAULT_PATH
+from offgrid.runtimes.lmstudio import connect
 from offgrid.runtimes.lmstudio.catalogue import (
     get_catalogue_payload,
+    get_held_instances,
     get_loaded_models,
     parse_models_from_payload,
 )
+from offgrid.runtimes.lmstudio.config import LMStudioConfig
+from offgrid.runtimes.lmstudio.holding import LOAD_TIMEOUT_SECONDS, unload
 from offgrid.shared.exceptions import OffgridError
 
 pytestmark = pytest.mark.live
 
 ANSWER_SECONDS = 600
+
+# Loading the same model again is how a second copy of it comes to be held,
+# and the messages endpoint offgrid loads through will not do it: it serves
+# the copy that is already there. Arranging the state needs the endpoint that
+# does, which offgrid itself has no reason to call.
+LOAD = "/api/v1/models/load"
 
 
 @pytest.fixture
@@ -60,7 +72,66 @@ def known(host: str, smoke_model: str) -> str:
     return smoke_model
 
 
+@pytest.fixture
+def held_twice(host: str, known: str) -> Iterator[str]:
+    """Hold the model exactly twice, and free what is left of it afterwards.
+
+    Whatever was held first is freed, so that two loads mean two copies. A
+    developer with this model already open in LM Studio would otherwise get
+    three, and a count that says nothing about what the release did.
+
+    :param host: Where the runtime listens.
+    :param known: The model the check loads.
+
+    :yield: The model identifier, with two copies of it in memory.
+    """
+    try:
+        _free(host, known)
+
+        for _ in range(2):
+            httpx.post(
+                f"http://{host}{LOAD}",
+                json={"model": known},
+                timeout=LOAD_TIMEOUT_SECONDS,
+            ).raise_for_status()
+
+        yield known
+    finally:
+        # Including a load that failed after the first one landed, which would
+        # otherwise leave this machine holding what the check is about.
+        _free(host, known)
+
+
+def _free(host: str, identifier: str) -> None:
+    """Let go of every copy of a model, whatever any one of them answers.
+
+    A release that raises partway leaves the copies after it resident, which
+    is the outcome this exists to prevent — on the one check allowed to touch
+    the machine it runs on.
+
+    :param host: Where the runtime listens.
+    :param identifier: The model to free every copy of.
+    """
+    for instance in get_held_instances(get_catalogue_payload(host), identifier):
+        try:
+            unload(host, instance)
+        except OffgridError as error:
+            print(f"{instance} would not go: {error}")
+
+
 REFUSALS = (1, 127)
+
+
+def test_every_copy_of_a_model_held_twice_is_let_go_of(host: str, held_twice: str):
+    # A double can be told that the catalogue ids the second copy `:2` and
+    # that the release takes that id. Only the server can say that it does,
+    # and the whole reason to let go over HTTP is that it does.
+    assert len(get_held_instances(get_catalogue_payload(host), held_twice)) == 2
+
+    came_back = connect(LMStudioConfig(host=host)).let_go(held_twice)
+
+    assert came_back is True
+    assert get_held_instances(get_catalogue_payload(host), held_twice) == []
 
 
 def test_a_run_lets_go_of_the_model_it_held(host: str, known: str):

@@ -26,6 +26,7 @@ from offgrid.shared.exceptions import (
 from tests.doubles import (
     answer_as_lm_studio,
     answer_the_load,
+    answer_the_release,
     refuse_to_let_go,
     take_the_release_and_free_nothing,
 )
@@ -191,6 +192,54 @@ def test_a_runtime_that_will_not_let_go_is_said_rather_than_raised(monkeypatch, 
         connect(LMStudioConfig(host=HOST)).let_go("a/held-7b")
 
     assert any("still holding" in record.getMessage() for record in caplog.records)
+
+
+def test_every_copy_of_a_model_held_twice_is_let_go_of(monkeypatch):
+    # LM Studio serves a model twice over where it was loaded twice, and a
+    # release names one copy. Freeing the first, reporting success and leaving
+    # the second resident is memory gone for the rest of the session, on a
+    # machine whose whole premise is one model at a time.
+    asked = answer_as_lm_studio(
+        monkeypatch, holding={"a/held-7b": 8192, "a/held-7b:2": 8192}
+    )
+
+    came_back = connect(LMStudioConfig(host=HOST)).let_go("a/held-7b")
+
+    assert came_back is True
+    assert asked["let_go"] == ["a/held-7b", "a/held-7b:2"]
+
+
+def test_a_model_the_runtime_already_evicted_is_memory_that_came_back(monkeypatch):
+    # LM Studio evicts against a ceiling of its own, so a run's release can
+    # arrive after the model has already gone. The runtime answers 404 for an
+    # instance it is not holding, and reporting memory that is back as memory
+    # that is not sends someone looking for nothing.
+    answer_as_lm_studio(monkeypatch, cold={"a/held-7b": 8192})
+
+    assert connect(LMStudioConfig(host=HOST)).let_go("a/held-7b") is True
+
+
+def test_a_copy_nobody_saw_held_is_not_reported_as_a_refusal(monkeypatch, caplog):
+    # The bare name is asked after on the chance the catalogue is behind. Where
+    # it was not, the 404 that answers is a non-event, and putting it beside a
+    # real refusal explains memory that is stuck with the wrong reason.
+    answer_as_lm_studio(monkeypatch, holding={"a/held-7b:2": 8192})
+    answer_the_release(
+        monkeypatch,
+        lambda instance: (
+            httpx.Response(500, json={"error": {"message": "it would not go"}})
+            if instance == "a/held-7b:2"
+            else httpx.Response(404, json={"error": {"message": "is not loaded"}})
+        ),
+    )
+
+    with caplog.at_level(logging.WARNING, logger="offgrid.runtimes.lmstudio"):
+        came_back = connect(LMStudioConfig(host=HOST)).let_go("a/held-7b")
+
+    assert came_back is False
+    (said,) = [record.getMessage() for record in caplog.records]
+    assert "it would not go" in said
+    assert "is not loaded" not in said
 
 
 def test_a_release_that_freed_nothing_is_not_taken_at_its_word(monkeypatch, caplog):
