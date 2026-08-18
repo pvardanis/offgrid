@@ -20,7 +20,7 @@ model go when the agent exits. No prompt, code or file leaves the machine.
 $ offgrid run -m qwen/qwen3.6-35b-a3b
   Letting go of google/gemma-4-e4b, whose cached prefix goes with it.
   Loading qwen/qwen3.6-35b-a3b ... ready in 18s
-  qwen/qwen3.6-35b-a3b, context 262144
+  qwen/qwen3.6-35b-a3b, window 262144
 ```
 
 ## Contents
@@ -188,7 +188,7 @@ $ offgrid doctor
 
 ```console
 $ offgrid run
-  qwen/qwen3.6-35b-a3b, context 262144
+  qwen/qwen3.6-35b-a3b, window 262144
 ```
 
 Anything after `--` reaches the agent unchanged:
