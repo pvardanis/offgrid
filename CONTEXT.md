@@ -61,6 +61,10 @@ nothing is held. Everywhere outside this project the phrase names the maximum,
 which is what offgrid calls the ceiling; the two together are unambiguous, so a
 document quoting either one alone says which it means.
 
+**context_floor** — the smallest window an agent can start in. What the agent
+needs rather than what anyone prefers: below it the agent's own prompt does not
+fit and it fails at startup, so the agent states it and nobody sets it.
+
 **launch** — an environment and an argument list, built before anything runs,
 so it can be shown rather than guessed at.
 
