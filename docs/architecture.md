@@ -882,7 +882,7 @@ this one" by letting go of each model in turn before it loads, what that costs
 and what it says while paying it, and a tool whose exit code cannot be taken at
 its word.
 
-`tests/test_agent_conformance.py` is the same for agents. It states eleven
+`tests/test_agent_conformance.py` is the same for agents. It states twelve
 things, each of which an agent that is not Claude Code still owes:
 
 - `configure` writes what is missing, and leaves as they left them the files a
@@ -897,6 +897,8 @@ things, each of which an agent that is not Claude Code still owes:
   refuse an impossible pairing before it pays for a load; and the runtime's
   address reaches the agent, through the launch or through the configuration,
   whichever that adapter uses.
+- The smallest window it can start in is stated, and what a person typed does
+  not move it — it is what the agent needs rather than what anyone prefers.
 
 Two things it deliberately does not state. A token is not one of them: Claude
 Code refuses to start without one and the local server ignores it, so it is that
