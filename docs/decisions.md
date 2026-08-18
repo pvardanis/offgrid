@@ -297,9 +297,9 @@ question: `run` owes a release in its `finally`, by name, whatever happened.
 
 The factory binds what does not change. `connect(host)` and `prepare(dir)`
 return something satisfying a Protocol, so an address stops appearing in five
-signatures and an adapter has somewhere to keep what a connection needs — LM
-Studio's `instance_id`, which its unload endpoint wants and a model key does
-not give.
+signatures and an adapter has somewhere to keep what a connection needs — the
+host every call to LM Studio carries, and the capabilities settled when it
+opened.
 
 Nothing inherits. A `Protocol` is itself a class, and what it describes is one
 too, but neither is a base of the other: `ty` checks the match structurally, so
@@ -394,9 +394,9 @@ a frozen dataclass field satisfies it, and a caller still reads
 
 **The release owed after a failed load lives in the adapter.** The domain
 cannot see whether a load was attempted, so a `hold_model` that let go of what it
-was asked for would fire `lms unload` at a name the runtime does not have —
-noise on the likeliest mistake there is, a typo in a model name. The adapter
-knows which of its own calls may have taken weights, and wraps that one.
+was asked for would fire a release at a name the runtime does not have — noise
+on the likeliest mistake there is, a typo in a model name. The adapter knows
+which of its own calls may have taken weights, and wraps that one.
 
 **`held` no longer names the address it could not reach.** The port carries a
 dialect and capabilities and not a host, on purpose: what a connection is bound
@@ -878,3 +878,44 @@ the module map. A new module outside all three fails the suite, which is what
 makes a fourth place to put code a decision rather than an accident. Proven by
 taking `binding.py` back out of the layer and by pointing it at a concrete
 adapter, and watching each fail.
+
+## Letting go is a request, not a program on someone's PATH
+
+The release went through `lms unload`. It fails two ways that the HTTP release
+does not.
+
+A missing `lms` is a run that dies at cleanup holding the model it loaded. It
+ships with LM Studio, so it is usually there — but "usually" is the whole
+problem: the failure lands after the agent has finished, on a machine that now
+cannot use the memory until someone notices.
+
+And the tool takes a model key while the memory it frees is per copy. LM Studio
+does not replace a model when it is loaded again; it serves both. `lms unload`
+given the key freed one of them, printed success and exited 0, leaving the rest
+resident on a machine whose premise is one model at a time. Its exit code
+cannot say otherwise: it exits 0 for a name it does not know.
+
+The comment above the tool said the HTTP release was unreachable — that
+`POST /api/v1/models/unload` wants an `instance_id` and the `/api/v0`
+catalogue this adapter reads does not carry one, so the move waited on #18.
+That was wrong. `/api/v0` lists each loaded copy as its own entry and the
+entry's id *is* the `instance_id`: loading `qwen3-0.6b-mlx` three times gave
+`qwen3-0.6b-mlx`, `:2` and `:3` from `/api/v0` and from `/api/v1`'s
+`loaded_instances` alike, and the release accepted one taken straight from the
+former. Nothing about this waits on #18.
+
+So `let_go` reads what is held, releases every copy, and reads back. Three
+things follow from the read-back rather than from the release's own answer,
+which is why it stays:
+
+- A model the runtime evicted for itself is memory that came back, not a
+  failure, even though naming it is a 404.
+- The named model is asked after whether the catalogue lists it or not,
+  because a load that failed may have left weights the catalogue has not
+  caught up with. What that costs where there is nothing is one 404.
+- One copy that will not go is reported with what the runtime said about it,
+  and does not stop the others being asked.
+
+Proven live: two copies held, `let_go` called once, the catalogue empty after.
+A fixture cannot make that claim — it can only repeat the `:2` convention it
+was told.

@@ -139,12 +139,18 @@ curl http://localhost:1234/api/v1/models/unload \
 
 It takes an `instance_id`, not a model key — the distinction matters because
 `GET /api/v1/models` returns a `loaded_instances` array per model, each entry
-with its own `id`. The response echoes the `instance_id` back. This is worth
-stating flatly because the comment above `lmstudio.TOOL` used to read "Letting
-go of a model is not part of the HTTP API; LM Studio's own tool is what does
-it", and that has not been true since 0.4.0. It now says why the tool is used
-anyway: the endpoint wants an `instance_id`, and the `/api/v0` catalogue this
-adapter reads does not carry one. The companion
+with its own `id`. The response echoes the `instance_id` back.
+
+**The `/api/v0` catalogue carries the same ids**, which is what lets this
+adapter release over HTTP without moving to `/api/v1` first. Loading
+`qwen3-0.6b-mlx` three times against a live server and reading both endpoints
+gave `qwen3-0.6b-mlx`, `qwen3-0.6b-mlx:2` and `qwen3-0.6b-mlx:3` from each:
+`/api/v1` as `loaded_instances[].id` under one model, `/api/v0` as three
+entries of its own, all `"state": "loaded"`. The release accepted an id taken
+straight from `/api/v0`, and answered `404 model_not_found` for one it was not
+holding — which `lms unload` could not, exiting 0 for a name it did not know.
+
+The companion
 `POST /api/v1/models/load` documents `model`, `context_length`,
 `eval_batch_size`, `flash_attention`, `num_experts`, `offload_kv_cache_to_gpu`
 and `echo_load_config` — and notably **no `ttl` field**, so a model loaded
