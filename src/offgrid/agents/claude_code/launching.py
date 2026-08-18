@@ -15,8 +15,9 @@ MAX_OUTPUT_TOKENS = 8192
 # is a fact about this agent rather than about the runtime it is pointed at.
 TOKEN = "local"
 
-# Used when the runtime states no context for a model. Small enough to be
-# served by anything, large enough to hold a conversation.
+# Used when nothing is holding the model, so there is no window to size
+# against. Small enough to be served by anything, large enough to hold a
+# conversation.
 FALLBACK_CONTEXT = 32768
 
 # Claude Code's system prompt and tool definitions do not fit below this, and

@@ -116,8 +116,19 @@ def test_volatile_prompt_sections_stay_out_of_the_cached_prefix(launch):
     assert "--exclude-dynamic-system-prompt-sections" in launch.argv
 
 
+def test_a_model_nothing_is_holding_is_not_sized_from_its_ceiling(agent):
+    # The ceiling is what the model could be served at, not what it is being
+    # served at, and compacting against a window nothing is serving is the
+    # truncation that reading the window exists to avoid.
+    not_held = Model(identifier="a/b", context_ceiling=262144, context_window=None)
+
+    launch = agent.plan(not_held)
+
+    assert launch.env["CLAUDE_CODE_AUTO_COMPACT_WINDOW"] == str(FALLBACK_CONTEXT)
+
+
 def test_a_model_with_no_stated_context_gets_a_workable_default(agent):
-    unstated = Model(identifier="a/b", context_ceiling=0, context_window=None)
+    unstated = Model(identifier="a/b", context_ceiling=None, context_window=None)
     launch = agent.plan(unstated)
 
     assert launch.env["CLAUDE_CODE_AUTO_COMPACT_WINDOW"] == str(FALLBACK_CONTEXT)
