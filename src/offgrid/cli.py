@@ -158,6 +158,12 @@ def run(
         "-m",
         help="Load and use this model instead of the resident one.",
     ),
+    context_window: int = typer.Option(
+        None,
+        "--context-window",
+        min=1,
+        help="Hold the model at this window. Left out, the runtime's own is used.",
+    ),
 ) -> None:
     """Start the agent against a model the runtime is holding."""
     passthrough = tuple(context.args)
@@ -173,7 +179,7 @@ def run(
         agent.configure()
         require_hosted_tools_denied(agent.read_hosted_tools())
 
-        model = hold_model(runtime, wanted)
+        model = hold_model(runtime, wanted, context_window)
 
     # Nothing between here and the agent finishing may leave the model held:
     # from this line on, letting go is owed whatever happens.
