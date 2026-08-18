@@ -62,6 +62,59 @@ def test_a_model_already_held_is_answered_for_and_stays_held(
     assert [held.identifier for held in connection.read_held()] == ["a/wanted-7b"]
 
 
+def test_a_model_is_held_at_the_window_asked_for(
+    runtime: RuntimeUnderTest, monkeypatch: pytest.MonkeyPatch
+):
+    # The window is what the agent is sized to, and a runtime left to serve
+    # whatever it last remembered makes that number nobody's decision.
+    runtime.arrange_serving(monkeypatch, cold={"a/wanted-7b": 32768})
+
+    model = runtime.connect().ensure_only("a/wanted-7b", 8000)
+
+    assert model.context_window == 8000
+
+
+def test_a_model_asked_for_with_no_window_is_served_as_the_runtime_chose(
+    runtime: RuntimeUnderTest, monkeypatch: pytest.MonkeyPatch
+):
+    # Saying nothing inherits. Any default would replace what a person set in
+    # the runtime with a number offgrid made up.
+    runtime.arrange_serving(monkeypatch, cold={"a/wanted-7b": 32768})
+
+    model = runtime.connect().ensure_only("a/wanted-7b")
+
+    assert model.context_window == 32768
+
+
+def test_a_model_already_held_at_the_window_asked_for_is_left_alone(
+    runtime: RuntimeUnderTest, monkeypatch: pytest.MonkeyPatch
+):
+    # A reload buys nothing and costs the prefix already prefilled against
+    # this model, which is the expensive half of a turn.
+    runtime.arrange_serving(monkeypatch, holding={"a/wanted-7b": 8000})
+    connection = runtime.connect()
+
+    model = connection.ensure_only("a/wanted-7b", 8000)
+
+    assert model.context_window == 8000
+    assert [held.identifier for held in connection.read_held()] == ["a/wanted-7b"]
+
+
+def test_a_model_held_at_another_window_is_held_once_at_the_new_one(
+    runtime: RuntimeUnderTest, monkeypatch: pytest.MonkeyPatch
+):
+    # A model in memory cannot be told a new window, so it is let go of and
+    # loaded again. Exactly one copy is held afterwards: a runtime serving the
+    # same model twice over is memory gone for the rest of the session.
+    runtime.arrange_serving(monkeypatch, holding={"a/wanted-7b": 8000})
+    connection = runtime.connect()
+
+    model = connection.ensure_only("a/wanted-7b", 16000)
+
+    assert model.context_window == 16000
+    assert [held.identifier for held in connection.read_held()] == ["a/wanted-7b"]
+
+
 def test_a_model_the_runtime_does_not_have_is_refused_by_name(
     runtime: RuntimeUnderTest, monkeypatch: pytest.MonkeyPatch
 ):
