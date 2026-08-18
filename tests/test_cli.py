@@ -390,6 +390,17 @@ def test_doctor_says_when_the_runtime_holds_nothing(here, monkeypatch):
     assert "no model" in result.stderr.lower()
 
 
+def test_run_says_the_window_the_model_is_served_at(here, monkeypatch):
+    # The number the agent is sized to, said where it is acted on, and named
+    # as the window rather than as the ceiling a reader would take it for.
+    runner.invoke(app, ["setup"])
+    _launched(monkeypatch)
+
+    result = runner.invoke(app, ["run"])
+
+    assert "window 212224" in result.stderr
+
+
 def test_run_launches_the_agent_with_the_resident_model(here, monkeypatch):
     runner.invoke(app, ["setup"])
     started = _launched(monkeypatch)

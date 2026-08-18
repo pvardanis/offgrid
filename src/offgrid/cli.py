@@ -178,7 +178,7 @@ def run(
     # Nothing between here and the agent finishing may leave the model held:
     # from this line on, letting go is owed whatever happens.
     try:
-        tell(f"  {model.identifier}, context {model.context_window or 'unstated'}")
+        tell(f"  {model.identifier}, window {model.context_window or 'unstated'}")
 
         launch = agent.plan(model)
 
