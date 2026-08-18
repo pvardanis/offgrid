@@ -156,6 +156,36 @@ The companion
 and `echo_load_config` — and notably **no `ttl` field**, so a model loaded
 through the REST API takes the app default rather than a per-call TTL.
 
+**Four things about that endpoint were captured live** on 2026-08-18, against
+LM Studio on this machine, while #98 was written.
+
+It answers a name it does not have with `404` and a reason, unlike the
+messages endpoint, which answers `200` as whatever is loaded:
+
+```
+POST /api/v1/models/load  {"model": "totally/made-up-9000", "context_length": 8000}
+→ 404  {"error": {"type": "model_not_found",
+                  "message": "Model totally/made-up-9000 not found in downloaded models"}}
+```
+
+A success names the instance, and **does not echo the configuration** unless
+`echo_load_config` is asked for — the readback offgrid needs comes from the
+catalogue, not from here:
+
+```
+→ 200  {"type": "llm", "instance_id": "lfm2.5-1.2b-instruct-mlx",
+        "load_time_seconds": 3.768, "status": "loaded"}
+```
+
+`context_length` is honoured and reported: loaded at 8000, the `/api/v0`
+catalogue then gave `loaded_context_length: 8000` against a
+`max_context_length` of 128000.
+
+A window **above** the model's own maximum is accepted without complaint:
+`qwen3-0.6b-mlx` states 40960 and was loaded at 50000, answering `200` and
+reporting `loaded_context_length: 50000`. Nothing clamps it, which is why
+refusing it is offgrid's job.
+
 The TTL story is documented separately in
 [`ttl-and-auto-evict.md`](https://github.com/lmstudio-ai/docs/blob/main/1_developer/0_core/ttl-and-auto-evict.md).
 Three facts from it: JIT-loaded models default to a 60-minute TTL; a `ttl` in
