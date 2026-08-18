@@ -486,6 +486,8 @@ Prepare = Callable[[AgentConfig, Passthrough], Agent]
 class Agent(Protocol):
     @property
     def dialect(self) -> Dialect: ...
+    @property
+    def context_floor(self) -> int: ...
 
     def configure(self) -> None: ...
     def read_hosted_tools(self) -> HostedToolsReport: ...
@@ -495,6 +497,11 @@ class Agent(Protocol):
 Everything but the model is settled before a run starts, so an adapter is bound
 to all of it and `plan` takes only what the run discovers. What is read to
 decide whether a run is safe is then the same thing that gets launched.
+
+`context_floor` is the smallest window the agent can start in — a fact about
+the agent rather than a preference, so it is stated here and nothing outside
+the adapter may set it. An agent whose system prompt and tool definitions do
+not fit fails at startup, which is a load already paid for.
 
 Its config carries the runtime's address, which its own section never says —
 an agent that learns where to talk from a config file rather than from an
