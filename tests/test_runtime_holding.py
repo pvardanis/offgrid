@@ -74,6 +74,22 @@ def test_a_model_is_held_at_the_window_asked_for(
     assert model.context_window == 8000
 
 
+def test_a_model_is_answered_for_at_the_window_served_not_the_one_asked_for(
+    runtime: RuntimeUnderTest, monkeypatch: pytest.MonkeyPatch
+):
+    # A runtime is free to honour a window with a different one. Echoing back
+    # the number that was typed would size the agent to a window nothing is
+    # serving, which is the failure reading the served window exists to
+    # prevent — reintroduced on the path that asks for one.
+    runtime.arrange_serving_regardless(
+        monkeypatch, cold={"a/wanted-7b": 4096}, serves=32768
+    )
+
+    model = runtime.connect().ensure_only("a/wanted-7b", 200000)
+
+    assert model.context_window == 32768
+
+
 def test_a_model_asked_for_with_no_window_is_served_as_the_runtime_chose(
     runtime: RuntimeUnderTest, monkeypatch: pytest.MonkeyPatch
 ):

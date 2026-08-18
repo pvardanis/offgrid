@@ -70,6 +70,26 @@ class RuntimeUnderTest(Protocol):
         """
         ...
 
+    def arrange_serving_regardless(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        *,
+        cold: dict[str, int],
+        serves: int,
+    ) -> None:
+        """Answer as a runtime that serves one window whatever it is asked for.
+
+        A runtime is free to honour a window with a different one, and every
+        adapter owes the same answer about which of the two it reports: what
+        is being served, never what was requested.
+
+        :param monkeypatch: The test's patcher.
+        :param cold: Models it has and is not holding, against the context
+            each states before anything loads it.
+        :param serves: What it serves every load at, whatever was asked.
+        """
+        ...
+
     def arrange_stuck(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Answer as a runtime that will not let go of anything.
 

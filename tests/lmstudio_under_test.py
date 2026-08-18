@@ -68,6 +68,22 @@ class LMStudioUnderTest:
         """
         answer_as_lm_studio(monkeypatch, holding=holding, cold=cold, ceiling=catalogued)
 
+    def arrange_serving_regardless(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        *,
+        cold: dict[str, int],
+        serves: int,
+    ) -> None:
+        """Answer as a runtime that serves one window whatever it is asked for.
+
+        :param monkeypatch: The test's patcher.
+        :param cold: Models it has and is not holding, against the context
+            each states before anything loads it.
+        :param serves: What it serves every load at, whatever was asked.
+        """
+        answer_as_lm_studio(monkeypatch, cold=cold, serves=serves)
+
     def arrange_stuck(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Answer as a runtime that frees nothing it is asked to free.
 
@@ -90,7 +106,7 @@ class LMStudioUnderTest:
         answer_as_lm_studio(monkeypatch, cold={model: 8192})
         answer_the_load(
             monkeypatch,
-            lambda served: httpx.Response(200, json={"model": served, "content": []}),
+            lambda served: httpx.Response(200, json={"instance_id": served}),
         )
 
     def arrange_unreachable(self, monkeypatch: pytest.MonkeyPatch) -> None:
