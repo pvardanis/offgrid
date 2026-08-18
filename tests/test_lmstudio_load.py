@@ -85,6 +85,23 @@ def test_a_load_asked_for_no_window_names_none(monkeypatch: pytest.MonkeyPatch):
     assert "context_length" not in asked["body"]
 
 
+def test_a_load_answered_by_an_endpoint_that_is_not_there_says_so(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    # LM Studio answers 200 for an endpoint it does not have, which is
+    # recorded against `/v1/messages/count_tokens` in the adapter. A version
+    # too old to serve this one would otherwise read as a load that worked,
+    # and be blamed afterwards on the model rather than on the server.
+    from offgrid.runtimes.lmstudio.holding import load_model
+
+    serve_post(monkeypatch, lambda request: httpx.Response(200, text="Unexpected"))
+
+    with pytest.raises(RuntimeUnreachableError, match="named no instance") as refused:
+        load_model(HOST, "a/model-7b", timeout=5)
+
+    assert HOST in str(refused.value)
+
+
 def test_a_load_that_never_finishes_says_so(monkeypatch: pytest.MonkeyPatch):
     from offgrid.runtimes.lmstudio.holding import load_model
 
@@ -124,8 +141,7 @@ def test_a_load_of_a_name_the_runtime_does_not_have_says_which_name(
     monkeypatch: pytest.MonkeyPatch,
 ):
     # Captured from the live server: the load endpoint answers 404 for a name
-    # it does not have, where the messages endpoint answered 200 as whatever
-    # happened to be loaded.
+    # it does not have, and names it.
     from offgrid.runtimes.lmstudio.holding import load_model
 
     not_found = {
