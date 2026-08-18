@@ -59,7 +59,9 @@ def started_with():
 
 @pytest.fixture
 def launch(agent):
-    model = Model(identifier="qwen/qwen3.6-35b-a3b", context_limit=212224)
+    model = Model(
+        identifier="qwen/qwen3.6-35b-a3b", context_ceiling=262144, context_window=212224
+    )
     return agent.plan(model)
 
 
@@ -115,7 +117,7 @@ def test_volatile_prompt_sections_stay_out_of_the_cached_prefix(launch):
 
 
 def test_a_model_with_no_stated_context_gets_a_workable_default(agent):
-    unstated = Model(identifier="a/b", context_limit=0)
+    unstated = Model(identifier="a/b", context_ceiling=0, context_window=None)
     launch = agent.plan(unstated)
 
     assert launch.env["CLAUDE_CODE_AUTO_COMPACT_WINDOW"] == str(FALLBACK_CONTEXT)

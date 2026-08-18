@@ -97,7 +97,7 @@ class Runtime(Protocol):
         the one that would answer. A runtime that answers in the order of a
         set names a different model between two calls with nothing changed.
 
-        :return: What is held, described by the context each is served at.
+        :return: What is held, each stating its window and its ceiling.
 
         :raise RuntimeUnreachableError: When it cannot be reached.
         """
@@ -121,8 +121,8 @@ class Runtime(Protocol):
 
         :param identifier: The model that will answer.
 
-        :return: The model as the runtime now serves it, which is the window
-            it was loaded with rather than its ceiling.
+        :return: The model as the runtime now serves it, stating the window it
+            was loaded with as well as its ceiling.
 
         :raise ModelUnavailableError: When the runtime does not have it.
         :raise ModelNotHeldError: When it took the model and is not holding it.

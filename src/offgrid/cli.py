@@ -120,7 +120,7 @@ def doctor() -> None:
         f"  runtime   {profile.runtime.name.value} at {profile.runtime.host}, reachable"
     )
     tell(f"  model     {model.identifier}")
-    tell(f"  context   {model.context_limit or 'unstated'}")
+    tell(f"  context   {model.context_window or 'unstated'}")
     tell(f"  agent     {profile.agent.name.value}, speaking {agent.dialect.value}")
     tell(f"  hosted    {report.status}")
 
@@ -176,7 +176,7 @@ def run(
     # Nothing between here and the agent finishing may leave the model held:
     # from this line on, letting go is owed whatever happens.
     try:
-        tell(f"  {model.identifier}, context {model.context_limit or 'unstated'}")
+        tell(f"  {model.identifier}, context {model.context_window or 'unstated'}")
 
         launch = agent.plan(model)
 
