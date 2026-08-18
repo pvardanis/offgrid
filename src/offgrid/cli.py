@@ -181,6 +181,11 @@ def run(
         tell(f"  {model.identifier}, window {model.context_window or 'unstated'}")
 
         launch = agent.plan(model)
+        # Said whenever there is anything at all, so an agent answering with
+        # an empty one shows as a blank line somebody reports rather than as
+        # a warning nobody was given.
+        if launch.caution is not None:
+            tell(f"  {launch.caution}")
 
         try:
             code = start(launch)
