@@ -15,14 +15,9 @@ import pytest
 from offgrid.domain.running.runtime import Runtime
 from offgrid.runtimes.lmstudio import connect
 from offgrid.runtimes.lmstudio.config import LMStudioConfig
-from tests.doubles import (
-    CEILING,
-    answer_as_lm_studio,
-    answer_the_load,
-    refuse_to_let_go,
-    serve_get,
-    serve_post,
-)
+from tests.doubles import CEILING, serve_get, serve_post
+from tests.lmstudio_endpoint import answer_the_load, refuse_to_let_go
+from tests.lmstudio_server import answer_as_lm_studio
 
 HOST = "127.0.0.1:1234"
 

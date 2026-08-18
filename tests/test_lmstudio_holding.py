@@ -23,13 +23,13 @@ from offgrid.shared.exceptions import (
     ModelNotHeldError,
     RuntimeUnreachableError,
 )
-from tests.doubles import (
-    answer_as_lm_studio,
+from tests.lmstudio_endpoint import (
     answer_the_load,
     answer_the_release,
     refuse_to_let_go,
     take_the_release_and_free_nothing,
 )
+from tests.lmstudio_server import answer_as_lm_studio
 
 HOST = "127.0.0.1:1234"
 
