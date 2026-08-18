@@ -20,7 +20,9 @@ LOAD_TIMEOUT_SECONDS = 300
 UNLOAD_TIMEOUT_SECONDS = 30
 
 
-def load(host: str, identifier: str, timeout: float = LOAD_TIMEOUT_SECONDS) -> None:
+def load_model(
+    host: str, identifier: str, timeout: float = LOAD_TIMEOUT_SECONDS
+) -> None:
     """Hold a model in memory, waiting until it is ready to answer.
 
     Asking for a single token is what makes the runtime load it. Doing that
@@ -76,7 +78,9 @@ def load(host: str, identifier: str, timeout: float = LOAD_TIMEOUT_SECONDS) -> N
         )
 
 
-def unload(host: str, instance: str, timeout: float = UNLOAD_TIMEOUT_SECONDS) -> None:
+def unload_model(
+    host: str, instance: str, timeout: float = UNLOAD_TIMEOUT_SECONDS
+) -> None:
     """Ask the runtime to let go of one instance it is holding.
 
     The endpoint names an instance rather than a model, because LM Studio can

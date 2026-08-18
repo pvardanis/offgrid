@@ -24,7 +24,7 @@ from offgrid.runtimes.lmstudio.catalogue import (
     parse_models_from_payload,
 )
 from offgrid.runtimes.lmstudio.config import LMStudioConfig
-from offgrid.runtimes.lmstudio.holding import LOAD_TIMEOUT_SECONDS, unload
+from offgrid.runtimes.lmstudio.holding import LOAD_TIMEOUT_SECONDS, unload_model
 from offgrid.shared.exceptions import OffgridError
 
 pytestmark = pytest.mark.live
@@ -114,7 +114,7 @@ def _free(host: str, identifier: str) -> None:
     """
     for instance in get_held_instances(get_catalogue_payload(host), identifier):
         try:
-            unload(host, instance)
+            unload_model(host, instance)
         except OffgridError as error:
             print(f"{instance} would not go: {error}")
 
