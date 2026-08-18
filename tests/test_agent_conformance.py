@@ -96,6 +96,19 @@ def test_what_an_agent_speaks_is_readable_before_anything_is_written(
     assert _read_everything_under(home) == {}
 
 
+def test_an_agent_states_the_smallest_window_it_can_start_in(
+    agent_under_test: AgentUnderTest, monkeypatch: pytest.MonkeyPatch, home: Path
+):
+    # An agent whose system prompt and tool definitions do not fit in the
+    # window fails at startup, after a load nobody gets the seconds back for.
+    # Nothing in the domain can learn that number, so the agent states it, and
+    # asking costs nothing and touches nothing.
+    agent = agent_under_test.prepare(monkeypatch, home)
+
+    assert agent.context_floor > 0
+    assert _read_everything_under(home) == {}
+
+
 def test_what_an_agent_needs_and_does_not_have_is_written(
     agent_under_test: AgentUnderTest, monkeypatch: pytest.MonkeyPatch, home: Path
 ):

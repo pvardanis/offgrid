@@ -17,6 +17,7 @@ from offgrid.agents.claude_code.configuring import (
     get_denied_tools,
 )
 from offgrid.agents.claude_code.launching import (
+    CONTEXT_FLOOR,
     FALLBACK_CONTEXT,
     MAX_OUTPUT_TOKENS,
     SOURCES,
@@ -41,8 +42,8 @@ class ClaudeCode:
     than passed: what is read to decide whether a run is safe is then the same
     thing that is launched.
 
-    `dialect` is a fact about Claude Code rather than about one binding, so
-    it is settled here and not passed in.
+    `dialect` and `context_floor` are facts about Claude Code rather than
+    about one binding, so they are settled here and not passed in.
 
     :param config: What the profile and the run settled for this agent.
     :param passthrough: Arguments handed to the agent unchanged.
@@ -51,6 +52,7 @@ class ClaudeCode:
     config: ClaudeCodeConfig
     passthrough: Passthrough = ()
     dialect: Dialect = field(init=False, default=Dialect.ANTHROPIC)
+    context_floor: int = field(init=False, default=CONTEXT_FLOOR)
 
     def configure(self) -> None:
         """Write the settings and the notes that are not there.

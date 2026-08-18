@@ -80,10 +80,12 @@ class StandInAgent:
     """An agent offgrid has no adapter for, doing what a test needs.
 
     :param dialect: What it speaks.
+    :param context_floor: The smallest window it can start in.
     :param refusal: What planning a launch raises, where a test wants that.
     """
 
     dialect: Dialect
+    context_floor: int = 25_000
     refusal: Exception | None = None
 
     def configure(self) -> None:

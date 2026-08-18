@@ -230,6 +230,24 @@ def test_a_key_the_agent_it_names_does_not_read_is_refused(tmp_path):
     assert "theme" in said
 
 
+def test_the_window_an_agent_needs_to_start_is_not_a_profile_key(tmp_path):
+    # The floor is what the agent needs, not what anyone prefers, so a file
+    # naming it could only assert something false about the agent — bought
+    # with a failed launch after a load that has already been paid for.
+    path = tmp_path / "profile.yaml"
+    path.write_text(
+        f"runtime:\n  name: lmstudio\n  host: {HOST}\n"
+        "agent:\n  name: claude-code\n  context_floor: 8000\n"
+    )
+
+    with pytest.raises(ProfileError) as refused:
+        read_profile(path)
+
+    said = str(refused.value)
+    assert "`agent` section" in said
+    assert "context_floor" in said
+
+
 def test_a_key_offgrid_settles_itself_is_refused_rather_than_taken(tmp_path):
     # `runtime_host` is a field of the agent's config, filled from the runtime
     # section. A file naming it would otherwise be overridden in silence — the
