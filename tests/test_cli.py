@@ -1,6 +1,7 @@
 import json
 import logging
 import pathlib
+import subprocess
 
 import pytest
 import yaml
@@ -51,6 +52,37 @@ def _launched(monkeypatch, code: int = 0, order: list | None = None) -> dict:
     monkeypatch.setattr("offgrid.cli.start", start)
 
     return seen
+
+
+def _handed_to_the_agent(monkeypatch) -> dict:
+    """Record the environment the agent process is actually given.
+
+    Past what a launch carries, because a launch says what offgrid adds and
+    the agent is handed that merged into this process's own environment.
+
+    :param monkeypatch: The test's patcher.
+
+    :return: The environment and command the process would have had.
+    """
+    started: dict = {}
+
+    class _Agent:
+        """A process that is not started, answering as one that finished."""
+
+        def wait(self) -> int:
+            return 0
+
+        def terminate(self) -> None:
+            """Stop it, which a process that never started need not do."""
+
+    def popen(argv, env=None, **kwargs):
+        started.update(argv=list(argv), env=env)
+
+        return _Agent()
+
+    monkeypatch.setattr(subprocess, "Popen", popen)
+
+    return started
 
 
 @pytest.fixture
@@ -694,8 +726,45 @@ def test_compaction_is_sized_from_what_the_runtime_serves(here, monkeypatch):
     answer_as_lm_studio(monkeypatch, cold={"a/big-7b": 131072}, ceiling=262144)
     started = _launched(monkeypatch)
 
-    runner.invoke(app, ["run", "-m", "a/big-7b"])
+    result = runner.invoke(app, ["run", "-m", "a/big-7b"])
+
     assert started["env"]["CLAUDE_CODE_AUTO_COMPACT_WINDOW"] == "131072"
+    # Nothing to warn about, so nothing is said: a sentence about compacting
+    # printed at every window is one nobody reads at the window that matters.
+    assert "will not compact" not in result.stderr
+
+
+def test_a_window_the_agent_would_raise_is_not_asked_for(here, monkeypatch):
+    # Claude Code raises any compaction window under 100,000 to 100,000, so
+    # asking for 32,768 is asking to run to 100k before compacting while the
+    # runtime truncates the prefix at 32k. Nothing asked for is better than a
+    # number that comes back larger, and a person is told which it was.
+    runner.invoke(app, ["setup"])
+    answer_as_lm_studio(monkeypatch, cold={"a/small-7b": 32768}, ceiling=262144)
+    started = _launched(monkeypatch)
+
+    result = runner.invoke(app, ["run", "-m", "a/small-7b"])
+
+    assert "CLAUDE_CODE_AUTO_COMPACT_WINDOW" not in started["env"]
+    assert "a/small-7b, window 32768" in result.stderr
+    assert "will not compact" in result.stderr
+    assert "/compact" in result.stderr
+
+
+def test_a_window_a_person_exported_does_not_answer_for_offgrid(
+    here, monkeypatch, tmp_path
+):
+    # The agent inherits this process's environment, so a window offgrid
+    # declined to ask for is one an exported variable asks for on its behalf —
+    # and the sentence beside it says nothing was set.
+    runner.invoke(app, ["setup"])
+    monkeypatch.setenv("CLAUDE_CODE_AUTO_COMPACT_WINDOW", "32768")
+    answer_as_lm_studio(monkeypatch, cold={"a/small-7b": 32768}, ceiling=262144)
+    started = _handed_to_the_agent(monkeypatch)
+
+    runner.invoke(app, ["run", "-m", "a/small-7b"])
+
+    assert "CLAUDE_CODE_AUTO_COMPACT_WINDOW" not in started["env"]
 
 
 def test_the_command_line_beats_the_profile(here, monkeypatch):
