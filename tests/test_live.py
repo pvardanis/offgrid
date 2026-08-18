@@ -31,6 +31,11 @@ pytestmark = pytest.mark.live
 
 ANSWER_SECONDS = 600
 
+# A window to ask for and read back. Above Claude Code's floor so the agent
+# starts, and small enough that the smoke model is served at it rather than
+# clamped to something else.
+STATED_WINDOW = 32768
+
 
 @pytest.fixture
 def host() -> str:
@@ -164,13 +169,44 @@ def test_a_model_the_runtime_does_not_have_is_refused_before_any_wait(host: str)
     ] == []
 
 
-def _run(identifier: str) -> subprocess.CompletedProcess:
+def test_a_run_holds_the_model_at_the_window_it_was_asked_for(host: str, known: str):
+    # The number reaches the server and the server serves it. A double can be
+    # told that the load endpoint takes `context_length` and that the
+    # catalogue reports it back; only the server can say that it does.
+    finished = _run(known, window=STATED_WINDOW)
+
+    assert finished.returncode not in REFUSALS, finished.stderr
+    assert f"window {STATED_WINDOW}" in finished.stderr, finished.stderr
+
+
+def test_a_window_asked_for_leaves_one_copy_and_then_none(host: str, known: str):
+    # Changing a window means loading again, and a second load against this
+    # server serves a second copy rather than replacing the first. What the
+    # run owes is one copy while it runs and none after it.
+    _free(host, known)
+    httpx.post(
+        f"http://{host}{LOAD}",
+        json={"model": known, "context_length": 4096},
+        timeout=LOAD_TIMEOUT_SECONDS,
+    ).raise_for_status()
+
+    finished = _run(known, window=STATED_WINDOW)
+
+    assert finished.returncode not in REFUSALS, finished.stderr
+    assert f"window {STATED_WINDOW}" in finished.stderr, finished.stderr
+    assert get_held_instances(get_catalogue_payload(host), known) == [], finished.stderr
+
+
+def _run(identifier: str, window: int | None = None) -> subprocess.CompletedProcess:
     """Start an agent against a model and wait for it to finish.
 
     :param identifier: The model to run against.
+    :param window: The window to ask for, or ``None`` to inherit.
 
     :return: What offgrid exited with, and what it said.
     """
+    asked = ["--context-window", str(window)] if window else []
+
     return subprocess.run(
         [
             "uv",
@@ -179,6 +215,7 @@ def _run(identifier: str) -> subprocess.CompletedProcess:
             "run",
             "-m",
             identifier,
+            *asked,
             "--",
             "-p",
             "reply with the two letters OK and nothing else",
