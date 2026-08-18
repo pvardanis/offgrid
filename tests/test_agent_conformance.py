@@ -28,7 +28,7 @@ from offgrid.shared.exceptions import HostedToolReachableError
 from tests.agents_under_test import AGENTS_UNDER_TEST, AgentUnderTest
 
 WANTED = "a/wanted-7b"
-CONTEXT = 32768
+WINDOW = 32768
 CEILING = 262144
 
 
@@ -80,7 +80,7 @@ def _plan_for_a_model(agent: Agent) -> Launch:
     :return: The environment and command it answered with.
     """
     return agent.plan(
-        Model(identifier=WANTED, context_ceiling=CEILING, context_window=CONTEXT)
+        Model(identifier=WANTED, context_ceiling=CEILING, context_window=WINDOW)
     )
 
 
@@ -103,9 +103,17 @@ def test_an_agent_states_the_smallest_window_it_can_start_in(
     # window fails at startup, after a load nobody gets the seconds back for.
     # Nothing in the domain can learn that number, so the agent states it, and
     # asking costs nothing and touches nothing.
+    #
+    # It is what the agent needs rather than what anyone prefers, so what a
+    # person typed does not move it: an argument that did would buy a failed
+    # launch after a load that had already been paid for.
     agent = agent_under_test.prepare(monkeypatch, home)
+    told = agent_under_test.prepare(
+        monkeypatch, home, passthrough=("--context-floor", "1")
+    )
 
     assert agent.context_floor > 0
+    assert told.context_floor == agent.context_floor
     assert _read_everything_under(home) == {}
 
 
