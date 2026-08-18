@@ -862,11 +862,12 @@ line, `answering.py` and the adapter alike. Each test then covers the ordering *
 the adapter's parsing. A fake satisfying `Runtime` would skip the parsing,
 which is the half most likely to be wrong.
 
-**Each adapter, against a conformance suite.** `tests/test_runtime_conformance.py`
-states what being a runtime means behaviourally, and every adapter runs it
-against payloads captured from that runtime, live. An adapter is done when it
-passes. It states twelve things, each of which a runtime that is not LM Studio
-still owes:
+**Each adapter, against a conformance suite.** `tests/test_runtime_holding.py`,
+`tests/test_runtime_letting_go.py` and `tests/test_runtime_reading.py` state
+what being a runtime means behaviourally — one file per question a runtime is
+asked — and every adapter runs them against payloads captured from that
+runtime, live. An adapter is done when all three pass. They state twelve
+things, each of which a runtime that is not LM Studio still owes:
 
 - `ensure_only` answers with the model as *served* rather than as catalogued,
   leaves only the named model held, and answers for one already held without

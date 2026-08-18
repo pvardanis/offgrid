@@ -12,6 +12,10 @@ model invisibly, because the caller reports the failure rather than raising.
 
 A test marked `live` reaches both on purpose, and is the one thing let
 through.
+
+The adapter a conformance suite is asking about is here too, because three
+files ask it and pytest reaches a fixture here without any of them importing
+it.
 """
 
 import subprocess
@@ -19,9 +23,22 @@ import subprocess
 import httpx
 import pytest
 
+from tests.runtimes_under_test import RUNTIMES_UNDER_TEST, RuntimeUnderTest
+
 _run = subprocess.run
 
 SMOKE_MODEL = "lfm2.5-1.2b-instruct-mlx"
+
+
+@pytest.fixture(params=RUNTIMES_UNDER_TEST, ids=lambda under_test: under_test.name)
+def runtime(request: pytest.FixtureRequest) -> RuntimeUnderTest:
+    """The adapter this run of a conformance suite is asking about.
+
+    :param request: The running test.
+
+    :return: One adapter, and what standing its runtime in takes.
+    """
+    return request.param
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
