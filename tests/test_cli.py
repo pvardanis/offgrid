@@ -429,6 +429,91 @@ def test_run_says_the_window_the_model_is_served_at(here, monkeypatch):
     assert "window 212224" in result.stderr
 
 
+def test_run_holds_the_model_at_the_window_asked_for(here, monkeypatch):
+    # The number a person typed reaches the load, rather than dying as an
+    # unknown option after offgrid has paid for one.
+    runner.invoke(app, ["setup"])
+    asked = answer_as_lm_studio(monkeypatch, cold={"a/other-7b": 32768})
+    _launched(monkeypatch)
+
+    result = runner.invoke(app, ["run", "-m", "a/other-7b", "--context-window", "8000"])
+
+    assert result.exit_code == 0
+    assert asked["window"] == 8000
+    assert "window 8000" in result.stderr
+
+
+def test_run_sends_no_window_when_none_is_asked_for(here, monkeypatch):
+    # Saying nothing keeps what a person configured in the runtime, and
+    # reports it. A default would replace their number with offgrid's.
+    runner.invoke(app, ["setup"])
+    asked = answer_as_lm_studio(monkeypatch, cold={"a/other-7b": 32768})
+    _launched(monkeypatch)
+
+    result = runner.invoke(app, ["run", "-m", "a/other-7b"])
+
+    assert asked["window"] is None
+    assert "window 32768" in result.stderr
+
+
+def test_run_holds_the_resident_model_at_a_window_asked_for_alone(here, monkeypatch):
+    # A window with no model names the one already answering. Reading it as
+    # "no model, nothing to do" would leave the old window in place while the
+    # person believes they changed it.
+    runner.invoke(app, ["setup"])
+    asked = answer_as_lm_studio(monkeypatch, holding={RESIDENT: 212224})
+    _launched(monkeypatch)
+
+    result = runner.invoke(app, ["run", "--context-window", "16000"])
+
+    assert result.exit_code == 0
+    assert asked["window"] == 16000
+    assert "window 16000" in result.stderr
+
+
+def test_run_leaves_a_model_already_at_the_window_asked_for_alone(here, monkeypatch):
+    # The prefix prefilled against this model is worth more than a reload,
+    # and a reload is the whole wait for no change.
+    runner.invoke(app, ["setup"])
+    asked = answer_as_lm_studio(monkeypatch, holding={RESIDENT: 8000})
+    _launched(monkeypatch)
+
+    result = runner.invoke(app, ["run", "--context-window", "8000"])
+
+    assert result.exit_code == 0
+    assert asked["loaded"] is None
+    assert asked["let_go"] == [RESIDENT]
+
+
+def test_run_holds_one_copy_when_it_changes_a_window(here, monkeypatch):
+    # LM Studio serves a second copy rather than replacing the first, so the
+    # old one goes before the new one arrives.
+    runner.invoke(app, ["setup"])
+    asked = answer_as_lm_studio(monkeypatch, holding={RESIDENT: 8000})
+    _launched(monkeypatch, order=asked["order"])
+
+    runner.invoke(app, ["run", "--context-window", "16000"])
+
+    assert asked["order"] == [
+        ("let_go", RESIDENT),
+        ("loaded", RESIDENT),
+        ("started", "claude"),
+        ("let_go", RESIDENT),
+    ]
+
+
+def test_the_agent_is_sized_to_the_window_that_was_asked_for(here, monkeypatch):
+    # What the runtime serves after the load, not what was typed: the two
+    # agree here, and where they would not it is the runtime that is right.
+    runner.invoke(app, ["setup"])
+    answer_as_lm_studio(monkeypatch, cold={"a/other-7b": 32768})
+    started = _launched(monkeypatch)
+
+    runner.invoke(app, ["run", "-m", "a/other-7b", "--context-window", "128000"])
+
+    assert started["env"]["CLAUDE_CODE_AUTO_COMPACT_WINDOW"] == "128000"
+
+
 def test_run_launches_the_agent_with_the_resident_model(here, monkeypatch):
     runner.invoke(app, ["setup"])
     started = _launched(monkeypatch)

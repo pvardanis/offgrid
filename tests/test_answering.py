@@ -52,6 +52,31 @@ def test_naming_no_model_answers_with_the_one_already_there(monkeypatch):
     assert asked["let_go"] == []
 
 
+def test_a_window_asked_for_without_a_model_holds_the_resident_one_at_it(
+    monkeypatch,
+):
+    # Naming a window and no model is asking for what is already answering,
+    # at a size. Reading it as "no model named, so nothing to do" would hand
+    # back the old window while the person believes they asked for a new one.
+    asked = answer_as_lm_studio(monkeypatch, holding={RESIDENT: 8192})
+
+    model = hold_model(connect(LMStudioConfig(host=HOST)), None, 16000)
+
+    assert model.identifier == RESIDENT
+    assert model.context_window == 16000
+    assert asked["window"] == 16000
+
+
+def test_naming_neither_a_model_nor_a_window_costs_no_load(monkeypatch):
+    asked = answer_as_lm_studio(monkeypatch, holding={RESIDENT: 8192})
+
+    model = hold_model(connect(LMStudioConfig(host=HOST)), None, None)
+
+    assert model.context_window == 8192
+    assert asked["loaded"] is None
+    assert asked["let_go"] == []
+
+
 def test_the_model_asked_for_is_held_alone(monkeypatch):
     asked = answer_as_lm_studio(
         monkeypatch, holding={RESIDENT: 8192}, cold={"a/other-7b": 32768}
