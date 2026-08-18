@@ -144,13 +144,14 @@ def test_a_run_lets_go_of_the_model_it_held(host: str, known: str):
     ] == [], finished.stderr
 
 
-def test_a_run_says_which_model_answers_and_at_what_context(host: str, known: str):
-    # The context is the window the runtime serves, which is only knowable
-    # after the load: a catalogue read before it states the ceiling.
+def test_a_run_says_which_model_answers_and_at_what_window(host: str, known: str):
+    # The window is what the runtime serves, which is only knowable after the
+    # load: a catalogue read before it states the ceiling. Asked for none, it
+    # is whatever the runtime's own configuration last remembered.
     finished = _run(known)
 
     assert known in finished.stderr
-    assert "context" in finished.stderr
+    assert "window" in finished.stderr
 
 
 def test_a_model_the_runtime_does_not_have_is_refused_before_any_wait(host: str):
