@@ -138,6 +138,10 @@ class Runtime(Protocol):
         owes a release whatever happened, and that is one model by name rather
         than an intent about the whole pool.
 
+        By name means all of it. A runtime that can hold a model more than
+        once owes every copy, because memory left behind is memory the rest of
+        the machine cannot use for the session.
+
         It answers rather than raises, and an adapter owes that: both callers
         are cleanup — a `finally` at the end of a run, and the release after a
         load that failed — so anything raised here replaces the outcome the
