@@ -35,14 +35,22 @@ def get_resident_model(runtime: Runtime) -> Model:
     return in_memory[0]
 
 
-def hold_model(runtime: Runtime, identifier: str | None) -> Model:
+def hold_model(
+    runtime: Runtime, identifier: str | None, window: int | None = None
+) -> Model:
     """Hold the model that will answer: the one named, or the one already there.
 
-    Naming none is how a run says it wants whatever is resident, which costs
-    no load and keeps the prompt prefix cached against it.
+    Naming neither is how a run says it wants whatever is resident, at
+    whatever it is being served at, which costs no load and keeps the prompt
+    prefix cached against it.
+
+    Naming a window and no model asks for the resident model at that window.
+    Reading it as "no model named, so nothing to do" would hand back the old
+    window while whoever typed the number believes they changed it.
 
     :param runtime: The runtime to ask.
     :param identifier: The model asked for, or ``None`` for the resident one.
+    :param window: The context to serve it at, or ``None`` to inherit.
 
     :return: The model that will answer, stating the window the runtime serves
         it at as well as its ceiling.
@@ -51,10 +59,12 @@ def hold_model(runtime: Runtime, identifier: str | None) -> Model:
         none was named and it is holding nothing.
     :raise ModelNotHeldError: When it took the load and is not holding it.
     :raise RuntimeUnreachableError: When the runtime cannot be reached, when
-        the load fails, when another model answers, or when what is already
-        held will not go and this one would be loaded on top of it.
+        the load fails, or when what is already held will not go and this one
+        would be loaded on top of it.
     """
-    if identifier is None:
+    if identifier is None and window is None:
         return get_resident_model(runtime)
 
-    return runtime.ensure_only(identifier)
+    wanted = identifier or get_resident_model(runtime).identifier
+
+    return runtime.ensure_only(wanted, window)
