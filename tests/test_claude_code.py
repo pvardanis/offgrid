@@ -1,3 +1,12 @@
+"""What Claude Code does with the directory it is run out of and the arguments.
+
+What any agent owes is stated once, in `tests/test_agent_conformance.py`. What
+is here is Claude Code's own: which environment variables carry the model and
+the window it is served at, the arguments offgrid adds, the argument a person
+can add that stops the settings being loaded at all, and what its settings file
+is read as when it holds something nobody can act on.
+"""
+
 import json
 
 import pytest
@@ -105,27 +114,11 @@ def test_volatile_prompt_sections_stay_out_of_the_cached_prefix(launch):
     assert "--exclude-dynamic-system-prompt-sections" in launch.argv
 
 
-def test_arguments_are_passed_through_to_the_agent(started_with):
-    model = Model(identifier="a/b", context_limit=8192)
-    launch = started_with("-p", "hi").plan(model)
-
-    assert launch.argv[-2:] == ["-p", "hi"]
-
-
 def test_a_model_with_no_stated_context_gets_a_workable_default(agent):
     unstated = Model(identifier="a/b", context_limit=0)
     launch = agent.plan(unstated)
 
     assert launch.env["CLAUDE_CODE_AUTO_COMPACT_WINDOW"] == str(FALLBACK_CONTEXT)
-
-
-def test_planning_a_launch_writes_nothing(agent, config_dir):
-    # An environment and an argument list can be shown before anything runs,
-    # which is only true while building one changes nothing on disk.
-    model = Model(identifier="a/b", context_limit=8192)
-    agent.plan(model)
-
-    assert not list(config_dir.iterdir())
 
 
 def test_the_configuration_denies_the_search_that_cannot_work(agent, config_dir):
@@ -152,34 +145,6 @@ def test_the_configuration_tells_the_agent_it_cannot_search(agent, config_dir):
     assert "WebFetch" in notes
 
 
-def test_settings_already_there_are_left_alone(agent, config_dir):
-    settings = config_dir / "settings.json"
-    kept = '{"theme": "mine", "permissions": {"deny": ["WebSearch"]}}'
-    settings.write_text(kept)
-
-    agent.configure()
-
-    assert settings.read_text() == kept
-
-
-def test_notes_already_written_are_left_alone(agent, config_dir):
-    notes = config_dir / "CLAUDE.md"
-    notes.write_text("# mine\n")
-
-    agent.configure()
-
-    assert notes.read_text() == "# mine\n"
-
-
-def test_configuring_twice_changes_nothing_the_second_time(agent, config_dir):
-    agent.configure()
-    written = {path.name: path.read_text() for path in config_dir.iterdir()}
-
-    agent.configure()
-
-    assert {path.name: path.read_text() for path in config_dir.iterdir()} == written
-
-
 def test_a_configuration_that_cannot_be_written_says_what_stopped_it(
     tmp_path, monkeypatch
 ):
@@ -194,23 +159,16 @@ def test_a_configuration_that_cannot_be_written_says_what_stopped_it(
         prepare(_config(), ()).configure()
 
 
-def test_what_the_agent_writes_for_itself_reads_as_denied(agent):
+def test_what_the_agent_writes_for_itself_denies_the_tool_rather_than_lacking_one(
+    agent,
+):
+    # The suite asks that its own default satisfies its own guard, which an
+    # adapter claiming to offer no hosted tool would also pass. Claude Code
+    # offers one, measured against claude 2.1.231, so `DENIED` is the only
+    # answer that is true of it.
     agent.configure()
 
     assert agent.read_hosted_tools().status is HostedToolsStatus.DENIED
-
-
-def test_configuring_does_not_refuse_settings_the_reading_would_call_permitted(
-    agent, config_dir
-):
-    # Two jobs, and only one of them may stop a run: settings that would let
-    # the agent search are still an edit worth keeping.
-    permitting = '{"theme": "mine"}'
-    (config_dir / "settings.json").write_text(permitting)
-
-    agent.configure()
-
-    assert (config_dir / "settings.json").read_text() == permitting
 
 
 def test_settings_that_would_let_the_agent_search_read_as_permitted(agent, config_dir):
