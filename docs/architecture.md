@@ -224,10 +224,10 @@ sequenceDiagram
     A-->>C: HostedToolsReport
     C->>C: require_hosted_tools_denied(report)
     Note over C,A: everything knowable before a load, before the load
-    C->>H: hold_model(runtime, wanted)
-    Note over H: wanted may be none, which asks for<br/>whatever the runtime is already holding
-    H->>R: ensure_only(wanted) — or read_held()
-    Note over R: what "only this one" costs here is the adapter's<br/>problem: let go of the rest, load, read back
+    C->>H: hold_model(runtime, wanted, window)
+    Note over H: either may be none: no model asks for whatever is<br/>held, no window asks for whatever it is served at
+    H->>R: ensure_only(wanted, window) — or read_held()
+    Note over R: what "only this one, at that window" costs here is the<br/>adapter's problem: let go of the rest, load, read back
     R-->>H: Model, as served
     H-->>C: Model
     C->>A: plan(model)
@@ -405,7 +405,7 @@ class Runtime(Protocol):
 
     def read_catalogue(self) -> list[Model]: ...
     def read_held(self) -> list[Model]: ...
-    def ensure_only(self, identifier: str) -> Model: ...
+    def ensure_only(self, identifier: str, window: int | None = None) -> Model: ...
     def let_go(self, identifier: str) -> bool: ...
 ```
 
@@ -441,6 +441,16 @@ single-model `llama-server` cannot be asked at all, because the model is the
 process. Letting go of each other model in turn, from outside, works against
 exactly one of those four, which is why it now sits inside the one it works
 for.
+
+**The window is part of that intent**, which is why it is a parameter here
+rather than something each adapter reads out of a profile for itself — that
+would point a dependency from an adapter at the profile, which the layer rule
+forbids. Holding a model at a size is holding it with one more fact in it.
+Naming none inherits whatever the runtime last remembered, so a run that says
+nothing about a window behaves as it always has. Reaching a new window is the
+adapter's problem too: LM Studio serves a second copy rather than replacing
+the first, so it lets go before it loads, and leaves a model already at the
+window asked for alone rather than paying a reload for no change.
 
 **`let_go` stays**, because the end of a run is a different question from the
 start of one: `run` owes a release in its `finally` whatever happened, and that
@@ -866,12 +876,15 @@ which is the half most likely to be wrong.
 `tests/test_runtime_letting_go.py` and `tests/test_runtime_reading.py` state
 what being a runtime means behaviourally — one file per question a runtime is
 asked — and every adapter runs them against payloads captured from that
-runtime, live. An adapter is done when all three pass. They state twelve
+runtime, live. An adapter is done when all three pass. They state sixteen
 things, each of which a runtime that is not LM Studio still owes:
 
 - `ensure_only` answers with the model as *served* rather than as catalogued,
   leaves only the named model held, and answers for one already held without
   letting go of it first.
+- A model is held at the window asked for, and at whatever the runtime chose
+  where none was. One already at that window is left alone; one at a different
+  window is let go of and loaded again, leaving a single copy held.
 - A model the runtime does not have is refused by name, with the address and
   what to run to list what there is; a model it took and is not holding is
   reported as that instead, since a caller branches on which arrived.

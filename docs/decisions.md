@@ -291,7 +291,8 @@ ceiling, and a single-model `llama-server` cannot be asked at all because the
 model is the process. Orchestrating from outside works against one of the
 four.
 
-So the runtime port takes `ensure_only(identifier)` and each adapter reaches it
+So the runtime port takes `ensure_only(identifier, window)` and each adapter
+reaches it
 as it can. `let_go` stays beside it, because the end of a run is a different
 question: `run` owes a release in its `finally`, by name, whatever happened.
 
