@@ -825,7 +825,7 @@ in a domain module instead is #12's question, and it is answerable once the
 adapter imports have gone and `cli.py`'s real size is known rather than
 guessed. There is one caller today.
 
-## How this is tested — built, apart from the agent's conformance suite
+## How this is tested — built
 
 Three different things, and conflating them is how a suite ends up testing
 itself.
@@ -873,14 +873,48 @@ this one" by letting go of each model in turn before it loads, what that costs
 and what it says while paying it, and a tool whose exit code cannot be taken at
 its word.
 
-An agent's questions are the same shape and sit in `tests/test_claude_code.py`:
-that `configure` writes what is missing and leaves an edit alone, that what it
-writes passes the adapter's own guard, that a configuration permitting a hosted
-tool is refused, and that `plan` leaves the directory as it found it. The last
-two are what a member whose body is `pass` would fail — which the type checker
-cannot see, and which is the silent failure the slot exists to prevent. Making
-them a suite every agent adapter runs is #55, and it is what the header above
-means by the one part of this that is designed rather than built.
+`tests/test_agent_conformance.py` is the same for agents. It states eleven
+things, each of which an agent that is not Claude Code still owes:
+
+- `configure` writes what is missing, and leaves as they left them the files a
+  person then edited — including one edited so that the guard refuses the run,
+  which is a refusal to act on rather than something to write over.
+- What an adapter writes for itself satisfies its own guard, and a
+  configuration permitting a hosted tool stops a run, saying what to change.
+- `plan` writes nothing and starts nothing. It answers with an environment and
+  an argument list carrying the model that will answer and the arguments a
+  person typed, in the order they typed them.
+- The dialect reads before anything has been written, which is what lets `run`
+  refuse an impossible pairing before it pays for a load; and the runtime's
+  address reaches the agent, through the launch or through the configuration,
+  whichever that adapter uses.
+
+Two things it deliberately does not state. A token is not one of them: Claude
+Code refuses to start without one and the local server ignores it, so it is that
+agent's own invention rather than something a run supplies, and it stays in
+`tests/test_claude_code.py`. And *where* the address reaches the agent is left
+open rather than pinned to the launch — an `AgentConfig` carries `runtime_host`
+precisely so that an agent writing it into a file of its own has it before
+`configure` runs, so demanding it in the launch would fail that adapter for
+doing what the port was shaped to allow.
+
+`tests/agents_under_test.py` is the parametrization. A stand-in points its agent
+at a directory the test owns, and supplies the one thing the suite cannot write
+for itself: a configuration permitting a hosted tool, which is a key in a JSON
+file for Claude Code and a table in a TOML file for the next agent. Everything
+else is read off disk by walking that directory, so a `configure` leaving an
+extra file behind is caught by a suite that names no file.
+
+Two of those statements are why the guard is a named member at all. A
+`read_hosted_tools` answering `DENIED` without reading anything satisfies the
+Protocol and the type checker both, and is the silent failure the slot exists to
+prevent; a `configure` that writes over an edit is invisible to both as well.
+Each was checked by making the change and watching the suite go red.
+
+What one agent does and another does not stays in `tests/test_claude_code.py`:
+which environment variables carry the model and the window it is served at, the
+arguments offgrid adds, the `--setting-sources` list that leaves the deny in a
+file nothing loads, and the settings shapes Claude Code itself ignores.
 
 **A fake `Runtime` only where the socket cannot reach.** It is the exception,
 not the default: something satisfying the Protocol proves how the domain
