@@ -844,3 +844,37 @@ What this leaves is three seams of one shape. `leaderboards/` holds published
 lists and the registry naming them, as `runtimes/` and `agents/` hold theirs,
 and the command line is the only module in the tree that imports any of the
 three.
+
+## Binding a run is its own module, and the command line is not it
+
+`read_profile` was public in `cli.py`, and `tests/test_profile.py`,
+`tests/test_live.py` and `tests/test_cli.py` all imported it from there.
+Nothing chose that: the function needs both registries, `cli.py` had them, and
+the module a thing lives in became the interface everything else reaches
+through. `binding.py` takes it and `bind_run` beside it, and joins the
+command-line layer.
+
+`tests/test_profile.py` carried a defence of the old arrangement — that the
+command line is the one place with both registries. It was weighed and found
+descriptive rather than load-bearing: nothing stops another module holding both,
+since the rule forbids reaching *past* a registry to a concrete adapter rather
+than holding two registries. The sentence stays, pointing at `binding.py` and
+without the claim about one place, because `setup` still builds configs and
+`cli.py` still imports both registries for it. Moving that too is the change
+that would make the claim true.
+
+`bind_run` takes the path rather than reading `DEFAULT_PATH` off its own module.
+Read as a global it answers about whichever path the module named when it was
+imported, which is a different file from the one a caller patched — which is how
+the suite reached a real profile in a home directory the first time this moved.
+
+A `Run(profile, runtime, agent)` type was considered for what `bind_run` answers
+with and deferred. It would be three fields and no behaviour until there is a
+lifecycle to hang on it, and that is #12's question rather than this one's.
+
+The layer rule is stated by hand in three places — `COMMAND_LINE` in
+`tests/test_architecture.py`, the `shared/` contract in `pyproject.toml`, and
+the module map. A new module outside all three fails the suite, which is what
+makes a fourth place to put code a decision rather than an accident. Proven by
+taking `binding.py` back out of the layer and by pointing it at a concrete
+adapter, and watching each fail.
