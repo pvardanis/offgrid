@@ -44,7 +44,7 @@ def read_profile(path: Path) -> Profile:
 
 
 def bind_run(
-    path: Path, passthrough: Passthrough = ()
+    profile_path: Path, passthrough: Passthrough = ()
 ) -> tuple[Profile, Runtime, Agent]:
     """Read the profile, and bind both adapters it names.
 
@@ -56,7 +56,7 @@ def bind_run(
     answers about the file it was given rather than about whichever one the
     module happened to name when it was imported.
 
-    :param path: Where to read the profile from.
+    :param profile_path: Where to read the profile from.
     :param passthrough: Arguments handed to the agent unchanged.
 
     :return: What was stored, the runtime, and the agent.
@@ -64,7 +64,7 @@ def bind_run(
     :raise ProfileError: When the profile is not one, or a section is not one
         its adapter can read.
     """
-    profile = read_profile(path)
+    profile = read_profile(profile_path)
 
     runtime = connect_runtime(profile.runtime)
     agent = prepare_agent(profile.agent, passthrough)
