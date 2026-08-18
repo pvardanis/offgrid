@@ -447,7 +447,7 @@ rather than something each adapter reads out of a profile for itself — that
 would point a dependency from an adapter at the profile, which the layer rule
 forbids. Holding a model at a size is holding it with one more fact in it.
 Naming none inherits whatever the runtime last remembered, so a run that says
-nothing about a window behaves as it always has. Reaching a new window is the
+nothing about a window sends none. Reaching a new window is the
 adapter's problem too: LM Studio serves a second copy rather than replacing
 the first, so it lets go before it loads, and leaves a model already at the
 window asked for alone rather than paying a reload for no change.
