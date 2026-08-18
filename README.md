@@ -178,8 +178,10 @@ one command that reaches the network — see [Commands](#commands).
 $ offgrid doctor
   runtime   lmstudio at 127.0.0.1:1234, reachable
   model     qwen/qwen3.6-35b-a3b
-  context   262144
+  ceiling   262144
+  window    262144
   agent     claude-code, speaking anthropic
+  floor     25000
 ```
 
 **4. Start the agent:**
@@ -201,7 +203,7 @@ $ offgrid run -- -p "explain what this module does"
 |---|---|
 | `offgrid setup [--host HOST]` | Measures this Mac, says what fits, writes the profile. Keeps whatever you edited into it by hand. |
 | `offgrid recommend` | Fetches a published coding table, keeps the models this machine can hold, and prints them at each width they fit at. |
-| `offgrid doctor` | Reports the runtime, the model that would answer, its context, and the agent's dialect. |
+| `offgrid doctor` | Reports the runtime, the model that would answer, the most it could be served at, what it is being served at, the smallest window the agent starts in, and the agent's dialect. |
 | `offgrid run [-m MODEL] [-- ARGS]` | Starts the agent. Loads `MODEL` when it is not already held, otherwise uses what is. |
 
 `-m/--model` beats the `model:` in the profile, which beats whatever the

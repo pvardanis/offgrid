@@ -26,6 +26,7 @@ it is. These seams are agreed, and anything else needs a new agreement:
 | a machine's sizing | what fits, at each quantization width |
 | a live run | that a real run holds a model and lets it go — `just live` |
 | `answering.py` | which error a caller gets, and what is said while it waits |
+| the conformance suites | what every adapter of a port answers, not one of them |
 
 Private names are structure, not seams: a test against `_now_holding` breaks on
 a refactor that changed nothing.
