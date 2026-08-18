@@ -1,14 +1,13 @@
 """What a connection to LM Studio does when asked to hold one model.
 
-The server answers over HTTP and lets go through its own tool, so both are
-stood in for rather than the module's own functions: the orchestration and the
-parsing under it are the halves most likely to disagree, and patching between
-them would test neither.
+The server is stood in for rather than the module's own functions: the
+orchestration and the parsing under it are the halves most likely to disagree,
+and patching between them would test neither.
 
 What any runtime owes is stated once, in `tests/test_runtime_conformance.py`.
 What is here is LM Studio's own: that it reaches "hold only this one" by
 letting go of each model in turn before it loads, what that costs and what it
-says while paying it, and a tool whose exit code cannot be taken at its word.
+says while paying it, and a release whose answer cannot be taken at its word.
 """
 
 import logging
@@ -26,9 +25,9 @@ from offgrid.shared.exceptions import (
 )
 from tests.doubles import (
     answer_as_lm_studio,
+    answer_the_load,
     refuse_to_let_go,
-    run_tool,
-    serve_post,
+    take_the_release_and_free_nothing,
 )
 
 HOST = "127.0.0.1:1234"
@@ -144,11 +143,9 @@ def test_a_model_that_will_not_stay_held_is_reported(monkeypatch):
     # The runtime took the load and is holding nothing, which the catalogue
     # is the only way to find out.
     answer_as_lm_studio(monkeypatch, cold={"a/other-7b": 8192})
-    serve_post(
+    answer_the_load(
         monkeypatch,
-        lambda request: httpx.Response(
-            200, json={"model": "a/other-7b", "content": []}
-        ),
+        lambda model: httpx.Response(200, json={"model": model, "content": []}),
     )
 
     with pytest.raises(ModelNotHeldError, match="accepted"):
@@ -159,11 +156,9 @@ def test_a_model_that_did_not_stay_held_is_let_go_of_before_the_error(monkeypatc
     # The runtime may have taken the weights even though the catalogue does
     # not say so, and nobody downstream knows to let them go.
     asked = answer_as_lm_studio(monkeypatch, cold={"a/other-7b": 8192})
-    serve_post(
+    answer_the_load(
         monkeypatch,
-        lambda request: httpx.Response(
-            200, json={"model": "a/other-7b", "content": []}
-        ),
+        lambda model: httpx.Response(200, json={"model": model, "content": []}),
     )
 
     with pytest.raises(ModelNotHeldError):
@@ -175,10 +170,10 @@ def test_a_model_that_did_not_stay_held_is_let_go_of_before_the_error(monkeypatc
 def test_a_load_that_is_interrupted_lets_go_of_what_it_started(monkeypatch):
     asked = answer_as_lm_studio(monkeypatch, cold={"a/other-7b": 8192})
 
-    def interrupted(request: httpx.Request) -> httpx.Response:
+    def interrupted(model: str) -> httpx.Response:
         raise KeyboardInterrupt
 
-    serve_post(monkeypatch, interrupted)
+    answer_the_load(monkeypatch, interrupted)
 
     with pytest.raises(KeyboardInterrupt):
         connect(LMStudioConfig(host=HOST)).ensure_only("a/other-7b")
@@ -198,12 +193,12 @@ def test_a_runtime_that_will_not_let_go_is_said_rather_than_raised(monkeypatch, 
     assert any("still holding" in record.getMessage() for record in caplog.records)
 
 
-def test_a_tool_that_freed_nothing_is_not_taken_at_its_word(monkeypatch, caplog):
-    # `lms unload` exits 0 for a name it does not know, printing "Model Not
-    # Found" and freeing nothing. The catalogue is what settles it, and the
-    # answer a caller branches on has to reflect that.
+def test_a_release_that_freed_nothing_is_not_taken_at_its_word(monkeypatch, caplog):
+    # A release the runtime accepted is a release it accepted, not memory that
+    # came back. The catalogue is what settles it, and the answer a caller
+    # branches on has to reflect that.
     answer_as_lm_studio(monkeypatch, holding={"a/held-7b": 8192})
-    run_tool(monkeypatch, returncode=0, stdout="Model Not Found")
+    take_the_release_and_free_nothing(monkeypatch)
 
     with caplog.at_level(logging.WARNING, logger="offgrid.runtimes.lmstudio"):
         came_back = connect(LMStudioConfig(host=HOST)).let_go("a/held-7b")

@@ -1,8 +1,6 @@
-"""Stand-ins for what offgrid talks to: a server, a runtime's tool, a Mac."""
+"""Stand-ins for what offgrid talks to: a server, and a Mac."""
 
 import json
-import subprocess
-from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -17,6 +15,7 @@ from offgrid.domain.running.launch import Launch
 from offgrid.domain.running.model import Model
 from offgrid.domain.running.runtime import RuntimeConfig, RuntimeName
 from offgrid.domain.sizing.machine import Machine
+from offgrid.runtimes.lmstudio.holding import MESSAGES, UNLOAD
 
 GIB = 1024**3
 MACHINE = Machine(
@@ -207,10 +206,10 @@ def answer_as_lm_studio(
 ) -> dict:
     """Answer for LM Studio, as what it holds changes.
 
-    Its catalogue and its loads come over HTTP and it lets go through its own
-    tool, so all three are answered for here. Each mapping is a model against
-    the context it is served at; a cold model states only its ceiling until
-    something loads it, which is what makes the two numbers differ.
+    Its catalogue, its loads and its releases all come over HTTP, so all three
+    are answered for here. Each mapping is a model against the context it is
+    served at; a cold model states only its ceiling until something loads it,
+    which is what makes the two numbers differ.
 
     :param monkeypatch: The test's patcher.
     :param holding: Models in memory, against the context each is served at.
@@ -234,67 +233,108 @@ def answer_as_lm_studio(
             },
         )
 
-    def load(request: httpx.Request) -> httpx.Response:
-        identifier = json.loads(request.content)["model"]
+    def load(identifier: str) -> httpx.Response:
         in_memory[identifier] = True
         asked["loaded"] = identifier
         asked["order"].append(("loaded", identifier))
 
         return httpx.Response(200, json={"model": identifier, "content": []})
 
-    def tool(argv: Sequence[str], **kwargs) -> subprocess.CompletedProcess:
-        identifier = argv[2]
-        in_memory[identifier] = False
-        asked["let_go"].append(identifier)
-        asked["order"].append(("let_go", identifier))
+    def let_go(instance: str) -> httpx.Response:
+        asked["let_go"].append(instance)
+        asked["order"].append(("let_go", instance))
 
-        return subprocess.CompletedProcess(list(argv), 0, "", "")
+        if not in_memory.get(instance):
+            return httpx.Response(
+                404,
+                json={
+                    "error": {
+                        "type": "model_not_found",
+                        "message": f"Model with instance identifier "
+                        f"'{instance}' is not loaded.",
+                    }
+                },
+            )
+
+        in_memory[instance] = False
+
+        return httpx.Response(200, json={"instance_id": instance})
+
+    def posted(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+
+        if request.url.path == UNLOAD:
+            return let_go(body["instance_id"])
+
+        return load(body["model"])
 
     serve_get(monkeypatch, catalogue)
-    serve_post(monkeypatch, load)
-    monkeypatch.setattr(subprocess, "run", tool)
+    serve_post(monkeypatch, posted)
 
     return asked
 
 
 def refuse_to_let_go(monkeypatch: pytest.MonkeyPatch, complaint: str) -> None:
-    """Answer as a runtime whose tool will not let go of anything.
+    """Answer as a runtime that will not let go of anything it is holding.
 
     :param monkeypatch: The test's patcher.
-    :param complaint: What the tool says about it.
+    :param complaint: What the runtime says about it.
     """
-    monkeypatch.setattr(
-        subprocess,
-        "run",
-        lambda argv, **kwargs: subprocess.CompletedProcess(
-            list(argv), 1, "", complaint
-        ),
+    answer_the_release(
+        monkeypatch,
+        lambda instance: httpx.Response(500, json={"error": {"message": complaint}}),
     )
 
 
-def run_tool(
-    monkeypatch: pytest.MonkeyPatch,
-    *,
-    returncode: int = 0,
-    stdout: str = "",
-    stderr: str = "",
-) -> dict:
-    """Answer for the runtime's command line tool, without running it.
+def take_the_release_and_free_nothing(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Answer as a runtime that accepts a release and goes on holding the model.
 
     :param monkeypatch: The test's patcher.
-    :param returncode: What the tool exits with.
-    :param stdout: What it prints.
-    :param stderr: What it complains with.
-
-    :return: How it was called.
     """
-    asked: dict = {}
+    answer_the_release(
+        monkeypatch,
+        lambda instance: httpx.Response(200, json={"instance_id": instance}),
+    )
 
-    def run(argv, **kwargs):
-        asked["argv"] = list(argv)
-        asked.update(kwargs)
-        return subprocess.CompletedProcess(argv, returncode, stdout, stderr)
 
-    monkeypatch.setattr(subprocess, "run", run)
+def answer_the_release(monkeypatch: pytest.MonkeyPatch, answer) -> None:
+    """Answer the release however a test wants, leaving the rest as it was.
 
-    return asked
+    The catalogue is left saying what it said, which is how a release that
+    freed nothing is arranged at all.
+
+    :param monkeypatch: The test's patcher.
+    :param answer: Called with the instance id, answering with a response.
+    """
+    _take_over(monkeypatch, UNLOAD, lambda body: answer(body["instance_id"]))
+
+
+def answer_the_load(monkeypatch: pytest.MonkeyPatch, answer) -> None:
+    """Answer the load however a test wants, leaving the rest as it was.
+
+    :param monkeypatch: The test's patcher.
+    :param answer: Called with the model, answering with a response.
+    """
+    _take_over(monkeypatch, MESSAGES, lambda body: answer(body["model"]))
+
+
+def _take_over(monkeypatch: pytest.MonkeyPatch, path: str, answer) -> None:
+    """Answer one endpoint, leaving whatever was arranged before it serving.
+
+    A test that replaced `httpx.post` outright would answer the load and the
+    release with the same handler, and lose whichever of the two it was not
+    arranging.
+
+    :param monkeypatch: The test's patcher.
+    :param path: The endpoint to take over.
+    :param answer: Called with the decoded body, answering with a response.
+    """
+    serving = httpx.post
+
+    def post(url: str, json: dict, timeout: float = 0) -> httpx.Response:
+        if url.endswith(path):
+            return answer(json)
+
+        return serving(url, json=json, timeout=timeout)
+
+    monkeypatch.setattr(httpx, "post", post)
