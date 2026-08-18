@@ -103,12 +103,16 @@ class Runtime(Protocol):
         """
         ...
 
-    def ensure_only(self, identifier: str) -> Model:
-        """Hold the named model, and let go of what else is held.
+    def ensure_only(self, identifier: str, window: int | None = None) -> Model:
+        """Hold the named model at a window, and let go of what else is held.
 
         An intent rather than a mechanism: one machine has one pool of memory,
         and what reaching that state costs differs enough between runtimes
-        that it cannot be orchestrated from outside.
+        that it cannot be orchestrated from outside. The window is part of
+        that intent, because holding a model at a size is holding it with one
+        more fact in it. A model already held at the window asked for is left
+        alone, and one held at a different window is let go of and loaded
+        again; one copy is held either way.
 
         What it promises is the named model held, not an empty pool beside it.
         A model that will not go is said out loud rather than raised where the
@@ -120,6 +124,8 @@ class Runtime(Protocol):
         manages its own memory can undo it a second after this returns.
 
         :param identifier: The model that will answer.
+        :param window: The context to serve it at, or ``None`` to inherit
+            whatever the runtime already serves it at.
 
         :return: The model as the runtime now serves it, stating the window it
             was loaded with as well as its ceiling.
