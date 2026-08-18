@@ -54,6 +54,12 @@ so it can be shown rather than guessed at.
 **profile** — what offgrid remembers between runs. YAML, hand-editable, one per
 machine.
 
+**bind** — to turn what a profile names into the runtime and agent a run talks
+to. A section of the file is a name and whatever that adapter reads; it becomes
+a config, and then an adapter, only once something knows which adapters there
+are. Which adapters a run uses is bound before it starts; what the run
+discovers — the model — is passed to them.
+
 **fits** — whether a model's weights, plus room for the context cache, are
 within the memory the GPU may use. offgrid says how much room there is.
 
