@@ -65,6 +65,10 @@ def hold_model(
     if identifier is None and window is None:
         return get_resident_model(runtime)
 
-    wanted = identifier or get_resident_model(runtime).identifier
+    # Naming none is the only thing that asks for the resident model. A name
+    # is passed on as it stands, so one the runtime does not have is refused
+    # by name rather than silently answered by whatever is loaded.
+    if identifier is not None:
+        return runtime.ensure_only(identifier, window)
 
-    return runtime.ensure_only(wanted, window)
+    return runtime.ensure_only(get_resident_model(runtime).identifier, window)
