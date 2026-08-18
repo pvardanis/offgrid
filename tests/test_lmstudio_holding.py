@@ -109,13 +109,39 @@ def test_a_window_is_changed_by_letting_go_first_and_loading_after(monkeypatch):
 
 def test_a_window_that_will_not_be_freed_is_not_loaded_on_top_of(monkeypatch):
     # The copy at the old window is still holding its memory, and loading
-    # again would leave the machine serving the model twice over.
-    asked = answer_as_lm_studio(monkeypatch, holding={"a/wanted-7b": 8000})
-    refuse_to_let_go(monkeypatch, "it would not go")
+    # again would leave the machine serving the model twice over. What is said
+    # names both windows, because "still holding a/wanted-7b, so a/wanted-7b
+    # is not being loaded" reads as a model blocking itself.
+    asked = answer_as_lm_studio(
+        monkeypatch, holding={"a/wanted-7b": 8000}, stuck={"a/wanted-7b"}
+    )
 
-    with pytest.raises(RuntimeUnreachableError, match="still holding"):
+    with pytest.raises(RuntimeUnreachableError) as refused:
         connect(LMStudioConfig(host=HOST)).ensure_only("a/wanted-7b", 16000)
 
+    said = str(refused.value)
+    assert "8000" in said
+    assert "16000" in said
+    assert asked["loaded"] is None
+
+
+def test_a_window_change_refused_by_the_pool_keeps_the_model_that_was_held(
+    monkeypatch,
+):
+    # The wanted model is serving, at the wrong window, beside one that will
+    # not go. Letting the wanted one go and then refusing the load costs its
+    # memory and its cached prefix for nothing: the run fails either way, and
+    # what was answering is gone. So the pool is settled before it is touched.
+    asked = answer_as_lm_studio(
+        monkeypatch,
+        holding={"a/wanted-7b": 8000, "a/stuck-7b": 8192},
+        stuck={"a/stuck-7b"},
+    )
+
+    with pytest.raises(RuntimeUnreachableError, match="a/stuck-7b"):
+        connect(LMStudioConfig(host=HOST)).ensure_only("a/wanted-7b", 16000)
+
+    assert "a/wanted-7b" not in asked["let_go"]
     assert asked["loaded"] is None
 
 
@@ -173,7 +199,7 @@ def test_a_model_that_will_not_stay_held_is_reported(monkeypatch):
     answer_as_lm_studio(monkeypatch, cold={"a/other-7b": 8192})
     answer_the_load(
         monkeypatch,
-        lambda model: httpx.Response(200, json={"model": model, "content": []}),
+        lambda model: httpx.Response(200, json={"instance_id": model}),
     )
 
     with pytest.raises(ModelNotHeldError, match="accepted"):
@@ -186,7 +212,7 @@ def test_a_model_that_did_not_stay_held_is_let_go_of_before_the_error(monkeypatc
     asked = answer_as_lm_studio(monkeypatch, cold={"a/other-7b": 8192})
     answer_the_load(
         monkeypatch,
-        lambda model: httpx.Response(200, json={"model": model, "content": []}),
+        lambda model: httpx.Response(200, json={"instance_id": model}),
     )
 
     with pytest.raises(ModelNotHeldError):
