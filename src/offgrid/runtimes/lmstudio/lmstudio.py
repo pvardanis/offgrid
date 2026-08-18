@@ -25,10 +25,10 @@ from offgrid.shared.exceptions import (
 # endpoint or method`, so a caller cannot tell a count of zero from an endpoint
 # that is not there.
 #
-# Memory it manages itself: loading through the messages endpoint is a JIT
-# load, and `docs/research/adapter-surfaces.md` records what that carries — the
-# app-default 60-minute TTL, and Auto-Evict keeping at most one JIT-loaded
-# model. So this runtime lets go of things nobody asked it to.
+# Memory it manages itself: the load endpoint takes no `ttl`, so a model
+# offgrid loads takes the app's own default rather than staying until someone
+# asks for it back. `docs/research/adapter-surfaces.md` records it. So this
+# runtime lets go of things nobody asked it to.
 CAPABILITIES = Capabilities(
     counts_tokens=False,
     release_can_be_commanded=True,
