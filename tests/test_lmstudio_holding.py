@@ -4,7 +4,7 @@ The server is stood in for rather than the module's own functions: the
 orchestration and the parsing under it are the halves most likely to disagree,
 and patching between them would test neither.
 
-What any runtime owes is stated once, in `tests/test_runtime_conformance.py`.
+What any runtime owes is stated once, in the `tests/test_runtime_*.py` suites.
 What is here is LM Studio's own: that it reaches "hold only this one" by
 letting go of each model in turn before it loads, what that costs and what it
 says while paying it, and a release whose answer cannot be taken at its word.
