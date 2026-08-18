@@ -1,8 +1,9 @@
 """What offgrid asks of an agent, and which ones there are.
 
 An adapter binds its own settings once and answers with something satisfying
-``Agent``. Its one attribute is settled when that happens; its three methods
-act — two on the configuration, one on nothing at all.
+``Agent``. Its two attributes are settled when that happens — both facts about
+the agent itself, neither of them anyone's to choose; its three methods act —
+two on the configuration, one on nothing at all.
 
 Why it is shaped this way is in `docs/architecture.md` under "The agent seam".
 """
@@ -86,6 +87,19 @@ class Agent(Protocol):
         """The API shape the agent speaks.
 
         :return: The dialect a runtime has to serve for the pair to work.
+        """
+        ...
+
+    @property
+    def context_floor(self) -> int:
+        """The smallest window this agent can start in.
+
+        A fact about the agent rather than a preference, so nothing outside it
+        may say otherwise: an agent whose system prompt and tool definitions
+        do not fit fails at startup, and asserting a smaller number only buys
+        that failure after a load has been paid for.
+
+        :return: The window below which it will not start, in tokens.
         """
         ...
 

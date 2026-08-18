@@ -19,6 +19,11 @@ TOKEN = "local"
 # served by anything, large enough to hold a conversation.
 FALLBACK_CONTEXT = 32768
 
+# Claude Code's system prompt and tool definitions do not fit below this, and
+# what is on the other side of it is a failure at startup rather than a
+# cramped session. A fact about this agent, so nothing may set it.
+CONTEXT_FLOOR = 25_000
+
 # Claude Code reads three sources, and this argument confines it to the ones
 # it names. `user` is the one CLAUDE_CONFIG_DIR points at, so it is the one
 # offgrid writes the deny into and the one a list may not leave out.
