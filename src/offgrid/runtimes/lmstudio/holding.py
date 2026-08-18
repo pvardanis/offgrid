@@ -8,7 +8,7 @@ import httpx
 
 from offgrid.shared.exceptions import RuntimeUnreachableError
 
-MESSAGES = "/v1/messages"
+LOAD = "/api/v1/models/load"
 UNLOAD = "/api/v1/models/unload"
 
 # Weights come off disk at gigabytes a second, so a large model takes tens of
@@ -21,29 +21,40 @@ UNLOAD_TIMEOUT_SECONDS = 30
 
 
 def load_model(
-    host: str, identifier: str, timeout: float = LOAD_TIMEOUT_SECONDS
+    host: str,
+    identifier: str,
+    window: int | None = None,
+    timeout: float = LOAD_TIMEOUT_SECONDS,
 ) -> None:
     """Hold a model in memory, waiting until it is ready to answer.
 
-    Asking for a single token is what makes the runtime load it. Doing that
-    here rather than leaving it to the first real request means the wait is
-    visible and attributable, instead of a silence in the middle of a turn.
+    Waiting here rather than leaving the load to the first real request means
+    the wait is visible and attributable, instead of a silence in the middle
+    of a turn.
+
+    A window travels with the weights, because it is settled as the model
+    comes into memory and nothing afterwards can change what it is served at.
+    Naming none leaves the runtime serving whatever its own configuration
+    last remembered.
+
+    Whether the model is actually held afterwards is the catalogue's answer
+    rather than this one, so a caller that needs to know reads it back.
 
     :param host: Address the runtime listens on.
     :param identifier: The model to load.
+    :param window: The context to serve it at, or ``None`` to inherit the
+        runtime's own.
     :param timeout: How long to wait before giving up.
 
-    :raise RuntimeUnreachableError: When the load does not finish in time,
-        when the runtime refuses it, or when another model answers. A name
-        LM Studio does not have is answered 200 by whatever is loaded, and
-        the model named in the reply is what gives that away.
+    :raise RuntimeUnreachableError: When the load does not finish in time, or
+        when the runtime refuses it. A name LM Studio does not have is a 404
+        saying so.
     """
-    url = f"http://{host}{MESSAGES}"
-    body = {
-        "model": identifier,
-        "max_tokens": 1,
-        "messages": [{"role": "user", "content": "hi"}],
-    }
+    url = f"http://{host}{LOAD}"
+    body: dict = {"model": identifier}
+
+    if window is not None:
+        body["context_length"] = window
 
     try:
         response = httpx.post(url, json=body, timeout=timeout)
@@ -56,25 +67,8 @@ def load_model(
 
     if response.is_error:
         raise RuntimeUnreachableError(
-            f"The runtime answered {response.status_code} loading {identifier}. "
-            "Check the name against `offgrid doctor`, and that it has room."
-        )
-
-    try:
-        answer = response.json()
-    except ValueError as error:
-        raise RuntimeUnreachableError(
-            f"{url} answered {response.status_code} loading {identifier} with "
-            f"{response.headers.get('content-type', 'no type')}, not JSON. "
-            f"Is http://{host} really LM Studio?"
-        ) from error
-
-    answered = answer.get("model") if isinstance(answer, dict) else None
-    if answered and answered != identifier:
-        raise RuntimeUnreachableError(
-            f"{identifier} was asked for and {answered} answered. LM Studio "
-            "takes a name it does not have and lets whatever is loaded reply, "
-            "so check the name against `offgrid doctor`."
+            f"The runtime answered {response.status_code} loading {identifier}: "
+            f"{_read_the_complaint(response)}"
         )
 
 
