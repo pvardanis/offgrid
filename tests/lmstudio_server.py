@@ -26,6 +26,8 @@ def answer_as_lm_studio(
     holding: dict[str, int] | None = None,
     cold: dict[str, int] | None = None,
     ceiling: int = CEILING,
+    stuck: set[str] | None = None,
+    serves: int | None = None,
 ) -> dict:
     """Answer for LM Studio, as what it holds changes.
 
@@ -37,12 +39,21 @@ def answer_as_lm_studio(
     :param holding: Models in memory, against the context each is served at.
     :param cold: Models it has and is not holding.
     :param ceiling: The context every model states before it is loaded.
+    :param stuck: Instances the runtime will not free, which stay held and
+        answer the release with a complaint. Named per instance rather than
+        for the whole server, so that a pool with one immovable model in it
+        can be arranged beside models that go.
+    :param serves: What every load is served at whatever it asked for, or
+        ``None`` to serve what was asked. A runtime is free to honour a window
+        it was given with a different one, and a double that always agrees
+        cannot tell a readback from an echo.
 
     :return: What it was asked to load, at what window, what it was asked to
         let go of, and in what order.
     """
     served = {**(holding or {}), **(cold or {})}
     in_memory = dict.fromkeys(holding or {}, True) | dict.fromkeys(cold or {}, False)
+    immovable = stuck or set()
     asked: dict = {"loaded": None, "window": None, "let_go": [], "order": []}
 
     def catalogue(request: httpx.Request) -> httpx.Response:
@@ -62,7 +73,7 @@ def answer_as_lm_studio(
         instance = f"{identifier}:2" if in_memory.get(identifier) else identifier
 
         in_memory[instance] = True
-        served[instance] = window or served[identifier]
+        served[instance] = serves or window or served[identifier]
         asked["loaded"] = identifier
         asked["window"] = window
         asked["order"].append(("loaded", identifier))
@@ -72,6 +83,11 @@ def answer_as_lm_studio(
     def let_go(instance: str) -> httpx.Response:
         asked["let_go"].append(instance)
         asked["order"].append(("let_go", instance))
+
+        if instance in immovable:
+            return httpx.Response(
+                500, json={"error": {"message": f"{instance} would not go"}}
+            )
 
         if not in_memory.get(instance):
             return httpx.Response(
