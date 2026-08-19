@@ -224,9 +224,9 @@ sequenceDiagram
     A-->>C: HostedToolsReport
     C->>C: require_hosted_tools_denied(report)
     Note over C,A: everything knowable before a load, before the load
-    C->>H: hold_model(runtime, request)
+    C->>H: hold_model(runtime, model_request)
     Note over H: either half may be none: no model asks for whatever is<br/>held, no window asks for whatever it is served at
-    H->>R: ensure_only(request) — or read_held()
+    H->>R: ensure_only(model_request) — or read_held()
     Note over R: what "only this one, at that window" costs here is the<br/>adapter's problem: let go of the rest, load, read back
     R-->>H: Model, as served
     H-->>C: Model
@@ -405,7 +405,7 @@ class Runtime(Protocol):
 
     def read_catalogue(self) -> list[Model]: ...
     def read_held(self) -> list[Model]: ...
-    def ensure_only(self, request: ModelRequest) -> Model: ...
+    def ensure_only(self, model_request: ModelRequest) -> Model: ...
     def let_go(self, identifier: str) -> bool: ...
 ```
 

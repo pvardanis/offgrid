@@ -171,7 +171,7 @@ def run(
 
     with _reporting():
         profile, runtime, agent = bind_run(DEFAULT_PATH, passthrough)
-        request = ModelRequest(
+        model_request = ModelRequest(
             identifier=model_name or profile.model,
             context_window=context_window,
         )
@@ -183,7 +183,7 @@ def run(
         agent.configure()
         require_hosted_tools_denied(agent.read_hosted_tools())
 
-        model = hold_model(runtime, request)
+        model = hold_model(runtime, model_request)
 
     # Nothing between here and the agent finishing may leave the model held:
     # from this line on, letting go is owed whatever happens.

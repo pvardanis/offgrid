@@ -35,7 +35,7 @@ def get_resident_model(runtime: Runtime) -> Model:
     return in_memory[0]
 
 
-def hold_model(runtime: Runtime, request: ModelRequest) -> Model:
+def hold_model(runtime: Runtime, model_request: ModelRequest) -> Model:
     """Hold the model that will answer: the one asked for, or the one there.
 
     Asking for neither a model nor a window is how a run says it wants
@@ -47,7 +47,7 @@ def hold_model(runtime: Runtime, request: ModelRequest) -> Model:
     the old window while whoever typed the number believes they changed it.
 
     :param runtime: The runtime to ask.
-    :param request: The model a run asked for, and the window to hold it at.
+    :param model_request: The model a run asked for, and the window to hold it at.
 
     :return: The model that will answer, stating the window the runtime serves
         it at as well as its ceiling.
@@ -59,14 +59,14 @@ def hold_model(runtime: Runtime, request: ModelRequest) -> Model:
         the load fails, or when what is already held will not go and this one
         would be loaded on top of it.
     """
-    if request.identifier is None and request.context_window is None:
+    if model_request.identifier is None and model_request.context_window is None:
         return get_resident_model(runtime)
 
     # The port is owed a name, so a run that gave none is answered with the
     # resident model's before anything is asked of the runtime.
-    if request.identifier is None:
-        request = request.model_copy(
+    if model_request.identifier is None:
+        model_request = model_request.model_copy(
             update={"identifier": get_resident_model(runtime).identifier}
         )
 
-    return runtime.ensure_only(request)
+    return runtime.ensure_only(model_request)
