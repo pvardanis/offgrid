@@ -12,7 +12,7 @@ both back here.
 from pathlib import Path
 
 import yaml
-from pydantic import BaseModel, ConfigDict, SerializeAsAny, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, SerializeAsAny, ValidationError
 
 from offgrid.domain.profile.structure import refuse_a_flat_profile
 from offgrid.domain.running.agent import AgentConfig
@@ -39,7 +39,9 @@ class Profile(BaseModel):
     :param agent: The agent adapter to use.
     :param model: The model to run unless one is named on the command line, or
         ``None`` to use whatever the runtime is already holding. It belongs to
-        neither adapter: a run discovers it, and ``--model`` beats it.
+        neither adapter: a run discovers it, and ``--model`` beats it. Never
+        empty: a name nobody typed is a different statement from no name, and
+        reading one as the other runs against whatever happens to be resident.
 
     Nothing measured is kept here. The GPU limit moves — a runtime may raise
     it as it starts — so it is read where it is used rather than recorded.
@@ -53,7 +55,7 @@ class Profile(BaseModel):
 
     runtime: SerializeAsAny[RuntimeConfig]
     agent: SerializeAsAny[AgentConfig]
-    model: str | None = None
+    model: str | None = Field(default=None, min_length=1)
 
 
 def save_profile(profile: Profile, path: Path = DEFAULT_PATH) -> None:

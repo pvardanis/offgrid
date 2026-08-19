@@ -313,3 +313,17 @@ def test_a_profile_carrying_a_measured_machine_is_refused(tmp_path):
     assert "memory_bytes" in said
     assert "wired_limit_bytes" in said
     assert "offgrid setup" in said
+
+
+def test_a_model_named_as_nothing_is_refused_rather_than_read_as_unnamed(tmp_path):
+    # `model: ""` is a name nobody typed, not the absence of one. Read as
+    # absence it answers with whatever is resident, where the runtime should
+    # have said it does not have that — and read by the type that refuses an
+    # empty name it reached the terminal as a traceback.
+    written = tmp_path / "profile.yaml"
+    written.write_text(NAMED.format(host=HOST) + 'model: ""\n')
+
+    with pytest.raises(ProfileError) as refused:
+        read_profile(written)
+
+    assert "model" in str(refused.value)
