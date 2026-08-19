@@ -197,6 +197,26 @@ def test_a_window_asked_for_leaves_one_copy_and_then_none(host: str, known: str)
     assert get_held_instances(get_catalogue_payload(host), known) == [], finished.stderr
 
 
+def test_a_window_above_the_ceiling_is_refused_rather_than_served(
+    host: str, known: str
+):
+    # This server takes a window above a model's own maximum, answers that it
+    # loaded it, and reports the impossible number back — so a double cannot
+    # say that the refusal is offgrid's to make. Only this can.
+    _free(host, known)
+    ceiling = next(
+        model.context_ceiling
+        for model in parse_models_from_payload(get_catalogue_payload(host))
+        if model.identifier == known
+    )
+
+    finished = _run(known, window=(ceiling or 0) + 1)
+
+    assert finished.returncode == 1, finished.stderr
+    assert str(ceiling) in finished.stderr, finished.stderr
+    assert get_held_instances(get_catalogue_payload(host), known) == []
+
+
 def _run(identifier: str, window: int | None = None) -> subprocess.CompletedProcess:
     """Start an agent against a model and wait for it to finish.
 

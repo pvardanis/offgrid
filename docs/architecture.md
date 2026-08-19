@@ -151,6 +151,7 @@ domain/
     recommendation.py  how that reads to whoever asked
   running/         what a run is made of
     model.py       a model the runtime describes
+    window.py      which windows a run cannot be held at, and why
     dialect.py     which API shapes can be paired
     capabilities.py  what a runtime can be asked to do
     hosted_tools.py  what an agent can reach that offgrid cannot run here
@@ -242,7 +243,11 @@ The order is the design here, not an accident of how the code was written.
 
 The dialect check and the hosted-tool reading both run *before* the load,
 because both are knowable in advance and a load is tens of seconds nobody gets
-back. From the moment a model is held, letting go is owed whatever happens —
+back. The two window refusals sit there for the same reason, one either side
+of the number asked for: below the agent's floor it does not start, and above
+the model's ceiling the runtime takes the number without complaint and serves
+one the model cannot honour. `window.py` holds both, `hold_model` calls them,
+and each names the window asked for beside the number it broke. From the moment a model is held, letting go is owed whatever happens —
 so the launch sits in a `try`, `let_go` sits in the `finally`, and a failed
 load lets go of the weights the runtime may have taken anyway.
 

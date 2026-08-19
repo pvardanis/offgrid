@@ -25,6 +25,15 @@ class ModelNotHeldError(ModelUnavailableError):
     """
 
 
+class ContextWindowUnworkableError(OffgridError):
+    """The window a run asked for is one nothing could serve it at.
+
+    Below the agent's floor the agent does not start, and above the model's
+    ceiling the runtime serves a number the model cannot honour. Both are
+    knowable before a load, and a load is tens of seconds nobody gets back.
+    """
+
+
 class LeaderboardUnavailableError(OffgridError):
     """The published list could not be fetched, or held no table.
 
