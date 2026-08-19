@@ -472,6 +472,8 @@ def test_run_refuses_a_window_the_agent_could_not_start_in(here, monkeypatch):
     assert result.exit_code == 1
     assert "8000" in result.stderr
     assert "25000" in result.stderr
+    # The number to type next, not only the two that disagreed.
+    assert "Ask for 25000 or more" in result.stderr
     assert asked["order"] == []
 
 
@@ -487,6 +489,7 @@ def test_run_refuses_a_window_the_model_could_not_honour(here, monkeypatch):
     assert result.exit_code == 1
     assert "300000" in result.stderr
     assert "262144" in result.stderr
+    assert "Ask for 262144 or less" in result.stderr
     assert asked["order"] == []
 
 

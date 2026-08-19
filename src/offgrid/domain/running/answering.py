@@ -74,16 +74,60 @@ def hold_model(
     """
     refuse_a_window_below_the_floor(model_request.context_window, context_floor)
 
-    if model_request.identifier is None and model_request.context_window is None:
-        return get_resident_model(runtime)
+    resident = None
 
     # The port is owed a name, so a run that gave none is answered with the
     # resident model's before anything is asked of the runtime.
     if model_request.identifier is None:
+        resident = get_resident_model(runtime)
+
+        if model_request.context_window is None:
+            return resident
+
         model_request = model_request.model_copy(
-            update={"identifier": get_resident_model(runtime).identifier}
+            update={"identifier": resident.identifier}
         )
 
-    refuse_a_window_above_the_ceiling(runtime, model_request)
+    refuse_a_window_above_the_ceiling(
+        model_request, _read_ceiling(runtime, model_request, resident)
+    )
 
     return runtime.ensure_only(model_request)
+
+
+def _read_ceiling(
+    runtime: Runtime, model_request: ModelRequest, resident: Model | None
+) -> int | None:
+    """Find the most the model asked for could be served at.
+
+    One catalogue read against a load costing tens of seconds, and none at all
+    where the resident model has already been read or where no window was
+    asked for and there is nothing to measure.
+
+    A model the runtime does not have states no ceiling here. Refusing it by
+    name is the runtime's own answer to make, with the address and what to run
+    to list what there is.
+
+    :param runtime: The runtime to ask what it has.
+    :param model_request: The model a run asked for, and the window to hold it
+        at.
+    :param resident: The model already held, where that is the one asked for.
+
+    :return: The model's ceiling, or ``None`` where nothing states one.
+
+    :raise RuntimeUnreachableError: When the catalogue cannot be read.
+    """
+    if model_request.context_window is None:
+        return None
+
+    if resident is not None:
+        return resident.context_ceiling
+
+    return next(
+        (
+            model.context_ceiling
+            for model in runtime.read_catalogue()
+            if model.identifier == model_request.identifier
+        ),
+        None,
+    )
