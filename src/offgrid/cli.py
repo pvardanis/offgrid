@@ -177,7 +177,8 @@ def run(
         )
 
         # A dialect that cannot be paired, a run that would undo a guarantee
-        # and a window nothing could serve are all knowable before a load, and
+        # and a window the run could not work at are all settled before the
+        # load — the first two here, the window inside `hold_model` — because
         # a load is tens of seconds nobody gets back.
         require_compatible(runtime.dialect, agent.dialect)
         agent.configure()

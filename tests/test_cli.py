@@ -477,6 +477,26 @@ def test_run_refuses_a_window_the_agent_could_not_start_in(here, monkeypatch):
     assert asked["order"] == []
 
 
+def test_run_refuses_a_window_against_the_floor_the_agent_states(here, monkeypatch):
+    # The agent's own number, asked of the agent. A second adapter starting
+    # in a window Claude Code cannot would otherwise be refused at Claude
+    # Code's floor, which is a number that says nothing about it.
+    from offgrid.domain.running.dialect import Dialect
+
+    answer_as_an_agent(
+        monkeypatch, StandInAgent(dialect=Dialect.ANTHROPIC, context_floor=9000)
+    )
+    runner.invoke(app, ["setup"])
+    asked = answer_as_lm_studio(monkeypatch, holding={RESIDENT: 212224})
+    _launched(monkeypatch)
+
+    result = runner.invoke(app, ["run", "--context-window", "8000"])
+
+    assert result.exit_code == 1
+    assert "Ask for 9000 or more" in result.stderr
+    assert asked["order"] == []
+
+
 def test_run_refuses_a_window_the_model_could_not_honour(here, monkeypatch):
     # LM Studio takes this one, reports success, and serves the impossible
     # number back, so the refusal is offgrid's to make.
@@ -493,18 +513,20 @@ def test_run_refuses_a_window_the_model_could_not_honour(here, monkeypatch):
     assert asked["order"] == []
 
 
-def test_a_run_refused_over_its_window_leaves_what_was_held_where_it_was(
+def test_a_run_refused_below_the_floor_leaves_what_was_held_where_it_was(
     here, monkeypatch
 ):
     # A refusal is not a run, so it neither loads nor lets go: the model that
-    # was answering before the command is the one answering after it.
+    # was answering before the command is the one answering after it, at the
+    # window it was already being served at.
     runner.invoke(app, ["setup"])
     answer_as_lm_studio(monkeypatch, holding={RESIDENT: 212224})
     _launched(monkeypatch)
 
-    runner.invoke(app, ["run", "--context-window", "8000"])
+    refused = runner.invoke(app, ["run", "--context-window", "8000"])
     result = runner.invoke(app, ["doctor"])
 
+    assert refused.exit_code == 1
     assert "  window    212224" in result.stderr
 
 

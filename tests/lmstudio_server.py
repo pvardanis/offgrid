@@ -18,6 +18,7 @@ import pytest
 
 from offgrid.runtimes.lmstudio.holding import UNLOAD
 from tests.doubles import CEILING, serve_get, serve_post
+from tests.lmstudio_catalogue import describe_model
 
 
 def answer_as_lm_studio(
@@ -26,6 +27,7 @@ def answer_as_lm_studio(
     holding: dict[str, int] | None = None,
     cold: dict[str, int] | None = None,
     ceiling: int | None = CEILING,
+    ceilings: dict[str, int | None] | None = None,
     stuck: set[str] | None = None,
     serves: int | None = None,
 ) -> dict:
@@ -39,10 +41,12 @@ def answer_as_lm_studio(
     :param holding: Models in memory, against the context each is served at.
     :param cold: Models it has and is not holding.
     :param ceiling: The context every model states before it is loaded.
+    :param ceilings: What one model states, where that differs from the rest.
+        A catalogue stating one number throughout cannot tell a ceiling read
+        off the model asked for from one read off any other.
     :param stuck: Instances the runtime will not free, which stay held and
-        answer the release with a complaint. Named per instance rather than
-        for the whole server, so that a pool with one immovable model in it
-        can be arranged beside models that go.
+        answer the release with a complaint. Named per instance so that a pool
+        with one immovable model can be arranged beside models that go.
     :param serves: What every load is served at whatever it asked for, or
         ``None`` to serve what was asked. A runtime is free to honour a window
         it was given with a different one, and a double that always agrees
@@ -61,7 +65,12 @@ def answer_as_lm_studio(
             200,
             json={
                 "data": [
-                    _entry(name, served=served[name], ceiling=ceiling, in_memory=state)
+                    describe_model(
+                        name,
+                        served=served[name],
+                        ceiling=(ceilings or {}).get(name, ceiling),
+                        in_memory=state,
+                    )
                     for name, state in in_memory.items()
                 ]
             },
@@ -117,31 +126,3 @@ def answer_as_lm_studio(
     serve_post(monkeypatch, posted)
 
     return asked
-
-
-def _entry(
-    identifier: str, *, served: int, ceiling: int | None, in_memory: bool
-) -> dict:
-    """Describe one model the way LM Studio's catalogue does.
-
-    :param identifier: The model's id.
-    :param served: The context it is served at once it is loaded.
-    :param ceiling: The context it states before anything loads it, or
-        ``None`` for a model the catalogue describes without one — which is a
-        shape the live payload has.
-    :param in_memory: Whether it is held.
-
-    :return: One catalogue entry.
-    """
-    entry = {
-        "id": identifier,
-        "type": "llm",
-        "state": "loaded" if in_memory else "not-loaded",
-    }
-    if ceiling is not None:
-        entry["max_context_length"] = ceiling
-
-    if in_memory:
-        entry["loaded_context_length"] = served
-
-    return entry

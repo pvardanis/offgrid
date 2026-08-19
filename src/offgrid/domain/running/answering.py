@@ -77,7 +77,7 @@ def hold_model(
     resident = None
 
     # The port is owed a name, so a run that gave none is answered with the
-    # resident model's before anything is asked of the runtime.
+    # resident model's before the load is asked for.
     if model_request.identifier is None:
         resident = get_resident_model(runtime)
 
@@ -111,7 +111,8 @@ def _read_ceiling(
     :param runtime: The runtime to ask what it has.
     :param model_request: The model a run asked for, and the window to hold it
         at.
-    :param resident: The model already held, where that is the one asked for.
+    :param resident: The model already held, where the run named none and it
+        was substituted in.
 
     :return: The model's ceiling, or ``None`` where nothing states one.
 
