@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 
 from offgrid.domain.running.capabilities import Capabilities
 from offgrid.domain.running.dialect import Dialect
-from offgrid.domain.running.model import Model
+from offgrid.domain.running.model import Model, ModelRequest
 from offgrid.runtimes.lmstudio.catalogue import (
     get_catalogue_payload,
     get_held_instances,
@@ -73,8 +73,8 @@ class LMStudio:
         """
         return get_loaded_models(get_catalogue_payload(self.config.host))
 
-    def ensure_only(self, identifier: str, window: int | None = None) -> Model:
-        """Hold the named model at a window, whatever the runtime holds now.
+    def ensure_only(self, request: ModelRequest) -> Model:
+        """Hold the model a run asked for, whatever the runtime holds now.
 
         A model that will not go is said out loud and this answers anyway
         where the wanted one is already in memory at the window asked for:
@@ -82,9 +82,8 @@ class LMStudio:
         is needed, it is refused rather than paid into a pool that is still
         full.
 
-        :param identifier: The model that will answer.
-        :param window: The context to serve it at, or ``None`` to inherit
-            whatever it is already served at.
+        :param request: The model that will answer, and the window to hold
+            it at. Its identifier is settled before it reaches here.
 
         :return: The model as LM Studio now serves it.
 
@@ -94,6 +93,15 @@ class LMStudio:
             load fails, or when what is already held will not go and the
             wanted one would be loaded on top of it.
         """
+        identifier, window = request.identifier, request.context_window
+
+        if identifier is None:
+            raise ModelUnavailableError(
+                "No model was named, and which one is resident was not settled "
+                "before the runtime was asked. `hold_model` answers that; a "
+                "caller reaching the port directly has to name one."
+            )
+
         # One payload read twice, rather than `read_catalogue` and `read_held`,
         # which fetch one each. Two fetches are two moments: a model can be let
         # go of between them, and then what the runtime has and what it holds
@@ -142,7 +150,7 @@ class LMStudio:
                 "or run at the window it is already serving."
             )
 
-        return self._load(identifier, window)
+        return self._load(request)
 
     def let_go(self, identifier: str) -> bool:
         """Let go of a model, saying so if the runtime will not.
@@ -221,33 +229,32 @@ class LMStudio:
 
         return refusals
 
-    def _load(self, identifier: str, window: int | None) -> Model:
+    def _load(self, request: ModelRequest) -> Model:
         """Wait for a model's weights, and read back what is being served.
 
         What is served is read from the catalogue rather than taken from the
         load's own answer: a load LM Studio accepted is not a model it is
         holding, and only the catalogue says which of the two happened.
 
-        :param identifier: The model to load.
-        :param window: The context to serve it at, or ``None`` to inherit.
+        :param request: The model to load, and the window to load it at.
 
         :return: The model as LM Studio now serves it.
 
         :raise ModelNotHeldError: When it is not held afterwards.
         :raise RuntimeUnreachableError: When the load fails.
         """
-        log.info("  Loading %s ...", identifier)
+        log.info("  Loading %s ...", request.identifier)
         started = time.monotonic()
 
         try:
-            load_model(self.config.host, identifier, window)
+            load_model(self.config.host, request)
             log.info("  ready in %.0fs", time.monotonic() - started)
 
-            return self._now_holding(identifier)
+            return self._now_holding(str(request.identifier))
         except BaseException:
             # However this ended, the runtime may have taken the weights, and
             # nobody downstream of here knows to let them go.
-            self.let_go(identifier)
+            self.let_go(str(request.identifier))
             raise
 
     def _now_holding(self, identifier: str) -> Model:

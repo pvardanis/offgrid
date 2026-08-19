@@ -17,7 +17,7 @@ from pydantic import BaseModel, ConfigDict, computed_field
 
 from offgrid.domain.running.capabilities import Capabilities
 from offgrid.domain.running.dialect import Dialect
-from offgrid.domain.running.model import Model
+from offgrid.domain.running.model import Model, ModelRequest
 
 
 class RuntimeName(Enum):
@@ -103,8 +103,8 @@ class Runtime(Protocol):
         """
         ...
 
-    def ensure_only(self, identifier: str, window: int | None = None) -> Model:
-        """Hold the named model at a window, and let go of what else is held.
+    def ensure_only(self, request: ModelRequest) -> Model:
+        """Hold the model a run asked for, and let go of what else is held.
 
         An intent rather than a mechanism: one machine has one pool of memory,
         and what reaching that state costs differs enough between runtimes
@@ -123,9 +123,10 @@ class Runtime(Protocol):
         How long the state lasts is `capabilities` business: a runtime that
         manages its own memory can undo it a second after this returns.
 
-        :param identifier: The model that will answer.
-        :param window: The context to serve it at, or ``None`` to inherit
-            whatever the runtime already serves it at.
+        :param request: The model that will answer, and the window to hold
+            it at. Its identifier is settled by the time it reaches here: a
+            run that named none has already been answered with the resident
+            model's own.
 
         :return: The model as the runtime now serves it, stating the window it
             was loaded with as well as its ceiling.

@@ -11,6 +11,7 @@ only edit to the suite that adding one takes.
 
 import pytest
 
+from offgrid.domain.running.model import ModelRequest
 from offgrid.shared.exceptions import (
     ModelNotHeldError,
     ModelUnavailableError,
@@ -27,7 +28,7 @@ def test_a_model_is_answered_for_as_it_is_served_not_as_it_is_catalogued(
     # which is the failure compacting exists to avoid.
     runtime.arrange_serving(monkeypatch, cold={"a/wanted-7b": 32768}, catalogued=262144)
 
-    model = runtime.connect().ensure_only("a/wanted-7b")
+    model = runtime.connect().ensure_only(ModelRequest(identifier="a/wanted-7b"))
 
     assert model.identifier == "a/wanted-7b"
     assert (model.context_window, model.context_ceiling) == (32768, 262144)
@@ -43,7 +44,7 @@ def test_only_the_model_that_will_answer_is_held_afterwards(
     )
     connection = runtime.connect()
 
-    connection.ensure_only("a/wanted-7b")
+    connection.ensure_only(ModelRequest(identifier="a/wanted-7b"))
 
     assert [model.identifier for model in connection.read_held()] == ["a/wanted-7b"]
 
@@ -56,7 +57,7 @@ def test_a_model_already_held_is_answered_for_and_stays_held(
     runtime.arrange_serving(monkeypatch, holding={"a/wanted-7b": 8192})
     connection = runtime.connect()
 
-    model = connection.ensure_only("a/wanted-7b")
+    model = connection.ensure_only(ModelRequest(identifier="a/wanted-7b"))
 
     assert model.identifier == "a/wanted-7b"
     assert [held.identifier for held in connection.read_held()] == ["a/wanted-7b"]
@@ -69,7 +70,9 @@ def test_a_model_is_held_at_the_window_asked_for(
     # whatever it last remembered makes that number nobody's decision.
     runtime.arrange_serving(monkeypatch, cold={"a/wanted-7b": 32768})
 
-    model = runtime.connect().ensure_only("a/wanted-7b", 8000)
+    model = runtime.connect().ensure_only(
+        ModelRequest(identifier="a/wanted-7b", context_window=8000)
+    )
 
     assert model.context_window == 8000
 
@@ -85,7 +88,9 @@ def test_a_model_is_answered_for_at_the_window_served_not_the_one_asked_for(
         monkeypatch, cold={"a/wanted-7b": 4096}, serves=32768
     )
 
-    model = runtime.connect().ensure_only("a/wanted-7b", 200000)
+    model = runtime.connect().ensure_only(
+        ModelRequest(identifier="a/wanted-7b", context_window=200000)
+    )
 
     assert model.context_window == 32768
 
@@ -97,7 +102,7 @@ def test_a_model_asked_for_with_no_window_is_served_as_the_runtime_chose(
     # the runtime with a number offgrid made up.
     runtime.arrange_serving(monkeypatch, cold={"a/wanted-7b": 32768})
 
-    model = runtime.connect().ensure_only("a/wanted-7b")
+    model = runtime.connect().ensure_only(ModelRequest(identifier="a/wanted-7b"))
 
     assert model.context_window == 32768
 
@@ -110,7 +115,9 @@ def test_a_model_already_held_at_the_window_asked_for_is_left_alone(
     runtime.arrange_serving(monkeypatch, holding={"a/wanted-7b": 8000})
     connection = runtime.connect()
 
-    model = connection.ensure_only("a/wanted-7b", 8000)
+    model = connection.ensure_only(
+        ModelRequest(identifier="a/wanted-7b", context_window=8000)
+    )
 
     assert model.context_window == 8000
     assert [held.identifier for held in connection.read_held()] == ["a/wanted-7b"]
@@ -125,7 +132,9 @@ def test_a_model_held_at_another_window_is_held_once_at_the_new_one(
     runtime.arrange_serving(monkeypatch, holding={"a/wanted-7b": 8000})
     connection = runtime.connect()
 
-    model = connection.ensure_only("a/wanted-7b", 16000)
+    model = connection.ensure_only(
+        ModelRequest(identifier="a/wanted-7b", context_window=16000)
+    )
 
     assert model.context_window == 16000
     assert [held.identifier for held in connection.read_held()] == ["a/wanted-7b"]
@@ -137,7 +146,7 @@ def test_a_model_the_runtime_does_not_have_is_refused_by_name(
     runtime.arrange_serving(monkeypatch, holding={"a/held-7b": 8192})
 
     with pytest.raises(ModelUnavailableError) as refused:
-        runtime.connect().ensure_only("a/absent-7b")
+        runtime.connect().ensure_only(ModelRequest(identifier="a/absent-7b"))
 
     said = str(refused.value)
     assert "a/absent-7b" in said
@@ -155,6 +164,6 @@ def test_a_model_the_runtime_took_and_does_not_hold_is_reported(
     runtime.arrange_taking_without_holding(monkeypatch, model="a/wanted-7b")
 
     with pytest.raises(ModelNotHeldError) as reported:
-        runtime.connect().ensure_only("a/wanted-7b")
+        runtime.connect().ensure_only(ModelRequest(identifier="a/wanted-7b"))
 
     assert "a/wanted-7b" in str(reported.value)

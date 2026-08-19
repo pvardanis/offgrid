@@ -224,9 +224,9 @@ sequenceDiagram
     A-->>C: HostedToolsReport
     C->>C: require_hosted_tools_denied(report)
     Note over C,A: everything knowable before a load, before the load
-    C->>H: hold_model(runtime, wanted, window)
-    Note over H: either may be none: no model asks for whatever is<br/>held, no window asks for whatever it is served at
-    H->>R: ensure_only(wanted, window) — or read_held()
+    C->>H: hold_model(runtime, request)
+    Note over H: either half may be none: no model asks for whatever is<br/>held, no window asks for whatever it is served at
+    H->>R: ensure_only(request) — or read_held()
     Note over R: what "only this one, at that window" costs here is the<br/>adapter's problem: let go of the rest, load, read back
     R-->>H: Model, as served
     H-->>C: Model
@@ -405,7 +405,7 @@ class Runtime(Protocol):
 
     def read_catalogue(self) -> list[Model]: ...
     def read_held(self) -> list[Model]: ...
-    def ensure_only(self, identifier: str, window: int | None = None) -> Model: ...
+    def ensure_only(self, request: ModelRequest) -> Model: ...
     def let_go(self, identifier: str) -> bool: ...
 ```
 
@@ -442,10 +442,14 @@ process. Letting go of each other model in turn, from outside, works against
 exactly one of those four, which is why it now sits inside the one it works
 for.
 
-**The window is part of that intent**, which is why it is a parameter here
-rather than something each adapter reads out of a profile for itself — that
-would point a dependency from an adapter at the profile, which the layer rule
-forbids. Holding a model at a size is holding it with one more fact in it.
+**The window is part of that intent**, which is why it crosses the seam here
+rather than being something each adapter reads out of a profile for itself —
+that would point a dependency from an adapter at the profile, which the layer
+rule forbids. Holding a model at a size is holding it with one more fact in
+it, so the two travel as one `ModelRequest` rather than as a pair of
+arguments threaded through four signatures. It is deliberately not a `Model`:
+that is what the runtime answers with, and its window is the one being served
+rather than the one being asked for.
 Naming none inherits whatever the runtime last remembered, so a run that says
 nothing about a window sends none. Reaching a new window is the
 adapter's problem too: LM Studio serves a second copy rather than replacing

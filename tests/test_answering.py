@@ -13,6 +13,7 @@ is not evidence about anything.
 import pytest
 
 from offgrid.domain.running.answering import get_resident_model, hold_model
+from offgrid.domain.running.model import ModelRequest
 from offgrid.runtimes.lmstudio import connect
 from offgrid.runtimes.lmstudio.config import LMStudioConfig
 from offgrid.shared.exceptions import ModelUnavailableError
@@ -45,7 +46,7 @@ def test_naming_no_model_answers_with_the_one_already_there(monkeypatch):
         monkeypatch, holding={RESIDENT: 8192}, cold={"a/other-7b": 8192}
     )
 
-    model = hold_model(connect(LMStudioConfig(host=HOST)), None)
+    model = hold_model(connect(LMStudioConfig(host=HOST)), ModelRequest())
 
     assert model.identifier == RESIDENT
     assert asked["loaded"] is None
@@ -60,7 +61,9 @@ def test_a_window_asked_for_without_a_model_holds_the_resident_one_at_it(
     # back the old window while the person believes they asked for a new one.
     asked = answer_as_lm_studio(monkeypatch, holding={RESIDENT: 8192})
 
-    model = hold_model(connect(LMStudioConfig(host=HOST)), None, 16000)
+    model = hold_model(
+        connect(LMStudioConfig(host=HOST)), ModelRequest(context_window=16000)
+    )
 
     assert model.identifier == RESIDENT
     assert model.context_window == 16000
@@ -70,7 +73,7 @@ def test_a_window_asked_for_without_a_model_holds_the_resident_one_at_it(
 def test_naming_neither_a_model_nor_a_window_costs_no_load(monkeypatch):
     asked = answer_as_lm_studio(monkeypatch, holding={RESIDENT: 8192})
 
-    model = hold_model(connect(LMStudioConfig(host=HOST)), None, None)
+    model = hold_model(connect(LMStudioConfig(host=HOST)), ModelRequest())
 
     assert model.context_window == 8192
     assert asked["loaded"] is None
@@ -82,7 +85,9 @@ def test_the_model_asked_for_is_held_alone(monkeypatch):
         monkeypatch, holding={RESIDENT: 8192}, cold={"a/other-7b": 32768}
     )
 
-    model = hold_model(connect(LMStudioConfig(host=HOST)), "a/other-7b")
+    model = hold_model(
+        connect(LMStudioConfig(host=HOST)), ModelRequest(identifier="a/other-7b")
+    )
 
     assert model.identifier == "a/other-7b"
     assert model.context_window == 32768
