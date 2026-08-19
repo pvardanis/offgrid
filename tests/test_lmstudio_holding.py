@@ -22,6 +22,7 @@ from offgrid.runtimes.lmstudio import connect
 from offgrid.runtimes.lmstudio.config import LMStudioConfig
 from offgrid.shared.exceptions import (
     ModelNotHeldError,
+    ModelUnavailableError,
     RuntimeUnreachableError,
 )
 from tests.lmstudio_endpoint import (
@@ -99,6 +100,17 @@ def test_every_model_held_is_let_go_not_only_the_first(monkeypatch):
         ("let_go", "a/also-held-7b"),
         ("loaded", "a/other-7b"),
     ]
+
+
+def test_a_request_naming_no_model_is_refused_at_the_port(monkeypatch):
+    # `hold_model` answers which model is resident before it asks the runtime,
+    # so nothing reaching here should have that question open. A caller
+    # embedding offgrid can reach the port directly, and the adapter has
+    # nothing to settle it with.
+    answer_as_lm_studio(monkeypatch, holding={"a/held-7b": 8192})
+
+    with pytest.raises(ModelUnavailableError, match="No model was named"):
+        connect(LMStudioConfig(host=HOST)).ensure_only(ModelRequest())
 
 
 def test_a_window_is_changed_by_letting_go_first_and_loading_after(monkeypatch):
