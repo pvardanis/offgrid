@@ -1,0 +1,87 @@
+{
+  "data": [
+    {
+      "id": "qwen3-0.6b-mlx",
+      "object": "model",
+      "type": "llm",
+      "publisher": "lmstudio-community",
+      "arch": "qwen3",
+      "compatibility_type": "mlx",
+      "quantization": "4bit",
+      "state": "loaded",
+      "max_context_length": 40960,
+      "loaded_context_length": 50000,
+      "capabilities": [
+        "tool_use"
+      ]
+    },
+    {
+      "id": "lfm2.5-1.2b-instruct-mlx",
+      "object": "model",
+      "type": "llm",
+      "publisher": "lmstudio-community",
+      "arch": "lfm2",
+      "compatibility_type": "mlx",
+      "quantization": "8bit",
+      "state": "not-loaded",
+      "max_context_length": 128000,
+      "capabilities": [
+        "tool_use"
+      ]
+    },
+    {
+      "id": "qwen/qwen3.6-27b",
+      "object": "model",
+      "type": "vlm",
+      "publisher": "qwen",
+      "arch": "qwen3_5",
+      "compatibility_type": "mlx",
+      "quantization": "4bit",
+      "state": "not-loaded",
+      "max_context_length": 262144,
+      "capabilities": [
+        "tool_use"
+      ]
+    },
+    {
+      "id": "qwen/qwen3.6-35b-a3b",
+      "object": "model",
+      "type": "vlm",
+      "publisher": "qwen",
+      "arch": "qwen3_5_moe",
+      "compatibility_type": "mlx",
+      "quantization": "4bit",
+      "state": "not-loaded",
+      "max_context_length": 262144,
+      "capabilities": [
+        "tool_use"
+      ]
+    },
+    {
+      "id": "google/gemma-4-e4b",
+      "object": "model",
+      "type": "vlm",
+      "publisher": "google",
+      "arch": "gemma4",
+      "compatibility_type": "mlx",
+      "quantization": "4bit",
+      "state": "not-loaded",
+      "max_context_length": 131072,
+      "capabilities": [
+        "tool_use"
+      ]
+    },
+    {
+      "id": "text-embedding-nomic-embed-text-v1.5",
+      "object": "model",
+      "type": "embeddings",
+      "publisher": "nomic-ai",
+      "arch": "nomic-bert",
+      "compatibility_type": "gguf",
+      "quantization": "Q4_K_M",
+      "state": "not-loaded",
+      "max_context_length": 2048
+    }
+  ],
+  "object": "list"
+}
