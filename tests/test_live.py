@@ -210,10 +210,13 @@ def test_a_window_above_the_ceiling_is_refused_rather_than_served(
         if model.identifier == known
     )
 
-    finished = _run(known, window=(ceiling or 0) + 1)
+    if ceiling is None:
+        pytest.skip(f"{known} states no ceiling, so there is none to ask past")
 
-    assert finished.returncode == 1, finished.stderr
-    assert str(ceiling) in finished.stderr, finished.stderr
+    finished = _run(known, window=ceiling + 1)
+
+    assert finished.returncode in REFUSALS, finished.stderr
+    assert f"ceiling of {ceiling}" in finished.stderr, finished.stderr
     assert get_held_instances(get_catalogue_payload(host), known) == []
 
 

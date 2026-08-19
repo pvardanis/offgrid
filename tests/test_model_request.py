@@ -25,8 +25,9 @@ def test_a_window_below_nothing_is_refused():
 
 
 def test_a_name_nobody_typed_is_not_the_same_as_no_name():
-    # An unset variable reaching `--model` used to answer with the resident
-    # model, where the runtime should have said it does not have that.
+    # An unset variable reaching `--model` arrives as an empty string. Read
+    # as no name at all, it answers with the resident model where the runtime
+    # should have said it does not have that.
     with pytest.raises(ValidationError, match="at least 1 character"):
         ModelRequest(identifier="")
 

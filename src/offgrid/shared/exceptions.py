@@ -26,9 +26,10 @@ class ModelNotHeldError(ModelUnavailableError):
 
 
 class ContextWindowUnworkableError(OffgridError):
-    """The window a run asked for is one nothing could serve it at.
+    """The window a run asked for is one the run could not work at.
 
-    Below the agent's floor the agent does not start, and above the model's
+    Below the agent's floor the agent does not start, which is a fact about
+    the agent rather than about what a runtime will serve. Above the model's
     ceiling the runtime serves a number the model cannot honour. Both are
     knowable before a load, and a load is tens of seconds nobody gets back.
     """
