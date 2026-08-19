@@ -11,7 +11,7 @@ from offgrid.domain.running.model import ModelRequest
 from offgrid.shared.exceptions import ContextWindowUnworkableError
 
 
-def refuse_a_window_below_the_floor(window: int | None, floor: int) -> None:
+def refuse_a_window_below_the_floor(window: int | None, *, floor: int) -> None:
     """Refuse a window the agent could not start in.
 
     Asked to start in one too small, the agent fails as it launches — after a

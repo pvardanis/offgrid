@@ -8,12 +8,12 @@ What reaching that state costs is the runtime's business, and each one reaches
 it differently. This is where offgrid says which model it wants held.
 """
 
-from offgrid.domain.running.model import Model, ModelRequest
-from offgrid.domain.running.runtime import Runtime
-from offgrid.domain.running.window import (
+from offgrid.domain.running.context_window import (
     refuse_a_window_above_the_ceiling,
     refuse_a_window_below_the_floor,
 )
+from offgrid.domain.running.model import Model, ModelRequest
+from offgrid.domain.running.runtime import Runtime
 from offgrid.shared.exceptions import ModelUnavailableError
 
 
@@ -72,7 +72,7 @@ def hold_model(
         the load fails, or when what is already held will not go and this one
         would be loaded on top of it.
     """
-    refuse_a_window_below_the_floor(model_request.context_window, context_floor)
+    refuse_a_window_below_the_floor(model_request.context_window, floor=context_floor)
 
     resident = None
 
