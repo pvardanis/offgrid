@@ -8,8 +8,6 @@ What reaching that state costs is the runtime's business, and each one reaches
 it differently. This is where offgrid says which model it wants held.
 """
 
-from dataclasses import replace
-
 from offgrid.domain.running.model import Model, ModelRequest
 from offgrid.domain.running.runtime import Runtime
 from offgrid.shared.exceptions import ModelUnavailableError
@@ -67,6 +65,8 @@ def hold_model(runtime: Runtime, request: ModelRequest) -> Model:
     # The port is owed a name, so a run that gave none is answered with the
     # resident model's before anything is asked of the runtime.
     if request.identifier is None:
-        request = replace(request, identifier=get_resident_model(runtime).identifier)
+        request = request.model_copy(
+            update={"identifier": get_resident_model(runtime).identifier}
+        )
 
     return runtime.ensure_only(request)
