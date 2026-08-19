@@ -436,11 +436,13 @@ def test_run_holds_the_model_at_the_window_asked_for(here, monkeypatch):
     asked = answer_as_lm_studio(monkeypatch, cold={"a/other-7b": 32768})
     _launched(monkeypatch)
 
-    result = runner.invoke(app, ["run", "-m", "a/other-7b", "--context-window", "8000"])
+    result = runner.invoke(
+        app, ["run", "-m", "a/other-7b", "--context-window", "40000"]
+    )
 
     assert result.exit_code == 0
-    assert asked["window"] == 8000
-    assert "window 8000" in result.stderr
+    assert asked["window"] == 40000
+    assert "window 40000" in result.stderr
 
 
 def test_run_refuses_a_window_that_is_not_one(here, monkeypatch):
@@ -455,6 +457,52 @@ def test_run_refuses_a_window_that_is_not_one(here, monkeypatch):
 
     assert result.exit_code != 0
     assert asked["order"] == []
+
+
+def test_run_refuses_a_window_the_agent_could_not_start_in(here, monkeypatch):
+    # Below its floor the agent's own prompt does not fit, and it dies at
+    # startup with the load already paid for. Both numbers are in the message,
+    # so the next one to type does not need the source read.
+    runner.invoke(app, ["setup"])
+    asked = answer_as_lm_studio(monkeypatch, holding={RESIDENT: 212224})
+    _launched(monkeypatch)
+
+    result = runner.invoke(app, ["run", "--context-window", "8000"])
+
+    assert result.exit_code == 1
+    assert "8000" in result.stderr
+    assert "25000" in result.stderr
+    assert asked["order"] == []
+
+
+def test_run_refuses_a_window_the_model_could_not_honour(here, monkeypatch):
+    # LM Studio takes this one, reports success, and serves the impossible
+    # number back, so the refusal is offgrid's to make.
+    runner.invoke(app, ["setup"])
+    asked = answer_as_lm_studio(monkeypatch, holding={RESIDENT: 212224}, ceiling=262144)
+    _launched(monkeypatch)
+
+    result = runner.invoke(app, ["run", "--context-window", "300000"])
+
+    assert result.exit_code == 1
+    assert "300000" in result.stderr
+    assert "262144" in result.stderr
+    assert asked["order"] == []
+
+
+def test_a_run_refused_over_its_window_leaves_what_was_held_where_it_was(
+    here, monkeypatch
+):
+    # A refusal is not a run, so it neither loads nor lets go: the model that
+    # was answering before the command is the one answering after it.
+    runner.invoke(app, ["setup"])
+    answer_as_lm_studio(monkeypatch, holding={RESIDENT: 212224})
+    _launched(monkeypatch)
+
+    runner.invoke(app, ["run", "--context-window", "8000"])
+    result = runner.invoke(app, ["doctor"])
+
+    assert "  window    212224" in result.stderr
 
 
 def test_run_sends_no_window_when_none_is_asked_for(here, monkeypatch):
@@ -478,21 +526,21 @@ def test_run_holds_the_resident_model_at_a_window_asked_for_alone(here, monkeypa
     asked = answer_as_lm_studio(monkeypatch, holding={RESIDENT: 212224})
     _launched(monkeypatch)
 
-    result = runner.invoke(app, ["run", "--context-window", "16000"])
+    result = runner.invoke(app, ["run", "--context-window", "40000"])
 
     assert result.exit_code == 0
-    assert asked["window"] == 16000
-    assert "window 16000" in result.stderr
+    assert asked["window"] == 40000
+    assert "window 40000" in result.stderr
 
 
 def test_run_leaves_a_model_already_at_the_window_asked_for_alone(here, monkeypatch):
     # The prefix prefilled against this model is worth more than a reload,
     # and a reload is the whole wait for no change.
     runner.invoke(app, ["setup"])
-    asked = answer_as_lm_studio(monkeypatch, holding={RESIDENT: 8000})
+    asked = answer_as_lm_studio(monkeypatch, holding={RESIDENT: 32768})
     _launched(monkeypatch)
 
-    result = runner.invoke(app, ["run", "--context-window", "8000"])
+    result = runner.invoke(app, ["run", "--context-window", "32768"])
 
     assert result.exit_code == 0
     assert asked["loaded"] is None
@@ -503,10 +551,10 @@ def test_run_holds_one_copy_when_it_changes_a_window(here, monkeypatch):
     # LM Studio serves a second copy rather than replacing the first, so the
     # old one goes before the new one arrives.
     runner.invoke(app, ["setup"])
-    asked = answer_as_lm_studio(monkeypatch, holding={RESIDENT: 8000})
+    asked = answer_as_lm_studio(monkeypatch, holding={RESIDENT: 32768})
     _launched(monkeypatch, order=asked["order"])
 
-    runner.invoke(app, ["run", "--context-window", "16000"])
+    runner.invoke(app, ["run", "--context-window", "64000"])
 
     assert asked["order"] == [
         ("let_go", RESIDENT),

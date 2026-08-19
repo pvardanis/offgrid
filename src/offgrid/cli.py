@@ -176,14 +176,14 @@ def run(
             context_window=context_window,
         )
 
-        # A dialect that cannot be paired and a run that would undo a
-        # guarantee are both knowable before a load, and a load is tens of
-        # seconds nobody gets back.
+        # A dialect that cannot be paired, a run that would undo a guarantee
+        # and a window nothing could serve are all knowable before a load, and
+        # a load is tens of seconds nobody gets back.
         require_compatible(runtime.dialect, agent.dialect)
         agent.configure()
         require_hosted_tools_denied(agent.read_hosted_tools())
 
-        model = hold_model(runtime, model_request)
+        model = hold_model(runtime, model_request, context_floor=agent.context_floor)
 
     # Nothing between here and the agent finishing may leave the model held:
     # from this line on, letting go is owed whatever happens.

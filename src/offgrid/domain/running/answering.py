@@ -10,6 +10,10 @@ it differently. This is where offgrid says which model it wants held.
 
 from offgrid.domain.running.model import Model, ModelRequest
 from offgrid.domain.running.runtime import Runtime
+from offgrid.domain.running.window import (
+    refuse_a_window_above_the_ceiling,
+    refuse_a_window_below_the_floor,
+)
 from offgrid.shared.exceptions import ModelUnavailableError
 
 
@@ -35,7 +39,9 @@ def get_resident_model(runtime: Runtime) -> Model:
     return in_memory[0]
 
 
-def hold_model(runtime: Runtime, model_request: ModelRequest) -> Model:
+def hold_model(
+    runtime: Runtime, model_request: ModelRequest, *, context_floor: int
+) -> Model:
     """Hold the model that will answer: the one asked for, or the one there.
 
     Asking for neither a model nor a window is how a run says it wants
@@ -46,12 +52,19 @@ def hold_model(runtime: Runtime, model_request: ModelRequest) -> Model:
     window. Reading it as "no model named, so nothing to do" would hand back
     the old window while whoever typed the number believes they changed it.
 
+    A window the agent could not start in and one the model could not honour
+    are both refused before anything is loaded, rather than met at the agent's
+    own startup or served as a number nothing downstream can question.
+
     :param runtime: The runtime to ask.
     :param model_request: The model a run asked for, and the window to hold it at.
+    :param context_floor: The smallest window the agent can start in.
 
     :return: The model that will answer, stating the window the runtime serves
         it at as well as its ceiling.
 
+    :raise ContextWindowUnworkableError: When the window asked for is below
+        the agent's floor or above the model's ceiling.
     :raise ModelUnavailableError: When the runtime does not have it, or when
         none was named and it is holding nothing.
     :raise ModelNotHeldError: When it took the load and is not holding it.
@@ -59,6 +72,8 @@ def hold_model(runtime: Runtime, model_request: ModelRequest) -> Model:
         the load fails, or when what is already held will not go and this one
         would be loaded on top of it.
     """
+    refuse_a_window_below_the_floor(model_request.context_window, context_floor)
+
     if model_request.identifier is None and model_request.context_window is None:
         return get_resident_model(runtime)
 
@@ -68,5 +83,7 @@ def hold_model(runtime: Runtime, model_request: ModelRequest) -> Model:
         model_request = model_request.model_copy(
             update={"identifier": get_resident_model(runtime).identifier}
         )
+
+    refuse_a_window_above_the_ceiling(runtime, model_request)
 
     return runtime.ensure_only(model_request)
