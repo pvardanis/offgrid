@@ -15,6 +15,7 @@ from offgrid.runtimes.lmstudio.config import LMStudioConfig
 FIXTURES = pathlib.Path(__file__).parent / "fixtures"
 FIXTURE = FIXTURES / "lmstudio_models.json"
 HELD_TWICE = FIXTURES / "lmstudio_models_held_twice.json"
+ABOVE_THE_CEILING = FIXTURES / "lmstudio_models_above_the_ceiling.json"
 
 
 @pytest.fixture(scope="session")
@@ -25,6 +26,26 @@ def payload() -> dict:
 @pytest.fixture(scope="session")
 def held_twice() -> dict:
     return json.loads(HELD_TWICE.read_text())
+
+
+@pytest.fixture(scope="session")
+def above_the_ceiling() -> dict:
+    return json.loads(ABOVE_THE_CEILING.read_text())
+
+
+def test_a_window_above_the_ceiling_is_read_as_the_runtime_states_it(
+    above_the_ceiling: dict,
+):
+    # Captured from a live server asked to hold a model whose own maximum is
+    # 40960 at 50000: it answered 200, said "loaded", and reported the
+    # impossible number back. Reading it down to the ceiling here would leave
+    # nothing to refuse, and would say a window is real when it is not.
+    parsed = parse_models_from_payload(above_the_ceiling)
+    by_id = {model.identifier: model for model in parsed}
+    served = by_id["qwen3-0.6b-mlx"]
+
+    assert served.context_ceiling == 40960
+    assert served.context_window == 50000
 
 
 def test_embeddings_are_not_offered_as_chat_models(payload: dict):
