@@ -103,7 +103,7 @@ class Runtime(Protocol):
         """
         ...
 
-    def ensure_only(self, request: ModelRequest) -> Model:
+    def ensure_only(self, model_request: ModelRequest) -> Model:
         """Hold the model a run asked for, and let go of what else is held.
 
         An intent rather than a mechanism: one machine has one pool of memory,
@@ -123,7 +123,7 @@ class Runtime(Protocol):
         How long the state lasts is `capabilities` business: a runtime that
         manages its own memory can undo it a second after this returns.
 
-        :param request: The model that will answer, and the window to hold
+        :param model_request: The model that will answer, and the window to hold
             it at. Its identifier is settled by the time it reaches here: a
             run that named none has already been answered with the resident
             model's own.

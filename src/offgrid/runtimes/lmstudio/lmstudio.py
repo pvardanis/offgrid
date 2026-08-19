@@ -73,7 +73,7 @@ class LMStudio:
         """
         return get_loaded_models(get_catalogue_payload(self.config.host))
 
-    def ensure_only(self, request: ModelRequest) -> Model:
+    def ensure_only(self, model_request: ModelRequest) -> Model:
         """Hold the model a run asked for, whatever the runtime holds now.
 
         A model that will not go is said out loud and this answers anyway
@@ -82,7 +82,7 @@ class LMStudio:
         is needed, it is refused rather than paid into a pool that is still
         full.
 
-        :param request: The model that will answer, and the window to hold
+        :param model_request: The model that will answer, and the window to hold
             it at. Its identifier is settled before it reaches here.
 
         :return: The model as LM Studio now serves it.
@@ -93,7 +93,7 @@ class LMStudio:
             load fails, or when what is already held will not go and the
             wanted one would be loaded on top of it.
         """
-        identifier, window = request.identifier, request.context_window
+        identifier, window = model_request.identifier, model_request.context_window
 
         if identifier is None:
             raise ModelUnavailableError(
@@ -150,7 +150,7 @@ class LMStudio:
                 "or run at the window it is already serving."
             )
 
-        return self._load(request)
+        return self._load(model_request)
 
     def let_go(self, identifier: str) -> bool:
         """Let go of a model, saying so if the runtime will not.
@@ -229,32 +229,32 @@ class LMStudio:
 
         return refusals
 
-    def _load(self, request: ModelRequest) -> Model:
+    def _load(self, model_request: ModelRequest) -> Model:
         """Wait for a model's weights, and read back what is being served.
 
         What is served is read from the catalogue rather than taken from the
         load's own answer: a load LM Studio accepted is not a model it is
         holding, and only the catalogue says which of the two happened.
 
-        :param request: The model to load, and the window to load it at.
+        :param model_request: The model to load, and the window to load it at.
 
         :return: The model as LM Studio now serves it.
 
         :raise ModelNotHeldError: When it is not held afterwards.
         :raise RuntimeUnreachableError: When the load fails.
         """
-        log.info("  Loading %s ...", request.identifier)
+        log.info("  Loading %s ...", model_request.identifier)
         started = time.monotonic()
 
         try:
-            load_model(self.config.host, request)
+            load_model(self.config.host, model_request)
             log.info("  ready in %.0fs", time.monotonic() - started)
 
-            return self._now_holding(str(request.identifier))
+            return self._now_holding(str(model_request.identifier))
         except BaseException:
             # However this ended, the runtime may have taken the weights, and
             # nobody downstream of here knows to let them go.
-            self.let_go(str(request.identifier))
+            self.let_go(str(model_request.identifier))
             raise
 
     def _now_holding(self, identifier: str) -> Model:
