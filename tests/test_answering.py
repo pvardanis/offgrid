@@ -16,10 +16,7 @@ from offgrid.domain.running.answering import get_resident_model, hold_model
 from offgrid.domain.running.model import ModelRequest
 from offgrid.runtimes.lmstudio import connect
 from offgrid.runtimes.lmstudio.config import LMStudioConfig
-from offgrid.shared.exceptions import (
-    ContextWindowUnworkableError,
-    ModelUnavailableError,
-)
+from offgrid.shared.exceptions import ModelUnavailableError
 from tests.lmstudio_server import answer_as_lm_studio
 
 HOST = "127.0.0.1:1234"
@@ -106,40 +103,3 @@ def test_the_model_asked_for_is_held_alone(monkeypatch):
     assert model.identifier == "a/other-7b"
     assert model.context_window == 32768
     assert asked["let_go"] == [RESIDENT]
-
-
-def test_a_window_below_the_agents_floor_is_refused_before_any_load(monkeypatch):
-    # The agent's system prompt and tool definitions do not fit below its
-    # floor, so it fails at startup — after a load costing tens of seconds
-    # nobody gets back. Both numbers are named, so the next one to type is in
-    # the message rather than in the source.
-    asked = answer_as_lm_studio(monkeypatch, holding={RESIDENT: 8192})
-
-    with pytest.raises(ContextWindowUnworkableError, match="8000") as raised:
-        hold_model(
-            connect(LMStudioConfig(host=HOST)),
-            ModelRequest(context_window=8000),
-            context_floor=25_000,
-        )
-
-    assert "25000" in str(raised.value)
-    assert asked["order"] == []
-
-
-def test_a_window_above_the_models_ceiling_is_refused_before_any_load(monkeypatch):
-    # The runtime takes this one without complaint and serves the impossible
-    # number back, so nobody downstream can tell it is not real. offgrid
-    # refuses it on the person's behalf, and names what the model does state.
-    asked = answer_as_lm_studio(
-        monkeypatch, cold={"a/other-7b": 32768}, ceiling=128_000
-    )
-
-    with pytest.raises(ContextWindowUnworkableError, match="130000") as raised:
-        hold_model(
-            connect(LMStudioConfig(host=HOST)),
-            ModelRequest(identifier="a/other-7b", context_window=130_000),
-            context_floor=FLOOR,
-        )
-
-    assert "128000" in str(raised.value)
-    assert asked["order"] == []

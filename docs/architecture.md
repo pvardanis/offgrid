@@ -225,8 +225,10 @@ sequenceDiagram
     A-->>C: HostedToolsReport
     C->>C: require_hosted_tools_denied(report)
     Note over C,A: everything knowable before a load, before the load
-    C->>H: hold_model(runtime, model_request)
+    C->>H: hold_model(runtime, model_request, agent.context_floor)
     Note over H: either half may be none: no model asks for whatever is<br/>held, no window asks for whatever it is served at
+    H->>H: refuse a window below the floor or above the ceiling
+    Note over H: still before the load, and the ceiling is one<br/>catalogue read against tens of seconds
     H->>R: ensure_only(model_request) — or read_held()
     Note over R: what "only this one, at that window" costs here is the<br/>adapter's problem: let go of the rest, load, read back
     R-->>H: Model, as served
@@ -247,9 +249,11 @@ back. The two window refusals sit there for the same reason, one either side
 of the number asked for: below the agent's floor it does not start, and above
 the model's ceiling the runtime takes the number without complaint and serves
 one the model cannot honour. `window.py` holds both, `hold_model` calls them,
-and each names the window asked for beside the number it broke. From the moment a model is held, letting go is owed whatever happens —
-so the launch sits in a `try`, `let_go` sits in the `finally`, and a failed
-load lets go of the weights the runtime may have taken anyway.
+and each names the window asked for beside the number it broke.
+
+From the moment a model is held, letting go is owed whatever happens — so the
+launch sits in a `try`, `let_go` sits in the `finally`, and a failed load lets
+go of the weights the runtime may have taken anyway.
 
 The model is read back from the catalogue after loading rather than trusted
 from before it. A catalogue entry states a model's ceiling; a loaded one

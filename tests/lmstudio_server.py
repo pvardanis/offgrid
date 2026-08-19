@@ -25,7 +25,7 @@ def answer_as_lm_studio(
     *,
     holding: dict[str, int] | None = None,
     cold: dict[str, int] | None = None,
-    ceiling: int = CEILING,
+    ceiling: int | None = CEILING,
     stuck: set[str] | None = None,
     serves: int | None = None,
 ) -> dict:
@@ -119,12 +119,16 @@ def answer_as_lm_studio(
     return asked
 
 
-def _entry(identifier: str, *, served: int, ceiling: int, in_memory: bool) -> dict:
+def _entry(
+    identifier: str, *, served: int, ceiling: int | None, in_memory: bool
+) -> dict:
     """Describe one model the way LM Studio's catalogue does.
 
     :param identifier: The model's id.
     :param served: The context it is served at once it is loaded.
-    :param ceiling: The context it states before anything loads it.
+    :param ceiling: The context it states before anything loads it, or
+        ``None`` for a model the catalogue describes without one — which is a
+        shape the live payload has.
     :param in_memory: Whether it is held.
 
     :return: One catalogue entry.
@@ -133,8 +137,10 @@ def _entry(identifier: str, *, served: int, ceiling: int, in_memory: bool) -> di
         "id": identifier,
         "type": "llm",
         "state": "loaded" if in_memory else "not-loaded",
-        "max_context_length": ceiling,
     }
+    if ceiling is not None:
+        entry["max_context_length"] = ceiling
+
     if in_memory:
         entry["loaded_context_length"] = served
 

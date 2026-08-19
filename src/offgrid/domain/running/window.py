@@ -8,7 +8,6 @@ dialect check already sits, for the same reason.
 """
 
 from offgrid.domain.running.model import ModelRequest
-from offgrid.domain.running.runtime import Runtime
 from offgrid.shared.exceptions import ContextWindowUnworkableError
 
 
@@ -35,41 +34,26 @@ def refuse_a_window_below_the_floor(window: int | None, floor: int) -> None:
 
 
 def refuse_a_window_above_the_ceiling(
-    runtime: Runtime, model_request: ModelRequest
+    model_request: ModelRequest, ceiling: int | None
 ) -> None:
     """Refuse a window the model could not honour.
 
     The runtime will not: asked for a window above a model's own stated
     maximum, LM Studio answers that it loaded it and reports the impossible
-    number back, so nothing downstream can tell it is not real. The catalogue
-    is one request against a load costing tens of seconds, and it is read
-    before the load rather than after it.
+    number back, so nothing downstream can tell it is not real.
 
-    A model the runtime does not have, and one it states no ceiling for, both
-    pass through: the first is the runtime's own refusal to make, by name and
-    with the address, and the second leaves nothing to measure against.
+    A model the runtime states no ceiling for passes through, there being
+    nothing to measure against.
 
-    :param runtime: The runtime to ask what the model states.
     :param model_request: The model a run asked for, and the window to hold it
         at. Its identifier is settled by the time it reaches here.
+    :param ceiling: The most that model could be served at, or ``None`` where
+        the runtime states none.
 
     :raise ContextWindowUnworkableError: When the window is above the ceiling.
-    :raise RuntimeUnreachableError: When the catalogue cannot be read.
     """
     window = model_request.context_window
-    if window is None:
-        return
-
-    ceiling = next(
-        (
-            model.context_ceiling
-            for model in runtime.read_catalogue()
-            if model.identifier == model_request.identifier
-        ),
-        None,
-    )
-
-    if ceiling is None or window <= ceiling:
+    if window is None or ceiling is None or window <= ceiling:
         return
 
     raise ContextWindowUnworkableError(
