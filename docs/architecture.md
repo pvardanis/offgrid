@@ -233,6 +233,8 @@ sequenceDiagram
     Note over R: what "only this one, at that window" costs here is the<br/>adapter's problem: let go of the rest, load, read back
     R-->>H: Model, as served
     H-->>C: Model
+    C->>C: refuse a served window below the floor
+    Note over C: the load is spent either way; what this saves is<br/>the agent starting and failing on its own terms
     C->>A: plan(model)
     A-->>C: Launch
     C->>L: start(launch)
@@ -250,6 +252,17 @@ of the number asked for: below the agent's floor it does not start, and above
 the model's ceiling the runtime takes the number without complaint and serves
 one the model cannot honour. `context_window.py` holds both, `hold_model` calls them,
 and each names the window asked for beside the number it broke.
+
+The floor is then measured a second time, against the window the runtime
+settled on rather than the one it was asked for — the two are different
+numbers, and only the second one starts the agent. A run that named no window
+inherits whatever the runtime last remembered, and a runtime is free to honour
+a number it was given with another, so this is the only check that covers
+every way of arriving at a window too small. It cannot come before the load,
+which is why it is a separate refusal rather than the same one: what it saves
+is not the load but the agent starting and failing on its own terms, with an
+error about an initial prompt rather than about the window that could not hold
+it.
 
 From the moment a model is held, letting go is owed whatever happens — so the
 launch sits in a `try`, `let_go` sits in the `finally`, and a failed load lets
