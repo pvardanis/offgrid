@@ -530,6 +530,67 @@ def test_a_run_refused_below_the_floor_leaves_what_was_held_where_it_was(
     assert "  window    212224" in result.stderr
 
 
+def test_a_run_is_refused_when_the_runtime_serves_below_the_agents_floor(
+    here, monkeypatch
+):
+    # Nobody asked for this window: it is what the runtime remembered. The
+    # agent cannot start in it either way, and offgrid says so rather than
+    # letting Claude Code fail at launch with its own error.
+    runner.invoke(app, ["setup"])
+    answer_as_lm_studio(monkeypatch, holding={RESIDENT: 8192})
+    started = _launched(monkeypatch)
+
+    result = runner.invoke(app, ["run"])
+
+    assert result.exit_code == 1
+    assert "serving" in result.stderr
+    assert "8192" in result.stderr
+    assert "Ask for 25000 or more" in result.stderr
+    assert started == {}
+
+
+def test_a_window_the_runtime_did_not_honour_is_refused_after_the_load(
+    here, monkeypatch
+):
+    # A runtime is free to serve a window other than the one it was asked
+    # for, so a number that cleared both bounds on the way in can still be
+    # one the agent cannot start in on the way out.
+    runner.invoke(app, ["setup"])
+    answer_as_lm_studio(monkeypatch, holding={RESIDENT: 212224}, serves=8192)
+    started = _launched(monkeypatch)
+
+    result = runner.invoke(app, ["run", "--context-window", "40000"])
+
+    assert result.exit_code == 1
+    assert "8192" in result.stderr
+    assert started == {}
+
+
+def test_a_runtime_serving_exactly_the_floor_starts_the_agent(here, monkeypatch):
+    # The floor is the smallest window that works, not the first that does
+    # not, and a runtime serving exactly it is serving enough.
+    runner.invoke(app, ["setup"])
+    answer_as_lm_studio(monkeypatch, holding={RESIDENT: 25000})
+    started = _launched(monkeypatch)
+
+    result = runner.invoke(app, ["run"])
+
+    assert result.exit_code == 0
+    assert started["argv"][0] == "claude"
+
+
+def test_a_model_held_below_the_floor_is_let_go_of_rather_than_left(here, monkeypatch):
+    # The refusal comes after the load, so the weights are already in memory
+    # and letting go is owed exactly as it is for a run that started.
+    runner.invoke(app, ["setup"])
+    asked = answer_as_lm_studio(monkeypatch, cold={"a/other-7b": 8192})
+    _launched(monkeypatch)
+
+    runner.invoke(app, ["run", "-m", "a/other-7b"])
+
+    assert asked["let_go"][-1] == "a/other-7b"
+
+
 def test_run_sends_no_window_when_none_is_asked_for(here, monkeypatch):
     # Saying nothing keeps what a person configured in the runtime, and
     # reports it. A default would replace their number with offgrid's.
@@ -631,7 +692,7 @@ def test_run_refuses_when_nothing_is_loaded(here, monkeypatch):
 def test_run_loads_a_named_model_that_is_not_resident(here, monkeypatch):
     runner.invoke(app, ["setup"])
     asked = answer_as_lm_studio(
-        monkeypatch, holding={RESIDENT: 212224}, cold={"a/other-7b": 8192}
+        monkeypatch, holding={RESIDENT: 212224}, cold={"a/other-7b": 32768}
     )
     _launched(monkeypatch)
 
@@ -654,7 +715,7 @@ def test_a_resident_model_is_not_loaded_again(here, monkeypatch, runtime):
 def test_swapping_models_says_what_it_costs(here, monkeypatch):
     runner.invoke(app, ["setup"])
     answer_as_lm_studio(
-        monkeypatch, holding={RESIDENT: 212224}, cold={"a/other-7b": 8192}
+        monkeypatch, holding={RESIDENT: 212224}, cold={"a/other-7b": 32768}
     )
     _launched(monkeypatch)
 
@@ -718,7 +779,7 @@ def test_the_model_is_held_only_for_as_long_as_the_agent_runs(here, monkeypatch)
     # it is let go after the agent and not before it.
     runner.invoke(app, ["setup"])
     asked = answer_as_lm_studio(
-        monkeypatch, holding={RESIDENT: 212224}, cold={"a/other-7b": 8192}
+        monkeypatch, holding={RESIDENT: 212224}, cold={"a/other-7b": 32768}
     )
     _launched(monkeypatch, order=asked["order"])
 
@@ -877,7 +938,7 @@ def test_the_profile_names_the_model_when_the_command_line_does_not(here, monkey
     runner.invoke(app, ["setup"])
     _name_in_profile(here, "a/other-7b")
     asked = answer_as_lm_studio(
-        monkeypatch, holding={RESIDENT: 212224}, cold={"a/other-7b": 8192}
+        monkeypatch, holding={RESIDENT: 212224}, cold={"a/other-7b": 32768}
     )
     _launched(monkeypatch)
 
@@ -939,7 +1000,7 @@ def test_the_command_line_beats_the_profile(here, monkeypatch):
     runner.invoke(app, ["setup"])
     _name_in_profile(here, "a/from-profile-7b")
     asked = answer_as_lm_studio(
-        monkeypatch, cold={"a/from-profile-7b": 8192, "a/asked-for-7b": 8192}
+        monkeypatch, cold={"a/from-profile-7b": 32768, "a/asked-for-7b": 32768}
     )
     started = _launched(monkeypatch)
 

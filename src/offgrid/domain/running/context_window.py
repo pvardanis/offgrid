@@ -7,7 +7,7 @@ load, and a load is tens of seconds nobody gets back — which is where the
 dialect check already sits, for the same reason.
 """
 
-from offgrid.domain.running.model import ModelRequest
+from offgrid.domain.running.model import Model, ModelRequest
 from offgrid.shared.exceptions import ContextWindowUnworkableError
 
 
@@ -30,6 +30,39 @@ def refuse_a_window_below_the_floor(window: int | None, *, floor: int) -> None:
         f"A window of {window} is below the agent's floor of {floor}. Its "
         f"prompt and tool definitions do not fit in one that small, so it "
         f"would fail at startup. Ask for {floor} or more."
+    )
+
+
+def refuse_a_served_window_below_the_floor(model: Model, *, floor: int) -> None:
+    """Refuse a run the runtime is serving too small a window for.
+
+    The window asked for and the window served are different numbers, and
+    only the second one starts the agent. A run that asked for nothing
+    inherits whatever the runtime last remembered, and a run that asked is
+    answered by a runtime free to honour it with a different number — so the
+    floor is measured again against what came back.
+
+    The load is already paid for by the time this can be checked, which is
+    why it is not the same refusal as the one before it. What it saves is the
+    agent starting and failing on its own terms, where the error is about an
+    initial prompt rather than about the window that could not hold it.
+
+    :param model: The model as the runtime serves it.
+    :param floor: The smallest window the agent can start in.
+
+    :raise ContextWindowUnworkableError: When the served window is below the
+        floor. A model served at nothing stated passes: there is no number to
+        measure, and the runtime rather than offgrid decides what it means.
+    """
+    window = model.context_window
+    if window is None or window >= floor:
+        return
+
+    raise ContextWindowUnworkableError(
+        f"The runtime is serving {model.identifier} at {window}, below the "
+        f"agent's floor of {floor}. Its prompt and tool definitions do not "
+        f"fit in one that small, so it would fail at startup. Ask for {floor} "
+        "or more with --context-window, or serve it at more than that."
     )
 
 

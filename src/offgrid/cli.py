@@ -12,6 +12,9 @@ from offgrid.binding import bind_run, read_profile
 from offgrid.domain.profile import DEFAULT_PATH, Profile, save_profile
 from offgrid.domain.running.agent import AgentName
 from offgrid.domain.running.answering import get_resident_model, hold_model
+from offgrid.domain.running.context_window import (
+    refuse_a_served_window_below_the_floor,
+)
 from offgrid.domain.running.dialect import require_compatible
 from offgrid.domain.running.hosted_tools import (
     HostedToolsStatus,
@@ -189,6 +192,13 @@ def run(
     # Nothing between here and the agent finishing may leave the model held:
     # from this line on, letting go is owed whatever happens.
     try:
+        # What the runtime settled on rather than what was asked of it, which
+        # is the only window the agent will actually start in. The load is
+        # spent either way; what this saves is the agent failing on its own
+        # terms, about an initial prompt rather than about the window.
+        with _reporting():
+            refuse_a_served_window_below_the_floor(model, floor=agent.context_floor)
+
         tell(f"  {model.identifier}, window {model.context_window or 'unstated'}")
 
         launch = agent.plan(model)
