@@ -6,6 +6,7 @@ here needs a program on this machine's PATH.
 
 import httpx
 
+from offgrid.domain.running.model import ModelRequest
 from offgrid.shared.exceptions import RuntimeUnreachableError
 
 LOAD = "/api/v1/models/load"
@@ -21,10 +22,7 @@ UNLOAD_TIMEOUT_SECONDS = 30
 
 
 def load_model(
-    host: str,
-    identifier: str,
-    window: int | None = None,
-    timeout: float = LOAD_TIMEOUT_SECONDS,
+    host: str, request: ModelRequest, timeout: float = LOAD_TIMEOUT_SECONDS
 ) -> None:
     """Hold a model in memory, waiting until it is ready to answer.
 
@@ -41,20 +39,19 @@ def load_model(
     rather than this one, so a caller that needs to know reads it back.
 
     :param host: Address the runtime listens on.
-    :param identifier: The model to load.
-    :param window: The context to serve it at, or ``None`` to inherit the
-        runtime's own.
+    :param request: The model to load, and the window to load it at.
     :param timeout: How long to wait before giving up.
 
     :raise RuntimeUnreachableError: When the load does not finish in time, or
         when the runtime refuses it. A name LM Studio does not have is a 404
         saying so.
     """
+    identifier = str(request.identifier)
     url = f"http://{host}{LOAD}"
     body: dict = {"model": identifier}
 
-    if window is not None:
-        body["context_length"] = window
+    if request.context_window is not None:
+        body["context_length"] = request.context_window
 
     try:
         response = httpx.post(url, json=body, timeout=timeout)

@@ -18,6 +18,7 @@ from offgrid.domain.running.hosted_tools import (
     require_hosted_tools_denied,
 )
 from offgrid.domain.running.launch import explain_why_it_would_not_start, start
+from offgrid.domain.running.model import ModelRequest
 from offgrid.domain.running.runtime import RuntimeName
 from offgrid.domain.sizing.fit import BYTES_PER_GB, get_sizes_that_fit
 from offgrid.domain.sizing.machine import detect, suggest_raising_the_gpu_limit
@@ -170,7 +171,10 @@ def run(
 
     with _reporting():
         profile, runtime, agent = bind_run(DEFAULT_PATH, passthrough)
-        wanted = model_name or profile.model
+        request = ModelRequest(
+            identifier=model_name or profile.model,
+            context_window=context_window,
+        )
 
         # A dialect that cannot be paired and a run that would undo a
         # guarantee are both knowable before a load, and a load is tens of
@@ -179,7 +183,7 @@ def run(
         agent.configure()
         require_hosted_tools_denied(agent.read_hosted_tools())
 
-        model = hold_model(runtime, wanted, context_window)
+        model = hold_model(runtime, request)
 
     # Nothing between here and the agent finishing may leave the model held:
     # from this line on, letting go is owed whatever happens.

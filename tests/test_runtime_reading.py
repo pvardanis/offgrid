@@ -9,6 +9,7 @@ import pytest
 
 from offgrid.domain.running.capabilities import Capabilities
 from offgrid.domain.running.dialect import Dialect
+from offgrid.domain.running.model import ModelRequest
 from offgrid.shared.exceptions import RuntimeUnreachableError
 from tests.runtimes_under_test import RuntimeUnderTest
 
@@ -40,7 +41,7 @@ def test_a_runtime_that_cannot_be_reached_is_offgrids_error_naming_the_address(
     for ask in (
         connection.read_catalogue,
         connection.read_held,
-        lambda: connection.ensure_only("a/wanted-7b"),
+        lambda: connection.ensure_only(ModelRequest(identifier="a/wanted-7b")),
     ):
         with pytest.raises(RuntimeUnreachableError) as unreached:
             ask()

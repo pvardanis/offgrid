@@ -8,7 +8,9 @@ What reaching that state costs is the runtime's business, and each one reaches
 it differently. This is where offgrid says which model it wants held.
 """
 
-from offgrid.domain.running.model import Model
+from dataclasses import replace
+
+from offgrid.domain.running.model import Model, ModelRequest
 from offgrid.domain.running.runtime import Runtime
 from offgrid.shared.exceptions import ModelUnavailableError
 
@@ -35,22 +37,19 @@ def get_resident_model(runtime: Runtime) -> Model:
     return in_memory[0]
 
 
-def hold_model(
-    runtime: Runtime, identifier: str | None, window: int | None = None
-) -> Model:
-    """Hold the model that will answer: the one named, or the one already there.
+def hold_model(runtime: Runtime, request: ModelRequest) -> Model:
+    """Hold the model that will answer: the one asked for, or the one there.
 
-    Naming neither is how a run says it wants whatever is resident, at
-    whatever it is being served at, which costs no load and keeps the prompt
-    prefix cached against it.
+    Asking for neither a model nor a window is how a run says it wants
+    whatever is resident, at whatever it is served at, which costs no load and
+    keeps the prompt prefix cached against it.
 
-    Naming a window and no model asks for the resident model at that window.
-    Reading it as "no model named, so nothing to do" would hand back the old
-    window while whoever typed the number believes they changed it.
+    Asking for a window and no model asks for the resident model at that
+    window. Reading it as "no model named, so nothing to do" would hand back
+    the old window while whoever typed the number believes they changed it.
 
     :param runtime: The runtime to ask.
-    :param identifier: The model asked for, or ``None`` for the resident one.
-    :param window: The context to serve it at, or ``None`` to inherit.
+    :param request: The model a run asked for, and the window to hold it at.
 
     :return: The model that will answer, stating the window the runtime serves
         it at as well as its ceiling.
@@ -62,13 +61,12 @@ def hold_model(
         the load fails, or when what is already held will not go and this one
         would be loaded on top of it.
     """
-    if identifier is None and window is None:
+    if request.identifier is None and request.context_window is None:
         return get_resident_model(runtime)
 
-    # Naming none is the only thing that asks for the resident model. A name
-    # is passed on as it stands, so one the runtime does not have is refused
-    # by name rather than silently answered by whatever is loaded.
-    if identifier is not None:
-        return runtime.ensure_only(identifier, window)
+    # The port is owed a name, so a run that gave none is answered with the
+    # resident model's before anything is asked of the runtime.
+    if request.identifier is None:
+        request = replace(request, identifier=get_resident_model(runtime).identifier)
 
-    return runtime.ensure_only(get_resident_model(runtime).identifier, window)
+    return runtime.ensure_only(request)

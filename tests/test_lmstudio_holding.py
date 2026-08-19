@@ -17,6 +17,7 @@ import sys
 import httpx
 import pytest
 
+from offgrid.domain.running.model import ModelRequest
 from offgrid.runtimes.lmstudio import connect
 from offgrid.runtimes.lmstudio.config import LMStudioConfig
 from offgrid.shared.exceptions import (
@@ -40,7 +41,9 @@ def test_what_a_swap_costs_is_said_before_it_is_paid(monkeypatch, caplog):
     )
 
     with caplog.at_level(logging.INFO, logger="offgrid.runtimes.lmstudio"):
-        connect(LMStudioConfig(host=HOST)).ensure_only("a/other-7b")
+        connect(LMStudioConfig(host=HOST)).ensure_only(
+            ModelRequest(identifier="a/other-7b")
+        )
 
     assert any(
         "Letting go of a/held-7b" in record.getMessage()
@@ -53,7 +56,9 @@ def test_the_wait_for_a_load_is_said_while_it_is_waited_for(monkeypatch, caplog)
     answer_as_lm_studio(monkeypatch, cold={"a/other-7b": 8192})
 
     with caplog.at_level(logging.INFO, logger="offgrid.runtimes.lmstudio"):
-        connect(LMStudioConfig(host=HOST)).ensure_only("a/other-7b")
+        connect(LMStudioConfig(host=HOST)).ensure_only(
+            ModelRequest(identifier="a/other-7b")
+        )
 
     said = [record.getMessage() for record in caplog.records]
     assert any("Loading a/other-7b" in line for line in said)
@@ -68,7 +73,9 @@ def test_a_model_already_held_is_not_let_go_of_and_loaded_again(monkeypatch):
         monkeypatch, holding={"a/held-7b": 8192, "a/wanted-7b": 8192}
     )
 
-    connect(LMStudioConfig(host=HOST)).ensure_only("a/wanted-7b")
+    connect(LMStudioConfig(host=HOST)).ensure_only(
+        ModelRequest(identifier="a/wanted-7b")
+    )
 
     assert asked["loaded"] is None
     assert asked["let_go"] == ["a/held-7b"]
@@ -83,7 +90,9 @@ def test_every_model_held_is_let_go_not_only_the_first(monkeypatch):
         cold={"a/other-7b": 8192},
     )
 
-    connect(LMStudioConfig(host=HOST)).ensure_only("a/other-7b")
+    connect(LMStudioConfig(host=HOST)).ensure_only(
+        ModelRequest(identifier="a/other-7b")
+    )
 
     assert asked["order"] == [
         ("let_go", "a/held-7b"),
@@ -98,7 +107,9 @@ def test_a_window_is_changed_by_letting_go_first_and_loading_after(monkeypatch):
     # change a window is to free the copy that is held before asking again.
     asked = answer_as_lm_studio(monkeypatch, holding={"a/wanted-7b": 8000})
 
-    connect(LMStudioConfig(host=HOST)).ensure_only("a/wanted-7b", 16000)
+    connect(LMStudioConfig(host=HOST)).ensure_only(
+        ModelRequest(identifier="a/wanted-7b", context_window=16000)
+    )
 
     assert asked["order"] == [
         ("let_go", "a/wanted-7b"),
@@ -117,7 +128,9 @@ def test_a_window_that_will_not_be_freed_is_not_loaded_on_top_of(monkeypatch):
     )
 
     with pytest.raises(RuntimeUnreachableError) as refused:
-        connect(LMStudioConfig(host=HOST)).ensure_only("a/wanted-7b", 16000)
+        connect(LMStudioConfig(host=HOST)).ensure_only(
+            ModelRequest(identifier="a/wanted-7b", context_window=16000)
+        )
 
     said = str(refused.value)
     assert "8000" in said
@@ -139,7 +152,9 @@ def test_a_window_change_refused_by_the_pool_keeps_the_model_that_was_held(
     )
 
     with pytest.raises(RuntimeUnreachableError, match="a/stuck-7b"):
-        connect(LMStudioConfig(host=HOST)).ensure_only("a/wanted-7b", 16000)
+        connect(LMStudioConfig(host=HOST)).ensure_only(
+            ModelRequest(identifier="a/wanted-7b", context_window=16000)
+        )
 
     assert "a/wanted-7b" not in asked["let_go"]
     assert asked["loaded"] is None
@@ -155,7 +170,9 @@ def test_a_swap_that_freed_nothing_does_not_load_on_top_of_it(monkeypatch):
     refuse_to_let_go(monkeypatch, "it would not go")
 
     with pytest.raises(RuntimeUnreachableError, match="still holding"):
-        connect(LMStudioConfig(host=HOST)).ensure_only("a/other-7b")
+        connect(LMStudioConfig(host=HOST)).ensure_only(
+            ModelRequest(identifier="a/other-7b")
+        )
 
     assert asked["loaded"] is None
 
@@ -168,7 +185,9 @@ def test_a_model_already_held_answers_even_where_another_will_not_go(monkeypatch
     answer_as_lm_studio(monkeypatch, holding={"a/wanted-7b": 8192, "a/stuck-7b": 8192})
     refuse_to_let_go(monkeypatch, "it would not go")
 
-    model = connect(LMStudioConfig(host=HOST)).ensure_only("a/wanted-7b")
+    model = connect(LMStudioConfig(host=HOST)).ensure_only(
+        ModelRequest(identifier="a/wanted-7b")
+    )
 
     assert model.identifier == "a/wanted-7b"
     assert [
@@ -186,7 +205,9 @@ def test_what_a_model_that_will_not_go_costs_is_said_where_the_run_goes_on(
     refuse_to_let_go(monkeypatch, "it would not go")
 
     with caplog.at_level(logging.WARNING, logger="offgrid.runtimes.lmstudio"):
-        connect(LMStudioConfig(host=HOST)).ensure_only("a/wanted-7b")
+        connect(LMStudioConfig(host=HOST)).ensure_only(
+            ModelRequest(identifier="a/wanted-7b")
+        )
 
     assert any(
         "still holding a/stuck-7b" in record.getMessage() for record in caplog.records
@@ -203,7 +224,9 @@ def test_a_model_that_will_not_stay_held_is_reported(monkeypatch):
     )
 
     with pytest.raises(ModelNotHeldError, match="accepted"):
-        connect(LMStudioConfig(host=HOST)).ensure_only("a/other-7b")
+        connect(LMStudioConfig(host=HOST)).ensure_only(
+            ModelRequest(identifier="a/other-7b")
+        )
 
 
 def test_a_model_that_did_not_stay_held_is_let_go_of_before_the_error(monkeypatch):
@@ -216,7 +239,9 @@ def test_a_model_that_did_not_stay_held_is_let_go_of_before_the_error(monkeypatc
     )
 
     with pytest.raises(ModelNotHeldError):
-        connect(LMStudioConfig(host=HOST)).ensure_only("a/other-7b")
+        connect(LMStudioConfig(host=HOST)).ensure_only(
+            ModelRequest(identifier="a/other-7b")
+        )
 
     assert "a/other-7b" in asked["let_go"]
 
@@ -230,7 +255,9 @@ def test_a_load_that_is_interrupted_lets_go_of_what_it_started(monkeypatch):
     answer_the_load(monkeypatch, interrupted)
 
     with pytest.raises(KeyboardInterrupt):
-        connect(LMStudioConfig(host=HOST)).ensure_only("a/other-7b")
+        connect(LMStudioConfig(host=HOST)).ensure_only(
+            ModelRequest(identifier="a/other-7b")
+        )
 
     assert "a/other-7b" in asked["let_go"]
 

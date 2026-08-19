@@ -52,6 +52,13 @@ pool of memory, and how a runtime reaches that state differs enough that it
 cannot be directed from outside. Naming no model is asking for whatever is
 resident, which costs no load.
 
+**model request** — what a run asks the runtime to hold: a model, and the
+window to hold it at. Either may be absent, and absent means inherit — no model
+names whichever is resident, no window leaves whatever the runtime is already
+serving. It is the asking, and a **model** is the answering: a window here is
+wanted and a window there is served, and the two are only usually the same
+number.
+
 **context_ceiling** — the most a model could be served at. The model's own
 number, true whether or not anything is held, and what every window asked for
 is measured against.
