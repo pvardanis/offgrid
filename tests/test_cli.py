@@ -18,36 +18,13 @@ from offgrid.shared.exceptions import (
     LeaderboardUnreadableError,
 )
 from tests.doubles import StandInAgent, answer_as_a_mac, answer_as_an_agent
+from tests.launches import record_launch
 from tests.lmstudio_endpoint import refuse_to_let_go
 from tests.lmstudio_server import answer_as_lm_studio
 
 GIB = 1024**3
 RESIDENT = "qwen/qwen3.6-35b-a3b"
 runner = CliRunner()
-
-
-def _launched(monkeypatch, code: int = 0, order: list | None = None) -> dict:
-    """Record what would have been started, without starting it.
-
-    :param monkeypatch: The test's patcher.
-    :param code: What the agent exits with.
-    :param order: A record of what the runtime was asked, to place the launch
-        among it.
-
-    :return: The environment and command the agent would have had.
-    """
-    seen: dict = {}
-
-    def start(launch) -> int:
-        if order is not None:
-            order.append(("started", launch.argv[0]))
-        seen.update(env=launch.env, argv=launch.argv)
-
-        return code
-
-    monkeypatch.setattr("offgrid.cli.start", start)
-
-    return seen
 
 
 def _handed_to_the_agent(monkeypatch) -> dict:
@@ -273,7 +250,7 @@ def test_doctor_refuses_a_key_the_runtime_it_names_does_not_read(here):
 def test_run_refuses_a_key_the_agent_it_names_does_not_read(here, monkeypatch):
     # Before the load, like every other refusal a run can make in advance.
     runner.invoke(app, ["setup"])
-    started = _launched(monkeypatch)
+    started = record_launch(monkeypatch)
     _add_to_section(here, "agent", "theme: dark")
 
     result = runner.invoke(app, ["run"])
@@ -422,7 +399,7 @@ def test_run_says_the_window_the_model_is_served_at(here, monkeypatch):
     # The number the agent is sized to, said where it is acted on, and named
     # as the window rather than as the ceiling a reader would take it for.
     runner.invoke(app, ["setup"])
-    _launched(monkeypatch)
+    record_launch(monkeypatch)
 
     result = runner.invoke(app, ["run"])
 
@@ -434,7 +411,7 @@ def test_run_holds_the_model_at_the_window_asked_for(here, monkeypatch):
     # unknown option after offgrid has paid for one.
     runner.invoke(app, ["setup"])
     asked = answer_as_lm_studio(monkeypatch, cold={"a/other-7b": 32768})
-    _launched(monkeypatch)
+    record_launch(monkeypatch)
 
     result = runner.invoke(
         app, ["run", "-m", "a/other-7b", "--context-window", "40000"]
@@ -451,7 +428,7 @@ def test_run_refuses_a_window_that_is_not_one(here, monkeypatch):
     # that is nobody's guess.
     runner.invoke(app, ["setup"])
     asked = answer_as_lm_studio(monkeypatch, cold={"a/other-7b": 32768})
-    _launched(monkeypatch)
+    record_launch(monkeypatch)
 
     result = runner.invoke(app, ["run", "-m", "a/other-7b", "--context-window", "0"])
 
@@ -465,7 +442,7 @@ def test_run_refuses_a_window_the_agent_could_not_start_in(here, monkeypatch):
     # so the next one to type does not need the source read.
     runner.invoke(app, ["setup"])
     asked = answer_as_lm_studio(monkeypatch, holding={RESIDENT: 212224})
-    _launched(monkeypatch)
+    record_launch(monkeypatch)
 
     result = runner.invoke(app, ["run", "--context-window", "8000"])
 
@@ -488,7 +465,7 @@ def test_run_refuses_a_window_against_the_floor_the_agent_states(here, monkeypat
     )
     runner.invoke(app, ["setup"])
     asked = answer_as_lm_studio(monkeypatch, holding={RESIDENT: 212224})
-    _launched(monkeypatch)
+    record_launch(monkeypatch)
 
     result = runner.invoke(app, ["run", "--context-window", "8000"])
 
@@ -502,7 +479,7 @@ def test_run_refuses_a_window_the_model_could_not_honour(here, monkeypatch):
     # number back, so the refusal is offgrid's to make.
     runner.invoke(app, ["setup"])
     asked = answer_as_lm_studio(monkeypatch, holding={RESIDENT: 212224}, ceiling=262144)
-    _launched(monkeypatch)
+    record_launch(monkeypatch)
 
     result = runner.invoke(app, ["run", "--context-window", "300000"])
 
@@ -521,7 +498,7 @@ def test_a_run_refused_below_the_floor_leaves_what_was_held_where_it_was(
     # window it was already being served at.
     runner.invoke(app, ["setup"])
     answer_as_lm_studio(monkeypatch, holding={RESIDENT: 212224})
-    _launched(monkeypatch)
+    record_launch(monkeypatch)
 
     refused = runner.invoke(app, ["run", "--context-window", "8000"])
     result = runner.invoke(app, ["doctor"])
@@ -538,7 +515,7 @@ def test_a_run_is_refused_when_the_runtime_serves_below_the_agents_floor(
     # letting Claude Code fail at launch with its own error.
     runner.invoke(app, ["setup"])
     answer_as_lm_studio(monkeypatch, holding={RESIDENT: 8192})
-    started = _launched(monkeypatch)
+    started = record_launch(monkeypatch)
 
     result = runner.invoke(app, ["run"])
 
@@ -557,7 +534,7 @@ def test_a_window_the_runtime_did_not_honour_is_refused_after_the_load(
     # one the agent cannot start in on the way out.
     runner.invoke(app, ["setup"])
     answer_as_lm_studio(monkeypatch, holding={RESIDENT: 212224}, serves=8192)
-    started = _launched(monkeypatch)
+    started = record_launch(monkeypatch)
 
     result = runner.invoke(app, ["run", "--context-window", "40000"])
 
@@ -576,7 +553,7 @@ def test_a_model_offgrid_did_not_load_is_let_go_of_too_when_it_is_refused(
     # it yet.
     runner.invoke(app, ["setup"])
     asked = answer_as_lm_studio(monkeypatch, holding={"a/theirs-7b": 8192})
-    _launched(monkeypatch)
+    record_launch(monkeypatch)
 
     result = runner.invoke(app, ["run"])
 
@@ -590,7 +567,7 @@ def test_a_runtime_serving_exactly_the_floor_starts_the_agent(here, monkeypatch)
     # not, and a runtime serving exactly it is serving enough.
     runner.invoke(app, ["setup"])
     answer_as_lm_studio(monkeypatch, holding={RESIDENT: 25000})
-    started = _launched(monkeypatch)
+    started = record_launch(monkeypatch)
 
     result = runner.invoke(app, ["run"])
 
@@ -603,7 +580,7 @@ def test_a_model_held_below_the_floor_is_let_go_of_rather_than_left(here, monkey
     # and letting go is owed exactly as it is for a run that started.
     runner.invoke(app, ["setup"])
     asked = answer_as_lm_studio(monkeypatch, cold={"a/other-7b": 8192})
-    _launched(monkeypatch)
+    record_launch(monkeypatch)
 
     runner.invoke(app, ["run", "-m", "a/other-7b"])
 
@@ -615,7 +592,7 @@ def test_run_sends_no_window_when_none_is_asked_for(here, monkeypatch):
     # reports it. A default would replace their number with offgrid's.
     runner.invoke(app, ["setup"])
     asked = answer_as_lm_studio(monkeypatch, cold={"a/other-7b": 32768})
-    _launched(monkeypatch)
+    record_launch(monkeypatch)
 
     result = runner.invoke(app, ["run", "-m", "a/other-7b"])
 
@@ -629,7 +606,7 @@ def test_run_holds_the_resident_model_at_a_window_asked_for_alone(here, monkeypa
     # person believes they changed it.
     runner.invoke(app, ["setup"])
     asked = answer_as_lm_studio(monkeypatch, holding={RESIDENT: 212224})
-    _launched(monkeypatch)
+    record_launch(monkeypatch)
 
     result = runner.invoke(app, ["run", "--context-window", "40000"])
 
@@ -643,7 +620,7 @@ def test_run_leaves_a_model_already_at_the_window_asked_for_alone(here, monkeypa
     # and a reload is the whole wait for no change.
     runner.invoke(app, ["setup"])
     asked = answer_as_lm_studio(monkeypatch, holding={RESIDENT: 32768})
-    _launched(monkeypatch)
+    record_launch(monkeypatch)
 
     result = runner.invoke(app, ["run", "--context-window", "32768"])
 
@@ -657,7 +634,7 @@ def test_run_holds_one_copy_when_it_changes_a_window(here, monkeypatch):
     # old one goes before the new one arrives.
     runner.invoke(app, ["setup"])
     asked = answer_as_lm_studio(monkeypatch, holding={RESIDENT: 32768})
-    _launched(monkeypatch, order=asked["order"])
+    record_launch(monkeypatch, order=asked["order"])
 
     runner.invoke(app, ["run", "--context-window", "64000"])
 
@@ -674,7 +651,7 @@ def test_the_agent_is_sized_to_the_window_that_was_asked_for(here, monkeypatch):
     # agree here, and where they would not it is the runtime that is right.
     runner.invoke(app, ["setup"])
     answer_as_lm_studio(monkeypatch, cold={"a/other-7b": 32768})
-    started = _launched(monkeypatch)
+    started = record_launch(monkeypatch)
 
     runner.invoke(app, ["run", "-m", "a/other-7b", "--context-window", "128000"])
 
@@ -683,7 +660,7 @@ def test_the_agent_is_sized_to_the_window_that_was_asked_for(here, monkeypatch):
 
 def test_run_launches_the_agent_with_the_resident_model(here, monkeypatch):
     runner.invoke(app, ["setup"])
-    started = _launched(monkeypatch)
+    started = record_launch(monkeypatch)
 
     result = runner.invoke(app, ["run"])
     assert result.exit_code == 0
@@ -693,7 +670,7 @@ def test_run_launches_the_agent_with_the_resident_model(here, monkeypatch):
 
 def test_run_passes_the_rest_of_the_line_to_the_agent(here, monkeypatch):
     runner.invoke(app, ["setup"])
-    started = _launched(monkeypatch)
+    started = record_launch(monkeypatch)
 
     runner.invoke(app, ["run", "--", "-p", "hello"])
     assert started["argv"][-2:] == ["-p", "hello"]
@@ -713,7 +690,7 @@ def test_run_loads_a_named_model_that_is_not_resident(here, monkeypatch):
     asked = answer_as_lm_studio(
         monkeypatch, holding={RESIDENT: 212224}, cold={"a/other-7b": 32768}
     )
-    _launched(monkeypatch)
+    record_launch(monkeypatch)
 
     result = runner.invoke(app, ["run", "--model", "a/other-7b"])
     assert result.exit_code == 0
@@ -724,7 +701,7 @@ def test_a_resident_model_is_not_loaded_again(here, monkeypatch, runtime):
     # Asking for what is already held costs nothing: no wait for weights, and
     # the prefix cached against it survives.
     runner.invoke(app, ["setup"])
-    _launched(monkeypatch)
+    record_launch(monkeypatch)
 
     result = runner.invoke(app, ["run", "--model", RESIDENT])
     assert result.exit_code == 0
@@ -736,7 +713,7 @@ def test_swapping_models_says_what_it_costs(here, monkeypatch):
     answer_as_lm_studio(
         monkeypatch, holding={RESIDENT: 212224}, cold={"a/other-7b": 32768}
     )
-    _launched(monkeypatch)
+    record_launch(monkeypatch)
 
     result = runner.invoke(app, ["run", "--model", "a/other-7b"])
     assert result.exit_code == 0
@@ -745,7 +722,7 @@ def test_swapping_models_says_what_it_costs(here, monkeypatch):
 
 def test_a_model_the_runtime_does_not_have_is_refused(here, monkeypatch):
     runner.invoke(app, ["setup"])
-    _launched(monkeypatch)
+    record_launch(monkeypatch)
 
     result = runner.invoke(app, ["run", "--model", "a/absent-7b"])
     assert result.exit_code == 1
@@ -757,7 +734,7 @@ def test_run_lets_go_of_models_it_did_not_ask_for(here, monkeypatch):
     asked = answer_as_lm_studio(
         monkeypatch, holding={RESIDENT: 212224}, cold={"a/other-7b": 8192}
     )
-    _launched(monkeypatch)
+    record_launch(monkeypatch)
 
     runner.invoke(app, ["run", "--model", "a/other-7b"])
     assert RESIDENT in asked["let_go"]
@@ -772,7 +749,7 @@ def test_every_model_held_is_let_go_not_only_the_first(here, monkeypatch):
         holding={RESIDENT: 212224, "a/also-held-7b": 8192},
         cold={"a/other-7b": 8192},
     )
-    _launched(monkeypatch)
+    record_launch(monkeypatch)
 
     runner.invoke(app, ["run", "-m", "a/other-7b"])
     assert asked["let_go"][:2] == [RESIDENT, "a/also-held-7b"]
@@ -786,7 +763,7 @@ def test_a_model_already_held_is_not_let_go_of_and_loaded_again(here, monkeypatc
     asked = answer_as_lm_studio(
         monkeypatch, holding={RESIDENT: 212224, "a/wanted-7b": 8192}
     )
-    _launched(monkeypatch)
+    record_launch(monkeypatch)
 
     runner.invoke(app, ["run", "-m", "a/wanted-7b"])
     assert asked["loaded"] is None
@@ -800,7 +777,7 @@ def test_the_model_is_held_only_for_as_long_as_the_agent_runs(here, monkeypatch)
     asked = answer_as_lm_studio(
         monkeypatch, holding={RESIDENT: 212224}, cold={"a/other-7b": 32768}
     )
-    _launched(monkeypatch, order=asked["order"])
+    record_launch(monkeypatch, order=asked["order"])
 
     runner.invoke(app, ["run", "-m", "a/other-7b"])
     assert asked["order"] == [
@@ -820,7 +797,7 @@ def test_an_agent_that_cannot_talk_to_the_runtime_is_refused_before_the_wait(
 
     runner.invoke(app, ["setup"])
     asked = answer_as_lm_studio(monkeypatch, cold={"a/other-7b": 8192})
-    _launched(monkeypatch)
+    record_launch(monkeypatch)
     answer_as_an_agent(monkeypatch, StandInAgent(dialect=Dialect.OPENAI))
 
     result = runner.invoke(app, ["run", "-m", "a/other-7b"])
@@ -831,7 +808,7 @@ def test_an_agent_that_cannot_talk_to_the_runtime_is_refused_before_the_wait(
 
 def test_the_model_is_let_go_when_the_agent_finishes(here, monkeypatch, runtime):
     runner.invoke(app, ["setup"])
-    _launched(monkeypatch)
+    record_launch(monkeypatch)
 
     runner.invoke(app, ["run"])
     assert runtime["let_go"][-1] == RESIDENT
@@ -839,7 +816,7 @@ def test_the_model_is_let_go_when_the_agent_finishes(here, monkeypatch, runtime)
 
 def test_the_agents_exit_code_is_offgrids_own(here, monkeypatch):
     runner.invoke(app, ["setup"])
-    _launched(monkeypatch, code=3)
+    record_launch(monkeypatch, code=3)
 
     assert runner.invoke(app, ["run"]).exit_code == 3
 
@@ -861,7 +838,7 @@ def test_the_model_is_let_go_even_when_the_agent_is_interrupted(
 def test_settings_that_would_let_the_agent_search_stop_the_run(here, monkeypatch):
     runner.invoke(app, ["setup"])
     asked = answer_as_lm_studio(monkeypatch, cold={"a/other-7b": 8192})
-    _launched(monkeypatch)
+    record_launch(monkeypatch)
     config = here / "claude-code"
     config.mkdir()
     (config / "settings.json").write_text('{"theme": "mine"}')
@@ -878,7 +855,7 @@ def test_arguments_that_undo_the_deny_stop_the_run(here, monkeypatch):
     # loads, because a refusal after a load costs tens of seconds.
     runner.invoke(app, ["setup"])
     asked = answer_as_lm_studio(monkeypatch, cold={"a/other-7b": 8192})
-    _launched(monkeypatch)
+    record_launch(monkeypatch)
 
     result = runner.invoke(
         app, ["run", "-m", "a/other-7b", "--", "--setting-sources", "project"]
@@ -947,7 +924,7 @@ def test_an_agent_that_is_there_but_not_executable_is_not_called_missing(
 def test_a_runtime_that_will_not_let_go_is_reported_not_hidden(here, monkeypatch):
     runner.invoke(app, ["setup"])
     refuse_to_let_go(monkeypatch, "it would not go")
-    _launched(monkeypatch)
+    record_launch(monkeypatch)
 
     result = runner.invoke(app, ["run"])
     assert "still holding" in result.stderr
@@ -959,7 +936,7 @@ def test_the_profile_names_the_model_when_the_command_line_does_not(here, monkey
     asked = answer_as_lm_studio(
         monkeypatch, holding={RESIDENT: 212224}, cold={"a/other-7b": 32768}
     )
-    _launched(monkeypatch)
+    record_launch(monkeypatch)
 
     result = runner.invoke(app, ["run"])
     assert result.exit_code == 0
@@ -972,7 +949,7 @@ def test_compaction_is_sized_from_what_the_runtime_serves(here, monkeypatch):
     # means never compacting: the server truncates the prefix instead.
     runner.invoke(app, ["setup"])
     answer_as_lm_studio(monkeypatch, cold={"a/big-7b": 131072}, ceiling=262144)
-    started = _launched(monkeypatch)
+    started = record_launch(monkeypatch)
 
     result = runner.invoke(app, ["run", "-m", "a/big-7b"])
 
@@ -989,7 +966,7 @@ def test_a_window_the_agent_would_raise_is_not_asked_for(here, monkeypatch):
     # number that comes back larger, and a person is told which it was.
     runner.invoke(app, ["setup"])
     answer_as_lm_studio(monkeypatch, cold={"a/small-7b": 32768}, ceiling=262144)
-    started = _launched(monkeypatch)
+    started = record_launch(monkeypatch)
 
     result = runner.invoke(app, ["run", "-m", "a/small-7b"])
 
@@ -1021,7 +998,7 @@ def test_the_command_line_beats_the_profile(here, monkeypatch):
     asked = answer_as_lm_studio(
         monkeypatch, cold={"a/from-profile-7b": 32768, "a/asked-for-7b": 32768}
     )
-    started = _launched(monkeypatch)
+    started = record_launch(monkeypatch)
 
     runner.invoke(app, ["run", "-m", "a/asked-for-7b"])
     assert asked["loaded"] == "a/asked-for-7b"
