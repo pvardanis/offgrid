@@ -288,9 +288,11 @@ Anthropic-dialect agent needs no translating proxy.
 - **Catalogue** — `GET /api/v0/models`, which states each model's
   `max_context_length` and, once loaded, the `loaded_context_length` it is
   actually served at. Embeddings models are filtered out.
-- **Loading** — a one-token request to `/v1/messages`. Doing it here rather
-  than leaving it to the agent's first message makes the wait visible and
-  attributable instead of a silence mid-turn.
+- **Loading** — `POST /api/v1/models/load`, carrying the window as
+  `context_length` where one was asked for, since a window is settled as the
+  weights come into memory and nothing afterwards moves it. Doing it here
+  rather than leaving it to the agent's first message makes the wait visible
+  and attributable instead of a silence mid-turn.
 - **Unloading** — `POST /api/v1/models/unload`, once per copy held and once
   for the name asked about whether it is listed or not, because a load that
   failed may have left weights the catalogue does not show yet. The catalogue
@@ -300,7 +302,8 @@ Two behaviours are worth knowing, both reproduced against a live server, and
 both the reason for the checks above:
 
 **A name it does not have is answered anyway.** With `google/gemma-4-e4b`
-loaded, a request for `totally/made-up-model-9000` came back `200`, body saying
+loaded, a `/v1/messages` request for `totally/made-up-model-9000` came back
+`200`, body saying
 `"model": "google/gemma-4-e4b"`. The model named in the reply is the only thing
 that gives it away.
 
