@@ -12,10 +12,14 @@ both back here.
 from pathlib import Path
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, SerializeAsAny, ValidationError
+from pydantic import BaseModel, ConfigDict, SerializeAsAny, ValidationError
 
-from offgrid.domain.profile.structure import refuse_a_flat_profile
+from offgrid.domain.profile.structure import (
+    refuse_a_flat_profile,
+    refuse_a_model_without_a_section,
+)
 from offgrid.domain.running.agent import AgentConfig
+from offgrid.domain.running.model import ModelRequest
 from offgrid.domain.running.runtime import RuntimeConfig
 from offgrid.shared.exceptions import ProfileError
 from offgrid.shared.home import OFFGRID_HOME
@@ -37,11 +41,11 @@ class Profile(BaseModel):
 
     :param runtime: The runtime adapter to use, and where it listens.
     :param agent: The agent adapter to use.
-    :param model: The model to run unless one is named on the command line, or
-        ``None`` to use whatever the runtime is already holding. It belongs to
-        neither adapter: a run discovers it, and ``--model`` beats it. Never
-        empty: a name nobody typed is a different statement from no name, and
-        reading one as the other runs against whatever happens to be resident.
+    :param model: What to run and the window to run it at, unless the command
+        line says otherwise, or ``None`` to take whatever the runtime is
+        already holding at whatever it is already serving it at. The section
+        belongs to neither adapter: the agent sets the floor, the runtime
+        honours the number and the model states the ceiling.
 
     Nothing measured is kept here. The GPU limit moves — a runtime may raise
     it as it starts — so it is read where it is used rather than recorded.
@@ -55,7 +59,7 @@ class Profile(BaseModel):
 
     runtime: SerializeAsAny[RuntimeConfig]
     agent: SerializeAsAny[AgentConfig]
-    model: str | None = Field(default=None, min_length=1)
+    model: ModelRequest | None = None
 
 
 def save_profile(profile: Profile, path: Path = DEFAULT_PATH) -> None:
@@ -104,6 +108,7 @@ def load_yaml(path: Path = DEFAULT_PATH) -> dict:
         )
 
     refuse_a_flat_profile(body, path)
+    refuse_a_model_without_a_section(body, path)
 
     return body
 

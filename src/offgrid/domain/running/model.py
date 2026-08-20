@@ -57,3 +57,26 @@ class ModelRequest(BaseModel):
 
     identifier: str | None = Field(default=None, min_length=1)
     context_window: int | None = Field(default=None, gt=0)
+
+
+def settle_what_to_run(
+    typed: ModelRequest, *, stored: ModelRequest | None
+) -> ModelRequest:
+    """Settle what a run asks for from what was typed and what was written down.
+
+    Key by key, because the two are stated one at a time: a run naming a model
+    and no window still wants the window somebody wrote down, and reading the
+    pair as one would drop it back to whatever the runtime remembered.
+
+    :param typed: What this run said, where it said anything.
+    :param stored: What the profile says, or ``None`` where it names nothing.
+
+    :return: The model to hold, and the window to hold it at.
+    """
+    if stored is None:
+        return typed
+
+    return ModelRequest(
+        identifier=typed.identifier or stored.identifier,
+        context_window=typed.context_window or stored.context_window,
+    )

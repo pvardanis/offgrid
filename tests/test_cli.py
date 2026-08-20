@@ -9,6 +9,7 @@ from typer.testing import CliRunner
 
 from offgrid.binding import read_profile
 from offgrid.cli import app
+from offgrid.domain.running.model import ModelRequest
 from offgrid.domain.sizing.leaderboard import Leaderboard
 from offgrid.domain.sizing.listing import Listing, Table
 from offgrid.domain.sizing.machine import Machine
@@ -163,18 +164,23 @@ def test_setup_writes_the_shape_offgrid_reads(here):
 
     assert written["runtime"] == {"name": "lmstudio", "host": "127.0.0.1:1234"}
     assert written["agent"] == {"name": "claude-code"}
+    # Both keys, saying nothing: a shape to edit beats one to remember.
+    assert written["model"] == {"identifier": None, "context_window": None}
 
 
 def test_setup_run_again_keeps_what_was_edited_by_hand(here):
     # `setup` invites a re-run: the sysctl advice it prints is undone by a
-    # reboot. A re-run that wipes the model chosen since is a trap.
+    # reboot. A re-run that wipes what was chosen since is a trap.
     runner.invoke(app, ["setup"])
-    _name_in_profile(here, "a/chosen-by-hand-7b")
+    _add_to_section(here, "model", "identifier: a/chosen-by-hand-7b")
+    _add_to_section(here, "model", "context_window: 32768")
 
     result = runner.invoke(app, ["setup"])
 
     assert result.exit_code == 0
-    assert read_profile(here / "profile.yaml").model == "a/chosen-by-hand-7b"
+    assert read_profile(here / "profile.yaml").model == ModelRequest(
+        identifier="a/chosen-by-hand-7b", context_window=32768
+    )
 
 
 def test_setup_keeps_the_profile_it_could_not_read(here):
@@ -930,19 +936,6 @@ def test_a_runtime_that_will_not_let_go_is_reported_not_hidden(here, monkeypatch
     assert "still holding" in result.stderr
 
 
-def test_the_profile_names_the_model_when_the_command_line_does_not(here, monkeypatch):
-    runner.invoke(app, ["setup"])
-    _name_in_profile(here, "a/other-7b")
-    asked = answer_as_lm_studio(
-        monkeypatch, holding={RESIDENT: 212224}, cold={"a/other-7b": 32768}
-    )
-    record_launch(monkeypatch)
-
-    result = runner.invoke(app, ["run"])
-    assert result.exit_code == 0
-    assert asked["loaded"] == "a/other-7b"
-
-
 def test_compaction_is_sized_from_what_the_runtime_serves(here, monkeypatch):
     # A model that was not loaded yet states only its ceiling. LM Studio
     # serves a smaller window than that, and compacting against the ceiling
@@ -992,19 +985,6 @@ def test_a_window_a_person_exported_does_not_answer_for_offgrid(
     assert "CLAUDE_CODE_AUTO_COMPACT_WINDOW" not in started["env"]
 
 
-def test_the_command_line_beats_the_profile(here, monkeypatch):
-    runner.invoke(app, ["setup"])
-    _name_in_profile(here, "a/from-profile-7b")
-    asked = answer_as_lm_studio(
-        monkeypatch, cold={"a/from-profile-7b": 32768, "a/asked-for-7b": 32768}
-    )
-    started = record_launch(monkeypatch)
-
-    runner.invoke(app, ["run", "-m", "a/asked-for-7b"])
-    assert asked["loaded"] == "a/asked-for-7b"
-    assert started["env"]["ANTHROPIC_MODEL"] == "a/asked-for-7b"
-
-
 def test_saying_something_after_a_command_does_not_write_to_a_closed_stream(
     here, capsys
 ):
@@ -1035,12 +1015,6 @@ def test_an_error_that_reaches_the_terminal_is_a_sentence_not_a_traceback(
 
     assert raised.value.code == 1
     assert "the runtime went away mid-run" in capsys.readouterr().err
-
-
-def _name_in_profile(here, identifier: str) -> None:
-    """Write a model into the stored profile, as a person editing it would."""
-    path = here / "profile.yaml"
-    path.write_text(path.read_text() + f"model: {identifier}\n")
 
 
 def _add_to_section(here, port: str, line: str) -> None:
