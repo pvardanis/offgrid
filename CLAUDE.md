@@ -39,7 +39,10 @@ the parent).
 **`/pr-review-toolkit:review-pr`** — the deeper pass, before pushing. Always
 `code-reviewer` and `silent-failure-hunter`; add `pr-test-analyzer` when tests
 changed, `type-design-analyzer` when a type was added, `comment-analyzer` when
-a comment claims something about hardware or a runtime.
+a comment claims something about hardware or a runtime. A hook refuses a push
+and a pull request until it has run, since this rule was written down and
+missed anyway: `OFFGRID_SKIP_PR_REVIEW=1` is how a push says out loud that it
+does not want one.
 
 **`/grill-me`** — before building anything whose shape is not obvious. Record
 what was settled in `docs/decisions.md`, and look facts up in the environment:
