@@ -5,6 +5,11 @@ below, which does not start in one too small for its own prompt, and the model
 above, which cannot honour more than it states. Both are knowable before a
 load, and a load is tens of seconds nobody gets back — which is where the
 dialect check already sits, for the same reason.
+
+Each refusal takes what is being measured first and the bound it is measured
+against by name. Two numbers of the same type read the same way round either
+way, so naming the bound is what stops a caller handing them over swapped and
+inverting the comparison with nothing to see.
 """
 
 from offgrid.domain.running.model import Model, ModelRequest
@@ -67,7 +72,7 @@ def refuse_a_served_window_below_the_floor(model: Model, *, floor: int) -> None:
 
 
 def refuse_a_window_above_the_ceiling(
-    model_request: ModelRequest, ceiling: int | None
+    model_request: ModelRequest, *, ceiling: int | None
 ) -> None:
     """Refuse a window the model could not honour.
 

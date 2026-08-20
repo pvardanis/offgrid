@@ -89,7 +89,7 @@ def hold_model(
         )
 
     refuse_a_window_above_the_ceiling(
-        model_request, _read_ceiling(runtime, model_request, resident)
+        model_request, ceiling=_read_ceiling(runtime, model_request, resident)
     )
 
     return runtime.ensure_only(model_request)
