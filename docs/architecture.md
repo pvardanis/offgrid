@@ -150,7 +150,8 @@ domain/
     shortlist.py   what fits, ranked, and what each rule dropped
     recommendation.py  how that reads to whoever asked
   running/         what a run is made of
-    model.py       a model the runtime describes
+    model.py       a model asked for and a model described, and which of
+                   two askings wins
     context_window.py  which windows a run cannot be held at, and why
     dialect.py     which API shapes can be paired
     capabilities.py  what a runtime can be asked to do
@@ -343,12 +344,14 @@ it is holding and prints it beside the agent's dialect.
 
 ## What the profile carries — built
 
-One section per port and a model. `runtime` names its adapter and says where it
-listens; `agent` names its adapter; `model` is the run's, and belongs to
-neither. An adapter with settings of its own puts them in its own section,
-which is what the second agent needs: opencode learns where the runtime listens
-from a `provider.<name>.options.baseURL` block in a file it is configured with,
-so its adapter has to be told the host before `configure` runs.
+A section per port and one for the model. `runtime` names its adapter and says
+where it listens; `agent` names its adapter; `model` says what to run and at
+what window, and belongs to neither adapter — the agent sets the floor, the
+runtime honours the number, and the model states the ceiling. An adapter with
+settings of its own puts them in its own section, which is what the second
+agent needs: opencode learns where the runtime listens from a
+`provider.<name>.options.baseURL` block in a file it is configured with, so its
+adapter has to be told the host before `configure` runs.
 
 ```yaml
 runtime:
@@ -356,12 +359,21 @@ runtime:
   host: 127.0.0.1:1234
 agent:
   name: claude-code
-model: qwen/qwen3.6-35b-a3b
+model:
+  identifier: qwen/qwen3.6-35b-a3b
+  context_window: 32768
 ```
 
-A profile written flat is refused, naming the shape it now wants rather than
-the first key that no longer fits. It is a hand-edited file on a clone-and-run
-project, and a silent migration of one is worse than a clear refusal.
+The `model` section is a `ModelRequest`, the same type `--model` and
+`--context-window` build and the runtime port takes. `settle_what_to_run` puts
+the two together key by key, so a flag naming only the model keeps the window
+the file asks for, and `setup` writes the section even where it says nothing so
+both keys are there to edit.
+
+A profile written flat, or one naming a model on the `model` key itself, is
+refused with the shape it now wants rather than the first key that no longer
+fits. It is a hand-edited file on a clone-and-run project, and a silent
+migration of one is worse than a clear refusal.
 
 Nothing measured: `setup` and
 `recommend` each call `detect()` where they need it, so a chip, a memory size
