@@ -218,10 +218,14 @@ Silicon has one pool, so on MLX there is no second place for the weights to
 sit — which is consistent with an estimate that reports GPU memory and total
 memory as the same number at 0%.
 
-The memory question the flag gestures at is answered elsewhere. How much the
-GPU may hold is the macOS wired limit, `iogpu.wired_limit_mb`, which
-`sizing/machine` reads and `offgrid setup` prints — a number the machine
-states rather than one a load is asked to respect.
+The memory question the flag gestures at is answered elsewhere, and answered
+as a property of the machine rather than as a ratio sent with a load. How much
+the GPU may hold is the macOS wired limit, `iogpu.wired_limit_mb`, which
+`sizing/machine` reads and `offgrid setup` prints. Left at its default macOS
+reports `0` and there is nothing to read, so `usable_bytes` falls back to
+`DEFAULT_GPU_SHARE`, three quarters of total memory — an estimate, which
+`setup` marks by printing the limit as `at its default` and offering the
+sysctl that replaces it with a figure the kernel reports.
 
 The TTL story is documented separately in
 [`ttl-and-auto-evict.md`](https://github.com/lmstudio-ai/docs/blob/main/1_developer/0_core/ttl-and-auto-evict.md).
