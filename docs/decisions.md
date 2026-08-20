@@ -975,9 +975,13 @@ the ceiling, so it is nobody's adapter's.
 
 The section is a `ModelRequest`, which is the type `--model` and
 `--context-window` already build and the runtime port already takes. Nothing
-new is declared for the file, so a key the request refuses — an empty
-identifier, a window of zero, a misspelling — is refused the same way from
-either door. `settle_what_to_run` puts the two together key by key rather than
+new is declared for the file, so the constraints are declared once and both
+doors are held to them — an empty identifier, a window of zero, a window
+written `yes`, a misspelling. Each door says so in its own voice: the file's
+reader turns a validator's block of text into a sentence, typer refuses a
+`--context-window` below one before the domain sees it, and
+`read_what_was_typed` is where the command line's own empty name becomes a
+sentence rather than a traceback. `settle_what_to_run` puts the two together key by key rather than
 whole: a run naming a model and no window still wants the window somebody wrote
 down, and reading the pair as one would drop it back to whatever the runtime
 remembered, which is the number the profile was written to stop being the
@@ -994,13 +998,20 @@ all is #117, which supersedes rather than extends the decision that a run with
 no model named uses whatever is resident.
 
 `model: <a name>` is refused rather than migrated, the way the flat profile
-already is, and the refusal prints the section to write with the name that was
-already there — the fix is a copy over the line it replaces. Every profile in
-existence is in that shape, including the one this was designed on, and a
-silent rewrite of a hand-edited file is still worse than a clear refusal on a
-project this size. What is echoed back is the name the file already carried, so
-the fix is a copy over the line it replaces — and where the file carries
-something that could not be a name, an example stands in, because a shape that
-is refused when it is copied is not a fix. `model:` with nothing under it is
-left alone: it says no model is named, which is a run against whatever is
-resident.
+already is. Every profile that names a model is in that shape, including the
+one this was designed on, and a silent rewrite of a hand-edited file is still worse than
+a clear refusal on a project this size. What the refusal prints is the section
+to write with the name the file already carried, so the fix is a copy over the
+line it replaces — and where the file carries something that could not be a
+name, an example stands in, because a shape that is refused when it is copied
+is not a fix. `model:` with nothing under it is left alone: it says no model is
+named, which is a run against whatever is resident.
+
+`setup` does not rescue a profile in the old shape. It cannot read one, so it
+sets the file aside as `.rejected`, says so, and writes a fresh profile from
+the defaults — which loses a hand-edited address along with the model name.
+That is the cost of refusing rather than migrating, and it is paid once, by
+people who can read both files. Naming it here rather than building around it:
+v0.1 is a handful of people, and the alternative shapes — `setup` refusing
+too, or `setup` carrying the name across — either leave no command that
+repairs the file or reintroduce the silent rewrite this decision turned down.
