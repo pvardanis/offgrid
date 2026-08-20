@@ -961,3 +961,42 @@ Claude Code does to what it is given, not a preference: asking for 32,768 gets
 100,000 back, which is the truncation that reading the served window exists to
 prevent. That is why nothing is asked for below it, rather than a smaller number
 being asked for and hoped over.
+
+## A window is written down beside the model, in a section of its own
+
+#93 settled that a window would sit at the top level of the profile, beside
+`model`, on that key's own precedent: it belongs to neither adapter, so it goes
+where neither section can claim it. The layering argument holds and the shape
+does not. `model` becomes a section carrying `identifier` and `context_window`,
+and the two things that say what to run sit together in a file that is now
+sectioned throughout. What the section belongs to is the same answer as before:
+the agent sets the floor, the runtime honours the number, and the model states
+the ceiling, so it is nobody's adapter's.
+
+The section is a `ModelRequest`, which is the type `--model` and
+`--context-window` already build and the runtime port already takes. Nothing
+new is declared for the file, so a key the request refuses — an empty
+identifier, a window of zero, a misspelling — is refused the same way from
+either door. `settle_what_to_run` puts the two together key by key rather than
+whole: a run naming a model and no window still wants the window somebody wrote
+down, and reading the pair as one would drop it back to whatever the runtime
+remembered, which is the number the profile was written to stop being the
+answer.
+
+`setup` writes the section even where it says nothing, so both keys are on disk
+to be edited. The alternative was writing nothing until there was something to
+write, which leaves the person who has just been told to load a model with no
+sign of where to name it. What it costs is two null keys in a fresh profile.
+A section that must be there was considered and set aside: `setup` runs before
+anyone has chosen a model, so a required `identifier` means writing a profile
+that the next `run` refuses. Whether a run should have to state its model at
+all is #117, which supersedes rather than extends the decision that a run with
+no model named uses whatever is resident.
+
+`model: <a name>` is refused rather than migrated, the way the flat profile
+already is, and the refusal prints the section to write with the name that was
+already there — the fix is a copy over the line it replaces. Every profile in
+existence is in that shape, including the one this was designed on, and a
+silent rewrite of a hand-edited file is still worse than a clear refusal on a
+project this size. `model:` with nothing under it stays a profile that names no
+model, since that is what `setup` writes.

@@ -204,10 +204,11 @@ $ offgrid run -- -p "explain what this module does"
 | `offgrid setup [--host HOST]` | Measures this Mac, says what fits, writes the profile. Keeps whatever you edited into it by hand. |
 | `offgrid recommend` | Fetches a published coding table, keeps the models this machine can hold, and prints them at each width they fit at. |
 | `offgrid doctor` | Reports the runtime, the model that would answer, the most it could be served at, what it is being served at, the smallest window the agent starts in, and the agent's dialect. |
-| `offgrid run [-m MODEL] [-- ARGS]` | Starts the agent. Loads `MODEL` when it is not already held, otherwise uses what is. |
+| `offgrid run [-m MODEL] [--context-window N] [-- ARGS]` | Starts the agent. Loads `MODEL` when it is not already held, otherwise uses what is. Holds it at `N` where one is asked for. |
 
-`-m/--model` beats the `model:` in the profile, which beats whatever the
-runtime already holds.
+The command line beats the `model:` section of the profile, which beats
+whatever the runtime already holds and whatever it already serves it at. Each
+key is beaten on its own, so `-m` alone keeps the window written in the file.
 
 **`recommend` is the only command that reaches the network.** It is a `GET` of
 one public page, `https://onyx.app/best-llm-for-coding`, carrying an `RSC: 1`
@@ -378,26 +379,34 @@ runtime:
   host: 127.0.0.1:1234
 agent:
   name: claude-code
-model: qwen/qwen3.6-35b-a3b
+model:
+  identifier: qwen/qwen3.6-35b-a3b
+  context_window: 32768
 ```
 
 | Key | Meaning |
 |---|---|
 | `runtime.name`, `agent.name` | which adapters to use. Both are required: a name offgrid has no adapter for is refused rather than recorded, and a section naming none is refused rather than guessed at |
 | `runtime.host` | where the runtime listens. It sits under the runtime because that is the only thing it means anything to |
-| `model` | what `run` uses when the command line names nothing |
+| `model.identifier` | what `run` holds when the command line names nothing. Left out, it uses whatever the runtime is already holding |
+| `model.context_window` | what `run` holds it at. Left out, the runtime serves whatever it last remembered |
 
 One section per adapter, so an adapter with settings of its own has somewhere
-to put them and the file says what belongs to what. The block above is the
-whole of a minimal profile — `model` is the only key you can leave out.
+to put them and the file says what belongs to what. `model` is a section too,
+and belongs to neither adapter: the agent sets the floor a window has to clear,
+the runtime honours the number, and the model states the ceiling. Everything
+under it can be left out, and `setup` writes both keys empty for you to fill
+in.
 
 A typo is an error rather than a shrug: `modle:` is reported, not read as "no
-model named". So is a key the adapter a section names does not read — that one
-is caught a moment later, when the command binds the adapter, and the message
-names the section as well as the key.
+model named", and so is `context_windwo:` inside the section. So is a key the
+adapter a section names does not read — that one is caught a moment later, when
+the command binds the adapter, and the message names the section as well as the
+key.
 
-A profile in the older flat shape — `host:` beside `runtime:` — is refused,
-with the shape above in the message. There is no migration.
+A profile in either older shape — `host:` beside `runtime:`, or a `model:` that
+names a model instead of holding a section — is refused, with the shape to
+write in the message. There is no migration.
 
 Nothing measured is kept here. `setup` reads the chip, the memory and the GPU
 limit and prints them; every command that needs them reads them again, so a

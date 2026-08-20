@@ -82,7 +82,8 @@ it knows what it will do and which of its commands is the way out. Claude Code's
 is about compaction; most launches carry none.
 
 **profile** — what offgrid remembers between runs. YAML, hand-editable, one per
-machine.
+machine. A section per adapter, and one holding a **model request**, which the
+command line beats key by key.
 
 **bind** — to turn what a profile names into the runtime and agent a run talks
 to. A section of the file is a name and whatever that adapter reads; it becomes
