@@ -11,6 +11,7 @@ import yaml
 from offgrid.binding import read_profile
 from offgrid.domain.profile import Profile, save_profile
 from offgrid.domain.running.agent import AgentName
+from offgrid.domain.running.model import ModelRequest
 from offgrid.domain.running.runtime import RuntimeName
 from offgrid.runtimes import create_runtime_config
 from offgrid.shared.exceptions import ProfileError
@@ -71,7 +72,7 @@ def test_a_profile_typed_by_hand_loads(tmp_path):
     assert profile.runtime.host == "10.0.0.5:4321"
     assert profile.runtime.name is RuntimeName.LMSTUDIO
     assert profile.agent.name is AgentName.CLAUDE_CODE
-    assert profile.model is None
+    assert profile.model == ModelRequest()
 
 
 def test_the_agent_is_told_where_the_runtime_listens(tmp_path):

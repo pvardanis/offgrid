@@ -7,8 +7,11 @@ either as the other is the failure the whole context split exists to prevent.
 """
 
 from dataclasses import dataclass
+from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, ValidationError
+
+from offgrid.shared.exceptions import ModelUnavailableError
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -27,6 +30,26 @@ class Model:
     identifier: str
     context_ceiling: int | None
     context_window: int | None
+
+
+def _refuse_a_yes_or_no(value: object) -> object:
+    """Refuse a flag written where a number of tokens belongs.
+
+    YAML reads `yes`, `on` and `true` as a boolean, and a boolean is an
+    integer to anything that does not look: `32768` and `yes` both arrive as
+    numbers, the second one as 1. The run is then refused against the agent's
+    floor, naming a window nobody wrote.
+
+    :param value: What the file or the caller said the window is.
+
+    :return: The value, for the rest of the validation to read.
+
+    :raise ValueError: When it is a boolean.
+    """
+    if isinstance(value, bool):
+        raise ValueError("a window is a number of tokens, not yes or no")
+
+    return value
 
 
 class ModelRequest(BaseModel):
@@ -53,15 +76,44 @@ class ModelRequest(BaseModel):
         the two are only usually the same number.
     """
 
-    model_config = ConfigDict(extra="forbid", frozen=True)
+    model_config = ConfigDict(extra="forbid", frozen=True, str_strip_whitespace=True)
 
     identifier: str | None = Field(default=None, min_length=1)
-    context_window: int | None = Field(default=None, gt=0)
+    context_window: Annotated[int | None, BeforeValidator(_refuse_a_yes_or_no)] = Field(
+        default=None, gt=0
+    )
 
 
-def settle_what_to_run(
-    typed: ModelRequest, *, stored: ModelRequest | None
+def read_what_was_typed(
+    *, identifier: str | None, context_window: int | None
 ) -> ModelRequest:
+    """Read what a command line asked for, refusing it in offgrid's own words.
+
+    The type is the same one the profile is read through, so what it refuses
+    is refused at both doors — but a validator's block of text is what the
+    file's reader converts into a sentence, and the command line has no such
+    reader. This is it.
+
+    :param identifier: What was typed after the model flag, or ``None`` where
+        it was left out.
+    :param context_window: What was typed after the window flag, or ``None``
+        where it was left out.
+
+    :return: What this run asks for.
+
+    :raise ModelUnavailableError: When the model flag was given an empty name,
+        which is what an unset variable arrives as.
+    """
+    try:
+        return ModelRequest(identifier=identifier, context_window=context_window)
+    except ValidationError as error:
+        raise ModelUnavailableError(
+            "`--model` was given an empty name. Name a model, or leave the "
+            "flag out to run against whatever the runtime is holding."
+        ) from error
+
+
+def settle_what_to_run(typed: ModelRequest, *, stored: ModelRequest) -> ModelRequest:
     """Settle what a run asks for from what was typed and what was written down.
 
     Key by key, because the two are stated one at a time: a run naming a model
@@ -69,13 +121,11 @@ def settle_what_to_run(
     pair as one would drop it back to whatever the runtime remembered.
 
     :param typed: What this run said, where it said anything.
-    :param stored: What the profile says, or ``None`` where it names nothing.
+    :param stored: What the profile says, where it says anything.
 
-    :return: The model to hold, and the window to hold it at.
+    :return: The model to hold, or ``None`` where neither named one, and the
+        window to hold it at.
     """
-    if stored is None:
-        return typed
-
     # Falling back on falsiness is safe here only because the request refuses
     # an empty name and a window of zero: neither can arrive as a statement.
     return ModelRequest(

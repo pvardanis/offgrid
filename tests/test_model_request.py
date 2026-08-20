@@ -44,3 +44,24 @@ def test_a_request_naming_neither_is_what_a_bare_run_asks():
 
     assert asked.identifier is None
     assert asked.context_window is None
+
+
+def test_a_window_written_as_yes_is_not_a_window_of_one():
+    # YAML reads `yes` as true, and a bool is an int to anything that does not
+    # look: `gt=0` then passes it as 1, and the run is refused for a number
+    # nobody wrote. `no` was refused all along, which is the worse asymmetry.
+    with pytest.raises(ValidationError, match="not yes or no"):
+        ModelRequest(context_window=True)
+
+
+def test_a_name_that_is_only_spaces_is_a_name_nobody_typed():
+    # `min_length` counts characters rather than content, so a space got a
+    # sentence with a hole in it out of the runtime: does not have    .
+    with pytest.raises(ValidationError, match="at least 1 character"):
+        ModelRequest(identifier="   ")
+
+
+def test_a_name_is_taken_without_what_was_typed_around_it():
+    # A padded name is the model it names, and refusing it names a model that
+    # looks identical to the one the runtime has.
+    assert ModelRequest(identifier=" qwen/a-7b ").identifier == "qwen/a-7b"
