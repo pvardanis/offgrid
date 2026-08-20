@@ -241,7 +241,7 @@ still.
 </thead>
 <tbody>
 <tr>
-  <td rowspan="2">nothing</td>
+  <td rowspan="2">nothing — no flag, and no <code>model:</code> in the profile</td>
   <td>holding nothing</td>
   <td>Refused: load a model in the runtime, then try again</td>
 </tr>
@@ -250,7 +250,7 @@ still.
   <td>It answers, at whatever it is served at. Nothing is loaded and nothing is let go of — the one path that costs nothing</td>
 </tr>
 <tr>
-  <td rowspan="2">a window</td>
+  <td rowspan="2">a window, but no model</td>
   <td>holding a model at that window</td>
   <td>It answers. No load</td>
 </tr>
@@ -259,7 +259,7 @@ still.
   <td>That model is let go of and loaded again at the window you asked for</td>
 </tr>
 <tr>
-  <td rowspan="4">a model</td>
+  <td rowspan="4">a model, named by flag or by profile</td>
   <td>holding it, and you named no window or the one it has</td>
   <td>It answers. No load</td>
 </tr>
