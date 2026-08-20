@@ -21,7 +21,7 @@ from offgrid.domain.running.hosted_tools import (
     require_hosted_tools_denied,
 )
 from offgrid.domain.running.launch import explain_why_it_would_not_start, start
-from offgrid.domain.running.model import ModelRequest, settle_what_to_run
+from offgrid.domain.running.model import read_what_was_typed, settle_what_to_run
 from offgrid.domain.running.runtime import RuntimeName
 from offgrid.domain.sizing.fit import BYTES_PER_GB, get_sizes_that_fit
 from offgrid.domain.sizing.machine import detect, suggest_raising_the_gpu_limit
@@ -82,9 +82,9 @@ def setup(
         )
 
     # Written even where it says nothing, so both keys are there to edit.
-    wanted = (stored.model if stored else None) or ModelRequest()
+    kept = {"model": stored.model} if stored else {}
 
-    save_profile(Profile(runtime=runtime, agent=agent, model=wanted), DEFAULT_PATH)
+    save_profile(Profile(runtime=runtime, agent=agent, **kept), DEFAULT_PATH)
 
     tell(f"  {machine.chip} · {machine.memory_bytes / GIB:.0f}GB unified memory")
     limit = machine.wired_limit_bytes
@@ -175,7 +175,7 @@ def run(
     with _reporting():
         profile, runtime, agent = bind_run(DEFAULT_PATH, passthrough)
         model_request = settle_what_to_run(
-            ModelRequest(identifier=model_name, context_window=context_window),
+            read_what_was_typed(identifier=model_name, context_window=context_window),
             stored=profile.model,
         )
 

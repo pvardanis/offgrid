@@ -20,10 +20,6 @@ from offgrid.shared.exceptions import ProfileError
 # An address to show a shape with, rather than one to reach anything at.
 EXAMPLE_HOST = "127.0.0.1:1234"
 
-# A window to show the key with, and not a number offgrid recommends: what
-# fits is the machine's answer, and `recommend` is where it is asked.
-EXAMPLE_WINDOW = 32768
-
 # A name to show the key with where the file carries nothing usable, and not
 # a model offgrid picks: which one to run stays a manual choice.
 EXAMPLE_MODEL = "qwen/qwen3.6-35b-a3b"
@@ -73,10 +69,12 @@ def refuse_a_model_without_a_section(body: dict, path: Path) -> None:
         return
 
     raise ProfileError(
-        f"`model` in {path} is not a section, and a model is one: it carries "
-        f"what to run and the window to run it at. Write it as:\n\n"
-        f"{_get_model_example(named)}\n\n"
-        "Leave `context_window` out to keep whatever the runtime serves it at."
+        f"`model` in {path} {_say_what_it_holds(named)}, and a model is a "
+        f"section: it carries what to run and the window to run it at. Write "
+        f"it as:\n\n{_get_model_example(named)}\n\n"
+        "Add `context_window:` beside it to hold the model at a window of "
+        "your own. Left out, the runtime serves whatever it last remembered, "
+        "which is what this profile asked for until now."
     )
 
 
@@ -98,15 +96,33 @@ def _get_example() -> str:
     ).strip()
 
 
+def _say_what_it_holds(named: object) -> str:
+    """Say what the `model` key was found holding, in a reader's words.
+
+    Named rather than left out, because the refusal is about one key and a
+    reader who cannot see which part of it offends has to guess.
+
+    :param named: What the file said under `model`.
+
+    :return: A phrase to follow the key with.
+    """
+    if isinstance(named, str):
+        return "holds a name" if named else "holds nothing"
+
+    return f"holds {'a list' if isinstance(named, list) else 'a number'}"
+
+
 def _get_model_example(named: object) -> str:
     """Write out a model section, around the name a profile already carries.
 
     A name is echoed rather than invented, so the fix is the section copied
-    over the line it replaces. Anything that could not be a name — nothing at
-    all, a number, a list — is answered with an example instead, since a
-    section copied out of the message has to be one that loads. The window is
-    shown at a number to read as an example, the key being the whole reason
-    the section exists.
+    over the line it replaces. Anything that could not be a name — an empty
+    string, a number, a list — is answered with an example instead, since a
+    section copied out of the message has to be one that loads.
+
+    The window is left out of it. The file being refused asked for whichever
+    window the runtime remembered, and a section that arrives carrying a
+    number would change that for anyone who copied what they were told to.
 
     :param named: What the file said under `model`.
 
@@ -115,6 +131,5 @@ def _get_model_example(named: object) -> str:
     identifier = named if isinstance(named, str) and named else EXAMPLE_MODEL
 
     return yaml.safe_dump(
-        {"model": {"identifier": identifier, "context_window": EXAMPLE_WINDOW}},
-        sort_keys=False,
+        {"model": {"identifier": identifier}}, sort_keys=False
     ).strip()

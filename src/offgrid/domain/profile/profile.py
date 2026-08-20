@@ -12,7 +12,7 @@ both back here.
 from pathlib import Path
 
 import yaml
-from pydantic import BaseModel, ConfigDict, SerializeAsAny, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, SerializeAsAny, ValidationError
 
 from offgrid.domain.profile.structure import (
     refuse_a_flat_profile,
@@ -59,7 +59,7 @@ class Profile(BaseModel):
 
     runtime: SerializeAsAny[RuntimeConfig]
     agent: SerializeAsAny[AgentConfig]
-    model: ModelRequest | None = None
+    model: ModelRequest = Field(default_factory=ModelRequest)
 
 
 def save_profile(profile: Profile, path: Path = DEFAULT_PATH) -> None:

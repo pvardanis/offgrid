@@ -13,7 +13,10 @@ from offgrid.domain.running.model import ModelRequest
 from offgrid.shared.exceptions import ProfileError
 from tests.profiles import HOST, NAMED, build_profile
 
-WANTED = "qwen/qwen3.6-35b-a3b"
+# A name of its own, and deliberately not the one the refusal falls back to:
+# the same string in both places makes an echo indistinguishable from a
+# stand-in, and the test that proves the echo passes either way.
+WANTED = "a/hand-written-7b"
 
 
 def _typed(tmp_path, said: str):
@@ -22,11 +25,6 @@ def _typed(tmp_path, said: str):
     path.write_text(NAMED.format(host=HOST) + said)
 
     return path
-
-
-def _get_shape(refusal: str) -> str:
-    """Take the section a refusal says to write, as someone copying it would."""
-    return refusal.split("Write it as:\n\n")[1].split("\n\n")[0] + "\n"
 
 
 def _get_shape(refusal: str) -> str:
@@ -74,9 +72,11 @@ def test_a_window_can_be_asked_for_without_naming_a_model(tmp_path):
 
 
 def test_a_profile_with_no_model_section_runs_against_what_is_resident(tmp_path):
+    # A file without the section says what an empty section says, so nothing
+    # downstream has two ways of being told the same thing.
     path = _typed(tmp_path, "")
 
-    assert read_profile(path).model is None
+    assert read_profile(path).model == ModelRequest()
 
 
 def test_a_model_written_as_a_name_is_refused_with_the_shape_to_write(tmp_path):
@@ -90,7 +90,26 @@ def test_a_model_written_as_a_name_is_refused_with_the_shape_to_write(tmp_path):
     said = str(refused.value)
     assert "profile.yaml" in said
     assert f"model:\n  identifier: {WANTED}" in said
+    # Named in the prose, and kept out of the block: the file being refused
+    # asked for whatever the runtime remembered, and a number in the section
+    # someone is told to copy would change that without saying so.
     assert "context_window" in said
+    assert "context_window" not in _get_shape(said)
+
+
+@pytest.mark.parametrize(
+    ("said", "found"),
+    [("42", "a number"), ("[a/one-7b]", "a list"), ('""', "nothing")],
+    ids=["a number", "a list", "nothing"],
+)
+def test_a_refusal_says_what_the_key_was_found_holding(tmp_path, said, found):
+    # The shape refusal beside it names the offending key — "`host` belongs to
+    # the runtime" — and one that names nothing leaves a reader comparing
+    # their file against an example to work out which half is wrong.
+    path = _typed(tmp_path, f"model: {said}\n")
+
+    with pytest.raises(ProfileError, match=found):
+        read_profile(path)
 
 
 def test_a_mistyped_key_inside_the_section_is_refused_rather_than_dropped(tmp_path):
