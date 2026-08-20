@@ -1,13 +1,13 @@
 """What a hand-edited profile does, and which ones are refused.
 
 Read through `binding.py`, because a section only becomes the config an adapter
-is built from once something knows which adapters there are.
+is built from once something knows which adapters there are. What the `model`
+section says is in `test_profile_model.py`.
 """
 
 import pytest
 import yaml
 
-from offgrid.agents import create_agent_config
 from offgrid.binding import read_profile
 from offgrid.domain.profile import Profile, save_profile
 from offgrid.domain.running.agent import AgentName
@@ -15,24 +15,12 @@ from offgrid.domain.running.runtime import RuntimeName
 from offgrid.runtimes import create_runtime_config
 from offgrid.shared.exceptions import ProfileError
 from tests.doubles import StandInAgentConfig
-
-HOST = "127.0.0.1:1234"
-
-
-NAMED = "runtime:\n  name: lmstudio\n  host: {host}\nagent:\n  name: claude-code\n"
-
-
-def _profile(host: str = HOST, **rest) -> Profile:
-    """A profile built the way the command line builds one."""
-    runtime = create_runtime_config({"name": "lmstudio", "host": host})
-    agent = create_agent_config({"name": "claude-code"}, runtime_host=host)
-
-    return Profile(runtime=runtime, agent=agent, **rest)
+from tests.profiles_on_disk import HOST, NAMED, build_profile
 
 
 def test_a_saved_profile_reads_back_the_same(tmp_path):
     path = tmp_path / "profile.yaml"
-    written = _profile()
+    written = build_profile()
     save_profile(written, path)
 
     assert read_profile(path) == written
@@ -40,7 +28,7 @@ def test_a_saved_profile_reads_back_the_same(tmp_path):
 
 def test_a_profile_is_readable_yaml(tmp_path):
     path = tmp_path / "profile.yaml"
-    save_profile(_profile(), path)
+    save_profile(build_profile(), path)
 
     on_disk = yaml.safe_load(path.read_text())
     assert on_disk["runtime"] == {"host": HOST, "name": "lmstudio"}
@@ -52,7 +40,7 @@ def test_a_profile_writes_nothing_offgrid_settled_for_itself(tmp_path):
     # section that says so. Written under `agent:` too, it would be a second
     # answer that a hand-edit could put out of step with the first.
     path = tmp_path / "profile.yaml"
-    save_profile(_profile(), path)
+    save_profile(build_profile(), path)
 
     assert "runtime_host" not in path.read_text()
 
@@ -163,18 +151,11 @@ def test_a_section_naming_no_adapter_is_refused(tmp_path, written, port, offered
     assert offered in said
 
 
-def test_a_profile_can_name_the_model_to_use(tmp_path):
-    path = tmp_path / "profile.yaml"
-    save_profile(_profile(model="qwen/qwen3.6-35b-a3b"), path)
-
-    assert read_profile(path).model == "qwen/qwen3.6-35b-a3b"
-
-
 def test_a_mistyped_key_is_named_rather_than_ignored(tmp_path):
     # A profile is hand-edited, and `modle:` read as "no model named" sends
     # someone looking at the runtime for a mistake that is in the file.
     path = tmp_path / "profile.yaml"
-    save_profile(_profile(), path)
+    save_profile(build_profile(), path)
     path.write_text(path.read_text() + "modle: qwen/typo\n")
 
     with pytest.raises(ProfileError, match="modle"):
@@ -195,7 +176,7 @@ def test_a_runtime_offgrid_cannot_talk_to_is_refused(tmp_path):
     # Naming another runtime changed nothing: offgrid spoke to LM Studio
     # regardless, and `doctor` reported the name back as though it had not.
     path = tmp_path / "profile.yaml"
-    save_profile(_profile(), path)
+    save_profile(build_profile(), path)
     path.write_text(path.read_text().replace("lmstudio", "ollama"))
 
     with pytest.raises(ProfileError, match="ollama"):
@@ -204,7 +185,7 @@ def test_a_runtime_offgrid_cannot_talk_to_is_refused(tmp_path):
 
 def test_an_agent_offgrid_cannot_start_is_refused(tmp_path):
     path = tmp_path / "profile.yaml"
-    save_profile(_profile(), path)
+    save_profile(build_profile(), path)
     path.write_text(path.read_text().replace("claude-code", "opencode"))
 
     with pytest.raises(ProfileError, match="opencode"):
@@ -313,17 +294,3 @@ def test_a_profile_carrying_a_measured_machine_is_refused(tmp_path):
     assert "memory_bytes" in said
     assert "wired_limit_bytes" in said
     assert "offgrid setup" in said
-
-
-def test_a_model_named_as_nothing_is_refused_rather_than_read_as_unnamed(tmp_path):
-    # `model: ""` is a name nobody typed, not the absence of one. Read as
-    # absence it answers with whatever is resident, where the runtime should
-    # have said it does not have that — and read by the type that refuses an
-    # empty name it reached the terminal as a traceback.
-    written = tmp_path / "profile.yaml"
-    written.write_text(NAMED.format(host=HOST) + 'model: ""\n')
-
-    with pytest.raises(ProfileError) as refused:
-        read_profile(written)
-
-    assert "model" in str(refused.value)
