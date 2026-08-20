@@ -24,6 +24,10 @@ EXAMPLE_HOST = "127.0.0.1:1234"
 # fits is the machine's answer, and `recommend` is where it is asked.
 EXAMPLE_WINDOW = 32768
 
+# A name to show the key with where the file carries nothing usable, and not
+# a model offgrid picks: which one to run stays a manual choice.
+EXAMPLE_MODEL = "qwen/qwen3.6-35b-a3b"
+
 
 def refuse_a_flat_profile(body: dict, path: Path) -> None:
     """Say that a profile written flat has to be nested, and how.
@@ -59,10 +63,9 @@ def refuse_a_model_without_a_section(body: dict, path: Path) -> None:
     :param body: What the file holds.
     :param path: Where it was read from.
 
-    :raise ProfileError: When `model` names a model rather than holding a
-        section. A `model` key with nothing under it is a profile that names no
-        model, which is what `setup` writes and a run against whatever is
-        resident.
+    :raise ProfileError: When `model` holds anything other than a section. A
+        `model` key with nothing under it passes: it is a profile that names no
+        model, and a run against whatever the runtime is already holding.
     """
     named = body.get("model")
 
@@ -70,8 +73,8 @@ def refuse_a_model_without_a_section(body: dict, path: Path) -> None:
         return
 
     raise ProfileError(
-        f"{path} names a model on its own key, and a model is a section: it "
-        f"carries what to run and the window to run it at. Write it as:\n\n"
+        f"`model` in {path} is not a section, and a model is one: it carries "
+        f"what to run and the window to run it at. Write it as:\n\n"
         f"{_get_model_example(named)}\n\n"
         "Leave `context_window` out to keep whatever the runtime serves it at."
     )
@@ -98,15 +101,20 @@ def _get_example() -> str:
 def _get_model_example(named: object) -> str:
     """Write out a model section, around the name a profile already carries.
 
-    The name is echoed rather than invented, so the fix is the section copied
-    over the line it replaces. The window is shown at a number a person can
-    read as an example, since the key is the whole reason the section exists.
+    A name is echoed rather than invented, so the fix is the section copied
+    over the line it replaces. Anything that could not be a name — nothing at
+    all, a number, a list — is answered with an example instead, since a
+    section copied out of the message has to be one that loads. The window is
+    shown at a number to read as an example, the key being the whole reason
+    the section exists.
 
     :param named: What the file said under `model`.
 
     :return: A section to copy.
     """
+    identifier = named if isinstance(named, str) and named else EXAMPLE_MODEL
+
     return yaml.safe_dump(
-        {"model": {"identifier": named, "context_window": EXAMPLE_WINDOW}},
+        {"model": {"identifier": identifier, "context_window": EXAMPLE_WINDOW}},
         sort_keys=False,
     ).strip()
