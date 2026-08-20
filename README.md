@@ -234,15 +234,23 @@ downloaded, and nothing is written.
    different dialects — before spending a minute on a load.
 2. Writes the agent's profile directory if it is not there, and refuses to
    start when the settings there would undo a guarantee offgrid makes.
-3. Lets go of every model held that is not the one being asked for, saying so,
+3. Refuses a window smaller than the agent can start in or larger than the
+   model's ceiling, while the load is still something to be spent rather than
+   something already spent.
+4. Lets go of every model held that is not the one being asked for, saying so,
    because the cached prefix goes with it.
-4. Loads the model, and checks the reply came from the model that was asked
-   for.
-5. Reads the catalogue back, so the context comes from what the runtime
-   *serves* rather than the ceiling it advertises.
-6. Starts the agent and waits, passing on `SIGTERM` and `SIGHUP` so the agent
+5. Asks for the model at that window. One already held at it is left alone and
+   costs no load; one held at a different window is let go of and loaded
+   again, because a second load is a second copy rather than a replacement.
+   Asking for no window takes whatever it is already being served at.
+6. Reads the catalogue back, so the context comes from what the runtime
+   *serves* rather than the number it was asked for or the ceiling it
+   advertises — which is also what says whether a load the runtime accepted
+   left a model held. A served window under the agent's floor is refused here,
+   before the agent is started against it.
+7. Starts the agent and waits, passing on `SIGTERM` and `SIGHUP` so the agent
    never outlives the model it is talking to.
-7. Lets the model go, whatever became of the agent, and confirms against the
+8. Lets the model go, whatever became of the agent, and confirms against the
    catalogue that it is actually gone.
 
 ## Runtimes
@@ -333,7 +341,7 @@ and a command line:
 | `ANTHROPIC_AUTH_TOKEN` | the server ignores it, the agent will not start without one |
 | `ANTHROPIC_MODEL`, `..._OPUS_`, `..._SONNET_`, `..._HAIKU_` | every tier resolves to the one model you have |
 | `CLAUDE_CONFIG_DIR` | offgrid's own profile, keeping your plugins and servers out of the cached prefix |
-| `CLAUDE_CODE_AUTO_COMPACT_WINDOW` | the served context, so it compacts before the runtime truncates |
+| `CLAUDE_CODE_AUTO_COMPACT_WINDOW` | the served context, so it compacts before the runtime truncates. Below 100,000 it is unset instead, for the reason under this table |
 | `MAX_THINKING_TOKENS=0` | thinking is paid for at decode speed |
 | `CLAUDE_CODE_MAX_OUTPUT_TOKENS` | long replies cost wall time directly |
 | `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` | less chatter to a server that is not the one answering you |
@@ -389,7 +397,7 @@ model:
 | `runtime.name`, `agent.name` | which adapters to use. Both are required: a name offgrid has no adapter for is refused rather than recorded, and a section naming none is refused rather than guessed at |
 | `runtime.host` | where the runtime listens. It sits under the runtime because that is the only thing it means anything to |
 | `model.identifier` | what `run` holds when the command line names nothing. Left out, it uses whatever the runtime is already holding |
-| `model.context_window` | what `run` holds it at. Left out, the runtime serves whatever it last remembered |
+| `model.context_window` | what `run` holds it at when the command line names no window. Left out, the runtime serves whatever it last remembered |
 
 One section per adapter, so an adapter with settings of its own has somewhere
 to put them and the file says what belongs to what. `model` is a section too,
