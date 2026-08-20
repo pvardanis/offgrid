@@ -201,7 +201,7 @@ $ offgrid run -- -p "explain what this module does"
 
 | Command | What it does |
 |---|---|
-| `offgrid setup [--host HOST]` | Measures this Mac, says what fits, writes the profile. Keeps whatever you edited into it by hand. |
+| `offgrid setup [--host HOST]` | Measures this Mac, says what fits, writes the profile. Keeps whatever you edited into it by hand — unless the file no longer loads, which is set aside as `profile.yaml.rejected` and replaced. |
 | `offgrid recommend` | Fetches a published coding table, keeps the models this machine can hold, and prints them at each width they fit at. |
 | `offgrid doctor` | Reports the runtime, the model that would answer, the most it could be served at, what it is being served at, the smallest window the agent starts in, and the agent's dialect. |
 | `offgrid run [-m MODEL] [--context-window N] [-- ARGS]` | Starts the agent. Loads `MODEL` when it is not already held, otherwise uses what is. Holds it at `N` where one is asked for. |
@@ -396,7 +396,7 @@ to put them and the file says what belongs to what. `model` is a section too,
 and belongs to neither adapter: the agent sets the floor a window has to clear,
 the runtime honours the number, and the model states the ceiling. It is the one
 section you can leave out altogether, and so is either key inside it — `setup`
-writes both empty for you to fill in.
+writes both keys with nothing under them for you to fill in.
 
 A typo is an error rather than a shrug: `modle:` is reported, not read as "no
 model named", and so is `context_windwo:` inside the section. So is a key the

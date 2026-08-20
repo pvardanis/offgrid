@@ -1,8 +1,9 @@
 """A profile as a person types one, and as the command line builds one.
 
 What a profile's shape refuses, what it says about the model to run, and which
-of it a command line beats are three test modules, and all of them start from
-the same minimal file and then edit it the way a person would.
+of it a command line beats are separate test modules. Each starts from a
+minimal profile — typed out, or written by `setup` — and edits it the way a
+person would.
 """
 
 from pathlib import Path
