@@ -11,7 +11,15 @@ from typing import Annotated
 
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, ValidationError
 
-from offgrid.shared.exceptions import ModelUnavailableError
+from offgrid.shared.exceptions import (
+    ContextWindowUnworkableError,
+    ModelUnavailableError,
+    OffgridError,
+)
+
+# Which flag says each key, so a refusal names the one that was typed rather
+# than the one that is refused most often.
+FLAGS = {"identifier": "--model", "context_window": "--context-window"}
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -101,16 +109,42 @@ def read_what_was_typed(
 
     :return: What this run asks for.
 
-    :raise ModelUnavailableError: When the model flag was given an empty name,
-        which is what an unset variable arrives as.
+    :raise ModelUnavailableError: When the model flag was given a name that is
+        no name, which is what an unset variable arrives as.
+    :raise ContextWindowUnworkableError: When the window flag was given a
+        number the request will not carry.
     """
     try:
         return ModelRequest(identifier=identifier, context_window=context_window)
     except ValidationError as error:
-        raise ModelUnavailableError(
-            "`--model` was given an empty name. Name a model, or leave the "
-            "flag out to run against whatever the runtime is holding."
-        ) from error
+        raise _say_what_cannot_be_asked_for(error) from error
+
+
+def _say_what_cannot_be_asked_for(error: ValidationError) -> OffgridError:
+    """Turn what the request refused into the sentence a person reads.
+
+    The flag is named from the key the validator rejected rather than written
+    into the message, so what it says stays true of what was actually refused.
+    The validator's own words are passed through beside it, which is what the
+    file's reader does with the same refusal.
+
+    :param error: What the request refused.
+
+    :return: The error to raise, of the kind the refused key is about.
+    """
+    refused = error.errors()[0]
+    key = str(refused["loc"][0])
+
+    said = (
+        f"`{FLAGS[key]}` was given {refused['input']!r}, which offgrid cannot "
+        f"ask for: {refused['msg'].lower()}. Leave the flag out to take "
+        "whatever the runtime is already holding."
+    )
+
+    if key == "context_window":
+        return ContextWindowUnworkableError(said)
+
+    return ModelUnavailableError(said)
 
 
 def settle_what_to_run(typed: ModelRequest, *, stored: ModelRequest) -> ModelRequest:
