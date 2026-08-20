@@ -188,14 +188,15 @@ refusing it is offgrid's job.
 
 **GPU offload rides alongside the context length in setup guidance for local
 models, and there is nothing here to offer.** `lms load` takes
-`--gpu <off|max|0..1>` beside `-c/--context-length`, so pairing the two is the
-obvious suggestion, and it does not transfer to this adapter for three
-separate reasons.
+`--gpu <off|max|0..1>` beside `-c/--context-length` (`lms load --help`), so
+pairing the two is the obvious suggestion, and it does not transfer to this
+adapter for three separate reasons.
 
 The REST load endpoint has no field for it. The documented body above carries
-`offload_kv_cache_to_gpu`, which is where the KV cache lives rather than how
-much of the model does; there is no offload ratio to send. offgrid loads over
-HTTP and never over `lms`, so the flag is not reachable from where it stands.
+`offload_kv_cache_to_gpu`, which the name says is where the KV cache goes
+rather than how much of the model does; there is no offload ratio to send.
+offgrid loads over HTTP and never over `lms`, so the flag is not reachable
+from where it stands.
 
 The ratio does not change what a load costs. Measured on this machine on
 2026-08-20 with `lms load --estimate-only`, `--gpu off` and `--gpu max` return
