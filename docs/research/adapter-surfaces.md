@@ -186,6 +186,42 @@ A window **above** the model's own maximum is accepted without complaint:
 reporting `loaded_context_length: 50000`. Nothing clamps it, which is why
 refusing it is offgrid's job.
 
+**GPU offload rides alongside the context length in setup guidance for local
+models, and there is nothing here to offer.** `lms load` takes
+`--gpu <off|max|0..1>` beside `-c/--context-length`, so pairing the two is the
+obvious suggestion, and it does not transfer to this adapter for three
+separate reasons.
+
+The REST load endpoint has no field for it. The documented body above carries
+`offload_kv_cache_to_gpu`, which is where the KV cache lives rather than how
+much of the model does; there is no offload ratio to send. offgrid loads over
+HTTP and never over `lms`, so the flag is not reachable from where it stands.
+
+The ratio does not change what a load costs. Measured on this machine on
+2026-08-20 with `lms load --estimate-only`, `--gpu off` and `--gpu max` return
+the same figure to the hundredth of a unit, differing only in the `GPU Offload`
+percentage echoed back:
+
+```
+lms load qwen3-0.6b-mlx --gpu off  → GPU Offload: 0%    Estimated GPU Memory: 469.15 MiB
+lms load qwen3-0.6b-mlx --gpu max  → GPU Offload: 100%  Estimated GPU Memory: 469.15 MiB
+lms load qwen/qwen3.6-35b-a3b --gpu off  → GPU Offload: 0%    Estimated GPU Memory: 26.64 GiB
+lms load qwen/qwen3.6-35b-a3b --gpu max  → GPU Offload: 100%  Estimated GPU Memory: 26.64 GiB
+```
+
+Both models are MLX, which is what every text model on this machine is: `lms
+ls --json` reports `"format": "safetensors"` for all five LLMs downloaded here
+and `gguf` only for the embedding model. Inference, not measurement: an offload
+ratio splits weights between a GPU's own memory and the host's, and Apple
+Silicon has one pool, so on MLX there is no second place for the weights to
+sit — which is consistent with an estimate that reports GPU memory and total
+memory as the same number at 0%.
+
+The memory question the flag gestures at is answered elsewhere. How much the
+GPU may hold is the macOS wired limit, `iogpu.wired_limit_mb`, which
+`sizing/machine` reads and `offgrid setup` prints — a number the machine
+states rather than one a load is asked to respect.
+
 The TTL story is documented separately in
 [`ttl-and-auto-evict.md`](https://github.com/lmstudio-ai/docs/blob/main/1_developer/0_core/ttl-and-auto-evict.md).
 Three facts from it: JIT-loaded models default to a 60-minute TTL; a `ttl` in
