@@ -47,6 +47,18 @@ def add_to_section(home: Path, section: str, **said) -> None:
     _write(home, written)
 
 
+def drop_section(home: Path, section: str) -> None:
+    """Take a whole section out of the stored profile, as a hand-edit may.
+
+    :param home: Where offgrid keeps the profile.
+    :param section: Which section to take out, as the file spells it.
+    """
+    written = _read(home)
+    del written[section]
+
+    _write(home, written)
+
+
 def _read(home: Path) -> dict:
     """Read what the stored profile holds.
 

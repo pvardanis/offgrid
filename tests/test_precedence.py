@@ -12,7 +12,7 @@ from offgrid.cli import app
 from tests.doubles import answer_as_a_mac
 from tests.launches import record_launch
 from tests.lmstudio_server import answer_as_lm_studio
-from tests.profiles import add_to_section
+from tests.profiles import add_to_section, drop_section
 
 RESIDENT = "qwen/qwen3.6-35b-a3b"
 # What the runtime remembered, which is nobody's decision and what a profile
@@ -34,6 +34,25 @@ def here(monkeypatch, tmp_path):
     answer_as_a_mac(monkeypatch, tmp_path)
 
     return tmp_path
+
+
+def test_a_profile_with_no_section_runs_against_what_the_runtime_holds(
+    here, monkeypatch
+):
+    # A guard rather than a slice: `setup` writes the section now, so the only
+    # way to a profile without one is a hand-edit — which is when nothing else
+    # is watching. The run costs no load and asks for no window.
+    runner.invoke(app, ["setup"])
+    drop_section(here, "model")
+    asked = answer_as_lm_studio(monkeypatch, holding={RESIDENT: SERVED})
+    started = record_launch(monkeypatch)
+
+    result = runner.invoke(app, ["run"])
+
+    assert result.exit_code == 0
+    assert asked["loaded"] is None
+    assert asked["window"] is None
+    assert started["env"]["ANTHROPIC_MODEL"] == RESIDENT
 
 
 def test_the_profile_names_the_model_when_the_command_line_does_not(here, monkeypatch):
