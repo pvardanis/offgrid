@@ -231,9 +231,8 @@ downloaded, and nothing is written.
 ## What a run does
 
 Whether a run costs a load depends on two things: what you ask for, and what
-the runtime is already holding. You ask with `-m` and `--context-window`, or
-with the `model:` section of the profile, which asks the same thing standing
-still.
+the runtime is already holding. `-m` and `--context-window` ask, and so does
+the `model:` section of the profile, standing still.
 
 <table>
 <thead>
@@ -241,16 +240,20 @@ still.
 </thead>
 <tbody>
 <tr>
-  <td rowspan="2">nothing — no flag, and no <code>model:</code> in the profile</td>
+  <td rowspan="2">no model and no window — neither typed nor in the profile</td>
   <td>holding nothing</td>
   <td>Refused: load a model in the runtime, then try again</td>
 </tr>
 <tr>
   <td>holding a model</td>
-  <td>It answers, at whatever it is served at. Nothing is loaded and nothing is let go of — the one path that costs nothing</td>
+  <td>It answers, at whatever it is served at. Nothing is loaded and nothing is let go of</td>
 </tr>
 <tr>
-  <td rowspan="2">a window, but no model</td>
+  <td rowspan="3">a window but no model — typed or in the profile</td>
+  <td>holding nothing</td>
+  <td>Refused: load a model in the runtime, then try again</td>
+</tr>
+<tr>
   <td>holding a model at that window</td>
   <td>It answers. No load</td>
 </tr>
@@ -259,7 +262,7 @@ still.
   <td>That model is let go of and loaded again at the window you asked for</td>
 </tr>
 <tr>
-  <td rowspan="4">a model, named by flag or by profile</td>
+  <td rowspan="4">a model — typed or in the profile</td>
   <td>holding it, and you named no window or the one it has</td>
   <td>It answers. No load</td>
 </tr>
@@ -273,15 +276,15 @@ still.
 </tr>
 <tr>
   <td>not having it at all</td>
-  <td>Refused, naming <code>offgrid doctor</code> to list what it has</td>
+  <td>Refused by name, before anything is let go of or loaded</td>
 </tr>
 </tbody>
 </table>
 
 Where a run asks for anything at all — a model, a window, or both — everything
-else held is let go of first, and said out loud. The two refusals let go of
-nothing, and neither does asking for nothing at all: that is the one path that
-leaves what the runtime holds exactly as it was.
+else held is let go of first, and said out loud. None of the three refusals
+lets go of anything, and neither does asking for nothing at all: that is the
+one path that leaves what the runtime holds exactly as it was.
 
 Then, in order:
 
