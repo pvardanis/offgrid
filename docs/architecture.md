@@ -13,7 +13,7 @@ target, not as the code.
 ```mermaid
 flowchart TD
     subgraph cmd [command line]
-        cli[cli.py]
+        cli["cli/"]
         binding[binding.py]
     end
     subgraph adapters [adapters]
@@ -47,7 +47,7 @@ new one lands somewhere on purpose. It is also what lets the contracts be
 stated over one name per layer rather than every module by hand.
 
 `running/answering.py` reaches `running/runtime.py`, which is a port and not an
-adapter: what satisfies it is bound to a name in `runtimes/`, and `cli.py` is
+adapter: what satisfies it is bound to a name in `runtimes/`, and `cli/` is
 where the two meet. `running/agent.py` stands the same way to `agents/`, and
 `sizing/leaderboard.py` to `leaderboards/`. All three seams are ports with a
 registry behind them.
@@ -81,7 +81,7 @@ exemptions now.
 
 ### What a contract cannot check — built
 
-The four contracts say nothing about `cli.py`, which is outermost and may
+The four contracts say nothing about `cli/`, which is outermost and may
 import anything. The rule that holds over it too is **only a registry may
 import a concrete adapter**, the command line included, and each adapter
 package has exactly one importer from outside it: the registry in its own
@@ -89,7 +89,7 @@ package's `__init__.py`.
 
 `import-linter` cannot state that one. It reads import statements as written,
 and `from offgrid.leaderboards import onyx` in the registry beside `onyx.py` is
-the same statement as `cli.py` writing it — a `forbidden` contract would refuse
+the same statement as a command writing it — a `forbidden` contract would refuse
 both or neither. So `tests/test_architecture.py` carries it instead, reading
 every import in `src/` against the adapters it finds in the tree. Finding them
 rather than listing them is what covers an adapter written later: the second
@@ -107,7 +107,12 @@ would be doing.
 **command line**
 
 ```
-cli.py             setup, doctor, recommend, run
+cli/               one module per command, and the four attached
+  setup.py         measure this machine, and write the profile
+  doctor.py        what can be read before a run costs a load
+  recommend.py     what a published list says this machine can hold
+  run.py           hold a model, start the agent, let the model go
+  reporting.py     what offgrid's own errors look like at the terminal
 binding.py         the profile read, and both adapters it names bound
 ```
 
@@ -198,7 +203,7 @@ a module that outgrows the limit is usually two ideas rather than one long one.
 ```mermaid
 sequenceDiagram
     actor P as person
-    participant C as cli.py
+    participant C as cli/run.py
     participant F as profile.py
     participant G as registries
     participant D as dialect.py
@@ -297,7 +302,7 @@ not at a registry lookup halfway through a run.
 ```mermaid
 sequenceDiagram
     actor P as person
-    participant C as cli.py
+    participant C as cli/recommend.py
     participant M as machine.py
     participant G as sizing/reading.py
     participant O as a list in LEADERBOARDS
@@ -421,8 +426,8 @@ contract nobody can find is one a second adapter is written without: the module
 map is how this repo says where things are, and a `Runtime` inside `answering.py`
 has no line in it.
 
-`cli.py` imports both — the port for its types, the registry to build one — and
-they read as what they are now that the layers are folders:
+`cli/setup.py` imports both — the port for its types, the registry to build
+one — and they read as what they are now that the layers are folders:
 `domain/running/runtime.py` and `runtimes/`, rather than two names one letter
 apart at the same level.
 
@@ -753,7 +758,7 @@ got from the registry, and the concrete name is wanted in one place, which is
 the registry itself. Mostly because it would take the rule away: `import-linter`
 reads import statements as written, so `from offgrid.runtimes.lmstudio import
 ...` is catchable while `from offgrid.runtimes import LMStudio` is an import of
-`offgrid.runtimes` — indistinguishable from the one `cli.py` legitimately makes
+`offgrid.runtimes` — indistinguishable from the one `cli/` legitimately makes
 to get `connect_runtime`. Re-exporting the name would make "only a registry may
 import a concrete adapter" unverifiable.
 
@@ -889,12 +894,12 @@ enums above, so a hand-edited typo is refused when the profile is read and each
 is a type at every call site. `save` writes with `model_dump(mode="json")`,
 since YAML cannot represent an enum member.
 
-**`cli.py` asks for an adapter and never names one.** It reads the profile,
+**`cli/` asks for an adapter and never names one.** It reads the profile,
 asks each registry package for the `Runtime` and the `Agent` that profile
 names, and hands them to the code that uses them. It imports two functions and
 never `lmstudio` or `claude_code`, which is what makes the rule statable:
 **only a registry may import a concrete adapter**, the command line included. "Outermost, so it may import anything" is not something
-a contract can check. It holds for all three now: `cli.py` asks `leaderboards/`
+a contract can check. It holds for all three now: `cli/` asks `leaderboards/`
 for the lists and hands them to `domain/sizing/reading.py`, exactly as it hands
 a `Runtime` to `answering.py`.
 
@@ -902,7 +907,7 @@ It keeps the commands, the reporting and the exit codes, and it keeps the
 order of a run — the checks before the load, the `try`/`finally` that owes the
 release, which is what has to survive Ctrl-C (#11). Whether that order belongs
 in a domain module instead is #12's question, and it is answerable once the
-adapter imports have gone and `cli.py`'s real size is known rather than
+adapter imports have gone and `cli/run.py`'s real size is known rather than
 guessed. There is one caller today.
 
 ## How this is tested — built

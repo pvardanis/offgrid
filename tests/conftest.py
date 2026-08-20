@@ -24,7 +24,7 @@ from pathlib import Path
 import httpx
 import pytest
 
-from tests.doubles import answer_as_a_mac
+from tests.commands import answer_as_a_mac
 from tests.lmstudio_server import RESIDENT, SERVED, answer_as_lm_studio
 from tests.runtimes_under_test import RUNTIMES_UNDER_TEST, RuntimeUnderTest
 

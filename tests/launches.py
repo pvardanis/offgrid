@@ -29,6 +29,6 @@ def record_launch(
 
         return code
 
-    monkeypatch.setattr("offgrid.cli.start", start)
+    monkeypatch.setattr("offgrid.cli.run.start", start)
 
     return seen
