@@ -230,6 +230,29 @@ downloaded, and nothing is written.
 
 ## What a run does
 
+Whether a run costs a load depends on two things: what you ask for, and what
+the runtime is already holding. You ask with `-m` and `--context-window`, or
+with the `model:` section of the profile, which asks the same thing standing
+still.
+
+| You ask for | The runtime is | What happens |
+|---|---|---|
+| nothing | holding nothing | Refused: load a model in the runtime, then try again |
+| nothing | holding a model | It answers, at whatever it is served at. Nothing is loaded and nothing is let go of — the one path that costs nothing |
+| a window | holding a model at that window | It answers. No load |
+| a window | holding a model at some other window | That model is let go of and loaded again at the window you asked for |
+| a model | holding it, and you named no window or the one it has | It answers. No load |
+| a model | holding it at some other window | It is let go of and loaded again: a second load is a second copy rather than a replacement, so the release is not optional |
+| a model | not holding it | It is loaded — at the window you asked for, or at whatever the runtime last remembered |
+| a model the runtime does not have | — | Refused, naming `offgrid doctor` to list what it has |
+
+Where a run asks for anything at all — a model, a window, or both — everything
+else held is let go of first, and said out loud. The two refused rows let go of
+nothing, and neither does the second: asking for nothing leaves what the
+runtime holds exactly as it was.
+
+Then, in order:
+
 1. Reads the profile, and refuses early when the runtime and the agent speak
    different dialects — before spending a minute on a load.
 2. Writes the agent's profile directory if it is not there, and refuses to
@@ -239,10 +262,8 @@ downloaded, and nothing is written.
    something already spent.
 4. Lets go of every model held that is not the one being asked for, saying so,
    because the cached prefix goes with it.
-5. Asks for the model at that window. One already held at it is left alone and
-   costs no load; one held at a different window is let go of and loaded
-   again, because a second load is a second copy rather than a replacement.
-   Asking for no window takes whatever it is already being served at.
+5. Asks the runtime for that model at that window — the load, or the lack of
+   one, that the table above decides.
 6. Reads the catalogue back, so the context comes from what the runtime
    *serves* rather than the number it was asked for or the ceiling it
    advertises — which is also what says whether a load the runtime accepted
