@@ -7,7 +7,7 @@ was is something whoever asked has to be told.
 
 The lists to ask are handed in, as a runtime is handed to `answering.py`.
 Choosing between them is policy and belongs here; which ones exist is the
-adapter layer's answer, and `cli.py` is where the two meet.
+adapter layer's answer, and `cli/recommend.py` is where the two meet.
 
 Nothing here says anything; it returns the lines and the command line says
 them.

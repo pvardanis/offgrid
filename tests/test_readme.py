@@ -17,8 +17,9 @@ import httpx
 import pytest
 from typer.testing import CliRunner
 
-from offgrid.cli import DEFAULT_HOST, app
-from tests.doubles import answer_as_a_mac
+from offgrid.cli import app
+from offgrid.cli.setup import DEFAULT_HOST
+from tests.commands import answer_as_a_mac
 
 ROOT = Path(__file__).parent.parent
 README = ROOT / "README.md"

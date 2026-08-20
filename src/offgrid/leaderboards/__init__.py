@@ -3,7 +3,7 @@
 One module per list, each a fetcher and a parser, and the registry naming
 which of them offgrid has. Nothing else is exported: `import-linter` reads
 import statements as written, so a re-exported `onyx` would be
-indistinguishable from the import `cli.py` legitimately makes — and the rule
+indistinguishable from the import a command legitimately makes — and the rule
 that only a registry may import a concrete adapter would stop being checkable.
 
 It is ordered, and the order is preference. What that order means is

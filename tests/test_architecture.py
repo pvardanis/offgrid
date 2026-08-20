@@ -109,7 +109,7 @@ def _reached_by(node: ast.ImportFrom, within: str) -> str:
 
     A relative import names the same module as an absolute one and is only
     written differently, so it is resolved rather than skipped: `from
-    .runtimes import lmstudio` in `cli.py` reaches the adapter exactly as far.
+    .runtimes import lmstudio` in a command reaches the adapter exactly as far.
 
     :param node: The import to place.
     :param within: The package the file holding it belongs to.

@@ -6,7 +6,6 @@ own rather than in here.
 """
 
 from dataclasses import dataclass
-from pathlib import Path
 
 import httpx
 import pytest
@@ -18,29 +17,8 @@ from offgrid.domain.running.hosted_tools import HostedToolsReport, HostedToolsSt
 from offgrid.domain.running.launch import Launch
 from offgrid.domain.running.model import Model
 from offgrid.domain.running.runtime import RuntimeConfig, RuntimeName
-from offgrid.domain.sizing.machine import Machine
 
-GIB = 1024**3
-MACHINE = Machine(
-    chip="Apple M1 Max", memory_bytes=64 * GIB, wired_limit_bytes=56 * GIB
-)
 CEILING = 262144
-
-
-def answer_as_a_mac(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    """Answer with a fixed machine, and write nowhere real.
-
-    :param monkeypatch: The test's patcher.
-    :param tmp_path: Where the profile goes, and the agent's directory beside
-        it.
-    """
-    monkeypatch.setattr("offgrid.cli.detect", lambda: MACHINE)
-
-    # Both, because each module holds its own name for it: the command line
-    # reads and writes the profile, and an agent's config derives its own
-    # directory. A test that patched one would reach the real other.
-    monkeypatch.setattr("offgrid.cli.DEFAULT_PATH", tmp_path / "profile.yaml")
-    monkeypatch.setattr("offgrid.domain.running.agent.OFFGRID_HOME", tmp_path)
 
 
 class StandInAgentConfig(AgentConfig):

@@ -18,14 +18,14 @@ from offgrid.shared.exceptions import (
     LeaderboardUnreachableError,
     LeaderboardUnreadableError,
 )
-from tests.doubles import StandInAgent, answer_as_a_mac, answer_as_an_agent
+from tests.commands import MEASURING, answer_as_a_mac
+from tests.doubles import StandInAgent, answer_as_an_agent
 from tests.launches import record_launch
 from tests.lmstudio_endpoint import refuse_to_let_go
-from tests.lmstudio_server import answer_as_lm_studio
+from tests.lmstudio_server import RESIDENT, answer_as_lm_studio
 from tests.profiles import add_to_section
 
 GIB = 1024**3
-RESIDENT = "qwen/qwen3.6-35b-a3b"
 runner = CliRunner()
 
 
@@ -75,10 +75,10 @@ def here(monkeypatch, tmp_path, runtime):
 
 def _a_16gb_mac(monkeypatch) -> None:
     """Answer with a 16GB Mac whose GPU limit is still at its default."""
-    monkeypatch.setattr(
-        "offgrid.cli.detect",
-        lambda: Machine(chip="Apple M1", memory_bytes=16 * GIB, wired_limit_bytes=None),
-    )
+    small = Machine(chip="Apple M1", memory_bytes=16 * GIB, wired_limit_bytes=None)
+
+    for command in MEASURING:
+        monkeypatch.setattr(f"offgrid.cli.{command}.detect", lambda: small)
 
 
 def test_setup_reports_the_machine(here):
@@ -108,7 +108,7 @@ def test_setup_says_how_to_raise_a_gpu_limit_set_below_what_would_fit(
     # Having a limit is not having enough of one. A machine left at 8GB of 16
     # is where the advice is worth most, and where it used to say nothing.
     monkeypatch.setattr(
-        "offgrid.cli.detect",
+        "offgrid.cli.setup.detect",
         lambda: Machine(
             chip="Apple M1", memory_bytes=16 * GIB, wired_limit_bytes=8 * GIB
         ),
@@ -840,7 +840,7 @@ def test_the_model_is_let_go_even_when_the_agent_is_interrupted(
     def interrupted(launch):
         raise KeyboardInterrupt
 
-    monkeypatch.setattr("offgrid.cli.start", interrupted)
+    monkeypatch.setattr("offgrid.cli.run.start", interrupted)
 
     runner.invoke(app, ["run"])
     assert runtime["let_go"] == [RESIDENT]
@@ -905,7 +905,7 @@ def test_the_model_is_let_go_when_the_agent_will_not_start(here, monkeypatch, ru
     def missing(launch):
         raise FileNotFoundError(2, "No such file or directory", "claude")
 
-    monkeypatch.setattr("offgrid.cli.start", missing)
+    monkeypatch.setattr("offgrid.cli.run.start", missing)
 
     result = runner.invoke(app, ["run"])
     assert result.exit_code == 127
@@ -924,7 +924,7 @@ def test_an_agent_that_is_there_but_not_executable_is_not_called_missing(
     def denied(launch):
         raise PermissionError(13, "Permission denied")
 
-    monkeypatch.setattr("offgrid.cli.start", denied)
+    monkeypatch.setattr("offgrid.cli.run.start", denied)
 
     result = runner.invoke(app, ["run"])
     assert result.exit_code == 127
@@ -1057,7 +1057,7 @@ def _reads(monkeypatch, *fetches) -> None:
     covers the ordering and that parsing both.
     """
     monkeypatch.setattr(
-        "offgrid.cli.LEADERBOARDS",
+        "offgrid.cli.recommend.LEADERBOARDS",
         tuple(Leaderboard(fetch=fetch, parse=onyx.parse) for fetch in fetches),
     )
 
@@ -1485,7 +1485,7 @@ def test_recommend_leaves_the_speed_blank_on_a_chip_nobody_measured(here, monkey
     # The row still ranks on its published figures; only the estimate is
     # missing, and it is visibly missing rather than quietly wrong.
     monkeypatch.setattr(
-        "offgrid.cli.detect",
+        "offgrid.cli.recommend.detect",
         lambda: Machine(
             chip="Apple M9 Extreme",
             memory_bytes=64 * GIB,
@@ -1672,7 +1672,7 @@ def test_recommend_reads_a_kept_table_back_with_whichever_list_can_read_it(
         )
     )
     monkeypatch.setattr(
-        "offgrid.cli.LEADERBOARDS",
+        "offgrid.cli.recommend.LEADERBOARDS",
         (
             Leaderboard(fetch=_refusing_to_answer, parse=onyx.parse),
             Leaderboard(fetch=_refusing_to_answer, parse=read_the_other_shape),

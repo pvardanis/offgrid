@@ -1015,3 +1015,38 @@ people who can read both files. Naming it here rather than building around it:
 v0.1 is a handful of people, and the alternative shapes — `setup` refusing
 too, or `setup` carrying the name across — either leave no command that
 repairs the file or reintroduce the silent rewrite this decision turned down.
+
+## The command line is a folder, one module per command
+
+`cli.py` reached 278 lines, and the length hook is a ratchet: a file already
+past 150 is left alone until an edit makes it longer. So the file could not
+gain the line #118 asks for — a `doctor` report that says what the profile
+asks for — without being split first, and nor could the next command's next
+line. The split is what the hook was asking for rather than a detour around
+it.
+
+One module per command, named for the command it holds, with `reporting.py`
+for what offgrid's own errors look like at the terminal — the one thing three
+commands share. `__init__.py` keeps the typer app, attaches the four, and
+holds `main`, so the wiring is read in one place and what a command does is
+read without it.
+
+Attaching them takes the modules rather than the functions:
+`app.command()(setup.setup)`, not `from offgrid.cli.setup import setup`. A
+command's module and the function in it have the same name on purpose, and
+importing the function into the package would rebind `offgrid.cli.setup` from
+the module to what is inside it — which is where a test's patch target goes,
+and where a reader opens. The repo already writes `profile/profile.py` and
+`lmstudio/lmstudio.py`, so `setup.setup` reads as what this codebase does.
+
+What it cost is that every name a command imported now lives in four places
+instead of one: `detect` is in `setup.py` and `recommend.py`, `DEFAULT_PATH`
+in all four. A test that patched `offgrid.cli.DEFAULT_PATH` reached one name
+and now has to reach each. `tests/commands.py` is where that is done once,
+and it lists the commands rather than finding them, so a fifth command added
+without a line there fails a test instead of quietly reading the developer's
+own machine.
+
+Whether the order of a run belongs in a domain module rather than in
+`run.py` is still #12's question. This decision does not answer it; it makes
+`run.py`'s real size readable, which is what #12 was waiting on.
