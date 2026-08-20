@@ -4,6 +4,7 @@ from offgrid.binding import bind_run
 from offgrid.cli.reporting import reporting
 from offgrid.domain.profile import DEFAULT_PATH
 from offgrid.domain.running.answering import get_resident_model
+from offgrid.domain.running.asking import describe_what_is_asked_for
 from offgrid.domain.running.hosted_tools import HostedToolsStatus
 from offgrid.shared.say import tell
 
@@ -25,6 +26,7 @@ def doctor() -> None:
     tell(f"  model     {model.identifier}")
     tell(f"  ceiling   {model.context_ceiling or 'unstated'}")
     tell(f"  window    {model.context_window or 'unstated'}")
+    tell(f"  profile   {describe_what_is_asked_for(profile.model)}")
     tell(f"  agent     {profile.agent.name.value}, speaking {agent.dialect.value}")
     tell(f"  floor     {agent.context_floor}")
     tell(f"  hosted    {report.status}")

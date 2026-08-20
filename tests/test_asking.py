@@ -1,0 +1,102 @@
+"""What a run will ask for, readable before the run pays for it.
+
+Every other line `doctor` prints is a reading of what is: the model held, the
+window it is served at, what the agent speaks. This is the instruction the
+next run carries, and until it was printed the two could only be compared by
+making the run. Read at the `offgrid doctor` seam, because the comparison is
+the report rather than anything the domain returns.
+"""
+
+from typer.testing import CliRunner
+
+from offgrid.cli import app
+from tests.lmstudio_server import RESIDENT, SERVED, answer_as_lm_studio
+from tests.profiles import add_to_section
+
+runner = CliRunner()
+
+# A window nothing is serving, so what the profile asks for and what the
+# runtime answers cannot be read as the same number. The name is one the
+# runtime does not hold, for the same reason.
+ASKED = 131072
+WANTED = "a/hand-written-7b"
+
+
+def test_doctor_says_the_model_and_window_the_profile_asks_for(here):
+    runner.invoke(app, ["setup"])
+    add_to_section(here, "model", identifier=RESIDENT, context_window=ASKED)
+
+    result = runner.invoke(app, ["doctor"])
+
+    assert f"  profile   {RESIDENT} at {ASKED}" in result.stderr
+
+
+def test_doctor_says_a_profile_that_asks_for_nothing_asks_for_nothing(here):
+    # What `setup` writes: both keys there to be edited, and neither said. A
+    # line printed empty reads as a number nobody could find rather than as
+    # the run it describes, which is against whatever is already held.
+    runner.invoke(app, ["setup"])
+
+    result = runner.invoke(app, ["doctor"])
+
+    assert "  profile   asks for nothing, so a run takes whatever is held" in (
+        result.stderr
+    )
+
+
+def test_doctor_says_a_model_named_without_a_window_inherits_one(here):
+    # Half a statement is not half a line: the window key being empty means
+    # the runtime's own is kept, which is a thing a run does rather than a
+    # number missing from the file.
+    runner.invoke(app, ["setup"])
+    add_to_section(here, "model", identifier=WANTED)
+
+    result = runner.invoke(app, ["doctor"])
+
+    assert f"  profile   {WANTED}, at whatever it is served at" in result.stderr
+
+
+def test_doctor_says_a_window_asked_for_without_a_model_lands_on_the_resident_one(
+    here,
+):
+    # A window with no name is a standing instruction, unlike the flag it
+    # mirrors: it says "the resident model, at this window", and which model
+    # that is depends on what the runtime happens to be holding.
+    runner.invoke(app, ["setup"])
+    add_to_section(here, "model", context_window=ASKED)
+
+    result = runner.invoke(app, ["doctor"])
+
+    assert f"  profile   whatever is held, at {ASKED}" in result.stderr
+
+
+def test_doctor_shows_a_window_the_runtime_is_not_serving_without_loading(
+    here, monkeypatch
+):
+    # The whole of what this line is for: two numbers a reader can compare,
+    # for the price of neither. Every line of the report was true before and
+    # none of them was the one the next run would ask for.
+    asked = answer_as_lm_studio(monkeypatch, holding={RESIDENT: SERVED})
+    runner.invoke(app, ["setup"])
+    add_to_section(here, "model", identifier=RESIDENT, context_window=ASKED)
+
+    result = runner.invoke(app, ["doctor"])
+
+    assert f"  window    {SERVED}" in result.stderr
+    assert f"  profile   {RESIDENT} at {ASKED}" in result.stderr
+    assert asked["order"] == []
+
+
+def test_doctor_reports_in_one_column(here):
+    # The report is read down the labels, so what the new line has to do is
+    # land where the others do. Adding it cost the line below it its padding
+    # once, and nothing said so.
+    runner.invoke(app, ["setup"])
+
+    result = runner.invoke(app, ["doctor"])
+
+    said = [line for line in result.stderr.splitlines() if line.startswith("  ")]
+    labelled = [line for line in said if not line.startswith("    ")]
+
+    assert labelled
+    assert all(line[2:].split(" ")[0].ljust(10) == line[2:12] for line in labelled)
