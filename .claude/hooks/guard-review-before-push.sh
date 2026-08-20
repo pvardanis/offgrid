@@ -28,10 +28,15 @@ transcript=$(printf '%s' "$payload" | jq -r '.transcript_path // empty')
 [[ -n $transcript && -r $transcript ]] || exit 0
 
 # The shapes a launched agent and an invoked skill take in the transcript.
-# Both carry the toolkit's name inside a JSON field, which prose about it
-# cannot reproduce.
-launched='"subagent_type":"pr-review-toolkit:'
-invoked='"skill":"pr-review-toolkit:'
+# Both carry the toolkit's name inside a JSON field, which prose about a
+# review cannot reproduce.
+#
+# Assembled here rather than written out, because the transcript records this
+# file being read and written: spelled in full, the guard would be satisfied
+# by anyone who had opened it.
+toolkit='pr-review-toolkit:'
+launched='"subagent_type":"'$toolkit
+invoked='"skill":"'$toolkit
 
 grep -qF -e "$launched" -e "$invoked" "$transcript" && exit 0
 
