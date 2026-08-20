@@ -20,6 +20,11 @@ from offgrid.runtimes.lmstudio.holding import UNLOAD
 from tests.doubles import CEILING, serve_get, serve_post
 from tests.lmstudio_catalogue import describe_model
 
+# The model a test finds already held, and the window it is served at: one
+# runtime's answer, so the name lives beside the double that gives it.
+RESIDENT = "qwen/qwen3.6-35b-a3b"
+SERVED = 212224
+
 
 def answer_as_lm_studio(
     monkeypatch: pytest.MonkeyPatch,

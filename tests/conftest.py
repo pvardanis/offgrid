@@ -19,10 +19,13 @@ it.
 """
 
 import subprocess
+from pathlib import Path
 
 import httpx
 import pytest
 
+from tests.doubles import answer_as_a_mac
+from tests.lmstudio_server import RESIDENT, SERVED, answer_as_lm_studio
 from tests.runtimes_under_test import RUNTIMES_UNDER_TEST, RuntimeUnderTest
 
 _run = subprocess.run
@@ -39,6 +42,25 @@ def runtime(request: pytest.FixtureRequest) -> RuntimeUnderTest:
     :return: One adapter, and what standing its runtime in takes.
     """
     return request.param
+
+
+@pytest.fixture
+def here(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
+    """A fixed Mac writing nowhere real, and a runtime holding one model.
+
+    What every test that drives a command against a stored profile starts
+    from. A test wanting the runtime to answer differently says so itself:
+    `answer_as_lm_studio` again replaces what this set up.
+
+    :param monkeypatch: The test's patcher.
+    :param tmp_path: Where the profile is written instead of a real home.
+
+    :return: Where the profile is.
+    """
+    answer_as_lm_studio(monkeypatch, holding={RESIDENT: SERVED})
+    answer_as_a_mac(monkeypatch, tmp_path)
+
+    return tmp_path
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:

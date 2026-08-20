@@ -5,35 +5,14 @@ already serving. Read at the `offgrid run` seam, because precedence shows only
 in what the runtime was asked to hold and what the agent was started against.
 """
 
-import pytest
 from typer.testing import CliRunner
 
 from offgrid.cli import app
-from tests.doubles import answer_as_a_mac
 from tests.launches import record_launch
-from tests.lmstudio_server import answer_as_lm_studio
+from tests.lmstudio_server import RESIDENT, SERVED, answer_as_lm_studio
 from tests.profiles import add_to_section, drop_section
 
-RESIDENT = "qwen/qwen3.6-35b-a3b"
-# What the runtime remembered, which is nobody's decision and what a profile
-# or a flag is here to beat.
-SERVED = 212224
 runner = CliRunner()
-
-
-@pytest.fixture
-def here(monkeypatch, tmp_path):
-    """A fixed Mac writing nowhere real, and a runtime holding one model.
-
-    :param monkeypatch: The test's patcher.
-    :param tmp_path: Where the profile is written instead of a real home.
-
-    :return: Where the profile is.
-    """
-    answer_as_lm_studio(monkeypatch, holding={RESIDENT: SERVED})
-    answer_as_a_mac(monkeypatch, tmp_path)
-
-    return tmp_path
 
 
 def test_a_profile_with_no_section_runs_against_what_the_runtime_holds(
@@ -132,3 +111,19 @@ def test_a_model_named_on_the_command_line_keeps_the_window_the_profile_asks_for
     assert result.exit_code == 0
     assert asked["loaded"] == "a/asked-for-7b"
     assert asked["window"] == 40000
+
+
+def test_a_model_flag_naming_nothing_is_a_sentence_rather_than_a_traceback(
+    here, monkeypatch
+):
+    # `-m "$MODEL"` with the variable unset is how this arrives. Read as no
+    # name it runs against whatever is resident; refused by the type alone it
+    # reaches the terminal as a validator's block of text.
+    runner.invoke(app, ["setup"])
+    record_launch(monkeypatch)
+
+    result = runner.invoke(app, ["run", "-m", ""])
+
+    assert result.exit_code == 1
+    assert "--model" in result.stderr
+    assert "Traceback" not in result.stderr
