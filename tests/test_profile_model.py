@@ -24,6 +24,16 @@ def _typed(tmp_path, said: str):
     return path
 
 
+def _get_shape(refusal: str) -> str:
+    """Take the section a refusal says to write, as someone copying it would."""
+    return refusal.split("Write it as:\n\n")[1].split("\n\n")[0] + "\n"
+
+
+def _get_shape(refusal: str) -> str:
+    """Take the section a refusal says to write, as someone copying it would."""
+    return refusal.split("Write it as:\n\n")[1].split("\n\n")[0] + "\n"
+
+
 def test_a_profile_can_name_the_model_to_use(tmp_path):
     path = tmp_path / "profile.yaml"
     save_profile(build_profile(model=ModelRequest(identifier=WANTED)), path)
@@ -94,6 +104,21 @@ def test_a_mistyped_key_inside_the_section_is_refused_rather_than_dropped(tmp_pa
         read_profile(path)
 
     assert "context_windwo" in str(refused.value)
+
+
+@pytest.mark.parametrize(
+    "said", ['""', "0", "[a/one-7b, a/two-7b]"], ids=["nothing", "a number", "a list"]
+)
+def test_the_shape_a_refusal_prints_is_one_that_loads(tmp_path, said):
+    # A fix that is refused when it is copied is not a fix. The name is echoed
+    # back into the section, so a value that could never be an identifier has
+    # to be answered with something that can.
+    path = _typed(tmp_path, f"model: {said}\n")
+
+    with pytest.raises(ProfileError) as refused:
+        read_profile(path)
+
+    read_profile(_typed(tmp_path, _get_shape(str(refused.value))))
 
 
 def test_a_model_named_as_nothing_is_refused_rather_than_read_as_unnamed(tmp_path):

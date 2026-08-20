@@ -998,5 +998,9 @@ already is, and the refusal prints the section to write with the name that was
 already there — the fix is a copy over the line it replaces. Every profile in
 existence is in that shape, including the one this was designed on, and a
 silent rewrite of a hand-edited file is still worse than a clear refusal on a
-project this size. `model:` with nothing under it stays a profile that names no
-model, since that is what `setup` writes.
+project this size. What is echoed back is the name the file already carried, so
+the fix is a copy over the line it replaces — and where the file carries
+something that could not be a name, an example stands in, because a shape that
+is refused when it is copied is not a fix. `model:` with nothing under it is
+left alone: it says no model is named, which is a run against whatever is
+resident.

@@ -394,9 +394,9 @@ model:
 One section per adapter, so an adapter with settings of its own has somewhere
 to put them and the file says what belongs to what. `model` is a section too,
 and belongs to neither adapter: the agent sets the floor a window has to clear,
-the runtime honours the number, and the model states the ceiling. Everything
-under it can be left out, and `setup` writes both keys empty for you to fill
-in.
+the runtime honours the number, and the model states the ceiling. It is the one
+section you can leave out altogether, and so is either key inside it — `setup`
+writes both empty for you to fill in.
 
 A typo is an error rather than a shrug: `modle:` is reported, not read as "no
 model named", and so is `context_windwo:` inside the section. So is a key the

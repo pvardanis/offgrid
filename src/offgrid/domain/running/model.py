@@ -76,6 +76,8 @@ def settle_what_to_run(
     if stored is None:
         return typed
 
+    # Falling back on falsiness is safe here only because the request refuses
+    # an empty name and a window of zero: neither can arrive as a statement.
     return ModelRequest(
         identifier=typed.identifier or stored.identifier,
         context_window=typed.context_window or stored.context_window,
