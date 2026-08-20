@@ -22,6 +22,7 @@ from tests.doubles import StandInAgent, answer_as_a_mac, answer_as_an_agent
 from tests.launches import record_launch
 from tests.lmstudio_endpoint import refuse_to_let_go
 from tests.lmstudio_server import answer_as_lm_studio
+from tests.profiles import add_to_section
 
 GIB = 1024**3
 RESIDENT = "qwen/qwen3.6-35b-a3b"
@@ -172,8 +173,12 @@ def test_setup_run_again_keeps_what_was_edited_by_hand(here):
     # `setup` invites a re-run: the sysctl advice it prints is undone by a
     # reboot. A re-run that wipes what was chosen since is a trap.
     runner.invoke(app, ["setup"])
-    _add_to_section(here, "model", "identifier: a/chosen-by-hand-7b")
-    _add_to_section(here, "model", "context_window: 32768")
+    add_to_section(
+        here,
+        "model",
+        identifier="a/chosen-by-hand-7b",
+        context_window=32768,
+    )
 
     result = runner.invoke(app, ["setup"])
 
@@ -231,7 +236,7 @@ def test_doctor_refuses_a_key_the_agent_it_names_does_not_read(here):
     # is where a typo under `agent:` is caught. It is caught before anything is
     # asked of the runtime, and it names the section as well as the key.
     runner.invoke(app, ["setup"])
-    _add_to_section(here, "agent", "theme: dark")
+    add_to_section(here, "agent", theme="dark")
 
     result = runner.invoke(app, ["doctor"])
 
@@ -243,7 +248,7 @@ def test_doctor_refuses_a_key_the_agent_it_names_does_not_read(here):
 
 def test_doctor_refuses_a_key_the_runtime_it_names_does_not_read(here):
     runner.invoke(app, ["setup"])
-    _add_to_section(here, "runtime", "timeout: 30")
+    add_to_section(here, "runtime", timeout=30)
 
     result = runner.invoke(app, ["doctor"])
 
@@ -257,7 +262,7 @@ def test_run_refuses_a_key_the_agent_it_names_does_not_read(here, monkeypatch):
     # Before the load, like every other refusal a run can make in advance.
     runner.invoke(app, ["setup"])
     started = record_launch(monkeypatch)
-    _add_to_section(here, "agent", "theme: dark")
+    add_to_section(here, "agent", theme="dark")
 
     result = runner.invoke(app, ["run"])
 
@@ -1015,15 +1020,6 @@ def test_an_error_that_reaches_the_terminal_is_a_sentence_not_a_traceback(
 
     assert raised.value.code == 1
     assert "the runtime went away mid-run" in capsys.readouterr().err
-
-
-def _add_to_section(here, port: str, line: str) -> None:
-    """Type a line into one section of the stored profile."""
-    path = here / "profile.yaml"
-    written = yaml.safe_load(path.read_text())
-    written[port] = written[port] | yaml.safe_load(line)
-
-    path.write_text(yaml.safe_dump(written, sort_keys=False))
 
 
 def _listed(

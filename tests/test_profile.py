@@ -15,7 +15,7 @@ from offgrid.domain.running.runtime import RuntimeName
 from offgrid.runtimes import create_runtime_config
 from offgrid.shared.exceptions import ProfileError
 from tests.doubles import StandInAgentConfig
-from tests.profiles_on_disk import HOST, NAMED, build_profile
+from tests.profiles import HOST, NAMED, build_profile
 
 
 def test_a_saved_profile_reads_back_the_same(tmp_path):
