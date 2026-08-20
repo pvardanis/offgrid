@@ -264,6 +264,14 @@ is not the load but the agent starting and failing on its own terms, with an
 error about an initial prompt rather than about the window that could not hold
 it.
 
+The two kinds of refusal leave the pool differently, and the line between them
+is where offgrid starts owning it. Refused before the load, nothing has been
+touched and nothing is let go of — what was held before the command is what is
+held after it. Refused after, the refusal is inside the stretch that owes a
+release whatever happens, so the model goes, including one offgrid found
+rather than loaded. That is the same rule a finished run follows: it lets go
+of a model it merely found too, because one machine has one pool.
+
 From the moment a model is held, letting go is owed whatever happens — so the
 launch sits in a `try`, `let_go` sits in the `finally`, and a failed load lets
 go of the weights the runtime may have taken anyway.

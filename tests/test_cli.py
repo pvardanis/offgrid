@@ -566,6 +566,25 @@ def test_a_window_the_runtime_did_not_honour_is_refused_after_the_load(
     assert started == {}
 
 
+def test_a_model_offgrid_did_not_load_is_let_go_of_too_when_it_is_refused(
+    here, monkeypatch
+):
+    # The refusal lands after the load, inside the stretch where offgrid owns
+    # the pool, and the rule there is that nothing stays held — the same rule
+    # that lets go of a model a finished run merely found. The refusals before
+    # the load leave the pool alone instead, because offgrid has not touched
+    # it yet.
+    runner.invoke(app, ["setup"])
+    asked = answer_as_lm_studio(monkeypatch, holding={"a/theirs-7b": 8192})
+    _launched(monkeypatch)
+
+    result = runner.invoke(app, ["run"])
+
+    assert result.exit_code == 1
+    assert asked["loaded"] is None
+    assert asked["let_go"] == ["a/theirs-7b"]
+
+
 def test_a_runtime_serving_exactly_the_floor_starts_the_agent(here, monkeypatch):
     # The floor is the smallest window that works, not the first that does
     # not, and a runtime serving exactly it is serving enough.
