@@ -1,16 +1,21 @@
 #!/usr/bin/env bash
-# Stops a push or a pull request going out before the deeper review CLAUDE.md
-# asks for has been run on the work. The rule is written down and was still
-# missed, because the skill that implements a change ends at a different
-# review and nothing reads the project's own rule at the moment of pushing.
+# Stops a pull request opening before the deeper review CLAUDE.md asks for has
+# been run on the work. The rule is written down and was still missed, because
+# the skill that implements a change ends at a different review and nothing
+# reads the project's own rule at the moment the work is offered for merge.
+#
+# A pull request rather than every push: a push is how work in progress is
+# kept, and guarding each one would ask for a review of something nobody is
+# proposing yet. Opening one is the moment the work is put up to be merged,
+# which is the moment the rule is about.
 #
 # What it looks for is an agent actually being launched, not the toolkit being
 # mentioned: a conversation about reviewing would otherwise satisfy the guard
 # it is discussing.
 #
 # It allows what it cannot check. An unreadable transcript means the harness
-# changed shape, and a guard that cannot see is a guard that should not brick
-# every push on the machine — the rule it enforces is a habit, not a
+# changed shape, and a guard that cannot see is a guard that should not stop
+# every pull request on the machine — the rule it enforces is a habit, not a
 # permission.
 set -euo pipefail
 
@@ -18,7 +23,7 @@ payload=$(cat)
 command=$(printf '%s' "$payload" | jq -r '.tool_input.command // empty')
 
 case $command in
-*"git push"* | *"gh pr create"*) ;;
+*"gh pr create"*) ;;
 *) exit 0 ;;
 esac
 
@@ -41,15 +46,15 @@ invoked='"skill":"'$toolkit
 grep -qF -e "$launched" -e "$invoked" "$transcript" && exit 0
 
 cat >&2 <<'MESSAGE'
-CLAUDE.md asks for /pr-review-toolkit:review-pr before pushing, and this
-session has not run it.
+CLAUDE.md asks for /pr-review-toolkit:review-pr before the work goes up for
+merge, and this session has not run it.
 
 Always code-reviewer and silent-failure-hunter; add pr-test-analyzer when
 tests changed, type-design-analyzer when a type was added, comment-analyzer
 when a comment claims something about hardware or a runtime.
 
-Run it, act on what it finds, then push. If this push does not want one — a
-docs branch, a re-push of reviewed work — say so out loud and run it again
-with OFFGRID_SKIP_PR_REVIEW=1.
+Run it, act on what it finds, then open the pull request. If this one does
+not want a review — a docs branch, work already reviewed — say so out loud
+and run the command again with OFFGRID_SKIP_PR_REVIEW=1.
 MESSAGE
 exit 2

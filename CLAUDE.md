@@ -36,13 +36,15 @@ request, every time. It needs both axes: the fixed point (`main` for a branch
 off main) and the issue the branch implements (`gh issue view <n>`, and usually
 the parent).
 
-**`/pr-review-toolkit:review-pr`** — the deeper pass, before pushing. Always
+**`/pr-review-toolkit:review-pr`** — the deeper pass, before the work goes up
+for merge. Always
 `code-reviewer` and `silent-failure-hunter`; add `pr-test-analyzer` when tests
 changed, `type-design-analyzer` when a type was added, `comment-analyzer` when
-a comment claims something about hardware or a runtime. A hook refuses a push
-and a pull request until it has run, since this rule was written down and
-missed anyway: `OFFGRID_SKIP_PR_REVIEW=1` is how a push says out loud that it
-does not want one.
+a comment claims something about hardware or a runtime. A hook refuses to open
+a pull request until it has run, since this rule was written down and missed
+anyway: `OFFGRID_SKIP_PR_REVIEW=1` is how one says out loud that it does not
+want a review. Pushing is left alone — work in progress is not work anyone is
+proposing yet.
 
 **`/grill-me`** — before building anything whose shape is not obvious. Record
 what was settled in `docs/decisions.md`, and look facts up in the environment:
