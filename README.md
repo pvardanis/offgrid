@@ -180,9 +180,14 @@ $ offgrid doctor
   model     qwen/qwen3.6-35b-a3b
   ceiling   262144
   window    262144
+  profile   asks for nothing, so a run takes whatever is held
   agent     claude-code, speaking anthropic
   floor     25000
 ```
+
+The `profile` line is what the next run will ask the runtime for, from the
+`model:` section of the profile. Read against the two lines above it, it says
+whether a run would cost a load before one is spent finding out.
 
 **4. Start the agent:**
 
@@ -203,7 +208,7 @@ $ offgrid run -- -p "explain what this module does"
 |---|---|
 | `offgrid setup [--host HOST]` | Measures this Mac, says what fits, writes the profile. Keeps whatever you edited into it by hand — unless the file no longer loads, which is set aside as `profile.yaml.rejected` and replaced. |
 | `offgrid recommend` | Fetches a published coding table, keeps the models this machine can hold, and prints them at each width they fit at. |
-| `offgrid doctor` | Reports the runtime, the model that would answer, the most it could be served at, what it is being served at, the smallest window the agent starts in, and the agent's dialect. |
+| `offgrid doctor` | Reports the runtime, the model that would answer, the most it could be served at, what it is being served at, what the profile asks the next run for, the smallest window the agent starts in, and the agent's dialect. |
 | `offgrid run [-m MODEL] [--context-window N] [-- ARGS]` | Starts the agent. Loads `MODEL` when it is not already held, otherwise uses what is. Holds it at `N` where one is asked for. |
 
 The command line beats the `model:` section of the profile, which beats

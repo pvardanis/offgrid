@@ -165,6 +165,7 @@ domain/
     runtime.py     what offgrid asks of a runtime, and which ones there are
     agent.py       what offgrid asks of an agent, and which ones there are
     answering.py   which model answers, and making it the one that does
+    asking.py      what a run will ask for, said before it asks
   profile/         what is remembered between runs
     profile.py     the file, and what is read out of it
     refusing.py    what a section offgrid cannot read reads like

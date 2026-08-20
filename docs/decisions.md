@@ -1058,3 +1058,40 @@ own machine.
 Whether the order of a run belongs in a domain module rather than in
 `run.py` is still #12's question. This decision does not answer it; it makes
 `run.py`'s real size readable, which is what #12 was waiting on.
+
+## What the profile asks for is one line, labelled for its source
+
+#118 left the wording open — "`asked` may want to name the source, since the
+command line beats the file and `doctor` takes no `--model`". It is one more
+line in the same column rather than a block of its own, because the point of
+printing it is the comparison with the two lines above it, and a heading with
+a blank line either side puts distance between the numbers a reader is holding
+against each other.
+
+The label is `profile`, which names where the statement came from, as
+`runtime` and `agent` already do. That is what carries the one thing a reader
+has to know: every other line is a reading of what is, and this one is an
+instruction. `asked` was the issue's own sketch and needed a trailing clause
+to say the same thing.
+
+Each case says what a run would do rather than printing the keys: a model with
+no window reads "at whatever it is served at", a window with no model reads
+"whatever is held, at N", and a section saying neither reads "asks for
+nothing, so a run takes whatever is held". A dash, or the `unstated` the
+ceiling and window lines print, would each have been shorter and would each
+have needed the reader to know that a missing key means inherit — and
+`unstated` there means the runtime did not say, which is not what it would
+mean here.
+
+The sentence is built in `running/asking.py` rather than in the command,
+beside `answering.py` and on the precedent of `recommendation.py`: what a
+person reads is written in the domain and printed by the command line.
+
+Annotating the readings instead — `window 212224 (profile asks 131072)` —
+was turned down for one reason: a profile that asks for nothing then prints
+nothing, and #118 asks for it to say so.
+
+Whether `run` should name the model a window-without-a-model landed on, the
+issue's other open question, needs no change. `hold_model` substitutes the
+resident identifier before it returns, so the line `run` already prints is the
+model it landed on.
