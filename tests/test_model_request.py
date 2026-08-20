@@ -9,7 +9,11 @@ that runtime's parsing is.
 import pytest
 from pydantic import ValidationError
 
-from offgrid.domain.running.model import ModelRequest
+from offgrid.domain.running.model import ModelRequest, read_what_was_typed
+from offgrid.shared.exceptions import (
+    ContextWindowUnworkableError,
+    ModelUnavailableError,
+)
 
 
 def test_a_window_of_nothing_is_refused_as_not_a_window():
@@ -65,3 +69,20 @@ def test_a_name_is_taken_without_what_was_typed_around_it():
     # A padded name is the model it names, and refusing it names a model that
     # looks identical to the one the runtime has.
     assert ModelRequest(identifier=" qwen/a-7b ").identifier == "qwen/a-7b"
+
+
+def test_a_refusal_names_the_flag_the_value_was_typed_after():
+    # One clause catches everything the request refuses, so a message naming
+    # one flag is true only while the others cannot reach it — which is
+    # typer's guarantee, made two layers away.
+    with pytest.raises(ContextWindowUnworkableError, match="--context-window"):
+        read_what_was_typed(identifier="a/one-7b", context_window=0)
+
+
+def test_a_refused_name_says_what_was_typed_and_what_is_wrong_with_it():
+    with pytest.raises(ModelUnavailableError) as refused:
+        read_what_was_typed(identifier="", context_window=None)
+
+    said = str(refused.value)
+    assert "--model" in said
+    assert "at least 1 character" in said
