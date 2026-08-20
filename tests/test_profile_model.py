@@ -11,7 +11,7 @@ from offgrid.binding import read_profile
 from offgrid.domain.profile import save_profile
 from offgrid.domain.running.model import ModelRequest
 from offgrid.shared.exceptions import ProfileError
-from tests.profiles_on_disk import HOST, NAMED, build_profile
+from tests.profiles import HOST, NAMED, build_profile
 
 WANTED = "qwen/qwen3.6-35b-a3b"
 

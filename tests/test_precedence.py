@@ -6,13 +6,13 @@ in what the runtime was asked to hold and what the agent was started against.
 """
 
 import pytest
-import yaml
 from typer.testing import CliRunner
 
 from offgrid.cli import app
 from tests.doubles import answer_as_a_mac
 from tests.launches import record_launch
 from tests.lmstudio_server import answer_as_lm_studio
+from tests.profiles import add_to_section
 
 RESIDENT = "qwen/qwen3.6-35b-a3b"
 # What the runtime remembered, which is nobody's decision and what a profile
@@ -23,29 +23,22 @@ runner = CliRunner()
 
 @pytest.fixture
 def here(monkeypatch, tmp_path):
-    """A fixed Mac writing nowhere real, and a runtime holding one model."""
+    """A fixed Mac writing nowhere real, and a runtime holding one model.
+
+    :param monkeypatch: The test's patcher.
+    :param tmp_path: Where the profile is written instead of a real home.
+
+    :return: Where the profile is.
+    """
     answer_as_lm_studio(monkeypatch, holding={RESIDENT: SERVED})
     answer_as_a_mac(monkeypatch, tmp_path)
 
     return tmp_path
 
 
-def _wanted_in_profile(here, **said) -> None:
-    """Write what to run into the stored profile, as a person editing it would.
-
-    :param here: Where the profile is.
-    :param said: What the `model` section says.
-    """
-    path = here / "profile.yaml"
-    written = yaml.safe_load(path.read_text())
-    written["model"] = written["model"] | said
-
-    path.write_text(yaml.safe_dump(written, sort_keys=False))
-
-
 def test_the_profile_names_the_model_when_the_command_line_does_not(here, monkeypatch):
     runner.invoke(app, ["setup"])
-    _wanted_in_profile(here, identifier="a/other-7b")
+    add_to_section(here, "model", identifier="a/other-7b")
     asked = answer_as_lm_studio(
         monkeypatch, holding={RESIDENT: SERVED}, cold={"a/other-7b": 32768}
     )
@@ -59,7 +52,7 @@ def test_the_profile_names_the_model_when_the_command_line_does_not(here, monkey
 
 def test_the_command_line_beats_the_profile(here, monkeypatch):
     runner.invoke(app, ["setup"])
-    _wanted_in_profile(here, identifier="a/from-profile-7b")
+    add_to_section(here, "model", identifier="a/from-profile-7b")
     asked = answer_as_lm_studio(
         monkeypatch, cold={"a/from-profile-7b": 32768, "a/asked-for-7b": 32768}
     )
@@ -77,7 +70,7 @@ def test_a_window_in_the_profile_is_asked_for_without_anyone_typing_it(
     # The whole of what the section is for: written down once, every run gets
     # it, and the runtime is asked rather than left to serve what it recalled.
     runner.invoke(app, ["setup"])
-    _wanted_in_profile(here, context_window=40000)
+    add_to_section(here, "model", context_window=40000)
     asked = answer_as_lm_studio(monkeypatch, holding={RESIDENT: SERVED})
     record_launch(monkeypatch)
 
@@ -92,7 +85,7 @@ def test_the_window_on_the_command_line_beats_the_one_in_the_profile(here, monke
     # A different window for one run is what the flag is for, and editing the
     # file to get it is the thing the flag exists to avoid.
     runner.invoke(app, ["setup"])
-    _wanted_in_profile(here, context_window=40000)
+    add_to_section(here, "model", context_window=40000)
     asked = answer_as_lm_studio(monkeypatch, holding={RESIDENT: SERVED})
     record_launch(monkeypatch)
 
@@ -109,7 +102,7 @@ def test_a_model_named_on_the_command_line_keeps_the_window_the_profile_asks_for
     # dropped the window would run at whatever the runtime recalled, which is
     # the number the profile was written to stop being the answer.
     runner.invoke(app, ["setup"])
-    _wanted_in_profile(here, identifier="a/from-profile-7b", context_window=40000)
+    add_to_section(here, "model", identifier="a/from-profile-7b", context_window=40000)
     asked = answer_as_lm_studio(
         monkeypatch, cold={"a/from-profile-7b": 131072, "a/asked-for-7b": 131072}
     )
