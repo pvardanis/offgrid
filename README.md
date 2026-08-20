@@ -235,21 +235,53 @@ the runtime is already holding. You ask with `-m` and `--context-window`, or
 with the `model:` section of the profile, which asks the same thing standing
 still.
 
-| You ask for | The runtime is | What happens |
-|---|---|---|
-| nothing | holding nothing | Refused: load a model in the runtime, then try again |
-| nothing | holding a model | It answers, at whatever it is served at. Nothing is loaded and nothing is let go of — the one path that costs nothing |
-| a window | holding a model at that window | It answers. No load |
-| a window | holding a model at some other window | That model is let go of and loaded again at the window you asked for |
-| a model | holding it, and you named no window or the one it has | It answers. No load |
-| a model | holding it at some other window | It is let go of and loaded again: a second load is a second copy rather than a replacement, so the release is not optional |
-| a model | not holding it | It is loaded — at the window you asked for, or at whatever the runtime last remembered |
-| a model the runtime does not have | — | Refused, naming `offgrid doctor` to list what it has |
+<table>
+<thead>
+<tr><th>You ask for</th><th>The runtime is</th><th>What happens</th></tr>
+</thead>
+<tbody>
+<tr>
+  <td rowspan="2">nothing</td>
+  <td>holding nothing</td>
+  <td>Refused: load a model in the runtime, then try again</td>
+</tr>
+<tr>
+  <td>holding a model</td>
+  <td>It answers, at whatever it is served at. Nothing is loaded and nothing is let go of — the one path that costs nothing</td>
+</tr>
+<tr>
+  <td rowspan="2">a window</td>
+  <td>holding a model at that window</td>
+  <td>It answers. No load</td>
+</tr>
+<tr>
+  <td>holding a model at some other window</td>
+  <td>That model is let go of and loaded again at the window you asked for</td>
+</tr>
+<tr>
+  <td rowspan="4">a model</td>
+  <td>holding it, and you named no window or the one it has</td>
+  <td>It answers. No load</td>
+</tr>
+<tr>
+  <td>holding it at some other window</td>
+  <td>It is let go of and loaded again: a second load is a second copy rather than a replacement, so the release is not optional</td>
+</tr>
+<tr>
+  <td>having it, but not holding it</td>
+  <td>It is loaded — at the window you asked for, or at whatever the runtime last remembered</td>
+</tr>
+<tr>
+  <td>not having it at all</td>
+  <td>Refused, naming <code>offgrid doctor</code> to list what it has</td>
+</tr>
+</tbody>
+</table>
 
 Where a run asks for anything at all — a model, a window, or both — everything
-else held is let go of first, and said out loud. The two refused rows let go of
-nothing, and neither does the second: asking for nothing leaves what the
-runtime holds exactly as it was.
+else held is let go of first, and said out loud. The two refusals let go of
+nothing, and neither does asking for nothing at all: that is the one path that
+leaves what the runtime holds exactly as it was.
 
 Then, in order:
 
