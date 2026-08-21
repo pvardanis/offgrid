@@ -10,11 +10,15 @@ import sys
 
 import typer
 
-# The modules rather than the functions in them: each is named after the
-# command it holds, so importing the function would rebind the name here from
-# the module to what is inside it — and a command's own name would no longer
-# reach the module a test patches or a reader opens.
-from offgrid.cli import doctor, recommend, run, setup
+# Under a second name, because each module is named after the command it
+# holds: binding `setup` here would rebind it from the module to the function
+# inside it, and `offgrid.cli.setup` would stop reaching the module a test
+# patches or a reader opens. Importing the submodule is what puts the module
+# there; only the name this file binds is the alias.
+from offgrid.cli.doctor import doctor as doctor_command
+from offgrid.cli.recommend import recommend as recommend_command
+from offgrid.cli.run import run as run_command
+from offgrid.cli.setup import setup as setup_command
 from offgrid.shared.exceptions import OffgridError
 from offgrid.shared.say import say_on_stderr, tell
 
@@ -32,12 +36,12 @@ def offgrid() -> None:
     say_on_stderr()
 
 
-app.command()(setup.setup)
-app.command()(doctor.doctor)
-app.command()(recommend.recommend)
+app.command()(setup_command)
+app.command()(doctor_command)
+app.command()(recommend_command)
 app.command(
     context_settings={"allow_extra_args": True, "ignore_unknown_options": True}
-)(run.run)
+)(run_command)
 
 
 def main() -> None:

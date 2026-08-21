@@ -1031,13 +1031,21 @@ commands share. `__init__.py` keeps the typer app, attaches the four, and
 holds `main`, so the wiring is read in one place and what a command does is
 read without it.
 
-Attaching them takes the modules rather than the functions:
-`app.command()(setup.setup)`, not `from offgrid.cli.setup import setup`. A
-command's module and the function in it have the same name on purpose, and
-importing the function into the package would rebind `offgrid.cli.setup` from
-the module to what is inside it — which is where a test's patch target goes,
-and where a reader opens. The repo already writes `profile/profile.py` and
-`lmstudio/lmstudio.py`, so `setup.setup` reads as what this codebase does.
+Each command is attached under a second name:
+`from offgrid.cli.setup import setup as setup_command`. A command's module and
+the function in it have the same name on purpose, and binding `setup` in the
+package would rebind `offgrid.cli.setup` from the module to what is inside
+it — which is where a test's patch target goes, and where a reader opens. The
+alias sidesteps that: importing the submodule is what puts the module on the
+package, and only the name this file binds is the alias.
+
+`app.command()(setup.setup)` was the first shape and says the same thing
+without the four extra names. It was turned down for how it reads at the
+attachment, which is the one place somebody looks to see what the command line
+answers to. Naming the modules for the action instead — `setting_up.py` — was
+turned down for the opposite reason: it breaks the rule that a command's
+module is named after the command, and a patch target stops reading like the
+command it stands in for.
 
 What it cost is that every name a command imported now lives in four places
 instead of one: `detect` is in `setup.py` and `recommend.py`, `DEFAULT_PATH`
