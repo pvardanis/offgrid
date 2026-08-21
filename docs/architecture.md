@@ -14,7 +14,6 @@ target, not as the code.
 flowchart TD
     subgraph cmd [command line]
         cli["cli/"]
-        binding[binding.py]
     end
     subgraph adapters [adapters]
         rt["runtimes/"]
@@ -107,13 +106,13 @@ would be doing.
 **command line**
 
 ```
-cli/               one module per command, and the four attached
+cli/               the layer, a module per command and the four attached
   setup.py         measure this machine, and write the profile
   doctor.py        what can be read before a run costs a load
   recommend.py     what a published list says this machine can hold
   run.py           hold a model, start the agent, let the model go
   reporting.py     what offgrid's own errors look like at the terminal
-binding.py         the profile read, and both adapters it names bound
+  binding.py       the profile read, and both adapters it names bound
 ```
 
 **adapters**

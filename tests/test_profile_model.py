@@ -7,7 +7,7 @@ does is in `test_profile.py`.
 
 import pytest
 
-from offgrid.binding import read_profile
+from offgrid.cli.binding import read_profile
 from offgrid.domain.profile import save_profile
 from offgrid.domain.running.model import ModelRequest
 from offgrid.shared.exceptions import ProfileError

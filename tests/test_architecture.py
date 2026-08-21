@@ -44,7 +44,7 @@ DOMAIN_CONTRACT = "The domain knows nothing about adapters"
 # someone makes rather than something a heuristic infers. Anything shared is
 # reachable from every layer, which is a thing to be sure about.
 ADAPTERS = {"offgrid.agents", "offgrid.leaderboards", "offgrid.runtimes"}
-COMMAND_LINE = {"offgrid.cli", "offgrid.binding"}
+COMMAND_LINE = {"offgrid.cli"}
 SHARED = {"offgrid.shared"}
 
 
