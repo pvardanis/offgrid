@@ -3,7 +3,7 @@
 import typer
 
 from offgrid.agents import create_agent_config
-from offgrid.binding import read_profile
+from offgrid.cli.binding import read_profile
 from offgrid.cli.reporting import reporting
 from offgrid.domain.profile import DEFAULT_PATH, Profile, save_profile
 from offgrid.domain.running.agent import AgentConfig, AgentName

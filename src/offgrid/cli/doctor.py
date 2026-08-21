@@ -1,6 +1,6 @@
 """What can be read before a run costs a load."""
 
-from offgrid.binding import bind_run
+from offgrid.cli.binding import bind_run
 from offgrid.cli.reporting import reporting
 from offgrid.domain.profile import DEFAULT_PATH, Profile
 from offgrid.domain.running.agent import Agent

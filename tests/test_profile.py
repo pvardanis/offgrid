@@ -8,7 +8,7 @@ section says is in `test_profile_model.py`.
 import pytest
 import yaml
 
-from offgrid.binding import read_profile
+from offgrid.cli.binding import read_profile
 from offgrid.domain.profile import Profile, save_profile
 from offgrid.domain.running.agent import AgentName
 from offgrid.domain.running.model import ModelRequest

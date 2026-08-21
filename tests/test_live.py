@@ -14,7 +14,7 @@ from collections.abc import Iterator
 import httpx
 import pytest
 
-from offgrid.binding import read_profile
+from offgrid.cli.binding import read_profile
 from offgrid.domain.profile import DEFAULT_PATH
 from offgrid.runtimes.lmstudio import connect
 from offgrid.runtimes.lmstudio.catalogue import (

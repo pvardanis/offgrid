@@ -90,7 +90,6 @@ source_modules = [
 ]
 forbidden_modules = [
     "offgrid.cli",
-    "offgrid.binding",
     "offgrid.domain",
     "offgrid.agents",
     "offgrid.leaderboards",

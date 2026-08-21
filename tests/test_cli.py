@@ -7,8 +7,8 @@ import pytest
 import yaml
 from typer.testing import CliRunner
 
-from offgrid.binding import read_profile
 from offgrid.cli import app
+from offgrid.cli.binding import read_profile
 from offgrid.domain.running.model import ModelRequest
 from offgrid.domain.sizing.leaderboard import Leaderboard
 from offgrid.domain.sizing.listing import Listing, Table
