@@ -214,6 +214,7 @@ sequenceDiagram
     participant D as dialect.py
     participant A as Agent
     participant H as answering.py
+    participant W as discarding.py
     participant R as Runtime
     participant L as launch.py
 
@@ -236,16 +237,24 @@ sequenceDiagram
     A-->>C: HostedToolsReport
     C->>C: require_hosted_tools_denied(report)
     Note over C,A: everything knowable before a load, before the load
-    C->>H: hold_model(runtime, model_request, agent.context_floor)
+    C->>W: read_discarded_windows(host, kept)
+    W-->>C: what this runtime refused, by model
+    C->>H: hold_model(runtime, model_request, agent.context_floor, was_refused)
     Note over H: either half may be none: no model asks for whatever is<br/>held, no window asks for whatever it is served at
     H->>H: refuse a window below the floor or above the ceiling
     Note over H: still before the load, and the ceiling is one<br/>catalogue read against tens of seconds
+    H->>H: drop a window this runtime refused before
+    Note over H: only that window, read from what the command line<br/>already has: a different one is a question it has not been put
     H->>R: ensure_only(model_request) — or read_held()
     Note over R: what "only this one, at that window" costs here is the<br/>adapter's problem: let go of the rest, load, read back
     R-->>H: Model, as served
     H-->>C: Model
     C->>C: refuse a served window below the floor
     Note over C: the load is spent either way; what this saves is<br/>the agent starting and failing on its own terms
+    C->>W: read_what_became_of_the_window(kept, request, model)
+    W-->>C: what to say, and whether it is worth keeping
+    C->>W: keep_what_the_runtime_did(...)
+    Note over C,W: only where the runtime refused it this run: one<br/>already on record was never put to it again
     C->>A: plan(model)
     A-->>C: Launch
     C->>L: start(launch)
@@ -263,6 +272,16 @@ of the number asked for: below the agent's floor it does not start, and above
 the model's ceiling the runtime takes the number without complaint and serves
 one the model cannot honour. `context_window.py` holds both, `hold_model` calls them,
 and each names the window asked for beside the number it broke.
+
+A window this runtime refused before is dropped after those two rather than
+instead of them: a number that could never work is worth saying so about
+whether or not offgrid means to send it, and the refusals are what say it. The
+records are read once by the command line and handed in, so the question of
+what to ask for and the question of what to say about it are answered from the
+same file read at the same moment. Only the window that was refused is
+dropped — a different one is a question this runtime has not been put, and
+dropping it would throw away a number somebody typed on the strength of an
+answer about another one.
 
 The floor is then measured a second time, against the window the runtime
 settled on rather than the one it was asked for — the two are different
