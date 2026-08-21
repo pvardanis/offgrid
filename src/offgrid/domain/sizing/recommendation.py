@@ -25,6 +25,7 @@ from offgrid.domain.sizing.shortlist import (
     shortlist,
 )
 from offgrid.domain.sizing.speed import tokens_per_second
+from offgrid.shared.wording import describe_what_was_stated
 
 # One layout, so the heading and the models under it cannot drift apart.
 COLUMNS = (
@@ -234,10 +235,10 @@ def _lay_out(fit: Fit, worth: Quality, machine: Machine) -> str:
         speed=f"~{speed:.0f}" if speed else NOTHING,
         weights=_write_gigabytes(fit.weights_bytes),
         quant=f"{fit.quantization_bits}-bit",
-        context=str(fit.listing.context_window or "unstated"),
+        context=describe_what_was_stated(fit.listing.context_window),
         # Printed, never read: it is absent on one open-weight row and a
         # date on another, so nothing here can branch on it.
-        license=fit.listing.license or "unstated",
+        license=describe_what_was_stated(fit.listing.license),
     )
 
 

@@ -26,7 +26,7 @@ flowchart TD
         profile["profile/"]
     end
     subgraph shared ["shared/"]
-        sh["exceptions.py · say.py · home.py · declaring.py"]
+        sh["exceptions.py · say.py · home.py · declaring.py · wording.py"]
     end
 
     cli --> adapters
@@ -189,6 +189,7 @@ shared/
   say.py           how offgrid talks to whoever ran it
   home.py          where offgrid keeps what it remembers
   declaring.py     reading a config as the adapter that declared it
+  wording.py       the words for what somebody else did or did not state
 ```
 
 Shared is what reaches nothing of offgrid's own, which is the test as well as

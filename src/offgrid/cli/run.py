@@ -14,6 +14,7 @@ from offgrid.domain.running.hosted_tools import require_hosted_tools_denied
 from offgrid.domain.running.launch import explain_why_it_would_not_start, start
 from offgrid.domain.running.model import read_what_was_typed, settle_what_to_run
 from offgrid.shared.say import tell
+from offgrid.shared.wording import describe_what_was_stated
 
 
 def run(
@@ -66,7 +67,9 @@ def run(
         with reporting():
             refuse_a_served_window_below_the_floor(model, floor=agent.context_floor)
 
-        tell(f"{model.identifier}, window {model.context_window or 'unstated'}")
+        window = describe_what_was_stated(model.context_window)
+
+        tell(f"{model.identifier}, window {window}")
 
         launch = agent.plan(model)
         # Said whenever there is anything at all, so an agent answering with
