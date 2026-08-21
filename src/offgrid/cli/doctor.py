@@ -20,18 +20,16 @@ def doctor() -> None:
         model = get_resident_model(runtime)
         report = agent.read_hosted_tools()
 
-    tell(
-        f"  runtime   {profile.runtime.name.value} at {profile.runtime.host}, reachable"
-    )
-    tell(f"  model     {model.identifier}")
-    tell(f"  ceiling   {model.context_ceiling or 'unstated'}")
-    tell(f"  window    {model.context_window or 'unstated'}")
-    tell(f"  profile   {describe_what_is_asked_for(profile.model)}")
-    tell(f"  agent     {profile.agent.name.value}, speaking {agent.dialect.value}")
-    tell(f"  floor     {agent.context_floor}")
-    tell(f"  hosted    {report.status}")
+    tell(f"runtime   {profile.runtime.name.value} at {profile.runtime.host}, reachable")
+    tell(f"model     {model.identifier}")
+    tell(f"ceiling   {model.context_ceiling or 'unstated'}")
+    tell(f"window    {model.context_window or 'unstated'}")
+    tell(f"profile   {describe_what_is_asked_for(profile.model)}")
+    tell(f"agent     {profile.agent.name.value}, speaking {agent.dialect.value}")
+    tell(f"floor     {agent.context_floor}")
+    tell(f"hosted    {report.status}")
 
     # What a run would refuse with, said here instead of after the load it
     # was run to save. Nothing to act on where nothing can be reached.
     if report.status is not HostedToolsStatus.DENIED:
-        tell(f"            {report.detail} {report.remedy}".rstrip())
+        tell(f"          {report.detail} {report.remedy}".rstrip())

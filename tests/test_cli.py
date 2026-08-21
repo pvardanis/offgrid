@@ -332,7 +332,7 @@ def test_doctor_says_no_more_than_the_state_when_nothing_can_be_reached(here):
 
     result = runner.invoke(app, ["doctor"])
 
-    assert "  hosted    denied\n" in result.stderr
+    assert "hosted    denied\n" in result.stderr
     assert "settings.json" not in result.stderr
 
 
@@ -377,8 +377,8 @@ def test_doctor_prints_what_the_model_could_serve_and_what_it_is_served_at(here)
 
     result = runner.invoke(app, ["doctor"])
 
-    assert "  ceiling   262144" in result.stderr
-    assert "  window    212224" in result.stderr
+    assert "ceiling   262144" in result.stderr
+    assert "window    212224" in result.stderr
 
 
 def test_doctor_prints_the_window_the_agent_needs_to_start(here, monkeypatch):
@@ -394,7 +394,7 @@ def test_doctor_prints_the_window_the_agent_needs_to_start(here, monkeypatch):
 
     result = runner.invoke(app, ["doctor"])
 
-    assert "  floor     9000" in result.stderr
+    assert "floor     9000" in result.stderr
 
 
 def test_doctor_says_when_the_runtime_holds_nothing(here, monkeypatch):
@@ -515,7 +515,7 @@ def test_a_run_refused_below_the_floor_leaves_what_was_held_where_it_was(
     result = runner.invoke(app, ["doctor"])
 
     assert refused.exit_code == 1
-    assert "  window    212224" in result.stderr
+    assert "window    212224" in result.stderr
 
 
 def test_a_run_is_refused_when_the_runtime_serves_below_the_agents_floor(
@@ -1190,13 +1190,13 @@ def test_recommend_accounts_for_every_row_it_did_not_show(here, monkeypatch):
     )
 
     result = runner.invoke(app, ["recommend"])
-    left_out = [line for line in result.stderr.splitlines() if line.startswith("    1")]
+    left_out = [line for line in result.stderr.splitlines() if line.startswith("  1")]
 
     assert "Left out of the 4 rows" in result.stderr
     assert left_out == [
-        "    1  published no size",
-        "    1  published no coding score",
-        "    1  too large for this machine at every width",
+        "  1  published no size",
+        "  1  published no coding score",
+        "  1  too large for this machine at every width",
     ]
 
 

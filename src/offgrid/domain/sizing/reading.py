@@ -100,8 +100,8 @@ def _why_this_list(
     if not refusals:
         return []
 
-    return [f"  {refusal}" for refusal in refusals] + [
-        f"  Recommending from {table.source} instead.",
+    return [f"{refusal}" for refusal in refusals] + [
+        f"Recommending from {table.source} instead.",
         "",
     ]
 
@@ -122,9 +122,9 @@ def _cache_payload(payload: str, file_path: Path) -> list[str]:
         cache.save(payload, file_path)
     except OSError as error:
         return [
-            f"  This table could not be kept at {file_path}: {error}.",
-            "  A run that reaches nothing will have none to fall back on until",
-            "  that is fixed.",
+            f"This table could not be kept at {file_path}: {error}.",
+            "A run that reaches nothing will have none to fall back on until",
+            "that is fixed.",
             "",
         ]
 
@@ -175,8 +175,8 @@ def _get_cached_reading(
     return Reading(
         table=table,
         caveats=[
-            *(f"  {refusal}" for refusal in refusals),
-            f"  This is the table offgrid read on {read_on}, not a current one.",
+            *(f"{refusal}" for refusal in refusals),
+            f"This is the table offgrid read on {read_on}, not a current one.",
             "",
         ],
     )

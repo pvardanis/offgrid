@@ -18,9 +18,9 @@ model go when the agent exits. No prompt, code or file leaves the machine.
 
 ```console
 $ offgrid run -m qwen/qwen3.6-35b-a3b
-  Letting go of google/gemma-4-e4b, whose cached prefix goes with it.
-  Loading qwen/qwen3.6-35b-a3b ... ready in 18s
-  qwen/qwen3.6-35b-a3b, window 262144
+Letting go of google/gemma-4-e4b, whose cached prefix goes with it.
+Loading qwen/qwen3.6-35b-a3b ... ready in 18s
+qwen/qwen3.6-35b-a3b, window 262144
 ```
 
 ## Contents
@@ -139,34 +139,34 @@ is, at each quantization width:
 
 ```console
 $ offgrid setup
-  Apple M1 Max · 64GB unified memory
-  GPU limit  56GB
-  usable     60GB
+Apple M1 Max · 64GB unified memory
+GPU limit  56GB
+usable     60GB
 
-  A model of about this size fits, leaving room for context:
+A model of about this size fits, leaving room for context:
 
-     4-bit      96B parameters
-     8-bit      48B parameters
-    16-bit      24B parameters
+   4-bit      96B parameters
+   8-bit      48B parameters
+  16-bit      24B parameters
 
-  `offgrid recommend` names the published models that fit.
-  Load one in your runtime, then `offgrid run`. Profile: /Users/you/.offgrid/profile.yaml
+`offgrid recommend` names the published models that fit.
+Load one in your runtime, then `offgrid run`. Profile: /Users/you/.offgrid/profile.yaml
 ```
 
 **2. See which published models that size admits:**
 
 ```console
 $ offgrid recommend
-  Models that fit this machine, from the list at
-  https://onyx.app/best-llm-for-coding, table dated 2026-07-20.
+Models that fit this machine, from the list at
+https://onyx.app/best-llm-for-coding, table dated 2026-07-20.
 
-    model                     weights  quant   context  license
-    Qwen3.6-35B-A3B            17.5GB  4-bit    262144  Apache 2.0
-    Qwen3.6-35B-A3B            35.0GB  8-bit    262144  Apache 2.0
-    Qwen3.6-27B                13.5GB  4-bit    262144  Apache 2.0
-    Qwen3.6-27B                27.0GB  8-bit    262144  Apache 2.0
+  model                     weights  quant   context  license
+  Qwen3.6-35B-A3B            17.5GB  4-bit    262144  Apache 2.0
+  Qwen3.6-35B-A3B            35.0GB  8-bit    262144  Apache 2.0
+  Qwen3.6-27B                13.5GB  4-bit    262144  Apache 2.0
+  Qwen3.6-27B                27.0GB  8-bit    262144  Apache 2.0
 
-  Download one in your runtime, then `offgrid run`.
+Download one in your runtime, then `offgrid run`.
 ```
 
 Downloading one, and choosing between what is left, stay yours. This is the
@@ -176,13 +176,13 @@ one command that reaches the network — see [Commands](#commands).
 
 ```console
 $ offgrid doctor
-  runtime   lmstudio at 127.0.0.1:1234, reachable
-  model     qwen/qwen3.6-35b-a3b
-  ceiling   262144
-  window    262144
-  profile   asks for nothing, so a run takes whatever is held
-  agent     claude-code, speaking anthropic
-  floor     25000
+runtime   lmstudio at 127.0.0.1:1234, reachable
+model     qwen/qwen3.6-35b-a3b
+ceiling   262144
+window    262144
+profile   asks for nothing, so a run takes whatever is held
+agent     claude-code, speaking anthropic
+floor     25000
 ```
 
 The `profile` line is what the next run will ask the runtime for, from the
@@ -194,7 +194,7 @@ out.
 
 ```console
 $ offgrid run
-  qwen/qwen3.6-35b-a3b, window 262144
+qwen/qwen3.6-35b-a3b, window 262144
 ```
 
 Anything after `--` reaches the agent unchanged:

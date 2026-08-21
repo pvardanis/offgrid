@@ -178,12 +178,12 @@ class LMStudio:
                 get_catalogue_payload(self.config.host), identifier
             )
         except RuntimeUnreachableError as error:
-            log.warning("  The runtime is still holding %s: %s", identifier, error)
+            log.warning("The runtime is still holding %s: %s", identifier, error)
             return False
 
         if still_held:
             log.warning(
-                "  The runtime is still holding %s: http://%s has %s loaded — "
+                "The runtime is still holding %s: http://%s has %s loaded — "
                 "%s. Let it go in LM Studio directly.",
                 identifier,
                 self.config.host,
@@ -243,12 +243,12 @@ class LMStudio:
         :raise ModelNotHeldError: When it is not held afterwards.
         :raise RuntimeUnreachableError: When the load fails.
         """
-        log.info("  Loading %s ...", model_request.identifier)
+        log.info("Loading %s ...", model_request.identifier)
         started = time.monotonic()
 
         try:
             load_model(self.config.host, model_request)
-            log.info("  ready in %.0fs", time.monotonic() - started)
+            log.info("ready in %.0fs", time.monotonic() - started)
 
             return self._now_holding(str(model_request.identifier))
         except BaseException:
@@ -291,7 +291,7 @@ class LMStudio:
                 continue
 
             log.info(
-                "  Letting go of %s, whose cached prefix goes with it.",
+                "Letting go of %s, whose cached prefix goes with it.",
                 model.identifier,
             )
             if not self.let_go(model.identifier):

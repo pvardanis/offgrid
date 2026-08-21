@@ -56,20 +56,18 @@ def setup(
 
     save_profile(Profile(runtime=runtime, agent=agent, **kept), DEFAULT_PATH)
 
-    tell(f"  {machine.chip} · {machine.memory_bytes / GIB:.0f}GB unified memory")
+    tell(f"{machine.chip} · {machine.memory_bytes / GIB:.0f}GB unified memory")
     limit = machine.wired_limit_bytes
-    tell(
-        f"  GPU limit  {limit / GIB:.0f}GB" if limit else "  GPU limit  at its default"
-    )
-    tell(f"  usable     {machine.usable_bytes / BYTES_PER_GB:.0f}GB")
+    tell(f"GPU limit  {limit / GIB:.0f}GB" if limit else "GPU limit  at its default")
+    tell(f"usable     {machine.usable_bytes / BYTES_PER_GB:.0f}GB")
     tell("")
-    tell("  A model of about this size fits, leaving room for context:")
+    tell("A model of about this size fits, leaving room for context:")
     tell("")
     for bits, parameters in get_sizes_that_fit(machine):
-        tell(f"    {bits:>2}-bit   {parameters / BILLION:>5.0f}B parameters")
+        tell(f"  {bits:>2}-bit   {parameters / BILLION:>5.0f}B parameters")
     tell("")
-    tell("  `offgrid recommend` names the published models that fit.")
-    tell(f"  Load one in your runtime, then `offgrid run`. Profile: {DEFAULT_PATH}")
+    tell("`offgrid recommend` names the published models that fit.")
+    tell(f"Load one in your runtime, then `offgrid run`. Profile: {DEFAULT_PATH}")
 
     advice = suggest_raising_the_gpu_limit(machine)
     if advice:
@@ -92,6 +90,6 @@ def _get_stored_profile() -> Profile | None:
         kept = DEFAULT_PATH.with_suffix(".yaml.rejected")
         kept.write_text(DEFAULT_PATH.read_text())
 
-        tell(f"  {error}")
-        tell(f"  What was there is at {kept}. Writing a fresh profile.")
+        tell(f"{error}")
+        tell(f"What was there is at {kept}. Writing a fresh profile.")
         return None

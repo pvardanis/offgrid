@@ -54,5 +54,5 @@ def main() -> None:
     try:
         app()
     except OffgridError as error:
-        tell(f"  {error}")
+        tell(f"{error}")
         sys.exit(1)
