@@ -1109,18 +1109,28 @@ what #124 needs — a runtime holding nothing has to leave the model lines out
 or mark them unknown, and that is a list to build against rather than a run of
 statements to thread a condition through.
 
-Reading is behind `@reporting()` rather than inside a `with` in each command
-body. The contextmanager was already usable as a decorator — `@contextmanager`
-returns a `ContextDecorator` — so nothing in `reporting.py` changed. What it
-costs is that the scope is no longer visible at the call site; what it buys is
-a command body that reads as what the command does, with the failure handling
-named once above the thing that can fail.
+Reading is behind `@reporting()` where the reading is more than one statement
+or answers with more than one thing — `setup` and `doctor`. Nothing in
+`reporting.py` changed to allow it: calling a `@contextmanager` function gives
+an object that is already a `ContextDecorator`. What it costs is that the
+scope stops being visible at the call site, and a line that looks total can
+end the process; what it buys is a command body that reads as what the command
+does.
 
-`run` keeps its `with`, and will. Its second block wraps a single statement
-*inside* the `try`/`finally` that owes `let_go`, and a decorator can only mean
-the whole function. That is one command in four written the other way, which
-is worse than none and better than moving the release out of the `finally` to
-make the shape uniform.
+A single call keeps its `with`. `recommend` was written both ways and the
+extraction lost: a nine-line helper whose whole body was `return
+get_reading(LEADERBOARDS, _cache())`, under a name that says less than the
+call it hid, and a docstring that restated the callee's and got it wrong on
+the first try. `reading = get_reading(LEADERBOARDS, _cache())` inside a `with`
+says where the table comes from; `reading = _read_a_published_list()` puts
+that one indirection away for nothing.
+
+`run` keeps its `with` for a second reason on top of that one. Its later block
+wraps a single statement *inside* the `try` whose `finally` owes `let_go`, and
+a decorator can only mean a whole function, so extracting the first block
+would leave one command spelling it both ways — worse than one command
+spelling it differently. The alternative, moving the release out of the
+`finally` to make the shape uniform, breaks what has to survive Ctrl-C (#11).
 
 `doctor`'s reads come back as a four-value tuple, which is a clump wanting a
 type. It is left as a tuple until #124, which needs a shape that can say "the
