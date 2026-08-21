@@ -6,8 +6,8 @@ from offgrid.agents import create_agent_config
 from offgrid.binding import read_profile
 from offgrid.cli.reporting import reporting
 from offgrid.domain.profile import DEFAULT_PATH, Profile, save_profile
-from offgrid.domain.running.agent import AgentName
-from offgrid.domain.running.runtime import RuntimeName
+from offgrid.domain.running.agent import AgentConfig, AgentName
+from offgrid.domain.running.runtime import RuntimeConfig, RuntimeName
 from offgrid.domain.sizing.fit import BYTES_PER_GB, get_sizes_that_fit
 from offgrid.domain.sizing.machine import detect, suggest_raising_the_gpu_limit
 from offgrid.runtimes import create_runtime_config
@@ -31,25 +31,7 @@ def setup(
     stored = _get_stored_profile()
     listening_at = host or (stored.runtime.host if stored else DEFAULT_HOST)
 
-    # What was stored is carried over whole rather than rebuilt from the
-    # defaults, so a re-run keeps the adapters named and whatever settings of
-    # their own they were given. Only the address moves, and it moves in both
-    # places at once.
-    with reporting():
-        runtime = (
-            stored.runtime.model_copy(update={"host": listening_at})
-            if stored
-            else create_runtime_config(
-                {"name": DEFAULT_RUNTIME.value, "host": listening_at}
-            )
-        )
-        agent = (
-            stored.agent.model_copy(update={"runtime_host": listening_at})
-            if stored
-            else create_agent_config(
-                {"name": DEFAULT_AGENT.value}, runtime_host=listening_at
-            )
-        )
+    runtime, agent = _name_both_adapters(stored, listening_at=listening_at)
 
     # Written even where it says nothing, so both keys are there to edit.
     kept = {"model": stored.model} if stored else {}
@@ -74,6 +56,38 @@ def setup(
         tell("")
         for line in advice:
             tell(line)
+
+
+# What was stored is carried over whole rather than rebuilt from the defaults,
+# so a re-run keeps the adapters named and whatever settings of their own they
+# were given. Only the address moves, and it moves in both places at once.
+@reporting()
+def _name_both_adapters(
+    stored: Profile | None, *, listening_at: str
+) -> tuple[RuntimeConfig, AgentConfig]:
+    """Settle which runtime and which agent the profile will name.
+
+    :param stored: The profile already there, or ``None`` where there is none.
+    :param listening_at: Where the runtime listens.
+
+    :return: The runtime's config and the agent's.
+    """
+    runtime = (
+        stored.runtime.model_copy(update={"host": listening_at})
+        if stored
+        else create_runtime_config(
+            {"name": DEFAULT_RUNTIME.value, "host": listening_at}
+        )
+    )
+    agent = (
+        stored.agent.model_copy(update={"runtime_host": listening_at})
+        if stored
+        else create_agent_config(
+            {"name": DEFAULT_AGENT.value}, runtime_host=listening_at
+        )
+    )
+
+    return runtime, agent
 
 
 def _get_stored_profile() -> Profile | None:

@@ -2,34 +2,67 @@
 
 from offgrid.binding import bind_run
 from offgrid.cli.reporting import reporting
-from offgrid.domain.profile import DEFAULT_PATH
+from offgrid.domain.profile import DEFAULT_PATH, Profile
+from offgrid.domain.running.agent import Agent
 from offgrid.domain.running.answering import get_resident_model
 from offgrid.domain.running.asking import describe_what_is_asked_for
-from offgrid.domain.running.hosted_tools import HostedToolsStatus
+from offgrid.domain.running.hosted_tools import HostedToolsReport, HostedToolsStatus
+from offgrid.domain.running.model import Model
 from offgrid.shared.say import tell
 
 
 def doctor() -> None:
     """Check that the runtime is reachable and holding a model."""
-    # Reading, binding and both askings happen before anything is printed, so
-    # a fault in any of them is reported as offgrid's own error rather than as
-    # a traceback under four lines that already looked like an answer.
-    with reporting():
-        profile, runtime, agent = bind_run(DEFAULT_PATH)
+    profile, model, report, agent = _read_what_can_be_read()
 
-        model = get_resident_model(runtime)
-        report = agent.read_hosted_tools()
+    for line in _describe(profile, model, report, agent):
+        tell(line)
 
-    tell(f"runtime   {profile.runtime.name.value} at {profile.runtime.host}, reachable")
-    tell(f"model     {model.identifier}")
-    tell(f"ceiling   {model.context_ceiling or 'unstated'}")
-    tell(f"window    {model.context_window or 'unstated'}")
-    tell(f"profile   {describe_what_is_asked_for(profile.model)}")
-    tell(f"agent     {profile.agent.name.value}, speaking {agent.dialect.value}")
-    tell(f"floor     {agent.context_floor}")
-    tell(f"hosted    {report.status}")
+
+# Everything is read before anything is said, so a fault in any of it is
+# reported as offgrid's own error rather than as a traceback under four lines
+# that already looked like an answer.
+@reporting()
+def _read_what_can_be_read() -> tuple[Profile, Model, HostedToolsReport, Agent]:
+    """Ask the profile, the runtime and the agent what each of them says.
+
+    :return: What was written down, the model that would answer, what the
+        agent says it can reach, and the agent itself.
+    """
+    profile, runtime, agent = bind_run(DEFAULT_PATH)
+
+    return profile, get_resident_model(runtime), agent.read_hosted_tools(), agent
+
+
+def _describe(
+    profile: Profile, model: Model, report: HostedToolsReport, agent: Agent
+) -> tuple[str, ...]:
+    """Put the report into the lines it is read as.
+
+    A value rather than a run of statements that each print, so what the
+    report says is settled in one place and said in another.
+
+    :param profile: What was written down.
+    :param model: The model that would answer.
+    :param report: What the agent says it can reach.
+    :param agent: The agent that would be started.
+
+    :return: The lines to say, in the order they are read.
+    """
+    said = (
+        f"runtime   {profile.runtime.name.value} at {profile.runtime.host}, reachable",
+        f"model     {model.identifier}",
+        f"ceiling   {model.context_ceiling or 'unstated'}",
+        f"window    {model.context_window or 'unstated'}",
+        f"profile   {describe_what_is_asked_for(profile.model)}",
+        f"agent     {profile.agent.name.value}, speaking {agent.dialect.value}",
+        f"floor     {agent.context_floor}",
+        f"hosted    {report.status}",
+    )
 
     # What a run would refuse with, said here instead of after the load it
     # was run to save. Nothing to act on where nothing can be reached.
-    if report.status is not HostedToolsStatus.DENIED:
-        tell(f"          {report.detail} {report.remedy}".rstrip())
+    if report.status is HostedToolsStatus.DENIED:
+        return said
+
+    return (*said, f"          {report.detail} {report.remedy}".rstrip())
