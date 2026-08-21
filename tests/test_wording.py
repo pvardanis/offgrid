@@ -1,10 +1,9 @@
 """The words offgrid prints for what somebody else did or did not state.
 
-Not one of the agreed seams, because the case that matters cannot be reached
-from any of them: a `Model` carrying a zero takes a payload no live runtime
-has been seen to send, and fixtures here are captured rather than invented.
-The function takes the value directly, which is the one door a zero fits
-through.
+Its own seam because the case that matters reaches no other: a `Model`
+carrying a zero takes a payload no live runtime has been seen to send, and
+fixtures are captured rather than invented. The function takes the value
+directly, which is the one door a zero fits through.
 """
 
 import pytest
