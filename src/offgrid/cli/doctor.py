@@ -7,6 +7,7 @@ import typer
 from offgrid.cli.binding import bind_run
 from offgrid.cli.reporting import reporting
 from offgrid.domain.profile import DEFAULT_PATH, Profile
+from offgrid.domain.running import remembering
 from offgrid.domain.running.answering import find_resident_model
 from offgrid.domain.running.asking import describe_what_is_asked_for
 from offgrid.domain.running.dialect import Dialect
@@ -103,6 +104,8 @@ def _describe_what_was_read(checkup: Checkup) -> tuple[str, ...]:
         f"hosted    {hosted_tools.status}",
     )
 
+    said = (*said, *_describe_a_discarded_window(checkup))
+
     # What a run would refuse with, said here instead of after the load it
     # was run to save. Nothing to act on where nothing can be reached.
     if hosted_tools.status is HostedToolsStatus.DENIED:
@@ -148,4 +151,33 @@ def _describe_the_model(model: Model | None, request: ModelRequest) -> tuple[str
         "          Load a model in the runtime, or name one under `model:` "
         "in the profile.",
         *unknown,
+    )
+
+
+def _describe_a_discarded_window(checkup: Checkup) -> tuple[str, ...]:
+    """Say that offgrid stopped asking for a window, and how to make it ask.
+
+    Deleting the file is the only way back, so this is where it is named:
+    `doctor` is what a person runs when something is not what they asked for.
+
+    :param checkup: What the profile, the runtime and the agent answered.
+
+    :return: The line to say, and nothing where no window was discarded, or
+        where nothing is held for one to have been discarded for.
+    """
+    if checkup.resident is None:
+        return ()
+
+    kept = remembering.DEFAULT_PATH
+    discarded = remembering.read_discarded_window(
+        checkup.profile.runtime.host, checkup.resident.identifier, kept
+    )
+
+    if discarded is None:
+        return ()
+
+    return (
+        f"discarded {discarded.asked_for} was asked for on "
+        f"{discarded.noticed_at.split('T')[0]} and {discarded.served} served, "
+        f"so offgrid is not asking again. Delete {kept} to ask again.",
     )
