@@ -13,6 +13,7 @@ inverting the comparison with nothing to see.
 """
 
 from offgrid.domain.running.model import Model, ModelRequest
+from offgrid.domain.running.runtime import Runtime
 from offgrid.shared.exceptions import ContextWindowUnworkableError
 
 
@@ -98,4 +99,43 @@ def refuse_a_window_above_the_ceiling(
         f"A window of {window} is above {model_request.identifier}'s ceiling "
         f"of {ceiling}. The runtime would take it and serve a number the "
         f"model cannot honour. Ask for {ceiling} or less."
+    )
+
+
+def read_the_ceiling(
+    runtime: Runtime, model_request: ModelRequest, resident: Model | None
+) -> int | None:
+    """Find the most the model asked for could be served at.
+
+    One catalogue read against a load costing tens of seconds, and none at all
+    where the resident model has already been read or where no window was
+    asked for and there is nothing to measure.
+
+    A model the runtime does not have states no ceiling here. Refusing it by
+    name is the runtime's own answer to make, with the address and what to run
+    to list what there is.
+
+    :param runtime: The runtime to ask what it has.
+    :param model_request: The model a run asked for, and the window to hold it
+        at.
+    :param resident: The model already held, where the run named none and it
+        was substituted in.
+
+    :return: The model's ceiling, or ``None`` where nothing states one.
+
+    :raise RuntimeUnreachableError: When the catalogue cannot be read.
+    """
+    if model_request.context_window is None:
+        return None
+
+    if resident is not None:
+        return resident.context_ceiling
+
+    return next(
+        (
+            model.context_ceiling
+            for model in runtime.read_catalogue()
+            if model.identifier == model_request.identifier
+        ),
+        None,
     )
