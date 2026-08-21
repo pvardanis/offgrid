@@ -13,15 +13,15 @@ from offgrid.shared.say import tell
 
 def doctor() -> None:
     """Check that the runtime is reachable and holding a model."""
+    # Everything is read before anything is said, so a fault in any of it is
+    # reported as offgrid's own error rather than as a traceback under four
+    # lines that already looked like an answer.
     profile, model, report, agent = _read_what_can_be_read()
 
-    for line in _describe(profile, model, report, agent):
+    for line in _describe_what_was_read(profile, model, report, agent):
         tell(line)
 
 
-# Everything is read before anything is said, so a fault in any of it is
-# reported as offgrid's own error rather than as a traceback under four lines
-# that already looked like an answer.
 @reporting()
 def _read_what_can_be_read() -> tuple[Profile, Model, HostedToolsReport, Agent]:
     """Ask the profile, the runtime and the agent what each of them says.
@@ -31,10 +31,12 @@ def _read_what_can_be_read() -> tuple[Profile, Model, HostedToolsReport, Agent]:
     """
     profile, runtime, agent = bind_run(DEFAULT_PATH)
 
-    return profile, get_resident_model(runtime), agent.read_hosted_tools(), agent
+    model = get_resident_model(runtime)
+
+    return profile, model, agent.read_hosted_tools(), agent
 
 
-def _describe(
+def _describe_what_was_read(
     profile: Profile, model: Model, report: HostedToolsReport, agent: Agent
 ) -> tuple[str, ...]:
     """Put the report into the lines it is read as.

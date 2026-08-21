@@ -34,6 +34,11 @@ def run(
     """Start the agent against a model the runtime is holding."""
     passthrough = tuple(context.args)
 
+    # Said in blocks rather than behind `@reporting()`, which is how the other
+    # commands read what they read: the second one below wraps a single
+    # statement inside the `try` that owes the release, and a decorator can
+    # only mean a whole function. One command spelling it both ways is worse
+    # than one command spelling it differently.
     with reporting():
         profile, runtime, agent = bind_run(DEFAULT_PATH, passthrough)
         model_request = settle_what_to_run(
