@@ -20,6 +20,7 @@ it is. These seams are agreed, and anything else needs a new agreement:
 |---|---|
 | `offgrid setup`, `doctor`, `recommend`, `run` | what a person sees and what gets launched |
 | the profile file | that a hand-edited profile loads, and which ones are refused |
+| the discarded-windows file | that a hand-edited record loads, and which ones are refused |
 | a runtime adapter's parsing | a payload captured from a live server |
 | a leaderboard adapter's parsing | a payload captured from the live page |
 | a listing's fit | which widths a machine holds it at |

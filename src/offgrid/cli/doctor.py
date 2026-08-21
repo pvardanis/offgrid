@@ -7,11 +7,14 @@ import typer
 from offgrid.cli.binding import bind_run
 from offgrid.cli.reporting import reporting
 from offgrid.domain.profile import DEFAULT_PATH, Profile
+from offgrid.domain.running import discarded_windows
 from offgrid.domain.running.answering import find_resident_model
 from offgrid.domain.running.asking import describe_what_is_asked_for
 from offgrid.domain.running.dialect import Dialect
+from offgrid.domain.running.discarded_windows import DiscardedWindow
 from offgrid.domain.running.hosted_tools import HostedToolsReport, HostedToolsStatus
 from offgrid.domain.running.model import Model, ModelRequest
+from offgrid.shared.exceptions import DiscardedWindowsUnreadableError
 from offgrid.shared.say import tell
 from offgrid.shared.wording import describe_what_was_stated
 
@@ -33,6 +36,12 @@ class Checkup:
     :param hosted_tools: What the agent says it can reach.
     :param dialect: What the agent speaks.
     :param context_floor: The smallest window the agent can start in.
+    :param discarded: What this runtime did with a window it was asked for,
+        or ``None`` where it refused none and where the record could not be
+        read — which is itself a finding, carried in `unreadable`.
+    :param unreadable: Why the records could not be read, where they could
+        not. A stale file nobody has heard of is worth a line rather than the
+        whole report.
     """
 
     profile: Profile
@@ -40,6 +49,8 @@ class Checkup:
     hosted_tools: HostedToolsReport
     dialect: Dialect
     context_floor: int
+    discarded: DiscardedWindow | None
+    unreadable: str | None
 
 
 def doctor() -> None:
@@ -72,6 +83,7 @@ def _read_what_can_be_read() -> Checkup:
     profile, runtime, agent = bind_run(DEFAULT_PATH)
 
     resident = find_resident_model(runtime)
+    discarded, unreadable = _read_what_was_discarded(profile, resident)
 
     return Checkup(
         profile=profile,
@@ -79,7 +91,39 @@ def _read_what_can_be_read() -> Checkup:
         hosted_tools=agent.read_hosted_tools(),
         dialect=agent.dialect,
         context_floor=agent.context_floor,
+        discarded=discarded,
+        unreadable=unreadable,
     )
+
+
+def _read_what_was_discarded(
+    profile: Profile, resident: Model | None
+) -> tuple[DiscardedWindow | None, str | None]:
+    """Read what this runtime did with a window the model was asked to hold at.
+
+    A file that will not read is a finding rather than a fault here. Every
+    other reading in the report succeeded, and refusing to say any of them
+    over a record offgrid keeps for itself would answer a person who ran
+    `doctor` because something is wrong with one line about a file they have
+    never heard of.
+
+    :param profile: What was written down.
+    :param resident: The model the runtime is holding, or ``None`` for none.
+
+    :return: What it did with that model's window, and why the records could
+        not be read where they could not.
+    """
+    if resident is None:
+        return None, None
+
+    kept = discarded_windows.DEFAULT_PATH
+
+    try:
+        records = discarded_windows.read_discarded_windows(profile.runtime.host, kept)
+    except DiscardedWindowsUnreadableError as error:
+        return None, str(error)
+
+    return records.get(resident.identifier), None
 
 
 def _describe_what_was_read(checkup: Checkup) -> tuple[str, ...]:
@@ -102,6 +146,8 @@ def _describe_what_was_read(checkup: Checkup) -> tuple[str, ...]:
         f"floor     {checkup.context_floor}",
         f"hosted    {hosted_tools.status}",
     )
+
+    said = (*said, *_describe_a_discarded_window(checkup))
 
     # What a run would refuse with, said here instead of after the load it
     # was run to save. Nothing to act on where nothing can be reached.
@@ -148,4 +194,33 @@ def _describe_the_model(model: Model | None, request: ModelRequest) -> tuple[str
         "          Load a model in the runtime, or name one under `model:` "
         "in the profile.",
         *unknown,
+    )
+
+
+def _describe_a_discarded_window(checkup: Checkup) -> tuple[str, ...]:
+    """Say that offgrid stopped asking for a window, and how to make it ask.
+
+    Deleting the file makes offgrid ask again, so this is where it is named:
+    `doctor` is what a person runs when something is not what they asked for.
+    The number the runtime served then is said as what it was — what it serves
+    now is the `window` line above, and the two are read together.
+
+    :param checkup: What the profile, the runtime and the agent answered.
+
+    :return: The line to say, and nothing where no window was discarded.
+    """
+    kept = discarded_windows.DEFAULT_PATH
+
+    if checkup.unreadable is not None:
+        return (f"discarded {checkup.unreadable}",)
+
+    discarded = checkup.discarded
+
+    if discarded is None:
+        return ()
+
+    return (
+        f"discarded {discarded.asked_for} was asked for on {discarded.dated} "
+        f"and {discarded.served} served then, so offgrid is not asking again. "
+        f"Delete {kept} to ask again.",
     )

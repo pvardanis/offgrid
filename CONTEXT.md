@@ -72,6 +72,13 @@ document quoting either one alone says which it means.
 needs rather than what anyone prefers: below it the agent's own prompt does not
 fit and it fails at startup, so the agent states it and nobody sets it.
 
+**discarded window** — a window a run asked for that the runtime did not grant,
+serving the model at another instead. Named for what happened rather than for
+whose fault it is: offgrid asked, read the answer back, and cannot see why. It
+is remembered per runtime and model, because asking again costs a release and a
+load reaching the same state — and the load throws away whatever prefix the
+runtime had cached.
+
 **launch** — an environment and an argument list, built before anything runs,
 so it can be shown rather than guessed at. It carries the caution below, where
 there is one.

@@ -9,9 +9,11 @@ it differently. This is where offgrid says which model it wants held.
 """
 
 from offgrid.domain.running.context_window import (
+    read_the_ceiling,
     refuse_a_window_above_the_ceiling,
     refuse_a_window_below_the_floor,
 )
+from offgrid.domain.running.discarding import Refused
 from offgrid.domain.running.model import Model, ModelRequest
 from offgrid.domain.running.runtime import Runtime
 from offgrid.shared.exceptions import ModelUnavailableError
@@ -56,7 +58,11 @@ def get_resident_model(runtime: Runtime) -> Model:
 
 
 def hold_model(
-    runtime: Runtime, model_request: ModelRequest, *, context_floor: int
+    runtime: Runtime,
+    model_request: ModelRequest,
+    *,
+    context_floor: int,
+    was_refused: Refused,
 ) -> Model:
     """Hold the model that will answer: the one asked for, or the one there.
 
@@ -75,6 +81,9 @@ def hold_model(
     :param runtime: The runtime to ask.
     :param model_request: The model a run asked for, and the window to hold it at.
     :param context_floor: The smallest window the agent can start in.
+    :param was_refused: Whether this runtime refused a model this window
+        before. Asked once the model is named, since a run may have named
+        none and be answered with the resident one.
 
     :return: The model that will answer, stating the window the runtime serves
         it at as well as its ceiling.
@@ -105,46 +114,15 @@ def hold_model(
         )
 
     refuse_a_window_above_the_ceiling(
-        model_request, ceiling=_read_ceiling(runtime, model_request, resident)
+        model_request, ceiling=read_the_ceiling(runtime, model_request, resident)
     )
+
+    # A window this runtime refused before is not put to it again: asking
+    # costs a release and a load that change nothing, and the load throws away
+    # the prefix the runtime had cached. See #136.
+    window = model_request.context_window
+
+    if window is not None and was_refused(str(model_request.identifier), window):
+        model_request = model_request.model_copy(update={"context_window": None})
 
     return runtime.ensure_only(model_request)
-
-
-def _read_ceiling(
-    runtime: Runtime, model_request: ModelRequest, resident: Model | None
-) -> int | None:
-    """Find the most the model asked for could be served at.
-
-    One catalogue read against a load costing tens of seconds, and none at all
-    where the resident model has already been read or where no window was
-    asked for and there is nothing to measure.
-
-    A model the runtime does not have states no ceiling here. Refusing it by
-    name is the runtime's own answer to make, with the address and what to run
-    to list what there is.
-
-    :param runtime: The runtime to ask what it has.
-    :param model_request: The model a run asked for, and the window to hold it
-        at.
-    :param resident: The model already held, where the run named none and it
-        was substituted in.
-
-    :return: The model's ceiling, or ``None`` where nothing states one.
-
-    :raise RuntimeUnreachableError: When the catalogue cannot be read.
-    """
-    if model_request.context_window is None:
-        return None
-
-    if resident is not None:
-        return resident.context_ceiling
-
-    return next(
-        (
-            model.context_ceiling
-            for model in runtime.read_catalogue()
-            if model.identifier == model_request.identifier
-        ),
-        None,
-    )

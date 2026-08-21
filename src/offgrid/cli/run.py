@@ -5,14 +5,23 @@ import typer
 from offgrid.cli.binding import bind_run
 from offgrid.cli.reporting import reporting
 from offgrid.domain.profile import DEFAULT_PATH
+from offgrid.domain.running import discarded_windows
 from offgrid.domain.running.answering import hold_model
 from offgrid.domain.running.context_window import (
     refuse_a_served_window_below_the_floor,
 )
 from offgrid.domain.running.dialect import require_compatible
+from offgrid.domain.running.discarding import (
+    keep_what_the_runtime_did,
+    read_what_became_of_the_window,
+    refuse_to_ask_again,
+)
 from offgrid.domain.running.hosted_tools import require_hosted_tools_denied
 from offgrid.domain.running.launch import explain_why_it_would_not_start, start
-from offgrid.domain.running.model import read_what_was_typed, settle_what_to_run
+from offgrid.domain.running.model import (
+    read_what_was_typed,
+    settle_what_to_run,
+)
 from offgrid.shared.say import tell
 from offgrid.shared.wording import describe_what_was_stated
 
@@ -55,7 +64,14 @@ def run(
         agent.configure()
         require_hosted_tools_denied(agent.read_hosted_tools())
 
-        model = hold_model(runtime, model_request, context_floor=agent.context_floor)
+        kept = discarded_windows.DEFAULT_PATH
+        refused = discarded_windows.read_discarded_windows(profile.runtime.host, kept)
+        model = hold_model(
+            runtime,
+            model_request,
+            context_floor=agent.context_floor,
+            was_refused=refuse_to_ask_again(refused),
+        )
 
     # Nothing between here and the agent finishing may leave the model held:
     # from this line on, letting go is owed whatever happens.
@@ -70,6 +86,15 @@ def run(
         served = describe_what_was_stated(model.context_window)
 
         tell(f"{model.identifier}, window {served}")
+
+        became = read_what_became_of_the_window(refused, model_request, model)
+        if became is not None:
+            tell(became.said)
+            complaint = keep_what_the_runtime_did(
+                became, model, host=profile.runtime.host, kept=kept
+            )
+            if complaint is not None:
+                tell(complaint)
 
         launch = agent.plan(model)
         # Said whenever there is anything at all, so an agent answering with

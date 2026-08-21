@@ -17,6 +17,8 @@ from offgrid.domain.running.answering import (
     get_resident_model,
     hold_model,
 )
+from offgrid.domain.running.discarded_windows import DiscardedWindow
+from offgrid.domain.running.discarding import refuse_to_ask_again
 from offgrid.domain.running.model import ModelRequest
 from offgrid.runtimes.lmstudio import connect
 from offgrid.runtimes.lmstudio.config import LMStudioConfig
@@ -74,7 +76,10 @@ def test_naming_no_model_answers_with_the_one_already_there(monkeypatch):
     )
 
     model = hold_model(
-        connect(LMStudioConfig(host=HOST)), ModelRequest(), context_floor=FLOOR
+        connect(LMStudioConfig(host=HOST)),
+        ModelRequest(),
+        context_floor=FLOOR,
+        was_refused=lambda identifier, window: False,
     )
 
     assert model.identifier == RESIDENT
@@ -94,6 +99,7 @@ def test_a_window_asked_for_without_a_model_holds_the_resident_one_at_it(
         connect(LMStudioConfig(host=HOST)),
         ModelRequest(context_window=16000),
         context_floor=FLOOR,
+        was_refused=lambda identifier, window: False,
     )
 
     assert model.identifier == RESIDENT
@@ -105,7 +111,10 @@ def test_naming_neither_a_model_nor_a_window_costs_no_load(monkeypatch):
     asked = answer_as_lm_studio(monkeypatch, holding={RESIDENT: 8192})
 
     model = hold_model(
-        connect(LMStudioConfig(host=HOST)), ModelRequest(), context_floor=FLOOR
+        connect(LMStudioConfig(host=HOST)),
+        ModelRequest(),
+        context_floor=FLOOR,
+        was_refused=lambda identifier, window: False,
     )
 
     assert model.context_window == 8192
@@ -122,8 +131,62 @@ def test_the_model_asked_for_is_held_alone(monkeypatch):
         connect(LMStudioConfig(host=HOST)),
         ModelRequest(identifier="a/other-7b"),
         context_floor=FLOOR,
+        was_refused=lambda identifier, window: False,
     )
 
     assert model.identifier == "a/other-7b"
     assert model.context_window == 32768
     assert asked["let_go"] == [RESIDENT]
+
+
+def _refused(**kept):
+    """A predicate over records written by hand, one window per model.
+
+    :param kept: The window each model was refused, by model.
+
+    :return: Whether a model was refused exactly this window before.
+    """
+    return refuse_to_ask_again(
+        {
+            identifier: DiscardedWindow(
+                host=HOST,
+                identifier=identifier,
+                asked_for=window,
+                served=262_144,
+                noticed_at="2026-08-21T14:31:07",
+            )
+            for identifier, window in kept.items()
+        }
+    )
+
+
+def test_a_window_the_runtime_refused_before_is_not_asked_for_again(monkeypatch):
+    # Asking again costs a release and a load that change nothing, and the
+    # load is what throws the runtime's cached prefix away.
+    asked = answer_as_lm_studio(monkeypatch, holding={RESIDENT: 262_144})
+
+    model = hold_model(
+        connect(LMStudioConfig(host=HOST)),
+        ModelRequest(identifier=RESIDENT, context_window=131_072),
+        context_floor=FLOOR,
+        was_refused=_refused(**{RESIDENT: 131_072}),
+    )
+
+    assert model.context_window == 262_144
+    assert asked["order"] == []
+
+
+def test_a_window_the_runtime_was_never_asked_for_is_still_asked_for(monkeypatch):
+    # A refusal is about the window it was given, not about the model. Reading
+    # it as "this model gets no window" would throw away a number somebody
+    # typed on the strength of an answer about a different one.
+    asked = answer_as_lm_studio(monkeypatch, holding={RESIDENT: 262_144})
+
+    hold_model(
+        connect(LMStudioConfig(host=HOST)),
+        ModelRequest(identifier=RESIDENT, context_window=30_000),
+        context_floor=FLOOR,
+        was_refused=_refused(**{RESIDENT: 200_000}),
+    )
+
+    assert asked["window"] == 30_000
