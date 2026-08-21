@@ -156,7 +156,8 @@ domain/
   running/         what a run is made of
     model.py       a model asked for and a model described, and which of
                    two askings wins
-    context_window.py  which windows a run cannot be held at, and why
+    context_window.py  which windows a run cannot be held at, and the
+                   numbers deciding that
     dialect.py     which API shapes can be paired
     capabilities.py  what a runtime can be asked to do
     hosted_tools.py  what an agent can reach that offgrid cannot run here

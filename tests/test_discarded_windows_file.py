@@ -69,8 +69,6 @@ def test_a_record_reads_back_as_it_was_kept(tmp_path):
 
 def test_a_second_answer_about_one_model_replaces_the_first(tmp_path):
     # A runtime that answered differently is described by what it just did.
-    # The newest record is appended and the oldest is read first, so without
-    # the replacement a stale number would win for good.
     _save(tmp_path, asked_for=1000, served=2000)
     _save(tmp_path, asked_for=3000, served=4000)
 
@@ -148,3 +146,27 @@ def test_a_key_offgrid_does_not_write_is_refused(tmp_path):
 
     with pytest.raises(DiscardedWindowsUnreadableError):
         read_discarded_windows(HOST, _kept(tmp_path)).get(MODEL)
+
+
+def test_saving_for_one_runtime_leaves_another_runtimes_record_alone(tmp_path):
+    # The record is about a model on a server, so replacing one runtime's
+    # answer must not delete another's about the same model — that runtime
+    # would go back to asking, and paying the load for it.
+    _save(tmp_path, host=HOST, asked_for=1000)
+    _save(tmp_path, host="127.0.0.1:9999", asked_for=2000)
+
+    kept = read_discarded_windows(HOST, _kept(tmp_path))
+    other = read_discarded_windows("127.0.0.1:9999", _kept(tmp_path))
+
+    assert kept[MODEL].asked_for == 1000
+    assert other[MODEL].asked_for == 2000
+
+
+def test_one_model_keeps_one_record_however_often_it_is_refused(tmp_path):
+    # What the replacing buys is a file that does not grow without bound: the
+    # reading takes the last record for a model either way.
+    _save(tmp_path, asked_for=1000)
+    _save(tmp_path, asked_for=2000)
+    _save(tmp_path, asked_for=3000)
+
+    assert len(json.loads(_kept(tmp_path).read_text())) == 1

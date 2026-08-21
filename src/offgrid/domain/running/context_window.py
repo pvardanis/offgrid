@@ -1,10 +1,14 @@
-"""Which windows a run cannot be held at, and why each is refused.
+"""Which windows a run cannot be held at, and the numbers deciding that.
 
 A window is bounded at both ends by something other than itself: the agent
 below, which does not start in one too small for its own prompt, and the model
 above, which cannot honour more than it states. Both are knowable before a
 load, and a load is tens of seconds nobody gets back — which is where the
 dialect check already sits, for the same reason.
+
+Reading the ceiling lives here rather than beside the caller, because it is
+the one thing that asks the runtime for a number nothing else in this module
+asks for — and the refusal it feeds is the only reader of it.
 
 Each refusal takes what is being measured first and the bound it is measured
 against by name. Two numbers of the same type read the same way round either
