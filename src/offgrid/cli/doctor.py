@@ -91,7 +91,7 @@ def _describe_what_was_read(checkup: Checkup) -> tuple[str, ...]:
 
     :return: The lines to say, in the order they are read.
     """
-    profile, hosted = checkup.profile, checkup.hosted_tools
+    profile, hosted_tools = checkup.profile, checkup.hosted_tools
 
     said = (
         f"runtime   {profile.runtime.name.value} at {profile.runtime.host}, reachable",
@@ -99,15 +99,15 @@ def _describe_what_was_read(checkup: Checkup) -> tuple[str, ...]:
         f"profile   {describe_what_is_asked_for(profile.model)}",
         f"agent     {profile.agent.name.value}, speaking {checkup.dialect.value}",
         f"floor     {checkup.context_floor}",
-        f"hosted    {hosted.status}",
+        f"hosted    {hosted_tools.status}",
     )
 
     # What a run would refuse with, said here instead of after the load it
     # was run to save. Nothing to act on where nothing can be reached.
-    if hosted.status is HostedToolsStatus.DENIED:
+    if hosted_tools.status is HostedToolsStatus.DENIED:
         return said
 
-    return (*said, f"          {hosted.detail} {hosted.remedy}".rstrip())
+    return (*said, f"          {hosted_tools.detail} {hosted_tools.remedy}".rstrip())
 
 
 def _describe_the_model(model: Model | None, request: ModelRequest) -> tuple[str, ...]:
