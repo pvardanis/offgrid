@@ -31,7 +31,7 @@ def setup(
     stored = _get_stored_profile()
     listening_at = host or (stored.runtime.host if stored else DEFAULT_HOST)
 
-    runtime, agent = _name_both_adapters(stored, listening_at=listening_at)
+    runtime, agent = _get_runtime_and_agent_configs(stored, listening_at=listening_at)
 
     # Written even where it says nothing, so both keys are there to edit.
     kept = {"model": stored.model} if stored else {}
@@ -62,7 +62,7 @@ def setup(
 # so a re-run keeps the adapters named and whatever settings of their own they
 # were given. Only the address moves, and it moves in both places at once.
 @reporting()
-def _name_both_adapters(
+def _get_runtime_and_agent_configs(
     stored: Profile | None, *, listening_at: str
 ) -> tuple[RuntimeConfig, AgentConfig]:
     """Settle which runtime and which agent the profile will name.
