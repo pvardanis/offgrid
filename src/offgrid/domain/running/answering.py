@@ -8,6 +8,7 @@ What reaching that state costs is the runtime's business, and each one reaches
 it differently. This is where offgrid says which model it wants held.
 """
 
+from offgrid.domain.running import remembering
 from offgrid.domain.running.context_window import (
     refuse_a_window_above_the_ceiling,
     refuse_a_window_below_the_floor,
@@ -56,7 +57,11 @@ def get_resident_model(runtime: Runtime) -> Model:
 
 
 def hold_model(
-    runtime: Runtime, model_request: ModelRequest, *, context_floor: int
+    runtime: Runtime,
+    model_request: ModelRequest,
+    *,
+    context_floor: int,
+    runtime_host: str,
 ) -> Model:
     """Hold the model that will answer: the one asked for, or the one there.
 
@@ -75,6 +80,8 @@ def hold_model(
     :param runtime: The runtime to ask.
     :param model_request: The model a run asked for, and the window to hold it at.
     :param context_floor: The smallest window the agent can start in.
+    :param runtime_host: Address the runtime listens on, which a window it
+        discarded before is remembered against.
 
     :return: The model that will answer, stating the window the runtime serves
         it at as well as its ceiling.
@@ -107,6 +114,14 @@ def hold_model(
     refuse_a_window_above_the_ceiling(
         model_request, ceiling=_read_ceiling(runtime, model_request, resident)
     )
+
+    # A window this runtime discarded before is not asked for again: asking
+    # costs a release and a load that change nothing, and the load throws away
+    # the prefix the runtime had cached. See #136.
+    if model_request.context_window is not None and remembering.read_discarded_window(
+        runtime_host, str(model_request.identifier), remembering.DEFAULT_PATH
+    ):
+        model_request = model_request.model_copy(update={"context_window": None})
 
     return runtime.ensure_only(model_request)
 

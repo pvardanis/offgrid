@@ -55,7 +55,12 @@ def run(
         agent.configure()
         require_hosted_tools_denied(agent.read_hosted_tools())
 
-        model = hold_model(runtime, model_request, context_floor=agent.context_floor)
+        model = hold_model(
+            runtime,
+            model_request,
+            context_floor=agent.context_floor,
+            runtime_host=profile.runtime.host,
+        )
 
     # Nothing between here and the agent finishing may leave the model held:
     # from this line on, letting go is owed whatever happens.
