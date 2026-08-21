@@ -6,7 +6,7 @@ answered for here. Every payload is shaped as the captures in
 of the documentation.
 
 Apart from `tests/doubles.py` because that file stands in for what any run
-talks to — a Mac, an agent, the transport underneath — and this stands in for
+talks to — an agent, and the transport underneath — and this stands in for
 one runtime. A second runtime adapter answers for its own server beside this,
 and neither file grows the other's.
 """

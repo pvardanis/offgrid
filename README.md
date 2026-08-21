@@ -186,8 +186,9 @@ $ offgrid doctor
 ```
 
 The `profile` line is what the next run will ask the runtime for, from the
-`model:` section of the profile. Read against the two lines above it, it says
-whether a run would cost a load before one is spent finding out.
+`model:` section of the profile. Read against the `model` and `window` lines
+above it, it says whether a run would cost a load before one is spent finding
+out.
 
 **4. Start the agent:**
 
