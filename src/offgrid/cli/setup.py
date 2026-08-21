@@ -31,12 +31,16 @@ def setup(
     stored = _get_stored_profile()
     listening_at = host or (stored.runtime.host if stored else DEFAULT_HOST)
 
-    runtime, agent = _get_runtime_and_agent_configs(stored, listening_at=listening_at)
+    runtime_config, agent_config = _get_runtime_and_agent_configs(
+        stored, listening_at=listening_at
+    )
 
     # Written even where it says nothing, so both keys are there to edit.
     kept = {"model": stored.model} if stored else {}
 
-    save_profile(Profile(runtime=runtime, agent=agent, **kept), DEFAULT_PATH)
+    save_profile(
+        Profile(runtime=runtime_config, agent=agent_config, **kept), DEFAULT_PATH
+    )
 
     tell(f"{machine.chip} · {machine.memory_bytes / GIB:.0f}GB unified memory")
     limit = machine.wired_limit_bytes
@@ -72,14 +76,14 @@ def _get_runtime_and_agent_configs(
 
     :return: The runtime's config and the agent's.
     """
-    runtime = (
+    runtime_config = (
         stored.runtime.model_copy(update={"host": listening_at})
         if stored
         else create_runtime_config(
             {"name": DEFAULT_RUNTIME.value, "host": listening_at}
         )
     )
-    agent = (
+    agent_config = (
         stored.agent.model_copy(update={"runtime_host": listening_at})
         if stored
         else create_agent_config(
@@ -87,7 +91,7 @@ def _get_runtime_and_agent_configs(
         )
     )
 
-    return runtime, agent
+    return runtime_config, agent_config
 
 
 def _get_stored_profile() -> Profile | None:
