@@ -1095,3 +1095,34 @@ Whether `run` should name the model a window-without-a-model landed on, the
 issue's other open question, needs no change. `hold_model` substitutes the
 resident identifier before it returns, so the line `run` already prints is the
 model it landed on.
+
+## A command says lines something else built
+
+`doctor` printed its report as eight `tell` calls and a conditional ninth.
+`recommend` already did the other thing — `for line in summarize_findings(...)`
+— and the two shapes were one command apart.
+
+The report is a value now: `_describe` returns the lines in the order they are
+read, and `doctor` says them. What that buys is not fewer calls. It is that
+what the report says can be settled in one place and said in another, which is
+what #124 needs — a runtime holding nothing has to leave the model lines out
+or mark them unknown, and that is a list to build against rather than a run of
+statements to thread a condition through.
+
+Reading is behind `@reporting()` rather than inside a `with` in each command
+body. The contextmanager was already usable as a decorator — `@contextmanager`
+returns a `ContextDecorator` — so nothing in `reporting.py` changed. What it
+costs is that the scope is no longer visible at the call site; what it buys is
+a command body that reads as what the command does, with the failure handling
+named once above the thing that can fail.
+
+`run` keeps its `with`, and will. Its second block wraps a single statement
+*inside* the `try`/`finally` that owes `let_go`, and a decorator can only mean
+the whole function. That is one command in four written the other way, which
+is worse than none and better than moving the release out of the `finally` to
+make the shape uniform.
+
+`doctor`'s reads come back as a four-value tuple, which is a clump wanting a
+type. It is left as a tuple until #124, which needs a shape that can say "the
+runtime holds nothing" — that is the change that will tell us what the type
+should hold.
