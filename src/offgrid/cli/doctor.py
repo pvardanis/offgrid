@@ -13,6 +13,7 @@ from offgrid.domain.running.dialect import Dialect
 from offgrid.domain.running.hosted_tools import HostedToolsReport, HostedToolsStatus
 from offgrid.domain.running.model import Model, ModelRequest
 from offgrid.shared.say import tell
+from offgrid.shared.wording import describe_what_was_stated
 
 HELD_NOTHING = "model     nothing held"
 
@@ -128,8 +129,8 @@ def _describe_the_model(model: Model | None, request: ModelRequest) -> tuple[str
     if model is not None:
         return (
             f"model     {model.identifier}",
-            f"ceiling   {model.context_ceiling or 'unstated'}",
-            f"window    {model.context_window or 'unstated'}",
+            f"ceiling   {describe_what_was_stated(model.context_ceiling)}",
+            f"window    {describe_what_was_stated(model.context_window)}",
         )
 
     unknown = ("ceiling   unknown", "window    unknown")
