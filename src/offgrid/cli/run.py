@@ -67,9 +67,9 @@ def run(
         with reporting():
             refuse_a_served_window_below_the_floor(model, floor=agent.context_floor)
 
-        window = describe_what_was_stated(model.context_window)
+        served = describe_what_was_stated(model.context_window)
 
-        tell(f"{model.identifier}, window {window}")
+        tell(f"{model.identifier}, window {served}")
 
         launch = agent.plan(model)
         # Said whenever there is anything at all, so an agent answering with

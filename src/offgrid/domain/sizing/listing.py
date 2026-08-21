@@ -25,7 +25,8 @@ class Listing:
     :param coding_score: What it scored on the coding benchmark the list
         publishes, out of 100, or ``None`` when the list states none. A
         listing without one is not ranked, since unmeasured is not bad.
-    :param context_window: Tokens it is published as taking, or ``None``
+    :param context_window: Tokens it is published as taking, where a zero is
+        a number the table published and ``None``
         when the list states none.
     :param license: The licence as published, which offgrid prints and does
         not read: it is absent on some open-weight rows and a date on others.

@@ -127,7 +127,7 @@ def _context(window: int | None) -> int:
 
     :return: Points for the window.
     """
-    if not window:
+    if window is None:
         return UNSTATED_CONTEXT_POINTS
 
     if window <= SHORTEST_CONTEXT:
