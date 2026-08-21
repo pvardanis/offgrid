@@ -8,7 +8,7 @@ What reaching that state costs is the runtime's business, and each one reaches
 it differently. This is where offgrid says which model it wants held.
 """
 
-from offgrid.domain.running import remembering
+from offgrid.domain.running import discarded_windows
 from offgrid.domain.running.context_window import (
     refuse_a_window_above_the_ceiling,
     refuse_a_window_below_the_floor,
@@ -118,8 +118,11 @@ def hold_model(
     # A window this runtime discarded before is not asked for again: asking
     # costs a release and a load that change nothing, and the load throws away
     # the prefix the runtime had cached. See #136.
-    if model_request.context_window is not None and remembering.read_discarded_window(
-        runtime_host, str(model_request.identifier), remembering.DEFAULT_PATH
+    if (
+        model_request.context_window is not None
+        and discarded_windows.read_discarded_window(
+            runtime_host, str(model_request.identifier), discarded_windows.DEFAULT_PATH
+        )
     ):
         model_request = model_request.model_copy(update={"context_window": None})
 

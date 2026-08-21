@@ -12,7 +12,7 @@ is not evidence about anything.
 
 import pytest
 
-from offgrid.domain.running import remembering
+from offgrid.domain.running import discarded_windows
 from offgrid.domain.running.answering import (
     find_resident_model,
     get_resident_model,
@@ -146,12 +146,13 @@ def test_a_window_the_runtime_discarded_before_is_not_asked_for_again(
     # load is what throws the runtime's cached prefix away.
     asked = answer_as_lm_studio(monkeypatch, holding={RESIDENT: 262_144})
     kept = tmp_path / "discarded-windows.json"
-    monkeypatch.setattr(remembering, "DEFAULT_PATH", kept)
-    remembering.remember_discarded_window(
-        remembering.DiscardedWindow(
-            host=HOST, identifier=RESIDENT, asked_for=131_072, served=262_144
-        ),
-        kept,
+    monkeypatch.setattr(discarded_windows, "DEFAULT_PATH", kept)
+    discarded_windows.save_discarded_window(
+        host=HOST,
+        identifier=RESIDENT,
+        asked_for=131_072,
+        served=262_144,
+        file_path=kept,
     )
 
     model = hold_model(

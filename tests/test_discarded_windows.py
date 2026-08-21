@@ -8,14 +8,41 @@ second sentence cites the day the first one was true rather than repeating its
 claim.
 """
 
+import json
+
 import pytest
 from typer.testing import CliRunner
 
 from offgrid.cli import app
-from offgrid.domain.running import remembering
 from tests.commands import answer_as_a_mac
 from tests.launches import record_launch
 from tests.lmstudio_server import RESIDENT, answer_as_lm_studio
+
+
+def _hand_write(here, *, noticed_at: str) -> None:
+    """Write a record by hand, so a test can pin the day it was noticed.
+
+    The stamp is the store's to make, which is what stops a record without a
+    day on it existing — so a test that reads a date back writes the file the
+    way a person would.
+
+    :param here: Where the profile and what sits beside it are written.
+    :param noticed_at: The day and time to put on the record.
+    """
+    (here / "discarded-windows.json").write_text(
+        json.dumps(
+            [
+                {
+                    "host": HOST,
+                    "identifier": RESIDENT,
+                    "asked_for": ASKED_FOR,
+                    "served": 212224,
+                    "noticed_at": noticed_at,
+                }
+            ]
+        )
+    )
+
 
 runner = CliRunner()
 HOST = "127.0.0.1:1234"
@@ -57,16 +84,7 @@ def test_run_says_what_is_held_where_the_window_was_discarded_before(here, monke
     # was told.
     runner.invoke(app, ["setup"])
     record_launch(monkeypatch)
-    remembering.remember_discarded_window(
-        remembering.DiscardedWindow(
-            host=HOST,
-            identifier=RESIDENT,
-            asked_for=ASKED_FOR,
-            served=212224,
-            noticed_at="2026-08-21T14:31:07",
-        ),
-        here / "discarded-windows.json",
-    )
+    _hand_write(here, noticed_at="2026-08-21T14:31:07")
 
     result = runner.invoke(
         app, ["run", "-m", RESIDENT, "--context-window", str(ASKED_FOR)]
@@ -82,16 +100,7 @@ def test_doctor_names_the_file_to_delete_to_ask_for_the_window_again(here):
     # for, so it is where the way back is named. Deleting the file is the
     # only way to ask again, and a person who is not told has none.
     runner.invoke(app, ["setup"])
-    remembering.remember_discarded_window(
-        remembering.DiscardedWindow(
-            host=HOST,
-            identifier=RESIDENT,
-            asked_for=ASKED_FOR,
-            served=212224,
-            noticed_at="2026-08-21T14:31:07",
-        ),
-        here / "discarded-windows.json",
-    )
+    _hand_write(here, noticed_at="2026-08-21T14:31:07")
 
     result = runner.invoke(app, ["doctor"])
 

@@ -48,6 +48,6 @@ def answer_as_a_mac(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     # moving the home afterwards does not move what was already derived from
     # it — and what is kept about a runtime would land in the real one.
     monkeypatch.setattr(
-        "offgrid.domain.running.remembering.DEFAULT_PATH",
+        "offgrid.domain.running.discarded_windows.DEFAULT_PATH",
         tmp_path / "discarded-windows.json",
     )
