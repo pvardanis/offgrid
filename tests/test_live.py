@@ -8,6 +8,7 @@ told it does. This is the check that no double can stand in for.
 It lets go of whatever the runtime is holding, which is what a run does.
 """
 
+import shutil
 import subprocess
 from collections.abc import Iterator
 
@@ -16,6 +17,7 @@ import pytest
 
 from offgrid.cli.binding import read_profile
 from offgrid.domain.profile import DEFAULT_PATH
+from offgrid.domain.running.discarded_windows import DEFAULT_PATH as KEPT_PATH
 from offgrid.runtimes.lmstudio import connect
 from offgrid.runtimes.lmstudio.catalogue import (
     get_catalogue_payload,
@@ -218,6 +220,34 @@ def test_a_window_above_the_ceiling_is_refused_rather_than_served(
     assert finished.returncode in REFUSALS, finished.stderr
     assert f"ceiling of {ceiling}" in finished.stderr, finished.stderr
     assert get_held_instances(get_catalogue_payload(host), known) == []
+
+
+@pytest.fixture(autouse=True)
+def _keep_what_a_live_run_records_out_of_the_way(tmp_path) -> Iterator[None]:
+    """Put back what a live run writes about a discarded window.
+
+    A live run is a subprocess, so nothing a test patches reaches it, and it
+    writes into the real home. Nothing about a discarded window expires, so a
+    record left behind here would quietly stop a later run of this person's
+    own asking for that window.
+
+    :param tmp_path: Where the real file is held while the test runs.
+
+    :return: Nothing; what was there is put back afterwards.
+    """
+    kept = tmp_path / "discarded-windows.json"
+    had_one = KEPT_PATH.exists()
+
+    if had_one:
+        shutil.copy2(KEPT_PATH, kept)
+
+    try:
+        yield
+    finally:
+        KEPT_PATH.unlink(missing_ok=True)
+
+        if had_one:
+            shutil.copy2(kept, KEPT_PATH)
 
 
 def _run(identifier: str, window: int | None = None) -> subprocess.CompletedProcess:
