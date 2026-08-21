@@ -1144,7 +1144,10 @@ folder. The tree is what says which layer a module is in, and it could not say
 this one — so the answer was written by hand in three places instead: the
 `shared/` contract in `pyproject.toml`, `COMMAND_LINE` in
 `tests/test_architecture.py`, and the module map. Under `cli/` the name already
-in all three covers it.
+in the first two covers it. The map keeps its line, because it names every
+module there is by hand and a layer's name covers nothing there; what changed
+is that the line is indented under the folder rather than standing alone at the
+root.
 
 The decision above — that binding a run is its own module and the command line
 is not it — is not what this reverses. What that one turned down was
@@ -1157,5 +1160,7 @@ command.
 The cost is that `offgrid.cli.binding` runs `cli/__init__.py` on the way in,
 which builds the typer app and imports all four commands. `test_profile.py`,
 `test_profile_model.py` and `test_live.py` read a profile and now pay for the
-command line to be built to do it. Weighed against a layer the tree states
-rather than three files, and taken.
+command line to be built to do it. Measured at about 12ms on top of the 100ms
+binding's own imports already cost, because typer arrives with `shared/say.py`
+and both registries are on that path anyway. Weighed against a layer the tree
+states rather than two files, and taken.
