@@ -54,6 +54,9 @@ def test_doctor_says_a_model_named_without_a_window_inherits_one(here):
     result = runner.invoke(app, ["doctor"])
 
     assert f"  profile   {WANTED}, at whatever it is served at" in result.stderr
+    # The issue's own example: a profile naming one model against a runtime
+    # holding another. Both names on screen is the whole of what it asked for.
+    assert f"  model     {RESIDENT}" in result.stderr
 
 
 def test_doctor_says_a_window_asked_for_without_a_model_lands_on_the_resident_one(
@@ -97,6 +100,14 @@ def test_doctor_reports_in_one_column(here):
 
     said = [line for line in result.stderr.splitlines() if line.startswith("  ")]
     labelled = [line for line in said if not line.startswith("    ")]
+    labels = [line[2:].split(" ")[0] for line in labelled]
 
-    assert labelled
-    assert all(line[2:].split(" ")[0].ljust(10) == line[2:12] for line in labelled)
+    assert "profile" in labels
+    # Where each value starts, rather than how each label is padded: a label
+    # of exactly the column's width passes the second reading and still puts
+    # its value one place further out than every other line.
+    assert all(line[12] != " " for line in labelled)
+    assert all(
+        line[2:12] == label.ljust(10)
+        for line, label in zip(labelled, labels, strict=True)
+    )
