@@ -12,6 +12,7 @@ is not evidence about anything.
 
 import pytest
 
+from offgrid.domain.running import remembering
 from offgrid.domain.running.answering import (
     find_resident_model,
     get_resident_model,
@@ -74,7 +75,10 @@ def test_naming_no_model_answers_with_the_one_already_there(monkeypatch):
     )
 
     model = hold_model(
-        connect(LMStudioConfig(host=HOST)), ModelRequest(), context_floor=FLOOR
+        connect(LMStudioConfig(host=HOST)),
+        ModelRequest(),
+        context_floor=FLOOR,
+        runtime_host=HOST,
     )
 
     assert model.identifier == RESIDENT
@@ -94,6 +98,7 @@ def test_a_window_asked_for_without_a_model_holds_the_resident_one_at_it(
         connect(LMStudioConfig(host=HOST)),
         ModelRequest(context_window=16000),
         context_floor=FLOOR,
+        runtime_host=HOST,
     )
 
     assert model.identifier == RESIDENT
@@ -105,7 +110,10 @@ def test_naming_neither_a_model_nor_a_window_costs_no_load(monkeypatch):
     asked = answer_as_lm_studio(monkeypatch, holding={RESIDENT: 8192})
 
     model = hold_model(
-        connect(LMStudioConfig(host=HOST)), ModelRequest(), context_floor=FLOOR
+        connect(LMStudioConfig(host=HOST)),
+        ModelRequest(),
+        context_floor=FLOOR,
+        runtime_host=HOST,
     )
 
     assert model.context_window == 8192
@@ -122,8 +130,36 @@ def test_the_model_asked_for_is_held_alone(monkeypatch):
         connect(LMStudioConfig(host=HOST)),
         ModelRequest(identifier="a/other-7b"),
         context_floor=FLOOR,
+        runtime_host=HOST,
     )
 
     assert model.identifier == "a/other-7b"
     assert model.context_window == 32768
     assert asked["let_go"] == [RESIDENT]
+
+
+def test_a_window_the_runtime_discarded_before_is_not_asked_for_again(
+    monkeypatch, tmp_path
+):
+    # A runtime that discarded a window answers the next run the same way, so
+    # asking again costs a release and a load that change nothing — and the
+    # load is what throws the runtime's cached prefix away.
+    asked = answer_as_lm_studio(monkeypatch, holding={RESIDENT: 262_144})
+    kept = tmp_path / "discarded-windows.json"
+    monkeypatch.setattr(remembering, "DEFAULT_PATH", kept)
+    remembering.remember_discarded_window(
+        remembering.DiscardedWindow(
+            host=HOST, identifier=RESIDENT, asked_for=131_072, served=262_144
+        ),
+        kept,
+    )
+
+    model = hold_model(
+        connect(LMStudioConfig(host=HOST)),
+        ModelRequest(identifier=RESIDENT, context_window=131_072),
+        context_floor=FLOOR,
+        runtime_host=HOST,
+    )
+
+    assert model.context_window == 262_144
+    assert asked["order"] == []
