@@ -1,4 +1,4 @@
-"""Stand-ins for what any run talks to: a Mac, an agent, and the transport.
+"""Stand-ins for what any run talks to: an agent, and the transport under it.
 
 One runtime's server is answered for in `tests/lmstudio_server.py`, beside the
 adapter that talks to it, so that a second runtime's stand-in lands beside its

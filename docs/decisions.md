@@ -1026,8 +1026,8 @@ line. The split is what the hook was asking for rather than a detour around
 it.
 
 One module per command, named for the command it holds, with `reporting.py`
-for what offgrid's own errors look like at the terminal — the one thing three
-commands share. `__init__.py` keeps the typer app, attaches the four, and
+for what offgrid's own errors look like at the terminal — the one thing all
+four commands share. `__init__.py` keeps the typer app, attaches the four, and
 holds `main`, so the wiring is read in one place and what a command does is
 read without it.
 
