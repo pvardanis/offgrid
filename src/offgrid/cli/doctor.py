@@ -7,7 +7,7 @@ import typer
 from offgrid.cli.binding import bind_run
 from offgrid.cli.reporting import reporting
 from offgrid.domain.profile import DEFAULT_PATH, Profile
-from offgrid.domain.running import remembering
+from offgrid.domain.running import discarded_windows
 from offgrid.domain.running.answering import find_resident_model
 from offgrid.domain.running.asking import describe_what_is_asked_for
 from offgrid.domain.running.dialect import Dialect
@@ -168,8 +168,8 @@ def _describe_a_discarded_window(checkup: Checkup) -> tuple[str, ...]:
     if checkup.resident is None:
         return ()
 
-    kept = remembering.DEFAULT_PATH
-    discarded = remembering.read_discarded_window(
+    kept = discarded_windows.DEFAULT_PATH
+    discarded = discarded_windows.read_discarded_window(
         checkup.profile.runtime.host, checkup.resident.identifier, kept
     )
 

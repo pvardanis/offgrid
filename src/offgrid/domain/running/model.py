@@ -42,7 +42,7 @@ class Model:
     context_window: int | None
 
 
-def _refuse_a_yes_or_no(value: object) -> object:
+def refuse_a_yes_or_no(value: object) -> object:
     """Refuse a flag written where a number of tokens belongs.
 
     YAML reads `yes`, `on` and `true` as a boolean, and a boolean is an
@@ -89,7 +89,7 @@ class ModelRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, str_strip_whitespace=True)
 
     identifier: str | None = Field(default=None, min_length=1)
-    context_window: Annotated[int | None, BeforeValidator(_refuse_a_yes_or_no)] = Field(
+    context_window: Annotated[int | None, BeforeValidator(refuse_a_yes_or_no)] = Field(
         default=None, gt=0
     )
 

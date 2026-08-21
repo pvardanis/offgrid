@@ -5,7 +5,7 @@ import typer
 from offgrid.cli.binding import bind_run
 from offgrid.cli.reporting import reporting
 from offgrid.domain.profile import DEFAULT_PATH
-from offgrid.domain.running import remembering
+from offgrid.domain.running import discarded_windows
 from offgrid.domain.running.answering import hold_model
 from offgrid.domain.running.context_window import (
     refuse_a_served_window_below_the_floor,
@@ -129,8 +129,8 @@ def _notice_a_discarded_window(
     if asked_for is None or served is None or served == asked_for:
         return None
 
-    kept = remembering.DEFAULT_PATH
-    remembered = remembering.read_discarded_window(host, model.identifier, kept)
+    kept = discarded_windows.DEFAULT_PATH
+    remembered = discarded_windows.read_discarded_window(host, model.identifier, kept)
 
     if remembered is not None:
         return (
@@ -140,8 +140,12 @@ def _notice_a_discarded_window(
             "is there."
         )
 
-    remembering.remember_discarded_window(
-        remembering.DiscardedWindow(host, model.identifier, asked_for, served), kept
+    discarded_windows.save_discarded_window(
+        host=host,
+        identifier=model.identifier,
+        asked_for=asked_for,
+        served=served,
+        file_path=kept,
     )
 
     return (

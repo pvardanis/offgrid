@@ -96,3 +96,13 @@ class HostedToolReachableError(OffgridError):
 
 class ProfileError(OffgridError):
     """The stored profile is missing, unreadable, or fails validation."""
+
+
+class DiscardedWindowsUnreadableError(OffgridError):
+    """What offgrid keeps about discarded windows is there and will not read.
+
+    A file that is not there is no memory and is worth no message, because
+    that is every machine before the first window is discarded. One that
+    cannot be opened is a fault: until it is fixed, offgrid asks for a window
+    it has already been refused on every run, and pays the reload each time.
+    """
