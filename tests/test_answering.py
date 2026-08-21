@@ -12,7 +12,11 @@ is not evidence about anything.
 
 import pytest
 
-from offgrid.domain.running.answering import get_resident_model, hold_model
+from offgrid.domain.running.answering import (
+    find_resident_model,
+    get_resident_model,
+    hold_model,
+)
 from offgrid.domain.running.model import ModelRequest
 from offgrid.runtimes.lmstudio import connect
 from offgrid.runtimes.lmstudio.config import LMStudioConfig
@@ -33,6 +37,26 @@ def test_a_runtime_holding_nothing_is_not_a_runtime_that_is_unreachable(monkeypa
 
     with pytest.raises(ModelUnavailableError, match="holding no model"):
         get_resident_model(connect(LMStudioConfig(host=HOST)))
+
+
+def test_a_runtime_holding_nothing_answers_a_caller_that_only_looks(monkeypatch):
+    # `doctor` reports what it finds rather than acting on it, and holding
+    # nothing is one of the things there is to find.
+    answer_as_lm_studio(monkeypatch, cold={"a/cold-7b": 8192})
+
+    assert find_resident_model(connect(LMStudioConfig(host=HOST))) is None
+
+
+def test_a_runtime_holding_several_answers_with_the_first_of_them(monkeypatch):
+    # The port promises a stable order and offgrid names the first of it. A
+    # runtime naming a different one between two calls with nothing changed
+    # is a report that moves under whoever is reading it.
+    answer_as_lm_studio(monkeypatch, holding={RESIDENT: 8192, "a/also-held-7b": 8192})
+
+    resident = find_resident_model(connect(LMStudioConfig(host=HOST)))
+
+    assert resident is not None
+    assert resident.identifier == RESIDENT
 
 
 def test_the_model_that_would_answer_is_the_one_being_held(monkeypatch):
