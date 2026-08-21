@@ -5,6 +5,7 @@ import typer
 from offgrid.cli.binding import bind_run
 from offgrid.cli.reporting import reporting
 from offgrid.domain.profile import DEFAULT_PATH
+from offgrid.domain.running import remembering
 from offgrid.domain.running.answering import hold_model
 from offgrid.domain.running.context_window import (
     refuse_a_served_window_below_the_floor,
@@ -12,7 +13,12 @@ from offgrid.domain.running.context_window import (
 from offgrid.domain.running.dialect import require_compatible
 from offgrid.domain.running.hosted_tools import require_hosted_tools_denied
 from offgrid.domain.running.launch import explain_why_it_would_not_start, start
-from offgrid.domain.running.model import read_what_was_typed, settle_what_to_run
+from offgrid.domain.running.model import (
+    Model,
+    ModelRequest,
+    read_what_was_typed,
+    settle_what_to_run,
+)
 from offgrid.shared.say import tell
 from offgrid.shared.wording import describe_what_was_stated
 
@@ -76,6 +82,12 @@ def run(
 
         tell(f"{model.identifier}, window {served}")
 
+        discarded = _notice_a_discarded_window(
+            model_request, model, host=profile.runtime.host
+        )
+        if discarded is not None:
+            tell(discarded)
+
         launch = agent.plan(model)
         # Said whenever there is anything at all, so an agent answering with
         # an empty one shows as a blank line somebody reports rather than as
@@ -94,3 +106,46 @@ def run(
         runtime.let_go(model.identifier)
 
     raise typer.Exit(code)
+
+
+def _notice_a_discarded_window(
+    model_request: ModelRequest, model: Model, *, host: str
+) -> str | None:
+    """Record and describe a window the runtime is not serving the run at.
+
+    Two sentences, because two different things are known: offgrid asked and
+    was refused, or it asked for nothing this run because a discard was
+    already remembered, and says what is there instead.
+
+    :param model_request: What the run asked for, before anything was held.
+    :param model: The model as the runtime now serves it.
+    :param host: Address the runtime listens on.
+
+    :return: What to tell whoever ran offgrid, or ``None`` where the window
+        asked for is the one being served, or where none was asked for.
+    """
+    asked_for, served = model_request.context_window, model.context_window
+
+    if asked_for is None or served is None or served == asked_for:
+        return None
+
+    kept = remembering.DEFAULT_PATH
+    remembered = remembering.read_discarded_window(host, model.identifier, kept)
+
+    if remembered is not None:
+        return (
+            f"{model.identifier} is already held at {served}, and {asked_for} "
+            f"was asked for. The runtime discarded that window on "
+            f"{remembered.noticed_at.split('T')[0]}, so offgrid is using what "
+            "is there."
+        )
+
+    remembering.remember_discarded_window(
+        remembering.DiscardedWindow(host, model.identifier, asked_for, served), kept
+    )
+
+    return (
+        f"offgrid asked the runtime to hold {model.identifier} at {asked_for} "
+        f"and it is serving {served}. Later runs will use what it serves "
+        f"rather than asking again; delete {kept} to ask again."
+    )

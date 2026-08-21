@@ -43,3 +43,11 @@ def answer_as_a_mac(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         )
 
     monkeypatch.setattr("offgrid.domain.running.agent.OFFGRID_HOME", tmp_path)
+
+    # Its own patch because the path is settled as the module is imported, so
+    # moving the home afterwards does not move what was already derived from
+    # it — and what is kept about a runtime would land in the real one.
+    monkeypatch.setattr(
+        "offgrid.domain.running.remembering.DEFAULT_PATH",
+        tmp_path / "discarded-windows.json",
+    )
