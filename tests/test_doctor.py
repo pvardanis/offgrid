@@ -5,11 +5,12 @@ reads beside them. What it says about the tools an agent can reach is its own
 module.
 """
 
+import httpx
 from typer.testing import CliRunner
 
 from offgrid.cli import app
-from tests.doubles import StandInAgent, answer_as_an_agent
-from tests.lmstudio_server import RESIDENT, answer_as_lm_studio
+from tests.doubles import StandInAgent, answer_as_an_agent, serve_get
+from tests.lmstudio_server import RESIDENT
 from tests.profiles import add_to_section
 
 runner = CliRunner()
@@ -103,10 +104,22 @@ def test_doctor_prints_the_window_the_agent_needs_to_start(here, monkeypatch):
     assert "floor     9000" in result.stderr
 
 
-def test_doctor_says_when_the_runtime_holds_nothing(here, monkeypatch):
+def test_doctor_refuses_a_runtime_that_will_not_answer_rather_than_reporting_one(
+    here, monkeypatch
+):
+    # The reading that used to be one answer is two, and only one of them is
+    # a state of the runtime. Read as the other, the report's first line calls
+    # a runtime reachable that nothing answered for.
     runner.invoke(app, ["setup"])
-    answer_as_lm_studio(monkeypatch, cold={"a/cold-7b": 8192})
+
+    def refuse(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("connection refused", request=request)
+
+    serve_get(monkeypatch, refuse)
 
     result = runner.invoke(app, ["doctor"])
+
     assert result.exit_code == 1
-    assert "no model" in result.stderr.lower()
+    assert "No model server answered at http://127.0.0.1:1234" in result.stderr
+    assert "reachable" not in result.stderr
+    assert "nothing held" not in result.stderr

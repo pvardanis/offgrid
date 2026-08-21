@@ -17,6 +17,24 @@ from offgrid.domain.running.runtime import Runtime
 from offgrid.shared.exceptions import ModelUnavailableError
 
 
+def find_resident_model(runtime: Runtime) -> Model | None:
+    """Find the model the runtime is already holding, where it holds one.
+
+    Holding nothing is an answer, not a fault, for a caller that only looks.
+
+    :param runtime: The runtime to ask.
+
+    :return: The model the runtime is holding, or ``None`` where it holds none.
+
+    :raise RuntimeUnreachableError: When the runtime cannot be reached.
+    """
+    in_memory = runtime.read_held()
+
+    # A runtime can hold several, and the port promises a stable order: the
+    # first of them is the one offgrid names.
+    return in_memory[0] if in_memory else None
+
+
 def get_resident_model(runtime: Runtime) -> Model:
     """Find the model the runtime is already holding.
 
@@ -27,16 +45,14 @@ def get_resident_model(runtime: Runtime) -> Model:
     :raise ModelUnavailableError: When the runtime holds none.
     :raise RuntimeUnreachableError: When it cannot be reached.
     """
-    in_memory = runtime.read_held()
+    resident = find_resident_model(runtime)
 
-    if not in_memory:
+    if resident is None:
         raise ModelUnavailableError(
             "The runtime is holding no model. Load a model in it, then try again."
         )
 
-    # A runtime can hold several; which of them answers is decided by the
-    # request, and the first in catalogue order is the one offgrid names.
-    return in_memory[0]
+    return resident
 
 
 def hold_model(
