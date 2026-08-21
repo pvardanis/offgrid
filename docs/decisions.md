@@ -403,11 +403,10 @@ which of its own calls may have taken weights, and wraps that one.
 dialect and capabilities and not a host, on purpose: what a connection is bound
 to is its own business. So "The runtime at 127.0.0.1:1234 is holding no model"
 became "The runtime is holding no model", and the address stays in the errors
-the adapter raises, which is every other one. What it costs is real: this
-message is the one `doctor` prints when nothing is held, and `doctor` fails
-before it prints the address, so on that path the address is nowhere. What it
-buys is that a `Runtime` is not made to expose an address for a sentence, which
-every adapter after this one would have paid for.
+the adapter raises, which is every other one. What it costs is a sentence that
+names no address where the other refusals do. What it buys is that a `Runtime`
+is not made to expose an address for a sentence, which every adapter after this
+one would have paid for.
 
 ## What building the agent port settled
 
@@ -1134,8 +1133,8 @@ spelling it differently. The alternative, moving the release out of the
 
 `doctor`'s reads come back as a four-value tuple, which is a clump wanting a
 type. It is left as a tuple until #124, which needs a shape that can say "the
-runtime holds nothing" — that is the change that will tell us what the type
-should hold.
+runtime holds nothing" — that is the change that tells us what the type should
+hold, and "A report reports" below is what it told us.
 
 ## A layer is a folder, and binding is in one
 
@@ -1164,3 +1163,46 @@ command line to be built to do it. Measured at about 12ms on top of the 100ms
 binding's own imports already cost, because typer arrives with `shared/say.py`
 and both registries are on that path anyway. Weighed against a layer the tree
 states rather than two files, and taken.
+
+## A report reports, and a finding is a line in it
+
+`doctor` read the resident model before it printed anything, so a runtime
+holding nothing replaced the whole report with one sentence — including the
+`model:` line the profile had just gained, which is the line that case is worth
+most in. A profile naming a model to load is a statement about a model the
+runtime is *not* holding.
+
+Worse than quiet: the sentence was false about such a profile. `hold_model`
+reaches for the resident model only where nothing named one, so `offgrid run`
+would have loaded what `offgrid doctor` sent someone to load by hand. The
+refusal was a finding about the runtime rather than a fault in reaching it, and
+every other line beside it was true.
+
+So the model's lines stay in the column — `nothing held`, and `unknown` for the
+two numbers that were about it. Marked rather than left out, because a number
+about a model that is not held is unknown, where `unstated` is what a held model
+states when the runtime says no number for it: two statements that one blank
+would collapse.
+
+The exit code is the one it already was. `1` is what every `OffgridError`
+exits with, so it says a report was not a clean run and nothing finer than
+that — a script cannot tell holding nothing from a profile with a typo in it.
+Keeping it is what #124 asked for; what a script would need to tell the two
+apart is a code of its own, and no evidence yet says anyone wants one.
+
+What to do about it is said only where nothing names a model at all, which is
+the pairing a run has no name to reach for. Where the profile names one, the
+`profile` line already says what would be loaded — and whether the runtime has
+that model to load is the runtime's own answer, which `doctor` does not ask for
+and a run gets by name.
+
+The shape #124 needed is `Model | None`, which the tuple could have carried
+too. What the `Checkup` the clump became is worth is the reading beside it: a
+named field to branch on, room for a sixth reading, and — since it holds what
+each of them answered rather than the things that answered — no agent port,
+and so no `configure()`, inside the value a report that writes nothing is
+built from.
+
+Reading one takes `find_resident_model`, which answers with what is held or
+with nothing. `get_resident_model` is that reading plus the refusal, for the
+caller that cannot go on without one.
