@@ -10,7 +10,7 @@ from typer.testing import CliRunner
 
 from offgrid.cli import app
 from tests.doubles import StandInAgent, answer_as_an_agent, serve_get
-from tests.lmstudio_server import RESIDENT
+from tests.lmstudio_server import RESIDENT, answer_as_lm_studio
 from tests.profiles import add_to_section
 
 runner = CliRunner()
@@ -123,3 +123,16 @@ def test_doctor_refuses_a_runtime_that_will_not_answer_rather_than_reporting_one
     assert "No model server answered at http://127.0.0.1:1234" in result.stderr
     assert "reachable" not in result.stderr
     assert "nothing held" not in result.stderr
+
+
+def test_doctor_prints_a_ceiling_of_zero_as_zero(here, monkeypatch):
+    # A number the runtime stated, so it is printed. `unstated` is what a
+    # runtime saying nothing gets, and reading a zero as that reports the
+    # number that arrived as the one that never came.
+    runner.invoke(app, ["setup"])
+    answer_as_lm_studio(monkeypatch, holding={RESIDENT: 0}, ceiling=0)
+
+    result = runner.invoke(app, ["doctor"])
+
+    assert "ceiling   0" in result.stderr
+    assert "window    0" in result.stderr

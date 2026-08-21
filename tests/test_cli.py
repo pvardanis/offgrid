@@ -1,6 +1,7 @@
 import json
 import logging
 import pathlib
+import re
 import subprocess
 
 import pytest
@@ -847,7 +848,7 @@ def test_an_error_that_reaches_the_terminal_is_a_sentence_not_a_traceback(
 def _listed(
     name: str,
     parameters: str | None,
-    context: int = 262144,
+    context: int | None = 262144,
     score: float | None = 70.0,
     active: str | None = None,
 ) -> dict:
@@ -972,6 +973,40 @@ def test_recommend_caps_nothing(here, monkeypatch):
 
     # Twelve models, each fitting at all three widths.
     assert len(rows) == 36
+
+
+def test_recommend_prints_a_window_the_table_published_as_zero(here, monkeypatch):
+    # A number the table stated, so it is shown and scored as the short window
+    # it is. Read as falsy it becomes a row nothing was said about, which
+    # scores it above a window of one.
+    _leaderboard(monkeypatch, models=[_listed("A-Zero-7B", "7B", context=0)])
+
+    result = runner.invoke(app, ["recommend"])
+    row = next(line for line in result.stderr.splitlines() if "A-Zero-7B" in line)
+
+    assert "unstated" not in row
+    assert re.search(r"\s0\s+Apache", row)
+
+
+def test_recommend_scores_a_published_zero_as_the_short_window_it_is(here, monkeypatch):
+    # A row the table said nothing about is unknown rather than short, and
+    # scored for it. A row it published a zero for is one it did measure, so
+    # ranking it above the row nothing is known about reads the number that
+    # arrived as the one that never came.
+    _leaderboard(
+        monkeypatch,
+        models=[
+            _listed("A-Aaa-Zero-7B", "7B", context=0),
+            _listed("A-Zzz-Silent-7B", "7B", context=None),
+        ],
+    )
+
+    result = runner.invoke(app, ["recommend"])
+    shown = [name for name, width in _printed_order(result.stderr) if width == "4-bit"]
+
+    # Named so the tiebreak reads the other way: scored alike, the zero
+    # row would come first on its name alone.
+    assert shown == ["A-Zzz-Silent-7B", "A-Aaa-Zero-7B"]
 
 
 def test_recommend_prints_a_licence_it_cannot_read(here, monkeypatch):

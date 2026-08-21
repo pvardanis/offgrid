@@ -189,7 +189,7 @@ shared/
   say.py           how offgrid talks to whoever ran it
   home.py          where offgrid keeps what it remembers
   declaring.py     reading a config as the adapter that declared it
-  wording.py       the words for what somebody else did or did not state
+  wording.py       the word for a number somebody else did not state
 ```
 
 Shared is what reaches nothing of offgrid's own, which is the test as well as

@@ -238,7 +238,7 @@ def _lay_out(fit: Fit, worth: Quality, machine: Machine) -> str:
         context=describe_what_was_stated(fit.listing.context_window),
         # Printed, never read: it is absent on one open-weight row and a
         # date on another, so nothing here can branch on it.
-        license=describe_what_was_stated(fit.listing.license),
+        license=fit.listing.license or "unstated",
     )
 
 
