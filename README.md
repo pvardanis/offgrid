@@ -172,7 +172,7 @@ Download one in your runtime, then `offgrid run`.
 Downloading one, and choosing between what is left, stay yours. This is the
 one command that reaches the network — see [Commands](#commands).
 
-**3. Check the runtime is reachable and holding something:**
+**3. Check what a run would find, without paying for a load:**
 
 ```console
 $ offgrid doctor
@@ -209,7 +209,7 @@ $ offgrid run -- -p "explain what this module does"
 |---|---|
 | `offgrid setup [--host HOST]` | Measures this Mac, says what fits, writes the profile. Keeps whatever you edited into it by hand — unless the file no longer loads, which is set aside as `profile.yaml.rejected` and replaced. |
 | `offgrid recommend` | Fetches a published coding table, keeps the models this machine can hold, and prints them at each width they fit at. |
-| `offgrid doctor` | Reports the runtime, the model that would answer, the most it could be served at, what it is being served at, what the profile asks the next run for, the smallest window the agent starts in, and the agent's dialect. |
+| `offgrid doctor` | Reports the runtime, the model it is holding, the most that model could be served at, what it is being served at, what the profile asks the next run for, the smallest window the agent starts in, and the agent's dialect. A runtime holding nothing is reported in the model's lines and exits `1`; every other line is read without one. |
 | `offgrid run [-m MODEL] [--context-window N] [-- ARGS]` | Starts the agent. Loads `MODEL` when it is not already held, otherwise uses what is. Holds it at `N` where one is asked for. |
 
 The command line beats the `model:` section of the profile, which beats
@@ -229,7 +229,7 @@ downloaded, and nothing is written.
 | Code | Meaning |
 |---|---|
 | *n* | whatever the agent exited with |
-| `1` | offgrid refused: no profile, no runtime, unknown model, unusable settings |
+| `1` | offgrid refused — no profile, no runtime, unknown model, unusable settings — or `doctor` printed its report and the runtime is holding nothing |
 | `127` | the agent could not be started |
 | `130` | interrupted |
 | `128+n` | the agent was killed by signal *n* |
