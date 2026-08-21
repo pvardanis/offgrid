@@ -877,8 +877,8 @@ The layer rule is stated by hand in three places — `COMMAND_LINE` in
 `tests/test_architecture.py`, the `shared/` contract in `pyproject.toml`, and
 the module map. A new module outside all three fails the suite, which is what
 makes a fourth place to put code a decision rather than an accident. Proven by
-taking `binding.py` back out of the layer and by pointing it at a concrete
-adapter, and watching each fail.
+writing a module in no layer and by pointing one at a concrete adapter, and
+watching each fail.
 
 ## Letting go is a request, not a program on someone's PATH
 
@@ -1136,3 +1136,26 @@ spelling it differently. The alternative, moving the release out of the
 type. It is left as a tuple until #124, which needs a shape that can say "the
 runtime holds nothing" — that is the change that will tell us what the type
 should hold.
+
+## A layer is a folder, and binding is in one
+
+`binding.py` sat at the root of the package while every layer around it was a
+folder. The tree is what says which layer a module is in, and it could not say
+this one — so the answer was written by hand in three places instead: the
+`shared/` contract in `pyproject.toml`, `COMMAND_LINE` in
+`tests/test_architecture.py`, and the module map. Under `cli/` the name already
+in all three covers it.
+
+The decision above — that binding a run is its own module and the command line
+is not it — is not what this reverses. What that one turned down was
+`read_profile` living in `cli.py`, where the module a function happened to sit
+in became the interface every test reached through. A file of its own inside
+the folder is not that, and `reporting.py` is already there without being a
+command. What `cli/` holds is the layer; what it holds a module per is the
+command.
+
+The cost is that `offgrid.cli.binding` runs `cli/__init__.py` on the way in,
+which builds the typer app and imports all four commands. `test_profile.py`,
+`test_profile_model.py` and `test_live.py` read a profile and now pay for the
+command line to be built to do it. Weighed against a layer the tree states
+rather than three files, and taken.
