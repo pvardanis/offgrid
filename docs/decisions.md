@@ -1206,3 +1206,93 @@ built from.
 Reading one takes `find_resident_model`, which answers with what is held or
 with nothing. `get_resident_model` is that reading plus the refusal, for the
 caller that cannot go on without one.
+
+## A window a runtime will not grant is written down, not asked for twice
+
+LM Studio serves some models at a window of its own choosing whatever a load
+asks for. `offgrid run` asked for the profile's window, read back another, and
+`ensure_only` compared the two and reloaded to close a gap that could not
+close. The reload is what costs: it empties the runtime's prompt-prefix cache,
+so the first turn of every session paid a full cold prefill. Measured on this
+machine against `qwen/qwen3.6-35b-a3b` — a turn reading 19,968 of 19,991
+tokens from cache took 2.02s, and the same turn after a reload read none and
+took 60.4s. Every run, forever, because the mismatch was permanent.
+
+Upstream calls it a bug —
+[lmstudio-ai/lmstudio-bug-tracker#2250](https://github.com/lmstudio-ai/lmstudio-bug-tracker/issues/2250),
+"MLX models ignore every user-configured context length" — and says the
+GGUF path honours the value. Which models it strikes is not settled: on this
+machine two discard the window and two honour it, and the two that discard it
+are both vision-capable *and* both large, so nothing here separates the two
+explanations. #136 holds the evidence.
+
+So offgrid does not predict it. Encoding "vision-capable MLX models discard
+the window" into the domain would be wrong today, since it is unproven, and
+wrong the day upstream fixes it. What offgrid does instead is remember what a
+runtime actually did with a window it was actually given, and stop giving it
+that window again.
+
+**The fact is kept, not the verdict.** The record says what was asked, what
+came back, and when. It does not say "this runtime is broken" or "never ask
+again" — whoever reads it decides, and a policy that changes does not have to
+migrate a file written under the old one.
+
+**Only the same window is left unasked.** A refusal is about the number it was
+given. Reading it as a fact about the model would drop a `--context-window`
+somebody typed on the strength of an answer about a different one, and then
+tell them the runtime had refused a number it was never shown. A window that
+differs is a question the runtime has not been put, so it is put, and what
+comes back replaces what was known — which is also how a runtime that has
+started granting windows gets noticed.
+
+**The refusals still come first.** A window below the agent's floor or above
+the model's ceiling is refused before the record is consulted, so a number
+that could never work is said to be one whether or not offgrid meant to send
+it. The cost is a catalogue read on a run that was going to drop the window
+anyway; the alternative is silence about a typo.
+
+**Nothing expires.** No TTL, no re-check on a schedule. The runtime exposes no
+version offgrid can key on over HTTP, and a timer would reintroduce the
+sixty-second turn on a schedule with nothing to show for it. Deleting the file
+is how a person says to ask again, and `offgrid doctor` names the file, since
+that is the command someone runs when something is not what they asked for.
+
+**It is keyed on the runtime and the model together.** Two models on one
+server disagree about this — measured — and one model may be reached at two
+addresses. Neither alone is the thing the behaviour belongs to.
+
+**Two sentences, because offgrid knows two different things.** Where it put
+the window to the runtime and read the answer back, it says the runtime did
+not grant it: a claim about the runtime, with the evidence in hand. Where it
+asked for nothing because that same window was already on record, it says what
+is held and dates the refusal it is repeating: a claim about state. The first
+would be an unfounded attribution in the second case — offgrid made no request
+that run, so nothing of the runtime's was observed.
+
+**Neither sentence says "bug".** Whose fault it is, is exactly what #136 does
+not establish.
+
+### What it cost in shape
+
+`hold_model` is handed the question rather than the address to answer it from
+— `was_refused: Callable[[str, int], bool]`, closed over records the command
+line read once. Handing it a host would have given it two sources of truth for
+one connection, with nothing able to detect them disagreeing, and would have
+had the domain reaching for a file behind its caller's back. It is the same
+rule `reading.py` follows: handed the lists rather than reaching for them, the
+way `answering.py` is handed a `Runtime`.
+
+The records are read once per command and shared. The question "was this
+window refused" is asked twice in a run — once to decide what to request, once
+to decide what to say — and answering it from two separate file reads is how
+the two answers come apart.
+
+`discarded_windows.py` is the store and `discarding.py` is the deciding, which
+is the split `sizing/cache.py` and `sizing/reading.py` already make. The store
+holds no opinions; the deciding holds no file.
+
+The file is read the way the profile is read: a pydantic model that refuses a
+key it does not name. A record offgrid cannot make sense of is said out loud
+rather than skipped, because a run that silently reads no memory goes back to
+paying the reload. A file that is not there stays silent — that is every
+machine before the first window is discarded.
