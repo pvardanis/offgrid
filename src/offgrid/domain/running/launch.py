@@ -95,4 +95,4 @@ def explain_why_it_would_not_start(command: str, error: OSError) -> str:
         errno.EACCES: "It is there but not executable.",
     }.get(error.errno, "")
 
-    return f"  Could not start {command}: {error}. {advice}".rstrip()
+    return f"Could not start {command}: {error}. {advice}".rstrip()

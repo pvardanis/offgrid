@@ -26,5 +26,5 @@ def reporting() -> Iterator[None]:
     try:
         yield
     except OffgridError as error:
-        tell(f"  {error}")
+        tell(f"{error}")
         raise typer.Exit(1) from error

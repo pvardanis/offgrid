@@ -28,7 +28,7 @@ from offgrid.domain.sizing.speed import tokens_per_second
 
 # One layout, so the heading and the models under it cannot drift apart.
 COLUMNS = (
-    "    {model:<22}{quality:>14}{score:>7}{speed:>7}"
+    "  {model:<22}{quality:>14}{score:>7}{speed:>7}"
     "{weights:>9}  {quant:<7}{context:>8}  {license}"
 )
 HEADING = COLUMNS.format(
@@ -83,7 +83,7 @@ def summarize_findings(table: Table, machine: Machine) -> list[str]:
         + [_lay_out(fit, worth, machine) for worth, fit in ranked]
         + _set_off(dropped)
         + _set_off(_credit_the_figures(table.dated))
-        + ["", "  Download one in your runtime, then `offgrid run`."]
+        + ["", "Download one in your runtime, then `offgrid run`."]
     )
 
 
@@ -101,14 +101,14 @@ def _introduce_findings(rows: int, table: Table) -> list[str]:
     :return: The lines to say, ending in a blank one.
     """
     openings = {
-        0: "  From the list at",
-        1: "  One model on this list fits this machine. From the list at",
+        0: "From the list at",
+        1: "One model on this list fits this machine. From the list at",
     }
-    opening = openings.get(rows, "  Models that fit this machine, from the list at")
+    opening = openings.get(rows, "Models that fit this machine, from the list at")
 
     return [
         opening,
-        f"  {table.source}, table dated {table.dated or 'undated'}.",
+        f"{table.source}, table dated {table.dated or 'undated'}.",
         "",
     ]
 
@@ -129,8 +129,8 @@ def _say_what_was_dropped(table: Table, dropped: list[Dropped]) -> list[str]:
     rows = table.unsized_rows + len(table.listings)
     figures = max(len(str(one.count)) for one in dropped)
 
-    return [f"  Left out of the {rows} row{'' if rows == 1 else 's'} on the table:"] + [
-        f"    {one.count:>{figures}}  {WHY_DROPPED[one.rule]}" for one in dropped
+    return [f"Left out of the {rows} row{'' if rows == 1 else 's'} on the table:"] + [
+        f"  {one.count:>{figures}}  {WHY_DROPPED[one.rule]}" for one in dropped
     ]
 
 
@@ -150,10 +150,10 @@ def _credit_the_figures(dated: str | None) -> list[str]:
     source = f"the table dated {dated}" if dated else "the undated table"
 
     return [
-        f"  The swe, context and licence columns are as {source}",
-        "  published them, and it states no source for any figure of its own.",
-        "  The weights, tok/s and quality columns are offgrid's arithmetic, the",
-        "  last two of them for this machine. offgrid has run none of these models.",
+        f"The swe, context and licence columns are as {source}",
+        "published them, and it states no source for any figure of its own.",
+        "The weights, tok/s and quality columns are offgrid's arithmetic, the",
+        "last two of them for this machine. offgrid has run none of these models.",
     ]
 
 
@@ -185,14 +185,13 @@ def _explain_nothing_fits(table: Table, machine: Machine) -> list[str]:
     smallest = min(one.parameters for one in shown)
 
     return [
-        "  Nothing on this list fits this machine.",
+        "Nothing on this list fits this machine.",
         "",
-        f"    the smallest model on it needs {_write_size(smallest, bits)}"
-        f" at {bits}-bit",
-        f"    this machine has room for {_write_size(holds, bits)}",
+        f"  the smallest model on it needs {_write_size(smallest, bits)} at {bits}-bit",
+        f"  this machine has room for {_write_size(holds, bits)}",
         "",
-        "  That is where this list starts, not where this machine stops.",
-        "  Models smaller than any it publishes run here.",
+        "That is where this list starts, not where this machine stops.",
+        "Models smaller than any it publishes run here.",
     ]
 
 
@@ -206,11 +205,11 @@ def _explain_nothing_ranks() -> list[str]:
     :return: The lines to say.
     """
     return [
-        "  Nothing on this list can be ranked for this machine.",
+        "Nothing on this list can be ranked for this machine.",
         "",
-        "  Not one row it publishes carries the coding score the ranking",
-        "  sorts on, so there is nothing to rank. That is this list, and it",
-        "  says nothing about the room here.",
+        "Not one row it publishes carries the coding score the ranking",
+        "sorts on, so there is nothing to rank. That is this list, and it",
+        "says nothing about the room here.",
     ]
 
 

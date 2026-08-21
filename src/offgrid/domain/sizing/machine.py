@@ -73,8 +73,8 @@ def suggest_raising_the_gpu_limit(machine: Machine) -> list[str]:
         return []
 
     return [
-        "  More fits with the GPU limit raised, which a reboot undoes:",
-        f"    sudo sysctl iogpu.wired_limit_mb={wanted}",
+        "More fits with the GPU limit raised, which a reboot undoes:",
+        f"  sudo sysctl iogpu.wired_limit_mb={wanted}",
     ]
 
 

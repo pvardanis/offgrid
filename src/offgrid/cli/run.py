@@ -61,14 +61,14 @@ def run(
         with reporting():
             refuse_a_served_window_below_the_floor(model, floor=agent.context_floor)
 
-        tell(f"  {model.identifier}, window {model.context_window or 'unstated'}")
+        tell(f"{model.identifier}, window {model.context_window or 'unstated'}")
 
         launch = agent.plan(model)
         # Said whenever there is anything at all, so an agent answering with
         # an empty one shows as a blank line somebody reports rather than as
         # a warning nobody was given.
         if launch.caution is not None:
-            tell(f"  {launch.caution}")
+            tell(f"{launch.caution}")
 
         try:
             code = start(launch)

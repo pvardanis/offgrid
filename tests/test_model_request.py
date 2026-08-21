@@ -62,7 +62,7 @@ def test_a_name_that_is_only_spaces_is_a_name_nobody_typed():
     # `min_length` counts characters rather than content, so a space got a
     # sentence with a hole in it out of the runtime: does not have    .
     with pytest.raises(ValidationError, match="at least 1 character"):
-        ModelRequest(identifier="   ")
+        ModelRequest(identifier=" ")
 
 
 def test_a_name_is_taken_without_what_was_typed_around_it():
