@@ -1,11 +1,9 @@
 """What a run says about a window the runtime did not grant it.
 
-Two sentences, because offgrid knows two different things. Where it asked and
-read the answer back, it can say the runtime did not grant what was asked for.
-Where it found the model already held, it made no request at all, and the most
-it can say is what is there and what the profile wanted — which is why the
-second sentence cites the day the first one was true rather than repeating its
-claim.
+Two sentences, because offgrid knows two different things. Where it put the
+window to the runtime and read the answer back, it says the runtime did not
+grant it. Where that same window was already on record it asked for none this
+run, so it says what is held instead and dates the refusal it is repeating.
 """
 
 import json
@@ -22,26 +20,21 @@ from tests.lmstudio_server import RESIDENT, answer_as_lm_studio
 def _hand_write(here, *, noticed_at: str) -> None:
     """Write a record by hand, so a test can pin the day it was noticed.
 
-    The stamp is the store's to make, which is what stops a record without a
-    day on it existing — so a test that reads a date back writes the file the
-    way a person would.
+    The stamp is the store's to make, which is what stops an unstamped record
+    existing, so a test reading a date back writes it as a person would.
 
     :param here: Where the profile and what sits beside it are written.
     :param noticed_at: The day and time to put on the record.
     """
-    (here / "discarded-windows.json").write_text(
-        json.dumps(
-            [
-                {
-                    "host": HOST,
-                    "identifier": RESIDENT,
-                    "asked_for": ASKED_FOR,
-                    "served": 212224,
-                    "noticed_at": noticed_at,
-                }
-            ]
-        )
-    )
+    record = {
+        "host": HOST,
+        "identifier": RESIDENT,
+        "asked_for": ASKED_FOR,
+        "served": 212224,
+        "noticed_at": noticed_at,
+    }
+
+    (here / "discarded-windows.json").write_text(json.dumps([record]))
 
 
 runner = CliRunner()
@@ -51,9 +44,14 @@ SERVED = 262_144
 
 
 @pytest.fixture
-def here(monkeypatch, tmp_path):
+def asked(monkeypatch):
+    """What the runtime was asked to do, so a test can say it was not."""
+    return answer_as_lm_studio(monkeypatch, holding={RESIDENT: 212224})
+
+
+@pytest.fixture
+def here(monkeypatch, tmp_path, asked):
     """Answer with a fixed machine, and write nowhere real."""
-    answer_as_lm_studio(monkeypatch, holding={RESIDENT: 212224})
     answer_as_a_mac(monkeypatch, tmp_path)
 
     return tmp_path
@@ -73,9 +71,10 @@ def test_run_says_when_the_runtime_did_not_grant_the_window_asked_for(
     )
 
     assert result.exit_code == 0
-    assert "asked" in result.stderr
-    assert str(ASKED_FOR) in result.stderr
-    assert str(SERVED) in result.stderr
+    assert (
+        f"offgrid asked the runtime to hold a/other-7b at {ASKED_FOR} and it "
+        f"is serving {SERVED}" in result.stderr
+    )
 
 
 def test_run_says_what_is_held_where_the_window_was_discarded_before(here, monkeypatch):
@@ -91,7 +90,10 @@ def test_run_says_what_is_held_where_the_window_was_discarded_before(here, monke
     )
 
     assert result.exit_code == 0
-    assert "already held at 212224" in result.stderr
+    assert (
+        f"{RESIDENT} is already held at 212224, and {ASKED_FOR} was asked for"
+        in result.stderr
+    )
     assert "discarded that window on 2026-08-21" in result.stderr
 
 
@@ -116,3 +118,34 @@ def test_doctor_says_nothing_about_a_window_nothing_was_discarded_for(here):
     result = runner.invoke(app, ["doctor"])
 
     assert "discarded" not in result.stderr
+
+
+def test_a_second_run_does_not_put_a_refused_window_to_the_runtime_again(
+    here, monkeypatch
+):
+    # End to end, with nothing written by hand: the first run asks and is
+    # refused, the second reads that back and asks for nothing. Without the
+    # first run keeping what it learned, the second pays the load again.
+    runner.invoke(app, ["setup"])
+    record_launch(monkeypatch)
+    put = answer_as_lm_studio(monkeypatch, cold={"a/other-7b": SERVED}, serves=SERVED)
+
+    first = runner.invoke(
+        app, ["run", "-m", "a/other-7b", "--context-window", str(ASKED_FOR)]
+    )
+
+    assert first.exit_code == 0
+    assert "offgrid asked the runtime to hold" in first.stderr
+    assert put["window"] == ASKED_FOR
+
+    held = answer_as_lm_studio(monkeypatch, holding={"a/other-7b": SERVED})
+
+    second = runner.invoke(
+        app, ["run", "-m", "a/other-7b", "--context-window", str(ASKED_FOR)]
+    )
+
+    assert second.exit_code == 0
+    assert "is already held at" in second.stderr
+    # The release at the end of a run is owed either way; what a reload would
+    # have added is a load, and there is none.
+    assert held["loaded"] is None

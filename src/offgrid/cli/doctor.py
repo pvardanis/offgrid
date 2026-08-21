@@ -169,9 +169,9 @@ def _describe_a_discarded_window(checkup: Checkup) -> tuple[str, ...]:
         return ()
 
     kept = discarded_windows.DEFAULT_PATH
-    discarded = discarded_windows.read_discarded_window(
-        checkup.profile.runtime.host, checkup.resident.identifier, kept
-    )
+    discarded = discarded_windows.read_discarded_windows(
+        checkup.profile.runtime.host, kept
+    ).get(checkup.resident.identifier)
 
     if discarded is None:
         return ()

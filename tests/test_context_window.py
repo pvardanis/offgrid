@@ -38,7 +38,7 @@ def _hold(window: int | None, identifier: str | None = None):
         connect(LMStudioConfig(host=HOST)),
         ModelRequest(identifier=identifier, context_window=window),
         context_floor=FLOOR,
-        runtime_host=HOST,
+        was_refused=lambda identifier, window: False,
     )
 
 

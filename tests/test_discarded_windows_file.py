@@ -12,7 +12,7 @@ import json
 import pytest
 
 from offgrid.domain.running.discarded_windows import (
-    read_discarded_window,
+    read_discarded_windows,
     save_discarded_window,
 )
 from offgrid.shared.exceptions import DiscardedWindowsUnreadableError
@@ -61,7 +61,7 @@ def _hand_written(tmp_path, *records) -> None:
 def test_a_record_reads_back_as_it_was_kept(tmp_path):
     _save(tmp_path, asked_for=131_072, served=262_144)
 
-    read = read_discarded_window(HOST, MODEL, _kept(tmp_path))
+    read = read_discarded_windows(HOST, _kept(tmp_path)).get(MODEL)
 
     assert read is not None
     assert (read.asked_for, read.served) == (131_072, 262_144)
@@ -74,7 +74,7 @@ def test_a_second_answer_about_one_model_replaces_the_first(tmp_path):
     _save(tmp_path, asked_for=1000, served=2000)
     _save(tmp_path, asked_for=3000, served=4000)
 
-    read = read_discarded_window(HOST, MODEL, _kept(tmp_path))
+    read = read_discarded_windows(HOST, _kept(tmp_path)).get(MODEL)
 
     assert read is not None
     assert (read.asked_for, read.served) == (3000, 4000)
@@ -85,9 +85,9 @@ def test_a_record_is_about_one_model_on_one_server(tmp_path):
     # and one model may be reached at two addresses.
     _save(tmp_path)
 
-    assert read_discarded_window(HOST, OTHER_MODEL, _kept(tmp_path)) is None
-    assert read_discarded_window("127.0.0.1:9999", MODEL, _kept(tmp_path)) is None
-    assert read_discarded_window(HOST, MODEL, _kept(tmp_path)) is not None
+    assert read_discarded_windows(HOST, _kept(tmp_path)).get(OTHER_MODEL) is None
+    assert read_discarded_windows("127.0.0.1:9999", _kept(tmp_path)).get(MODEL) is None
+    assert read_discarded_windows(HOST, _kept(tmp_path)).get(MODEL) is not None
 
 
 def test_replacing_one_record_leaves_the_others_alone(tmp_path):
@@ -95,18 +95,18 @@ def test_replacing_one_record_leaves_the_others_alone(tmp_path):
     _save(tmp_path, identifier=OTHER_MODEL, asked_for=5, served=6)
     _save(tmp_path, asked_for=3000)
 
-    assert read_discarded_window(HOST, OTHER_MODEL, _kept(tmp_path)) is not None
+    assert read_discarded_windows(HOST, _kept(tmp_path)).get(OTHER_MODEL) is not None
 
 
 def test_a_file_that_is_not_there_is_no_memory(tmp_path):
-    assert read_discarded_window(HOST, MODEL, _kept(tmp_path)) is None
+    assert read_discarded_windows(HOST, _kept(tmp_path)).get(MODEL) is None
 
 
 def test_a_file_that_will_not_read_is_said_out_loud(tmp_path):
     _kept(tmp_path).write_text("{not json at all")
 
     with pytest.raises(DiscardedWindowsUnreadableError, match="could not be read"):
-        read_discarded_window(HOST, MODEL, _kept(tmp_path))
+        read_discarded_windows(HOST, _kept(tmp_path)).get(MODEL)
 
 
 @pytest.mark.parametrize(
@@ -128,7 +128,7 @@ def test_a_record_offgrid_cannot_read_is_refused(tmp_path, what, record):
     )
 
     with pytest.raises(DiscardedWindowsUnreadableError):
-        read_discarded_window(HOST, MODEL, _kept(tmp_path))
+        read_discarded_windows(HOST, _kept(tmp_path)).get(MODEL)
 
 
 def test_a_key_offgrid_does_not_write_is_refused(tmp_path):
@@ -147,4 +147,4 @@ def test_a_key_offgrid_does_not_write_is_refused(tmp_path):
     )
 
     with pytest.raises(DiscardedWindowsUnreadableError):
-        read_discarded_window(HOST, MODEL, _kept(tmp_path))
+        read_discarded_windows(HOST, _kept(tmp_path)).get(MODEL)

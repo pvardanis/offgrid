@@ -167,6 +167,8 @@ domain/
     asking.py      what a run will ask for, said before it asks
     discarded_windows.py  which windows a runtime was asked for and did
                    not grant, kept between runs
+    discarding.py  whether a window is asked for again, and what became
+                   of the one that was
   profile/         what is remembered between runs
     profile.py     the file, and what is read out of it
     refusing.py    what a section offgrid cannot read reads like

@@ -103,26 +103,26 @@ def save_discarded_window(
     os.replace(beside, file_path)
 
 
-def read_discarded_window(
-    host: str, identifier: str, file_path: Path
-) -> DiscardedWindow | None:
-    """Read back what a runtime did with a window it was asked for.
+def read_discarded_windows(host: str, file_path: Path) -> dict[str, DiscardedWindow]:
+    """Read back what one runtime did with the windows it was asked for.
+
+    Every record for the runtime at once: a command that reads them one at a
+    time opens the file once per question, and the answers come from the same
+    moment either way.
 
     :param host: Address the runtime listens on.
-    :param identifier: The model to read about.
-    :param file_path: Where it would have been kept.
+    :param file_path: Where they would have been kept.
 
-    :return: What was kept about this runtime and model, or ``None`` where
-        nothing was.
+    :return: What was kept, against the model each record is about.
 
     :raise DiscardedWindowsUnreadableError: When the file is there and will
         not read.
     """
-    for record in _read_all(file_path):
-        if (record.host, record.identifier) == (host, identifier):
-            return record
-
-    return None
+    return {
+        record.identifier: record
+        for record in _read_all(file_path)
+        if record.host == host
+    }
 
 
 def _read_all(file_path: Path) -> list[DiscardedWindow]:

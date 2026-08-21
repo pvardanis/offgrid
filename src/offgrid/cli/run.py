@@ -11,11 +11,14 @@ from offgrid.domain.running.context_window import (
     refuse_a_served_window_below_the_floor,
 )
 from offgrid.domain.running.dialect import require_compatible
+from offgrid.domain.running.discarding import (
+    keep_what_the_runtime_did,
+    read_what_became_of_the_window,
+    refuse_to_ask_again,
+)
 from offgrid.domain.running.hosted_tools import require_hosted_tools_denied
 from offgrid.domain.running.launch import explain_why_it_would_not_start, start
 from offgrid.domain.running.model import (
-    Model,
-    ModelRequest,
     read_what_was_typed,
     settle_what_to_run,
 )
@@ -61,11 +64,13 @@ def run(
         agent.configure()
         require_hosted_tools_denied(agent.read_hosted_tools())
 
+        kept = discarded_windows.DEFAULT_PATH
+        refused = discarded_windows.read_discarded_windows(profile.runtime.host, kept)
         model = hold_model(
             runtime,
             model_request,
             context_floor=agent.context_floor,
-            runtime_host=profile.runtime.host,
+            was_refused=refuse_to_ask_again(refused),
         )
 
     # Nothing between here and the agent finishing may leave the model held:
@@ -82,11 +87,14 @@ def run(
 
         tell(f"{model.identifier}, window {served}")
 
-        discarded = _notice_a_discarded_window(
-            model_request, model, host=profile.runtime.host
-        )
-        if discarded is not None:
-            tell(discarded)
+        became = read_what_became_of_the_window(refused, model_request, model)
+        if became is not None:
+            tell(became.said)
+            complaint = keep_what_the_runtime_did(
+                became, model, host=profile.runtime.host, kept=kept
+            )
+            if complaint is not None:
+                tell(complaint)
 
         launch = agent.plan(model)
         # Said whenever there is anything at all, so an agent answering with
@@ -106,50 +114,3 @@ def run(
         runtime.let_go(model.identifier)
 
     raise typer.Exit(code)
-
-
-def _notice_a_discarded_window(
-    model_request: ModelRequest, model: Model, *, host: str
-) -> str | None:
-    """Record and describe a window the runtime is not serving the run at.
-
-    Two sentences, because two different things are known: offgrid asked and
-    was refused, or it asked for nothing this run because a discard was
-    already remembered, and says what is there instead.
-
-    :param model_request: What the run asked for, before anything was held.
-    :param model: The model as the runtime now serves it.
-    :param host: Address the runtime listens on.
-
-    :return: What to tell whoever ran offgrid, or ``None`` where the window
-        asked for is the one being served, or where none was asked for.
-    """
-    asked_for, served = model_request.context_window, model.context_window
-
-    if asked_for is None or served is None or served == asked_for:
-        return None
-
-    kept = discarded_windows.DEFAULT_PATH
-    remembered = discarded_windows.read_discarded_window(host, model.identifier, kept)
-
-    if remembered is not None:
-        return (
-            f"{model.identifier} is already held at {served}, and {asked_for} "
-            f"was asked for. The runtime discarded that window on "
-            f"{remembered.noticed_at.split('T')[0]}, so offgrid is using what "
-            "is there."
-        )
-
-    discarded_windows.save_discarded_window(
-        host=host,
-        identifier=model.identifier,
-        asked_for=asked_for,
-        served=served,
-        file_path=kept,
-    )
-
-    return (
-        f"offgrid asked the runtime to hold {model.identifier} at {asked_for} "
-        f"and it is serving {served}. Later runs will use what it serves "
-        f"rather than asking again; delete {kept} to ask again."
-    )
