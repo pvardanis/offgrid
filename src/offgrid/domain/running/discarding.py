@@ -72,8 +72,9 @@ def read_what_became_of_the_window(
     Two sentences, because two different things are known. Where offgrid put
     the window to the runtime and read the answer back, it says the runtime
     did not grant it. Where it asked for nothing because that same window was
-    already refused, it says what is held and cites the day it was told, which
-    is a claim about state rather than about the runtime.
+    already refused, it says so and dates the refusal it is repeating — the
+    model may have been loaded this run, so a sentence about what is "already
+    held" would be a claim about state that offgrid did not check.
 
     :param kept: What was kept about this runtime.
     :param request: What the run asked for, before anything was held.
@@ -86,14 +87,14 @@ def read_what_became_of_the_window(
     if asked_for is None or served is None or served == asked_for:
         return None
 
-    record = kept.get(model.identifier)
+    if refuse_to_ask_again(kept)(model.identifier, asked_for):
+        record = kept[model.identifier]
 
-    if record is not None and record.asked_for == asked_for:
         return WhatBecameOfTheWindow(
             said=(
-                f"{model.identifier} is already held at {served}, and "
-                f"{asked_for} was asked for. The runtime discarded that "
-                f"window on {record.dated}, so offgrid is using what is there."
+                f"offgrid did not ask for {asked_for}: the runtime discarded "
+                f"that window on {record.dated}, and is serving "
+                f"{model.identifier} at {served}."
             ),
             asked_for=asked_for,
             served=served,

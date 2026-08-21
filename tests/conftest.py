@@ -135,7 +135,7 @@ def _no_real_home(
     `hold_model` reads what a runtime discarded, so every test that holds a
     model touches this path whether or not it is about one. The default is
     settled as the module is imported, so a test moving `OFFGRID_HOME`
-    afterwards does not move it.
+    afterwards does not move what was already derived from it.
     """
     if request.node.get_closest_marker("live"):
         return
