@@ -187,9 +187,9 @@ def test_a_runtime_offgrid_cannot_talk_to_is_refused(tmp_path):
 def test_an_agent_offgrid_cannot_start_is_refused(tmp_path):
     path = tmp_path / "profile.yaml"
     save_profile(build_profile(), path)
-    path.write_text(path.read_text().replace("claude-code", "opencode"))
+    path.write_text(path.read_text().replace("claude-code", "codex"))
 
-    with pytest.raises(ProfileError, match="opencode"):
+    with pytest.raises(ProfileError, match="codex"):
         read_profile(path)
 
 
