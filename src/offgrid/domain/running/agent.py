@@ -31,6 +31,7 @@ class AgentName(Enum):
     """
 
     CLAUDE_CODE = "claude-code"
+    OPENCODE = "opencode"
 
 
 class AgentConfig(BaseModel):

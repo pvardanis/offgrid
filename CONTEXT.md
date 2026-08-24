@@ -14,8 +14,8 @@ are named after, and drift makes the code stop describing itself.
 **runtime** — the server that holds models in memory and answers requests. LM
 Studio today; Ollama is a candidate. Not "backend", not "server".
 
-**agent** — the coding tool being launched. Claude Code today; OpenCode is a
-candidate. Not "client".
+**agent** — the coding tool being launched. Claude Code and OpenCode, one of
+which a profile names. Not "client".
 
 **hosted tool** — a tool whose work happens on the vendor's servers rather
 than on this machine, and which therefore cannot run at all against a model

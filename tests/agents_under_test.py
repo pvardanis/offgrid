@@ -18,6 +18,7 @@ import pytest
 
 from offgrid.domain.running.agent import Agent, Passthrough
 from tests.claude_code_under_test import ClaudeCodeUnderTest
+from tests.opencode_under_test import OpenCodeUnderTest
 
 
 class AgentUnderTest(Protocol):
@@ -84,4 +85,4 @@ class AgentUnderTest(Protocol):
         ...
 
 
-AGENTS_UNDER_TEST: list[AgentUnderTest] = [ClaudeCodeUnderTest()]
+AGENTS_UNDER_TEST: list[AgentUnderTest] = [ClaudeCodeUnderTest(), OpenCodeUnderTest()]

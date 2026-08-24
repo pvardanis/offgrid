@@ -137,6 +137,13 @@ agents/            one package per agent
                    what is read back out of them
     compacting.py  what it compacts against, and what is said where
                    it will not
+  opencode/
+    opencode.py    what an agent is asked, in OpenCode's terms
+    config.py      what it is run out of, as a profile says it
+    configuring.py what offgrid writes into its directory, which is
+                   only what offgrid never revises
+    launching.py   the configuration a run derives, and the command
+                   it is started with
 leaderboards/      one module per published list, and the registry
   onyx.py          fetching and parsing the page
 ```
@@ -1044,10 +1051,13 @@ Protocol and the type checker both, and is the silent failure the slot exists to
 prevent; a `configure` that writes over an edit is invisible to both as well.
 Each was checked by making the change and watching the suite go red.
 
-What one agent does and another does not stays in `tests/test_claude_code.py`:
-which environment variables carry the model and the window it is served at, the
-arguments offgrid adds, the `--setting-sources` list that leaves the deny in a
-file nothing loads, and the settings shapes Claude Code itself ignores.
+What one agent does and another does not stays in that adapter's own module.
+`tests/test_claude_code.py`: which environment variables carry the model and the
+window it is served at, the arguments offgrid adds, the `--setting-sources` list
+that leaves the deny in a file nothing loads, and the settings shapes Claude Code
+itself ignores. `tests/test_opencode.py` and
+`tests/test_opencode_configuring.py`: the split between the file OpenCode keeps
+and the configuration a run derives, and which side of it each thing lands on.
 
 **A fake `Runtime` only where the socket cannot reach.** It is the exception,
 not the default: something satisfying the Protocol proves how the domain
