@@ -1,10 +1,14 @@
 """What offgrid writes into a fresh OpenCode directory.
 
-Only what offgrid never revises is here. `configure` writes what is missing and
-never overwrites, because it cannot tell offgrid's own earlier write from a
-person's deliberate edit — so anything derived from the profile would be
-written once and then be wrong, silently, the moment the profile changed.
-Everything offgrid derives travels in the launch instead.
+Only what offgrid never revises is here. `configure` writes this where there is
+no file at all and never touches one that is there, because it cannot tell
+offgrid's own earlier write from a person's deliberate edit — so anything
+derived from the profile would be written once and then be wrong, silently, the
+moment the profile changed. Everything offgrid derives travels in the launch
+instead.
+
+That the check is the file rather than each key is issue #155: a file that is
+there but says none of this gets nothing added.
 """
 
 SETTINGS = "opencode.json"
@@ -16,7 +20,10 @@ SETTINGS = "opencode.json"
 # cannot collide with anything they wrote.
 PROVIDER = "offgrid"
 
-# What makes the entry speak the OpenAI-compatible protocol.
+# Which package the entry speaks the OpenAI-compatible protocol through. Named
+# rather than relied on: measured on opencode 1.18.20, a provider absent from
+# the published registry resolves against this one anyway, so writing it pins
+# what offgrid expects rather than supplying something OpenCode would miss.
 PACKAGE = "@ai-sdk/openai-compatible"
 
 # What OpenCode displays for the provider, which is a key of its own rather
@@ -24,11 +31,11 @@ PACKAGE = "@ai-sdk/openai-compatible"
 LABEL = "offgrid"
 
 # A transcript leaving this machine is the promise `docs/decisions.md` makes,
-# and this is the setting that decides it. Written out rather than left to a
-# default: the value is an enum of manual, automatic and disabled, and which
-# of them applies unset is not stated in the published schema. It goes in the
-# durable half because it is a standing choice about this machine, so somebody
-# who wants sharing back keeps the edit.
+# and this is the setting in the file that decides it. Written out rather than
+# left to a default: the published schema states an enum of manual, auto and
+# disabled and no default for it, so what applies unset is unknown. It goes in
+# the durable half because it is a standing choice about this machine, so
+# somebody who wants sharing back keeps the edit.
 SHARING = "disabled"
 
 # The file is meant to be edited, and this is what gives an editor the

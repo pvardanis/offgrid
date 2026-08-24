@@ -1,13 +1,12 @@
-"""What a run and a report do with a profile naming the second agent.
+"""What a run and a report do with a profile naming OpenCode.
 
 The seam is the command: what a person reads, and what gets launched. What the
 adapter answers on its own is in `tests/test_opencode.py`; what every adapter
 owes is in the conformance suites. What is here is the pair working end to end
 — that naming `opencode` in the file is the whole of switching agents.
 
-`tests/test_cli.py` covers the same ground for the first agent and is long past
-the length a file is kept to, so this is its own module rather than an addition
-to it.
+`tests/test_cli.py` asks the same of the Claude Code adapter, and this is its
+own module so that neither grows past the length a file is kept to.
 """
 
 import json
@@ -26,11 +25,11 @@ runner = CliRunner()
 NAMED = "opencode"
 
 
-def _name_the_second_agent(here):
+def _name_opencode(here):
     """Write a profile, then switch the agent the way a person would.
 
-    `setup` writes the first agent and is deliberately not taught to choose,
-    so naming the second one is the one-line hand-edit the ticket promises.
+    `setup` writes the Claude Code adapter and is deliberately not taught to
+    choose, so naming OpenCode is the one-line hand-edit it takes to switch.
 
     :param here: Where the profile is.
     """
@@ -43,15 +42,15 @@ def _derived(started):
     return json.loads(started["env"]["OPENCODE_CONFIG_CONTENT"])
 
 
-def test_a_profile_naming_the_second_agent_binds_it(here):
+def test_a_profile_naming_opencode_binds_it(here):
     # Switching agents is one line in a hand-edited file.
-    _name_the_second_agent(here)
+    _name_opencode(here)
 
     assert read_profile(here / "profile.yaml").agent.name is AgentName.OPENCODE
 
 
-def test_run_starts_the_second_agent_against_the_model_being_held(here, monkeypatch):
-    _name_the_second_agent(here)
+def test_run_starts_opencode_against_the_model_being_held(here, monkeypatch):
+    _name_opencode(here)
     asked = answer_as_lm_studio(monkeypatch, holding={RESIDENT: 212224})
     started = record_launch(monkeypatch)
 
@@ -63,11 +62,9 @@ def test_run_starts_the_second_agent_against_the_model_being_held(here, monkeypa
     assert asked["let_go"] == [RESIDENT]
 
 
-def test_run_tells_the_second_agent_the_window_the_runtime_settled_on(
-    here, monkeypatch
-):
+def test_run_tells_opencode_the_window_the_runtime_settled_on(here, monkeypatch):
     # The window rather than the model's ceiling, which is 262144 here.
-    _name_the_second_agent(here)
+    _name_opencode(here)
     answer_as_lm_studio(monkeypatch, holding={RESIDENT: 212224})
     started = record_launch(monkeypatch)
 
@@ -78,10 +75,10 @@ def test_run_tells_the_second_agent_the_window_the_runtime_settled_on(
     assert limit["output"] == 8192
 
 
-def test_run_lets_the_model_go_when_the_second_agent_fails(here, monkeypatch):
+def test_run_lets_the_model_go_when_opencode_fails(here, monkeypatch):
     # One machine with one pool of memory: whatever happened, nothing is left
     # holding weights nothing is using.
-    _name_the_second_agent(here)
+    _name_opencode(here)
     asked = answer_as_lm_studio(monkeypatch, holding={RESIDENT: 212224})
     record_launch(monkeypatch, code=3)
 
@@ -91,10 +88,10 @@ def test_run_lets_the_model_go_when_the_second_agent_fails(here, monkeypatch):
     assert asked["let_go"] == [RESIDENT]
 
 
-def test_run_hands_the_rest_of_the_line_to_the_second_agent(here, monkeypatch):
+def test_run_hands_the_rest_of_the_line_to_opencode(here, monkeypatch):
     # Unchanged and in the order they were typed, and a subcommand among them
     # works: OpenCode's own interface and a one-shot run take one argv shape.
-    _name_the_second_agent(here)
+    _name_opencode(here)
     started = record_launch(monkeypatch)
 
     runner.invoke(app, ["run", "--", "run", "say something"])
@@ -102,10 +99,10 @@ def test_run_hands_the_rest_of_the_line_to_the_second_agent(here, monkeypatch):
     assert started["argv"] == ["opencode", "run", "say something"]
 
 
-def test_run_refuses_a_key_the_second_agent_does_not_read(here, monkeypatch):
+def test_run_refuses_a_key_opencode_does_not_read(here, monkeypatch):
     # Before the load, and the message names the section, the adapter and the
     # key — so a typo under `agent:` is reported rather than dropped.
-    _name_the_second_agent(here)
+    _name_opencode(here)
     add_to_section(here, "agent", theme="dark")
     started = record_launch(monkeypatch)
 
@@ -118,9 +115,9 @@ def test_run_refuses_a_key_the_second_agent_does_not_read(here, monkeypatch):
     assert not started
 
 
-def test_doctor_reports_the_second_agent_without_starting_anything(here, monkeypatch):
+def test_doctor_reports_opencode_without_starting_anything(here, monkeypatch):
     # The same reading `run` would act on, had without a load or a launch.
-    _name_the_second_agent(here)
+    _name_opencode(here)
     started = record_launch(monkeypatch)
 
     result = runner.invoke(app, ["doctor"])
@@ -131,10 +128,10 @@ def test_doctor_reports_the_second_agent_without_starting_anything(here, monkeyp
     assert not started
 
 
-def test_doctor_says_the_second_agent_offers_nothing_hosted(here):
-    # The first adapter to answer this, and the evidence a person can check
-    # is the half that makes the claim cost something.
-    _name_the_second_agent(here)
+def test_doctor_says_opencode_offers_nothing_hosted(here):
+    # An agent with nothing hosted, and the evidence a person can check is
+    # the half that makes the claim cost something.
+    _name_opencode(here)
 
     result = runner.invoke(app, ["doctor"])
 

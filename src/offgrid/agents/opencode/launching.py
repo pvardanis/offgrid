@@ -16,15 +16,14 @@ from offgrid.domain.running.agent import Passthrough
 from offgrid.domain.running.model import Model
 
 # Decode runs at tens of tokens per second, so a long reply costs wall time
-# directly. The same cap the other adapter sets, for the same reason.
+# directly. The same cap the Claude Code adapter sets, for the same reason.
 MAX_OUTPUT_TOKENS = 8192
 
 # A conservative placeholder, not a measurement. This number was measured
-# against Claude Code, and the evidence points the other way here — OpenCode's
-# system prompt and tool definitions are roughly a quarter the size — so
-# asserting it as OpenCode's own floor would be a false comment. The cost is
-# windows refused that would probably have run, which is the safe direction.
-# Issue #153 is the measurement.
+# against Claude Code, and the evidence points the other way here — OpenCode
+# sends a smaller prompt and tool set — so asserting it as OpenCode's own floor
+# would be a false comment. The cost is windows refused that would probably
+# have run, which is the safe direction. Issue #153 is the measurement.
 CONTEXT_FLOOR = 25_000
 
 # Where OpenCode reads the durable file, and the configuration a run derives.
@@ -43,9 +42,9 @@ def get_opencode_args(passthrough: Passthrough) -> list[str]:
     """Settle the command line OpenCode is started with.
 
     Nothing of offgrid's own goes on it: which model answers is a key in the
-    configuration this module derives, the same way the other adapter carries
-    it in the launch's environment. So what a person typed is the whole of the
-    command line after the command, in the order they typed it.
+    configuration this module derives, the same way the Claude Code adapter
+    carries it in the launch's environment. So what a person typed is the whole
+    of the command line after the command, in the order they typed it.
 
     :param passthrough: Arguments handed to the agent unchanged.
 
@@ -72,30 +71,34 @@ def get_derived_configuration(model: Model, *, runtime_host: str) -> str:
             "provider": {
                 PROVIDER: {
                     "options": {"baseURL": f"http://{runtime_host}/v1"},
-                    "models": {model.identifier: {"limit": _get_limits(model)}},
+                    "models": {model.identifier: _describe_the_model(model)},
                 }
             },
         }
     )
 
 
-def _get_limits(model: Model) -> dict[str, int]:
-    """Size what the model answers at, out of what the runtime settled on.
+def _describe_the_model(model: Model) -> dict[str, dict[str, int]]:
+    """Say what the model answers at, out of what the runtime settled on.
 
     The window rather than the ceiling, because the ceiling is what the model
     could be served at and the window is what it is being served at — telling
     OpenCode the larger of the two is asking it to compact after the runtime
     has already truncated the prefix.
 
-    Where the runtime states no window, nothing is said about context and
-    OpenCode falls back to its own default. A number invented here would be
-    the same truncation, arrived at by guessing.
+    Where the runtime states no window there is no `limit` at all, rather than
+    one naming an output cap alone. Measured on opencode 1.18.20: the published
+    schema requires `context` and `output` together, and a `limit` carrying one
+    of them is refused as an invalid configuration before a token is generated.
+    Omitting it entirely is accepted. So the output cap goes with the window,
+    which is a real loss — issue #154 is what a person is owed about it.
 
     :param model: The model that will answer.
 
-    :return: What to put under the model's `limit`.
+    :return: The model's entry, which is empty where the runtime states no
+        window to size it from.
     """
     if model.context_window is None:
-        return {"output": MAX_OUTPUT_TOKENS}
+        return {}
 
-    return {"context": model.context_window, "output": MAX_OUTPUT_TOKENS}
+    return {"limit": {"context": model.context_window, "output": MAX_OUTPUT_TOKENS}}

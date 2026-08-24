@@ -92,14 +92,14 @@ def test_the_window_the_runtime_settled_on_is_what_the_agent_is_told(launch):
     assert limit["output"] == 8192
 
 
-def test_a_model_whose_window_is_unstated_is_not_sized_from_its_ceiling(agent):
-    # Nothing to size it to and nothing to guess with, so nothing is said
-    # about context and the output cap still is.
+def test_a_model_whose_window_is_unstated_carries_no_limit_at_all(agent):
+    # Nothing to size it to and nothing to guess with. Measured on opencode
+    # 1.18.20, a `limit` naming an output cap and no context is refused as an
+    # invalid configuration before a token is generated, so the cap goes with
+    # the window rather than outliving it.
     derived = read_derived(plan_for(agent, window=None))
 
-    limit = derived["provider"]["offgrid"]["models"][WANTED]["limit"]
-    assert "context" not in limit
-    assert limit["output"] == 8192
+    assert derived["provider"]["offgrid"]["models"][WANTED] == {}
 
 
 def test_the_file_the_agent_keeps_is_the_one_it_is_pointed_at(launch, tmp_path):
@@ -112,7 +112,7 @@ def test_the_file_the_agent_keeps_is_the_one_it_is_pointed_at(launch, tmp_path):
 def test_the_command_line_carries_only_what_a_person_typed(agent):
     # Which model answers is a key in the configuration, so offgrid adds no
     # argument of its own — and a person's own model flag beats it the same
-    # way it beats the other adapter's environment. One shape covers the
+    # way it beats the Claude Code adapter's environment. One shape covers the
     # interactive interface and a one-shot run alike.
     typed = ("run", "say something")
 
@@ -134,15 +134,15 @@ def test_a_config_built_for_another_agent_cannot_reach_this_one(agent):
     # Both registry dicts are typed on the base config, so nothing but this
     # refusal stops a name being bound to one adapter's config and another's
     # factory. Asked of this adapter because `test_architecture.py` asks it
-    # of the first one only.
+    # of the Claude Code adapter alone.
     with pytest.raises(TypeError, match="OpenCodeConfig was expected"):
         prepare(StandInAgentConfig(runtime_host=HOST), ())
 
 
 def test_opencode_offers_no_hosted_tool_and_says_what_that_was_measured_on(agent):
-    # The first adapter to answer this, and the case the reading was designed
-    # for: an agent with nothing hosted says something true and dated rather
-    # than implementing a guard whose body does nothing.
+    # The case the reading was designed for: an agent with nothing hosted
+    # says something true and dated rather than implementing a guard whose
+    # body does nothing.
     found = agent.read_hosted_tools()
 
     assert found.status is HostedToolsStatus.NONE_OFFERED
