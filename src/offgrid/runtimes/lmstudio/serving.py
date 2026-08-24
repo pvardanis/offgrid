@@ -9,9 +9,10 @@ from offgrid.domain.running.capabilities import Capabilities
 from offgrid.domain.running.dialect import Dialect
 
 # It exposes `POST /v1/messages` beside `POST /v1/chat/completions`, so an
-# agent speaking either shape can be pointed at it. Whether it serves either
-# one *completely* — the token count below is one of the endpoints that answers
-# while doing nothing — is a different question, open as issue #43.
+# agent speaking either shape can be pointed at it. `tests/test_live_dialects.py`
+# asks both of a running server. Whether it serves either one *completely* is a
+# different question, open as issue #43 — the token count `CAPABILITIES` reads
+# on is one of the endpoints that answers while doing nothing.
 DIALECTS = frozenset({Dialect.ANTHROPIC, Dialect.OPENAI})
 
 # `/v1/messages/count_tokens` answers 200 while the server logs `Unexpected

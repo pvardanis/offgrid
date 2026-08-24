@@ -178,6 +178,7 @@ one command that reaches the network — see [Commands](#commands).
 ```console
 $ offgrid doctor
 runtime   lmstudio at 127.0.0.1:1234, reachable
+serving   anthropic, openai
 model     qwen/qwen3.6-35b-a3b
 ceiling   262144
 window    262144
@@ -210,7 +211,7 @@ $ offgrid run -- -p "explain what this module does"
 |---|---|
 | `offgrid setup [--host HOST]` | Measures this Mac, says what fits, writes the profile. Keeps whatever you edited into it by hand — unless the file no longer loads, which is set aside as `profile.yaml.rejected` and replaced. |
 | `offgrid recommend` | Fetches a published coding table, keeps the models this machine can hold, and prints them at each width they fit at. |
-| `offgrid doctor` | Reports the runtime, the model it is holding, the most that model could be served at, what it is being served at, what the profile asks the next run for, the smallest window the agent starts in, the dialects the runtime serves, and the agent's own. A runtime holding nothing is reported in the model's lines and exits `1`; every other line is read without one. |
+| `offgrid doctor` | Reports the runtime, the model it is holding, the most that model could be served at, what it is being served at, what the profile asks the next run for, the smallest window the agent starts in, the dialects the runtime serves, and the agent's own dialect. A runtime holding nothing is reported in the model's lines and exits `1`; every other line is read without one. |
 | `offgrid run [-m MODEL] [--context-window N] [-- ARGS]` | Starts the agent. Loads `MODEL` when it is not already held, otherwise uses what is. Holds it at `N` where one is asked for. |
 
 The command line beats the `model:` section of the profile, which beats
@@ -329,14 +330,20 @@ config declares which keys the runtime section may carry, and offgrid refuses
 the rest on the adapter's behalf. Its name is a property of the class rather
 than a field, so a config cannot claim to be an adapter it is not. What that answers with satisfies `Runtime`: it
 reports the dialects it serves and what it can be asked to do, lists what it
-has and what it holds, holds one model alone, and lets one go. How it reaches that state is its
-own business, and nothing above knows which runtime is answering.
+has and what it holds, holds one model alone, and lets one go. How it reaches
+that state is its own business, and nothing above knows which runtime is
+answering.
 
-Both serve both shapes, so the pairing check has nothing to refuse among the
+Both expose both shapes, so the pairing check has nothing to refuse among the
 runtimes here. Where it earns its keep is an agent speaking something the
 runtime does not serve: that pair is refused rather than translated, and the
-refusal names every dialect the runtime does serve, so you can see which end to
-change.
+refusal names every dialect the runtime does serve, so you can see which end
+to change.
+
+Exposing an endpoint is not the same as serving it completely — token counts
+are missing or approximate, and some endpoints answer while doing nothing.
+What a runtime owes to count as serving a dialect fully is
+[issue #43](https://github.com/pvardanis/offgrid/issues/43).
 
 <details>
 <summary><b>LM Studio</b> — the endpoints used, and two behaviours worth knowing</summary>
