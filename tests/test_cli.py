@@ -644,9 +644,12 @@ def test_an_agent_that_cannot_talk_to_the_runtime_is_refused_before_the_wait(
     assert "translat" in result.stderr
 
 
-def test_a_refusal_names_every_dialect_the_runtime_serves(here, monkeypatch):
-    # Which end to change is only readable where the whole set is named: a
-    # refusal naming one of them says nothing about the rest.
+def test_a_refusal_reaches_the_terminal_naming_what_each_side_speaks(here, monkeypatch):
+    # What a person reads, which neither conformance suite can see. It names
+    # one dialect served because a refused pair can only have one: with two
+    # dialects, a runtime serving both matches whatever the agent speaks. The
+    # wording for a larger set is `test_dialect.py`'s to pin, once a third
+    # dialect makes such a refusal reachable.
     from offgrid.domain.running.dialect import Dialect
     from tests.pairing import StandInRuntime, answer_as_a_runtime
 
@@ -654,6 +657,7 @@ def test_a_refusal_names_every_dialect_the_runtime_serves(here, monkeypatch):
     answer_as_a_runtime(
         monkeypatch, StandInRuntime(dialects=frozenset({Dialect.ANTHROPIC}))
     )
+    record_launch(monkeypatch)
     answer_as_an_agent(monkeypatch, StandInAgent(dialect=Dialect.OPENAI))
 
     result = runner.invoke(app, ["run", "-m", "a/other-7b"])

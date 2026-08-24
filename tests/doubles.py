@@ -103,9 +103,10 @@ def answer_as_an_agent(monkeypatch: pytest.MonkeyPatch, agent: StandInAgent) -> 
     """Answer for an agent nothing on this machine can be made to be.
 
     The registry is where a name becomes an adapter, so it is where a test
-    stands one in. Both of the things this arranges — an agent speaking a
-    dialect no runtime here serves, and a launch that cannot be built — have
-    nothing below the adapter to arrange them with.
+    stands one in. What it arranges — an agent whose floor no model here
+    meets, and a launch that cannot be built — has nothing below the adapter
+    to arrange it with. A pair that cannot talk is arranged from the runtime
+    side, in `tests/pairing.py`, since LM Studio serves both dialects.
 
     :param monkeypatch: The test's patcher.
     :param agent: What the registry should answer with.
