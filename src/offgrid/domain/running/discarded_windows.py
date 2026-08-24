@@ -4,8 +4,8 @@ A runtime that discards the window a run asks for answers the next run the
 same way, so asking again costs a release and a load that change nothing —
 and where the runtime caches a prompt prefix, the load throws the cache away.
 The fact is kept rather than the verdict: what was asked, what came back, and
-when. Keyed on the runtime and the model together, because it is a property
-of one model on one server rather than of either alone.
+when. Keyed on the runtime, the model and the window together: two models on
+one server disagree about this, and one model may be reached at two addresses.
 
 Read as a file a person may have opened: a record it refuses is one it says
 so about, the same way a profile is read. Nothing expires — deleting the file
@@ -67,7 +67,10 @@ DISCARDED_WINDOWS = TypeAdapter(list[DiscardedWindow])
 def save_discarded_window(
     *, host: str, identifier: str, asked_for: int, served: int, file_path: Path
 ) -> None:
-    """Keep that a runtime did not grant a window, replacing its last answer.
+    """Keep that a runtime did not grant a window, beside the ones before it.
+
+    Every window a runtime discarded is kept, not only the last, so a run
+    going back to an earlier one is not put a question already answered.
 
     Stamped here rather than by the caller, so that a record without a day on
     it never exists. Written beside the file and moved onto it, so that a run
@@ -91,10 +94,11 @@ def save_discarded_window(
         noticed_at=datetime.now().isoformat(timespec="seconds"),
     )
 
+    asked = (host, identifier, asked_for)
     others = [
         record
         for record in _read_all(file_path)
-        if (record.host, record.identifier) != (host, identifier)
+        if (record.host, record.identifier, record.asked_for) != asked
     ]
 
     file_path.parent.mkdir(parents=True, exist_ok=True)
@@ -103,26 +107,22 @@ def save_discarded_window(
     os.replace(beside, file_path)
 
 
-def read_discarded_windows(host: str, file_path: Path) -> dict[str, DiscardedWindow]:
+def read_discarded_windows(host: str, file_path: Path) -> tuple[DiscardedWindow, ...]:
     """Read back what one runtime did with the windows it was asked for.
 
     Every record for the runtime at once: a command that reads them one at a
     time opens the file once per question, and the answers come from the same
-    moment either way.
+    moment either way. How to look one up is the caller's to say.
 
     :param host: Address the runtime listens on.
     :param file_path: Where they would have been kept.
 
-    :return: What was kept, against the model each record is about.
+    :return: What was kept about this runtime, in the order it was written.
 
     :raise DiscardedWindowsUnreadableError: When the file is there and will
         not read.
     """
-    return {
-        record.identifier: record
-        for record in _read_all(file_path)
-        if record.host == host
-    }
+    return tuple(record for record in _read_all(file_path) if record.host == host)
 
 
 def _read_all(file_path: Path) -> list[DiscardedWindow]:
