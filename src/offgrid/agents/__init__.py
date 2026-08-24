@@ -10,7 +10,7 @@ The two mappings are keyed alike and go together: one says what a name is
 built from, the other what it is started as.
 """
 
-from offgrid.agents import claude_code
+from offgrid.agents import claude_code, opencode
 from offgrid.domain.running.agent import (
     Agent,
     AgentConfig,
@@ -19,10 +19,14 @@ from offgrid.domain.running.agent import (
     Prepare,
 )
 
-AGENTS: dict[AgentName, Prepare] = {AgentName.CLAUDE_CODE: claude_code.prepare}
+AGENTS: dict[AgentName, Prepare] = {
+    AgentName.CLAUDE_CODE: claude_code.prepare,
+    AgentName.OPENCODE: opencode.prepare,
+}
 
 AGENT_CONFIGS: dict[AgentName, type[AgentConfig]] = {
-    AgentName.CLAUDE_CODE: claude_code.ClaudeCodeConfig
+    AgentName.CLAUDE_CODE: claude_code.ClaudeCodeConfig,
+    AgentName.OPENCODE: opencode.OpenCodeConfig,
 }
 
 

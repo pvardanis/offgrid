@@ -1,0 +1,25 @@
+"""OpenCode, which speaks the OpenAI-compatible protocol.
+
+`OpenCodeConfig` and `prepare` are the whole of what the registry asks for: one
+says what a profile's agent section may hold, the other binds it. What that
+answers with is in `opencode.py`, and what it writes and derives is beside it.
+"""
+
+from offgrid.agents.opencode.config import OpenCodeConfig
+from offgrid.agents.opencode.opencode import OpenCode
+from offgrid.domain.running.agent import Agent, AgentConfig, Passthrough
+from offgrid.shared.declaring import as_declared
+
+
+def prepare(config: AgentConfig, passthrough: Passthrough) -> Agent:
+    """Bind what OpenCode is run out of and started with.
+
+    :param config: What the profile settled for this agent.
+    :param passthrough: Arguments handed to the agent unchanged.
+
+    :return: An agent offgrid can configure and start.
+
+    :raise TypeError: When the config was built for another agent, which is a
+        registry binding one name to two adapters.
+    """
+    return OpenCode(config=as_declared(config, OpenCodeConfig), passthrough=passthrough)
