@@ -34,6 +34,18 @@ def test_a_runtime_serving_nothing_is_refused_saying_so():
     assert "no dialect" in str(raised.value)
 
 
+def test_a_runtime_serving_nothing_is_not_offered_a_proxy():
+    # A proxy goes between two shapes. Offering one to somebody whose runtime
+    # serves none sends them to build a translator with one end unattached,
+    # when what they have is an adapter that is wrong.
+    with pytest.raises(DialectMismatchError) as raised:
+        require_compatible(frozenset(), Dialect.ANTHROPIC)
+
+    message = str(raised.value)
+    assert "translat" not in message
+    assert "adapter" in message
+
+
 def test_a_mismatch_carries_both_sides_for_a_caller_to_read():
     with pytest.raises(DialectMismatchError) as raised:
         require_compatible(frozenset({Dialect.OPENAI}), Dialect.ANTHROPIC)
