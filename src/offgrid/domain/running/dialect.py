@@ -34,10 +34,32 @@ def require_compatible(served: frozenset[Dialect], expected: Dialect) -> None:
 
     raise DialectMismatchError(
         f"The runtime serves {_name_what_is_served(served)} and the agent "
-        f"expects {expected.value}. Put a translating proxy between them, or "
-        f"pick a runtime that serves {expected.value}.",
+        f"expects {expected.value}. {_say_what_to_do(served, expected)}",
         served=served,
         expected=expected,
+    )
+
+
+def _say_what_to_do(served: frozenset[Dialect], expected: Dialect) -> str:
+    """Say the way out, which a runtime serving nothing does not have.
+
+    A proxy goes between two shapes, so offering one to somebody whose runtime
+    serves none sends them to build a translator with one end unattached.
+
+    :param served: Every dialect the runtime serves.
+    :param expected: The dialect the agent expects.
+
+    :return: What to change.
+    """
+    if not served:
+        return (
+            "A runtime serving nothing can be paired with no agent at all, "
+            "which is a fault in its adapter rather than in the pair."
+        )
+
+    return (
+        "Put a translating proxy between them, or pick a runtime that serves "
+        f"{expected.value}."
     )
 
 
@@ -45,8 +67,8 @@ def _name_what_is_served(served: frozenset[Dialect]) -> str:
     """Say every dialect a runtime serves, so a reader can see which end to change.
 
     In a settled order, so that two runs of the same refusal read alike: a
-    message built from a set's own order names them differently between calls
-    with nothing changed.
+    dialect hashes by its name, which is salted per process, so a message
+    built from a set's own order names them differently between runs.
 
     :param served: Every dialect the runtime serves.
 
