@@ -1206,3 +1206,38 @@ built from.
 Reading one takes `find_resident_model`, which answers with what is held or
 with nothing. `get_resident_model` is that reading plus the refusal, for the
 caller that cannot go on without one.
+
+## The cold-start lever oMLX would add is a second model, which is the one thing a run here cannot spare
+
+`docs/research/local-agent-latency.md` closed the runtime-adapter option on two
+grounds — GGUF format, and mlx-lm's issue 980 — and oMLX escapes both: it is
+MLX-native, and it ships its own prefix cache with Qwen3.5 handling rather than
+mlx-lm's. So the option reopens, and read to the end it closes again on the
+constraint this project is built around.
+
+oMLX's one dramatic cold-prefill lever is SpecPrefill: a draft model scores the
+prompt and the target prefills only the tokens that matter. The draft is a
+separate set of weights held beside the target — a path to another model, a 4B
+against a 35B in oMLX's own validation pairs — and its load bypasses the engine
+pool's memory admission, so turning it on where one pool of memory holds one
+model is the crash the machine already does, not an error offgrid could catch.
+The prefix-reuse path that would cut Claude Code's 25,000-token system-and-tools
+floor without a draft is single-model in its own signature but wired to run only
+inside the draft-bearing branch, so reaching it here is a fork of oMLX rather
+than a setting.
+
+What oMLX offers single-model is real and incremental, not the 30x its README
+reports for GLM-5.2, which does not reach `qwen3_5_moe`: a reasoning-off knob on
+`/v1/messages` and a working `count_tokens`, the two gaps LM Studio's Anthropic
+surface leaves; a cross-session disk cache that keys prefixes by content hash
+exactly as LM Studio's does, so no more robust against Claude Code's per-session
+drift; and Qwen3.5 prefill kernels that need a custom-kernel build to exist at
+all.
+
+So no swap is proposed on this evidence. The lever that would justify one is
+off-limits where one pool of memory holds one model, and whether the incremental
+single-model wins beat LM Studio comes down to a single unmeasured number — one
+Qwen3.5 cold prefill on each runtime, one model at a time, never both. That
+measurement is what would reopen the question. The reasoning-off knob is the one
+win worth taking even without a swap, since it is where LM Studio's Anthropic
+surface is silent and decode here runs at tens of tokens a second.
