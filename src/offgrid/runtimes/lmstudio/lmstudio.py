@@ -15,27 +15,11 @@ from offgrid.runtimes.lmstudio.catalogue import (
 )
 from offgrid.runtimes.lmstudio.config import LMStudioConfig
 from offgrid.runtimes.lmstudio.holding import load_model, unload_model
+from offgrid.runtimes.lmstudio.serving import CAPABILITIES
 from offgrid.shared.exceptions import (
     ModelNotHeldError,
     ModelUnavailableError,
     RuntimeUnreachableError,
-)
-
-# `/v1/messages/count_tokens` answers 200 while the server logs `Unexpected
-# endpoint or method`, so a caller cannot tell a count of zero from an endpoint
-# that is not there.
-#
-# Memory it may manage itself, and which is unsettled. The TTL and the
-# Auto-Evict that `docs/research/adapter-surfaces.md` records both belong to a
-# JIT load — one the runtime does on its own initiative to answer a request —
-# and the load endpoint offgrid asks is not that. Whether a model it loads is
-# ever dropped underneath it needs an hour against a live server to answer, so
-# the claim is left at the reading that costs a caller a wasted check rather
-# than a promise offgrid cannot keep. Issue #109.
-CAPABILITIES = Capabilities(
-    counts_tokens=False,
-    release_can_be_commanded=True,
-    manages_its_own_memory=True,
 )
 
 log = logging.getLogger(__name__)

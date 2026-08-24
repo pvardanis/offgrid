@@ -109,6 +109,8 @@ would be doing.
 cli/               the layer, a module per command and the four attached
   setup.py         measure this machine, and write the profile
   doctor.py        what can be read before a run costs a load
+  checkup.py       what a run can be told before it costs a load, and
+                   how it reads
   recommend.py     what a published list says this machine can hold
   run.py           hold a model, start the agent, let the model go
   reporting.py     what offgrid's own errors look like at the terminal
@@ -121,6 +123,7 @@ cli/               the layer, a module per command and the four attached
 runtimes/          one package per runtime
   lmstudio/
     lmstudio.py    what a runtime is asked, in LM Studio's terms
+    serving.py     what it can be asked, settled without reaching it
     config.py      what it is reached with, as a profile says it
     catalogue.py   what it has, and what it is holding
     holding.py     taking a model into memory, and letting one go
