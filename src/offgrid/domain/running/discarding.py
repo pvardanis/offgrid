@@ -20,6 +20,7 @@ from offgrid.domain.running.discarded_windows import (
     save_discarded_window,
 )
 from offgrid.domain.running.model import Model, ModelRequest
+from offgrid.domain.running.runtime import RuntimeName
 from offgrid.shared.exceptions import DiscardedWindowsUnreadableError
 
 # Whether a model was refused a window before, asked of what is already read.
@@ -112,7 +113,12 @@ def read_what_became_of_the_window(
 
 
 def save_discarded_window_if_new(
-    became: WhatBecameOfTheWindow, model: Model, *, host: str, file_path: Path
+    became: WhatBecameOfTheWindow,
+    model: Model,
+    *,
+    runtime: RuntimeName,
+    host: str,
+    file_path: Path,
 ) -> str | None:
     """Write down a refusal the runtime gave this run, where it gave one.
 
@@ -125,7 +131,8 @@ def save_discarded_window_if_new(
 
     :param became: What became of the window a run asked for.
     :param model: The model the record is about.
-    :param host: Address the runtime listens on.
+    :param runtime: Which runtime discarded it.
+    :param host: Address it listens on.
     :param file_path: Where the records are kept.
     :return: The complaint to say where it could not be written, or ``None``
         where there was nothing to write or writing it worked.
@@ -135,6 +142,7 @@ def save_discarded_window_if_new(
 
     try:
         save_discarded_window(
+            runtime=runtime,
             host=host,
             identifier=model.identifier,
             asked_for=became.asked_for,

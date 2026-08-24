@@ -238,7 +238,7 @@ sequenceDiagram
     A-->>C: HostedToolsReport
     C->>C: require_hosted_tools_denied(report)
     Note over C,A: everything knowable before a load, before the load
-    C->>W: read_discarded_windows(host, file_path)
+    C->>W: read_discarded_windows(runtime, host, file_path)
     W-->>C: every window this runtime discarded, by model and window
     C->>H: hold_model(runtime, model_request, agent.context_floor, was_refused)
     Note over H: either half may be none: no model asks for whatever is<br/>held, no window asks for whatever it is served at

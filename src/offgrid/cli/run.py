@@ -66,7 +66,7 @@ def run(
 
         discarded_windows_path = discarded_windows.DEFAULT_PATH
         discarded_by_model = discarded_windows.read_discarded_windows(
-            profile.runtime.host, discarded_windows_path
+            profile.runtime.name, profile.runtime.host, discarded_windows_path
         )
         model = hold_model(
             runtime,
@@ -97,6 +97,7 @@ def run(
             complaint = save_discarded_window_if_new(
                 became,
                 model,
+                runtime=profile.runtime.name,
                 host=profile.runtime.host,
                 file_path=discarded_windows_path,
             )

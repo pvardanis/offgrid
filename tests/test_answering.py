@@ -20,6 +20,7 @@ from offgrid.domain.running.answering import (
 from offgrid.domain.running.discarded_windows import DiscardedWindow
 from offgrid.domain.running.discarding import refuse_to_ask_again
 from offgrid.domain.running.model import ModelRequest
+from offgrid.domain.running.runtime import RuntimeName
 from offgrid.runtimes.lmstudio import connect
 from offgrid.runtimes.lmstudio.config import LMStudioConfig
 from offgrid.shared.exceptions import ModelUnavailableError
@@ -149,6 +150,7 @@ def _refused(**kept):
     return refuse_to_ask_again(
         tuple(
             DiscardedWindow(
+                runtime=RuntimeName.LMSTUDIO,
                 host=HOST,
                 identifier=identifier,
                 asked_for=window,

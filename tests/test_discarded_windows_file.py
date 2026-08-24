@@ -15,8 +15,10 @@ from offgrid.domain.running.discarded_windows import (
     read_discarded_windows,
     save_discarded_window,
 )
+from offgrid.domain.running.runtime import RuntimeName
 from offgrid.shared.exceptions import DiscardedWindowsUnreadableError
 
+RUNTIME = RuntimeName.LMSTUDIO
 HOST = "127.0.0.1:1234"
 MODEL = "a/held-7b"
 OTHER_MODEL = "a/other-7b"
@@ -41,6 +43,7 @@ def _save(tmp_path, *, host=HOST, identifier=MODEL, asked_for=1000, served=2000)
     :param served: The window the runtime served instead.
     """
     save_discarded_window(
+        runtime=RUNTIME,
         host=host,
         identifier=identifier,
         asked_for=asked_for,
@@ -58,10 +61,21 @@ def _hand_written(tmp_path, *records) -> None:
     _kept(tmp_path).write_text(json.dumps(list(records)))
 
 
+# A record offgrid would have written, for a test to spoil one key of.
+_WHOLE = {
+    "runtime": RUNTIME.value,
+    "host": HOST,
+    "identifier": MODEL,
+    "asked_for": 1000,
+    "served": 2000,
+    "noticed_at": "2026-08-21T14:31:07",
+}
+
+
 def test_a_record_reads_back_as_it_was_kept(tmp_path):
     _save(tmp_path, asked_for=131_072, served=262_144)
 
-    (read,) = read_discarded_windows(HOST, _kept(tmp_path))
+    (read,) = read_discarded_windows(RUNTIME, HOST, _kept(tmp_path))
 
     assert (read.asked_for, read.served) == (131_072, 262_144)
 
@@ -73,7 +87,7 @@ def test_a_second_window_is_kept_beside_the_first(tmp_path):
     _save(tmp_path, asked_for=1000, served=2000)
     _save(tmp_path, asked_for=3000, served=4000)
 
-    read = read_discarded_windows(HOST, _kept(tmp_path))
+    read = read_discarded_windows(RUNTIME, HOST, _kept(tmp_path))
 
     assert {(r.asked_for, r.served) for r in read} == {(1000, 2000), (3000, 4000)}
 
@@ -83,10 +97,10 @@ def test_a_record_is_about_one_model_on_one_server(tmp_path):
     # and one model may be reached at two addresses.
     _save(tmp_path)
 
-    (here,) = read_discarded_windows(HOST, _kept(tmp_path))
+    (here,) = read_discarded_windows(RUNTIME, HOST, _kept(tmp_path))
 
     assert (here.identifier, here.asked_for) == (MODEL, 1000)
-    assert read_discarded_windows("127.0.0.1:9999", _kept(tmp_path)) == ()
+    assert read_discarded_windows(RUNTIME, "127.0.0.1:9999", _kept(tmp_path)) == ()
 
 
 def test_replacing_one_record_leaves_the_others_alone(tmp_path):
@@ -94,20 +108,20 @@ def test_replacing_one_record_leaves_the_others_alone(tmp_path):
     _save(tmp_path, identifier=OTHER_MODEL, asked_for=5, served=6)
     _save(tmp_path, asked_for=1000, served=9000)
 
-    read = read_discarded_windows(HOST, _kept(tmp_path))
+    read = read_discarded_windows(RUNTIME, HOST, _kept(tmp_path))
 
     assert (OTHER_MODEL, 5) in {(r.identifier, r.asked_for) for r in read}
 
 
 def test_a_file_that_is_not_there_is_no_memory(tmp_path):
-    assert read_discarded_windows(HOST, _kept(tmp_path)) == ()
+    assert read_discarded_windows(RUNTIME, HOST, _kept(tmp_path)) == ()
 
 
 def test_a_file_that_will_not_read_is_said_out_loud(tmp_path):
     _kept(tmp_path).write_text("{not json at all")
 
     with pytest.raises(DiscardedWindowsUnreadableError, match="could not be read"):
-        read_discarded_windows(HOST, _kept(tmp_path))
+        read_discarded_windows(RUNTIME, HOST, _kept(tmp_path))
 
 
 @pytest.mark.parametrize(
@@ -124,31 +138,29 @@ def test_a_record_offgrid_cannot_read_is_refused(tmp_path, what, record):
     # not look, so it would otherwise be a window of one token.
     _hand_written(
         tmp_path,
-        {"host": HOST, "identifier": MODEL, "noticed_at": "2026-08-21T14:31:07"}
-        | record,
+        _WHOLE | record,
     )
 
     with pytest.raises(DiscardedWindowsUnreadableError):
-        read_discarded_windows(HOST, _kept(tmp_path))
+        read_discarded_windows(RUNTIME, HOST, _kept(tmp_path))
+
+
+def test_a_record_naming_a_runtime_offgrid_does_not_have_is_refused(tmp_path):
+    # The stance the profile takes about the same name: one offgrid has no
+    # adapter for is a mistake in the file, not a record about nothing.
+    _hand_written(tmp_path, _WHOLE | {"runtime": "not-a-runtime"})
+
+    with pytest.raises(DiscardedWindowsUnreadableError):
+        read_discarded_windows(RUNTIME, HOST, _kept(tmp_path))
 
 
 def test_a_key_offgrid_does_not_write_is_refused(tmp_path):
     # A typo in a hand-edited record is reported rather than read as a record
     # about nothing, which is how the profile is read too.
-    _hand_written(
-        tmp_path,
-        {
-            "host": HOST,
-            "identifier": MODEL,
-            "asked_for": 1000,
-            "served": 2000,
-            "noticed_at": "2026-08-21T14:31:07",
-            "why": "because",
-        },
-    )
+    _hand_written(tmp_path, _WHOLE | {"why": "because"})
 
     with pytest.raises(DiscardedWindowsUnreadableError):
-        read_discarded_windows(HOST, _kept(tmp_path))
+        read_discarded_windows(RUNTIME, HOST, _kept(tmp_path))
 
 
 def test_saving_for_one_runtime_leaves_another_runtimes_record_alone(tmp_path):
@@ -158,8 +170,8 @@ def test_saving_for_one_runtime_leaves_another_runtimes_record_alone(tmp_path):
     _save(tmp_path, host=HOST, asked_for=1000)
     _save(tmp_path, host="127.0.0.1:9999", asked_for=2000)
 
-    kept = read_discarded_windows(HOST, _kept(tmp_path))
-    other = read_discarded_windows("127.0.0.1:9999", _kept(tmp_path))
+    kept = read_discarded_windows(RUNTIME, HOST, _kept(tmp_path))
+    other = read_discarded_windows(RUNTIME, "127.0.0.1:9999", _kept(tmp_path))
 
     assert [r.asked_for for r in kept] == [1000]
     assert [r.asked_for for r in other] == [2000]

@@ -118,7 +118,7 @@ def _read_what_was_discarded(
 
     try:
         records = discarded_windows.read_discarded_windows(
-            profile.runtime.host, discarded_windows.DEFAULT_PATH
+            profile.runtime.name, profile.runtime.host, discarded_windows.DEFAULT_PATH
         )
     except DiscardedWindowsUnreadableError as error:
         return (), str(error)

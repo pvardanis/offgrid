@@ -4,15 +4,15 @@ A runtime that discards the window a run asks for answers the next run the
 same way, so asking again costs a release and a load that change nothing —
 and where the runtime caches a prompt prefix, the load throws the cache away.
 The fact is kept rather than the verdict: what was asked, what came back, and
-when. Keyed on the runtime, the model and the window together: two models on
-one server disagree about this, and one model may be reached at two addresses.
+when. Keyed on the runtime, its address, the model and the window together:
+two models on one server disagree about this, one model may be reached at two
+addresses, and an address names one server at a time rather than for all time.
 
 Read as a file a person may have opened: a record it refuses is one it says
 so about, the same way a profile is read. Nothing expires — deleting the file
 is how a person says to ask again.
 """
 
-import json
 import os
 from datetime import datetime
 from pathlib import Path
@@ -22,6 +22,7 @@ from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError
 from pydantic import BeforeValidator as Before
 
 from offgrid.domain.running.model import refuse_a_yes_or_no
+from offgrid.domain.running.runtime import RuntimeName
 from offgrid.shared.exceptions import DiscardedWindowsUnreadableError
 from offgrid.shared.home import OFFGRID_HOME
 
@@ -37,6 +38,9 @@ class DiscardedWindow(BaseModel):
     Keys it does not name are refused, so a hand-edited record with a typo in
     it is reported rather than read as a record about nothing.
 
+    :param runtime: Which runtime it was. An address names one server at a
+        time rather than for all time, so a runtime that stops listening on it
+        and another that starts must not be answered with each other's records.
     :param host: Address the runtime listens on.
     :param identifier: The model that was asked for.
     :param asked_for: The window the run asked to hold it at.
@@ -46,6 +50,7 @@ class DiscardedWindow(BaseModel):
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
+    runtime: RuntimeName
     host: str
     identifier: str
     asked_for: Window
@@ -65,7 +70,13 @@ DISCARDED_WINDOWS = TypeAdapter(list[DiscardedWindow])
 
 
 def save_discarded_window(
-    *, host: str, identifier: str, asked_for: int, served: int, file_path: Path
+    *,
+    runtime: RuntimeName,
+    host: str,
+    identifier: str,
+    asked_for: int,
+    served: int,
+    file_path: Path,
 ) -> None:
     """Keep that a runtime did not grant a window, beside the ones before it.
 
@@ -76,6 +87,7 @@ def save_discarded_window(
     it never exists. Written beside the file and moved onto it, so that a run
     interrupted mid-write leaves the last answer rather than half of this one.
 
+    :param runtime: Which runtime it was.
     :param host: Address the runtime listens on.
     :param identifier: The model that was asked for.
     :param asked_for: The window the run asked to hold it at.
@@ -87,6 +99,7 @@ def save_discarded_window(
         since replacing one record means writing the rest back.
     """
     noticed = DiscardedWindow(
+        runtime=runtime,
         host=host,
         identifier=identifier,
         asked_for=asked_for,
@@ -94,27 +107,30 @@ def save_discarded_window(
         noticed_at=datetime.now().isoformat(timespec="seconds"),
     )
 
-    asked = (host, identifier, asked_for)
+    asked = (runtime, host, identifier, asked_for)
     others = [
         record
         for record in _read_all(file_path)
-        if (record.host, record.identifier, record.asked_for) != asked
+        if (record.runtime, record.host, record.identifier, record.asked_for) != asked
     ]
 
     file_path.parent.mkdir(parents=True, exist_ok=True)
     beside = file_path.with_name(f"{file_path.name}.writing")
-    beside.write_text(json.dumps([r.model_dump() for r in [*others, noticed]]))
+    beside.write_bytes(DISCARDED_WINDOWS.dump_json([*others, noticed]))
     os.replace(beside, file_path)
 
 
-def read_discarded_windows(host: str, file_path: Path) -> tuple[DiscardedWindow, ...]:
+def read_discarded_windows(
+    runtime: RuntimeName, host: str, file_path: Path
+) -> tuple[DiscardedWindow, ...]:
     """Read back what one runtime did with the windows it was asked for.
 
     Every record for the runtime at once: a command that reads them one at a
     time opens the file once per question, and the answers come from the same
     moment either way. How to look one up is the caller's to say.
 
-    :param host: Address the runtime listens on.
+    :param runtime: Which runtime is being asked about.
+    :param host: Address it listens on.
     :param file_path: Where they would have been kept.
 
     :return: What was kept about this runtime, in the order it was written.
@@ -122,7 +138,9 @@ def read_discarded_windows(host: str, file_path: Path) -> tuple[DiscardedWindow,
     :raise DiscardedWindowsUnreadableError: When the file is there and will
         not read.
     """
-    return tuple(record for record in _read_all(file_path) if record.host == host)
+    asked = (runtime, host)
+
+    return tuple(r for r in _read_all(file_path) if (r.runtime, r.host) == asked)
 
 
 def _read_all(file_path: Path) -> list[DiscardedWindow]:
