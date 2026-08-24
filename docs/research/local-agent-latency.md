@@ -702,6 +702,24 @@ which is the term this note says dominates** — 111.5s against 96.3s at 33.9k
 tokens — it loses the warm path five-fold, and it loses the agent-shaped
 scenario, which is the one that looks like the thing being complained about.
 
+The one feature oMLX has that attacks prefill directly is off-limits here.
+SpecPrefill scores a prompt with a draft model and has the target prefill only
+the tokens that matter — and the draft is a second set of weights.
+`specprefill_draft_model` is a path to a separate checkpoint
+(`omlx/model_settings.py:257`), loaded in the engine's `start()` through
+`lm_load_compat` with no memory admission in front of it: the pool's
+`preflight_or_raise_with_eviction` guards prompts, not weights
+(`omlx/engine/batched.py`; the guards at `:1009` and `:1035`). A 4B draft beside
+the 35B target is two models in one pool, which is the over-commit this project's
+design forbids and this machine answers with a crash rather than an error.
+SpecPrefill, DFlash and VLM MTP all default off and are mutually exclusive
+(`model_settings.py:247`, `:277`, `:318`; guards `:374`–`:399`), so a plain load
+is single-model and none of them is reachable here. The static system-prefix
+reuse inside SpecPrefill that would cut Claude Code's cold floor without a draft
+is single-model by its own signature — `run_specprefill_target_prefill` takes
+only `target_model` (`omlx/specprefill/target.py:76`) — but runs only inside the
+draft-bearing path, so reaching it is a fork rather than a setting.
+
 *Cost of building it.* The `Runtime` port is six members and oMLX answers every
 one. `GET /v1/models` and `GET /v1/models/status` split catalogue from held
 (`adapter-surfaces.md` section 4); `POST /v1/models/{model_id}/unload`
@@ -896,3 +914,12 @@ thing being fixed is "every turn is slow", it is not.
     attached, and compare `output_tokens`. Two requests, and it either confirms
     section 3a for the case that matters or overturns it. **This should be run
     before anything in section 3a is acted on.**
+
+12. **How much SpecPrefill would cut this model's cold prefill — unanswerable
+    here.** Section 5 shows oMLX's sparse prefill is the one mechanism found that
+    attacks the prefill term this note says dominates, and that it needs a second
+    resident model. So whether it would help is a real question that cannot be
+    asked on this machine: the test holds a draft beside the target, which is two
+    models in one pool, which is the crash. Unlike the items above it is not
+    experiment-shaped — the magnitude stays unknown here, and any figure would
+    have to come from oMLX's own numbers or a machine that can hold both.
