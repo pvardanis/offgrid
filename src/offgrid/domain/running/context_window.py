@@ -106,7 +106,7 @@ def refuse_a_window_above_the_ceiling(
     )
 
 
-def read_the_ceiling(
+def get_model_ceiling(
     runtime: Runtime, model_request: ModelRequest, resident: Model | None
 ) -> int | None:
     """Find the most the model asked for could be served at.

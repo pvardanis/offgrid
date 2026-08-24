@@ -98,7 +98,7 @@ def save_discarded_window(
     :raise DiscardedWindowsUnreadableError: When what is there will not read,
         since replacing one record means writing the rest back.
     """
-    noticed = DiscardedWindow(
+    noticed_window = DiscardedWindow(
         runtime=runtime,
         host=host,
         identifier=identifier,
@@ -116,7 +116,7 @@ def save_discarded_window(
 
     file_path.parent.mkdir(parents=True, exist_ok=True)
     beside = file_path.with_name(f"{file_path.name}.writing")
-    beside.write_bytes(DISCARDED_WINDOWS.dump_json([*others, noticed]))
+    beside.write_bytes(DISCARDED_WINDOWS.dump_json([*others, noticed_window]))
     os.replace(beside, file_path)
 
 

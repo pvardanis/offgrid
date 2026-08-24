@@ -9,11 +9,11 @@ it differently. This is where offgrid says which model it wants held.
 """
 
 from offgrid.domain.running.context_window import (
-    read_the_ceiling,
+    get_model_ceiling,
     refuse_a_window_above_the_ceiling,
     refuse_a_window_below_the_floor,
 )
-from offgrid.domain.running.discarding import IsWindowRefused
+from offgrid.domain.running.discarding import WasWindowRefusedFunc
 from offgrid.domain.running.model import Model, ModelRequest
 from offgrid.domain.running.runtime import Runtime
 from offgrid.shared.exceptions import ModelUnavailableError
@@ -62,7 +62,7 @@ def hold_model(
     model_request: ModelRequest,
     *,
     context_floor: int,
-    was_refused: IsWindowRefused,
+    was_window_refused_func: WasWindowRefusedFunc,
 ) -> Model:
     """Hold the model that will answer: the one asked for, or the one there.
 
@@ -81,7 +81,7 @@ def hold_model(
     :param runtime: The runtime to ask.
     :param model_request: The model a run asked for, and the window to hold it at.
     :param context_floor: The smallest window the agent can start in.
-    :param was_refused: Whether this runtime refused a model this window
+    :param was_window_refused_func: Whether this runtime refused a model this window
         before. Asked once the model is named, since a run may have named
         none and be answered with the resident one.
 
@@ -114,7 +114,7 @@ def hold_model(
         )
 
     refuse_a_window_above_the_ceiling(
-        model_request, ceiling=read_the_ceiling(runtime, model_request, resident)
+        model_request, ceiling=get_model_ceiling(runtime, model_request, resident)
     )
 
     # A window this runtime refused before is not put to it again: asking
@@ -122,7 +122,9 @@ def hold_model(
     # the prefix the runtime had cached. See #136.
     window = model_request.context_window
 
-    if window is not None and was_refused(str(model_request.identifier), window):
+    if window is not None and was_window_refused_func(
+        str(model_request.identifier), window
+    ):
         model_request = model_request.model_copy(update={"context_window": None})
 
     return runtime.ensure_only(model_request)

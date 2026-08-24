@@ -240,7 +240,7 @@ sequenceDiagram
     Note over C,A: everything knowable before a load, before the load
     C->>W: read_discarded_windows(runtime, host, file_path)
     W-->>C: every window this runtime discarded, by model and window
-    C->>H: hold_model(runtime, model_request, agent.context_floor, was_refused)
+    C->>H: hold_model(runtime, model_request, agent.context_floor, was_window_refused_func)
     Note over H: either half may be none: no model asks for whatever is<br/>held, no window asks for whatever it is served at
     H->>H: refuse a window below the floor or above the ceiling
     Note over H: still before the load, and the ceiling is one<br/>catalogue read against tens of seconds

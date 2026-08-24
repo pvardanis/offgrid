@@ -13,7 +13,7 @@ from offgrid.domain.running.context_window import (
 from offgrid.domain.running.dialect import require_compatible
 from offgrid.domain.running.discarding import (
     read_what_became_of_the_window,
-    refuse_to_ask_again,
+    refuse_to_ask_runtime_again,
     save_discarded_window_if_new,
 )
 from offgrid.domain.running.hosted_tools import require_hosted_tools_denied
@@ -72,7 +72,7 @@ def run(
             runtime,
             model_request,
             context_floor=agent.context_floor,
-            was_refused=refuse_to_ask_again(discarded_by_model),
+            was_window_refused_func=refuse_to_ask_runtime_again(discarded_by_model),
         )
 
     # Nothing between here and the agent finishing may leave the model held:
@@ -89,13 +89,13 @@ def run(
 
         tell(f"{model.identifier}, window {served}")
 
-        became = read_what_became_of_the_window(
+        what_became_of_the_window = read_what_became_of_the_window(
             discarded_by_model, model_request, model
         )
-        if became is not None:
-            tell(became.said)
+        if what_became_of_the_window is not None:
+            tell(what_became_of_the_window.said)
             complaint = save_discarded_window_if_new(
-                became,
+                what_became_of_the_window,
                 model,
                 runtime=profile.runtime.name,
                 host=profile.runtime.host,
