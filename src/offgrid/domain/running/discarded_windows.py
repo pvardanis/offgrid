@@ -61,7 +61,7 @@ class DiscardedWindow(BaseModel):
         return self.noticed_at.split("T")[0]
 
 
-KEPT = TypeAdapter(list[DiscardedWindow])
+DISCARDED_WINDOWS = TypeAdapter(list[DiscardedWindow])
 
 
 def save_discarded_window(
@@ -91,7 +91,7 @@ def save_discarded_window(
         noticed_at=datetime.now().isoformat(timespec="seconds"),
     )
 
-    kept = [
+    others = [
         record
         for record in _read_all(file_path)
         if (record.host, record.identifier) != (host, identifier)
@@ -99,7 +99,7 @@ def save_discarded_window(
 
     file_path.parent.mkdir(parents=True, exist_ok=True)
     beside = file_path.with_name(f"{file_path.name}.writing")
-    beside.write_text(json.dumps([r.model_dump() for r in [*kept, noticed]]))
+    beside.write_text(json.dumps([r.model_dump() for r in [*others, noticed]]))
     os.replace(beside, file_path)
 
 
@@ -140,7 +140,7 @@ def _read_all(file_path: Path) -> list[DiscardedWindow]:
     :raise DiscardedWindowsUnreadableError: When it is there and will not read.
     """
     try:
-        return KEPT.validate_json(file_path.read_bytes())
+        return DISCARDED_WINDOWS.validate_json(file_path.read_bytes())
     except FileNotFoundError:
         return []
     except (OSError, ValidationError) as error:

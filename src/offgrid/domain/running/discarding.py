@@ -23,7 +23,7 @@ from offgrid.domain.running.model import Model, ModelRequest
 from offgrid.shared.exceptions import DiscardedWindowsUnreadableError
 
 # Whether a model was refused a window before, asked of what is already read.
-Refused = Callable[[str, int], bool]
+IsWindowRefused = Callable[[str, int], bool]
 
 
 @dataclass(frozen=True)
@@ -43,29 +43,27 @@ class WhatBecameOfTheWindow:
     is_news: bool
 
 
-def refuse_to_ask_again(kept: dict[str, DiscardedWindow]) -> Refused:
+def refuse_to_ask_again(
+    discarded_windows: dict[str, DiscardedWindow],
+) -> IsWindowRefused:
     """Say which windows this runtime has already refused.
 
-    :param kept: What was kept about this runtime, by model.
+    Every model and window it discarded, read once: the answer to each
+    question is a membership test rather than another pass over the records.
+
+    :param discarded_windows: What was kept about this runtime, by model.
     :return: Whether a model was refused exactly this window before.
     """
+    refused = {
+        (identifier, record.asked_for)
+        for identifier, record in discarded_windows.items()
+    }
 
-    def was_refused(identifier: str, window: int) -> bool:
-        """Say whether this model was refused this window.
-
-        :param identifier: The model about to be asked for.
-        :param window: The window about to be asked for.
-        :return: Whether that pair is already on record.
-        """
-        record = kept.get(identifier)
-
-        return record is not None and record.asked_for == window
-
-    return was_refused
+    return lambda identifier, window: (identifier, window) in refused
 
 
 def read_what_became_of_the_window(
-    kept: dict[str, DiscardedWindow], request: ModelRequest, model: Model
+    discarded_windows: dict[str, DiscardedWindow], request: ModelRequest, model: Model
 ) -> WhatBecameOfTheWindow | None:
     """Say what happened to the window a run asked for, where it did not get it.
 
@@ -76,7 +74,7 @@ def read_what_became_of_the_window(
     model may have been loaded this run, so a sentence about what is "already
     held" would be a claim about state that offgrid did not check.
 
-    :param kept: What was kept about this runtime.
+    :param discarded_windows: What was kept about this runtime.
     :param request: What the run asked for, before anything was held.
     :param model: The model as the runtime now serves it.
     :return: What became of the window, or ``None`` where the runtime serves
@@ -87,8 +85,8 @@ def read_what_became_of_the_window(
     if asked_for is None or served is None or served == asked_for:
         return None
 
-    if refuse_to_ask_again(kept)(model.identifier, asked_for):
-        record = kept[model.identifier]
+    if refuse_to_ask_again(discarded_windows)(model.identifier, asked_for):
+        record = discarded_windows[model.identifier]
 
         return WhatBecameOfTheWindow(
             said=(
@@ -113,8 +111,8 @@ def read_what_became_of_the_window(
     )
 
 
-def keep_what_the_runtime_did(
-    became: WhatBecameOfTheWindow, model: Model, *, host: str, kept: Path
+def save_discarded_window_if_new(
+    became: WhatBecameOfTheWindow, model: Model, *, host: str, file_path: Path
 ) -> str | None:
     """Write down a refusal the runtime gave this run, where it gave one.
 
@@ -128,8 +126,9 @@ def keep_what_the_runtime_did(
     :param became: What became of the window a run asked for.
     :param model: The model the record is about.
     :param host: Address the runtime listens on.
-    :param kept: Where the records are kept.
-    :return: What to say about not keeping it, or ``None``.
+    :param file_path: Where the records are kept.
+    :return: The complaint to say where it could not be written, or ``None``
+        where there was nothing to write or writing it worked.
     """
     if not became.is_news:
         return None
@@ -140,12 +139,12 @@ def keep_what_the_runtime_did(
             identifier=model.identifier,
             asked_for=became.asked_for,
             served=became.served,
-            file_path=kept,
+            file_path=file_path,
         )
     except (OSError, DiscardedWindowsUnreadableError) as error:
         return (
-            f"{kept} could not be written: {error}. The run goes on, and the "
-            "next one asks for the window again."
+            f"{file_path} could not be written: {error}. The run goes on, and "
+            "the next one asks for the window again."
         )
 
     return None

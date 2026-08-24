@@ -238,7 +238,7 @@ sequenceDiagram
     A-->>C: HostedToolsReport
     C->>C: require_hosted_tools_denied(report)
     Note over C,A: everything knowable before a load, before the load
-    C->>W: read_discarded_windows(host, kept)
+    C->>W: read_discarded_windows(host, file_path)
     W-->>C: what this runtime refused, by model
     C->>H: hold_model(runtime, model_request, agent.context_floor, was_refused)
     Note over H: either half may be none: no model asks for whatever is<br/>held, no window asks for whatever it is served at
@@ -252,9 +252,9 @@ sequenceDiagram
     H-->>C: Model
     C->>C: refuse a served window below the floor
     Note over C: the load is spent either way; what this saves is<br/>the agent starting and failing on its own terms
-    C->>W: read_what_became_of_the_window(kept, request, model)
+    C->>W: read_what_became_of_the_window(discarded_windows, request, model)
     W-->>C: what to say, and whether it is worth keeping
-    C->>W: keep_what_the_runtime_did(...)
+    C->>W: save_discarded_window_if_new(...)
     Note over C,W: only where the runtime refused it this run: one<br/>already on record was never put to it again
     C->>A: plan(model)
     A-->>C: Launch
