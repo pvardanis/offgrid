@@ -18,7 +18,7 @@ from offgrid.domain.running.answering import (
     hold_model,
 )
 from offgrid.domain.running.discarded_windows import DiscardedWindow
-from offgrid.domain.running.discarding import refuse_to_ask_again
+from offgrid.domain.running.discarding import refuse_to_ask_runtime_again
 from offgrid.domain.running.model import ModelRequest
 from offgrid.domain.running.runtime import RuntimeName
 from offgrid.runtimes.lmstudio import connect
@@ -80,7 +80,7 @@ def test_naming_no_model_answers_with_the_one_already_there(monkeypatch):
         connect(LMStudioConfig(host=HOST)),
         ModelRequest(),
         context_floor=FLOOR,
-        was_refused=lambda identifier, window: False,
+        was_window_refused_func=lambda identifier, window: False,
     )
 
     assert model.identifier == RESIDENT
@@ -100,7 +100,7 @@ def test_a_window_asked_for_without_a_model_holds_the_resident_one_at_it(
         connect(LMStudioConfig(host=HOST)),
         ModelRequest(context_window=16000),
         context_floor=FLOOR,
-        was_refused=lambda identifier, window: False,
+        was_window_refused_func=lambda identifier, window: False,
     )
 
     assert model.identifier == RESIDENT
@@ -115,7 +115,7 @@ def test_naming_neither_a_model_nor_a_window_costs_no_load(monkeypatch):
         connect(LMStudioConfig(host=HOST)),
         ModelRequest(),
         context_floor=FLOOR,
-        was_refused=lambda identifier, window: False,
+        was_window_refused_func=lambda identifier, window: False,
     )
 
     assert model.context_window == 8192
@@ -132,7 +132,7 @@ def test_the_model_asked_for_is_held_alone(monkeypatch):
         connect(LMStudioConfig(host=HOST)),
         ModelRequest(identifier="a/other-7b"),
         context_floor=FLOOR,
-        was_refused=lambda identifier, window: False,
+        was_window_refused_func=lambda identifier, window: False,
     )
 
     assert model.identifier == "a/other-7b"
@@ -147,7 +147,7 @@ def _refused(**kept):
 
     :return: Whether a model was refused exactly this window before.
     """
-    return refuse_to_ask_again(
+    return refuse_to_ask_runtime_again(
         tuple(
             DiscardedWindow(
                 runtime=RuntimeName.LMSTUDIO,
@@ -171,7 +171,7 @@ def test_a_window_the_runtime_refused_before_is_not_asked_for_again(monkeypatch)
         connect(LMStudioConfig(host=HOST)),
         ModelRequest(identifier=RESIDENT, context_window=131_072),
         context_floor=FLOOR,
-        was_refused=_refused(**{RESIDENT: 131_072}),
+        was_window_refused_func=_refused(**{RESIDENT: 131_072}),
     )
 
     assert model.context_window == 262_144
@@ -188,7 +188,7 @@ def test_a_window_the_runtime_was_never_asked_for_is_still_asked_for(monkeypatch
         connect(LMStudioConfig(host=HOST)),
         ModelRequest(identifier=RESIDENT, context_window=30_000),
         context_floor=FLOOR,
-        was_refused=_refused(**{RESIDENT: 200_000}),
+        was_window_refused_func=_refused(**{RESIDENT: 200_000}),
     )
 
     assert asked["window"] == 30_000

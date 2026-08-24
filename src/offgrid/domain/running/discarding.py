@@ -24,7 +24,7 @@ from offgrid.domain.running.runtime import RuntimeName
 from offgrid.shared.exceptions import DiscardedWindowsUnreadableError
 
 # Whether a model was refused a window before, asked of what is already read.
-IsWindowRefused = Callable[[str, int], bool]
+WasWindowRefusedFunc = Callable[[str, int], bool]
 
 
 @dataclass(frozen=True)
@@ -44,9 +44,9 @@ class WhatBecameOfTheWindow:
     is_news: bool
 
 
-def refuse_to_ask_again(
+def refuse_to_ask_runtime_again(
     discarded_windows: tuple[DiscardedWindow, ...],
-) -> IsWindowRefused:
+) -> WasWindowRefusedFunc:
     """Say which windows this runtime has already refused.
 
     Every model and window it discarded, read once: the answer to each
@@ -113,7 +113,7 @@ def read_what_became_of_the_window(
 
 
 def save_discarded_window_if_new(
-    became: WhatBecameOfTheWindow,
+    what_became_of_the_window: WhatBecameOfTheWindow,
     model: Model,
     *,
     runtime: RuntimeName,
@@ -129,7 +129,8 @@ def save_discarded_window_if_new(
     taking that away over a record offgrid keeps for itself costs the load
     twice.
 
-    :param became: What became of the window a run asked for.
+    :param what_became_of_the_window: What became of the window a run
+        asked for.
     :param model: The model the record is about.
     :param runtime: Which runtime discarded it.
     :param host: Address it listens on.
@@ -137,7 +138,7 @@ def save_discarded_window_if_new(
     :return: The complaint to say where it could not be written, or ``None``
         where there was nothing to write or writing it worked.
     """
-    if not became.is_news:
+    if not what_became_of_the_window.is_news:
         return None
 
     try:
@@ -145,8 +146,8 @@ def save_discarded_window_if_new(
             runtime=runtime,
             host=host,
             identifier=model.identifier,
-            asked_for=became.asked_for,
-            served=became.served,
+            asked_for=what_became_of_the_window.asked_for,
+            served=what_became_of_the_window.served,
             file_path=file_path,
         )
     except (OSError, DiscardedWindowsUnreadableError) as error:
