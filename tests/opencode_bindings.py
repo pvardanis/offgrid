@@ -19,6 +19,11 @@ HOST = "127.0.0.1:1234"
 WANTED = "qwen/qwen3.6-35b-a3b"
 SETTINGS = "opencode.json"
 
+# Every spelling of a runtime's name a value might carry, because the claim is
+# that this adapter knows runtimes have no names at all — and a check for the
+# profile's spelling alone passes a provider labelled the way a person reads it.
+RUNTIME_SPELLINGS = ("lmstudio", "lm studio", "lm-studio")
+
 
 def bind(host: str = HOST, passthrough: Passthrough = (), **said) -> Agent:
     """Bind the adapter the way the registry does, from what a profile said.

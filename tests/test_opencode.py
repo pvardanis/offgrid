@@ -9,11 +9,13 @@ it can go stale.
 
 import pytest
 
-from offgrid.agents.opencode.launching import CONFIG_FILE
+from offgrid.agents.opencode import prepare
 from offgrid.domain.running.dialect import Dialect
 from offgrid.domain.running.hosted_tools import HostedToolsStatus
+from tests.doubles import StandInAgentConfig
 from tests.opencode_bindings import (
     HOST,
+    RUNTIME_SPELLINGS,
     SETTINGS,
     WANTED,
     bind,
@@ -101,7 +103,10 @@ def test_a_model_whose_window_is_unstated_is_not_sized_from_its_ceiling(agent):
 
 
 def test_the_file_the_agent_keeps_is_the_one_it_is_pointed_at(launch, tmp_path):
-    assert launch.env[CONFIG_FILE] == str(tmp_path / "opencode" / SETTINGS)
+    # The variable is written out rather than imported, because a launch that
+    # named it something else would carry the durable half where OpenCode
+    # never looks — and importing the constant would rename both sides at once.
+    assert launch.env["OPENCODE_CONFIG"] == str(tmp_path / "opencode" / SETTINGS)
 
 
 def test_the_command_line_carries_only_what_a_person_typed(agent):
@@ -114,6 +119,24 @@ def test_the_command_line_carries_only_what_a_person_typed(agent):
     argv = plan_for(bind(passthrough=typed)).argv
 
     assert argv == ["opencode", *typed]
+
+
+def test_nothing_the_launch_carries_names_a_runtime(launch):
+    # The criterion is stated over the adapter, not over what `configure`
+    # writes, so the half a run derives is asked the same question: nothing
+    # in this adapter knows a runtime has a name.
+    carried = read_everything_carried(launch).lower()
+
+    assert not [spelling for spelling in RUNTIME_SPELLINGS if spelling in carried]
+
+
+def test_a_config_built_for_another_agent_cannot_reach_this_one(agent):
+    # Both registry dicts are typed on the base config, so nothing but this
+    # refusal stops a name being bound to one adapter's config and another's
+    # factory. Asked of this adapter because `test_architecture.py` asks it
+    # of the first one only.
+    with pytest.raises(TypeError, match="OpenCodeConfig was expected"):
+        prepare(StandInAgentConfig(runtime_host=HOST), ())
 
 
 def test_opencode_offers_no_hosted_tool_and_says_what_that_was_measured_on(agent):
