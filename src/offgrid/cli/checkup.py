@@ -24,10 +24,12 @@ class Checkup:
 
     :param profile: What was written down.
     :param resident: The model the runtime is holding, or ``None`` where it
-        holds none — which the rest of the report survives, since a runtime
+        holds none — which the rest of the report survives, because a runtime
         holding nothing still answered.
     :param hosted_tools: What the agent says it can reach.
     :param dialect: What the agent speaks.
+    :param served: Every dialect the runtime serves, which says whether an
+        agent other than this one would pair with it.
     :param context_floor: The smallest window the agent can start in.
     :param discarded: Every window this runtime discarded for the model it is
         holding, and empty where it discarded none and where the records could
@@ -40,6 +42,7 @@ class Checkup:
     resident: Model | None
     hosted_tools: HostedToolsReport
     dialect: Dialect
+    served: frozenset[Dialect]
     context_floor: int
     discarded: tuple[DiscardedWindow, ...]
     unreadable: str | None
@@ -59,6 +62,7 @@ def describe_what_was_read(checkup: Checkup) -> tuple[str, ...]:
 
     said = (
         f"runtime   {profile.runtime.name.value} at {profile.runtime.host}, reachable",
+        f"serving   {', '.join(sorted(d.value for d in checkup.served))}",
         *_describe_the_model(checkup.resident, profile.model),
         f"profile   {describe_what_is_asked_for(profile.model)}",
         f"agent     {profile.agent.name.value}, speaking {checkup.dialect.value}",

@@ -626,18 +626,41 @@ def test_an_agent_that_cannot_talk_to_the_runtime_is_refused_before_the_wait(
     here, monkeypatch
 ):
     # Checking after the load spends a minute of someone's time to arrive at
-    # an answer that was knowable before it started.
+    # an answer that was knowable before it started. The stand-in runtime
+    # refuses everything over the wire, so a check that has moved after the
+    # load fails here rather than passing quietly.
     from offgrid.domain.running.dialect import Dialect
+    from tests.pairing import StandInRuntime, answer_as_a_runtime
 
     runner.invoke(app, ["setup"])
-    asked = answer_as_lm_studio(monkeypatch, cold={"a/other-7b": 8192})
+    answer_as_a_runtime(
+        monkeypatch, StandInRuntime(dialects=frozenset({Dialect.ANTHROPIC}))
+    )
     record_launch(monkeypatch)
     answer_as_an_agent(monkeypatch, StandInAgent(dialect=Dialect.OPENAI))
 
     result = runner.invoke(app, ["run", "-m", "a/other-7b"])
     assert result.exit_code == 1
     assert "translat" in result.stderr
-    assert asked["order"] == []
+
+
+def test_a_refusal_names_every_dialect_the_runtime_serves(here, monkeypatch):
+    # Which end to change is only readable where the whole set is named: a
+    # refusal naming one of them says nothing about the rest.
+    from offgrid.domain.running.dialect import Dialect
+    from tests.pairing import StandInRuntime, answer_as_a_runtime
+
+    runner.invoke(app, ["setup"])
+    answer_as_a_runtime(
+        monkeypatch, StandInRuntime(dialects=frozenset({Dialect.ANTHROPIC}))
+    )
+    answer_as_an_agent(monkeypatch, StandInAgent(dialect=Dialect.OPENAI))
+
+    result = runner.invoke(app, ["run", "-m", "a/other-7b"])
+
+    assert result.exit_code == 1
+    assert "anthropic" in result.stderr
+    assert "openai" in result.stderr
 
 
 def test_the_model_is_let_go_when_the_agent_finishes(here, monkeypatch, runtime):

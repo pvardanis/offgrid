@@ -61,15 +61,19 @@ class LeaderboardUnreadableError(LeaderboardUnavailableError):
 
 
 class DialectMismatchError(OffgridError):
-    """The agent speaks a different API dialect than the runtime serves.
+    """The runtime serves no API dialect the agent speaks.
+
+    Both sides arrive as `object` because `shared` reaches nothing of
+    offgrid's own, which is what keeps it the innermost layer. A caller that
+    wants them typed reads them where the dialects are defined.
 
     :param message: What went wrong and what to do about it.
-    :param served: The dialect the runtime serves.
+    :param served: Every dialect the runtime serves, as a set of them.
     :param expected: The dialect the agent expects.
     """
 
     def __init__(self, message: str, served: object, expected: object) -> None:
-        """Record which dialect each side speaks alongside the message."""
+        """Record what each side speaks alongside the message."""
         super().__init__(message)
         self.served = served
         self.expected = expected

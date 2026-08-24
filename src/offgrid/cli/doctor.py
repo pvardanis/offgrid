@@ -51,6 +51,7 @@ def _read_what_can_be_read() -> Checkup:
         resident=resident,
         hosted_tools=agent.read_hosted_tools(),
         dialect=agent.dialect,
+        served=runtime.dialects,
         context_floor=agent.context_floor,
         discarded=discarded,
         unreadable=unreadable,

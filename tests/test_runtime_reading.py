@@ -58,5 +58,16 @@ def test_what_a_connection_settled_is_readable_without_reaching_the_runtime(
     runtime.arrange_unreachable(monkeypatch)
     connection = runtime.connect()
 
-    assert isinstance(connection.dialect, Dialect)
+    assert isinstance(connection.dialects, frozenset)
+    assert all(isinstance(dialect, Dialect) for dialect in connection.dialects)
     assert isinstance(connection.capabilities, Capabilities)
+
+
+def test_a_runtime_serves_at_least_one_dialect(
+    runtime: RuntimeUnderTest, monkeypatch: pytest.MonkeyPatch
+):
+    # A runtime nothing can be paired with is not a runtime, and an empty set
+    # would otherwise pass every membership check by never matching.
+    runtime.arrange_unreachable(monkeypatch)
+
+    assert runtime.connect().dialects

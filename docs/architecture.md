@@ -123,7 +123,8 @@ cli/               the layer, a module per command and the four attached
 runtimes/          one package per runtime
   lmstudio/
     lmstudio.py    what a runtime is asked, in LM Studio's terms
-    serving.py     what it can be asked, settled without reaching it
+    serving.py     which dialects it serves and what it can be asked,
+                   settled without reaching it
     config.py      what it is reached with, as a profile says it
     catalogue.py   what it has, and what it is holding
     holding.py     taking a model into memory, and letting one go
@@ -235,7 +236,7 @@ sequenceDiagram
     C->>G: prepare_agent(profile.agent, passthrough)
     G-->>C: Agent
     Note over C,G: the only place a name becomes an adapter, and<br/>where a key its adapter does not read is refused
-    C->>D: require_compatible(runtime.dialect, agent.dialect)
+    C->>D: require_compatible(runtime.dialects, agent.dialect)
     C->>A: configure()
     C->>A: read_hosted_tools()
     A-->>C: HostedToolsReport
@@ -373,7 +374,8 @@ table.
 
 `setup` and `doctor` are linear and need no diagram. `setup` measures the
 machine, writes the profile and says what fits. `doctor` asks the runtime what
-it is holding and prints it beside the agent's dialect.
+it is holding and prints it beside the dialects the runtime serves and the
+one the agent speaks.
 
 ## What the profile carries — built
 
@@ -474,7 +476,7 @@ Connect = Callable[[RuntimeConfig], Runtime]
 
 class Runtime(Protocol):
     @property
-    def dialect(self) -> Dialect: ...
+    def dialects(self) -> frozenset[Dialect]: ...
     @property
     def capabilities(self) -> Capabilities: ...
 
@@ -495,10 +497,10 @@ an interface that says which of its members touch the network and one that
 leaves a caller to find out.
 
 The two attributes are declared as properties because that is what makes them
-read-only. Written `dialect: Dialect`, a protocol attribute is one a caller may
-also assign to, and what satisfies it here is frozen: `ty` refuses the pair
-with `protocol member capabilities is incompatible — the member does not accept
-writes`. A caller reads `runtime.dialect` either way.
+read-only. Written `dialects: frozenset[Dialect]`, a protocol attribute is one
+a caller may also assign to, and what satisfies it here is frozen: `ty` refuses
+the pair with `protocol member capabilities is incompatible — the member does
+not accept writes`. A caller reads `runtime.dialects` either way.
 
 A Protocol rather than typed callables because a connection carries state —
 the host, the capabilities probed when it opened — and because six related
@@ -904,9 +906,9 @@ source says where the documentation is silent.
 | llama.cpp | both | router mode only; a timer otherwise | router mode only |
 
 **Every candidate serves both dialects.** All four expose `POST /v1/messages`
-and `POST /v1/chat/completions`. So "a runtime serves one dialect" is not what
-any of them is, and `require_compatible` may have no real pair left to refuse
-among runtimes. It still earns its keep on the agent side: Codex CLI accepts
+and `POST /v1/chat/completions`. So a runtime states the set it serves, pairing
+is a membership test over it, and `require_compatible` may have no real pair
+left to refuse among runtimes. It still earns its keep on the agent side: Codex CLI accepts
 only the Responses API as of `rust-v0.147.0`, where `WireApi` has one variant
 and `wire_api = "chat"` is a named error.
 
@@ -974,9 +976,11 @@ things, each of which a runtime that is not LM Studio still owes:
   than raises where nothing can be reached — both its callers are cleanup, and
   anything raised there replaces the outcome they were about to report.
 - An unreachable runtime arrives as `RuntimeUnreachableError` naming the
-  address, whichever of the three asking methods was called, while `dialect`
+  address, whichever of the three asking methods was called, while `dialects`
   and `capabilities` still read: they were settled when the connection opened,
   which is what lets `run` check the dialect before paying for a load.
+- A runtime serves at least one dialect. One serving none would pass every
+  membership check by never matching, which is not a runtime.
 
 `tests/runtimes_under_test.py` is the parametrization, and a second adapter
 joins by writing one stand-in and adding a line there. A stand-in answers as

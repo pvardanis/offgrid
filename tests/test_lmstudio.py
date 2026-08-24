@@ -133,5 +133,9 @@ def test_a_model_the_api_describes_sparsely_still_parses():
     assert model.context_window is None
 
 
-def test_lm_studio_serves_the_anthropic_dialect():
-    assert connect(LMStudioConfig(host="127.0.0.1:1234")).dialect is Dialect.ANTHROPIC
+def test_lm_studio_serves_both_dialects():
+    # It exposes `POST /v1/messages` and `POST /v1/chat/completions` both, so
+    # an agent speaking either one pairs with it.
+    assert connect(LMStudioConfig(host="127.0.0.1:1234")).dialects == frozenset(
+        {Dialect.ANTHROPIC, Dialect.OPENAI}
+    )

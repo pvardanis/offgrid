@@ -1,10 +1,18 @@
-"""What LM Studio can be asked, settled without reaching it.
+"""What LM Studio serves and what it can be asked, settled without reaching it.
 
-A fact about the application rather than about one connection to it, which is
-why it reads before anything has answered.
+Facts about the application rather than about one connection to it, which is
+why they read before anything has answered — and that is what lets a run
+refuse an impossible pairing before it pays for a load.
 """
 
 from offgrid.domain.running.capabilities import Capabilities
+from offgrid.domain.running.dialect import Dialect
+
+# It exposes `POST /v1/messages` beside `POST /v1/chat/completions`, so an
+# agent speaking either shape can be pointed at it. Whether it serves either
+# one *completely* — the token count below is one of the endpoints that answers
+# while doing nothing — is a different question, open as issue #43.
+DIALECTS = frozenset({Dialect.ANTHROPIC, Dialect.OPENAI})
 
 # `/v1/messages/count_tokens` answers 200 while the server logs `Unexpected
 # endpoint or method`, so a caller cannot tell a count of zero from an endpoint

@@ -50,8 +50,9 @@ Five words carry the whole design, and the modules are named after them.
 - **agent** — the coding tool being launched. One adapter per agent, in
   `agents/`.
 - **dialect** — the HTTP API shape a runtime serves and an agent expects,
-  `anthropic` or `openai`. A runtime and an agent can be paired only when their
-  dialects match. offgrid refuses the pair rather than translating between them.
+  `anthropic` or `openai`. A runtime serves a set of them and an agent speaks
+  one, and the two can be paired only when the agent's is among the runtime's.
+  offgrid refuses the pair rather than translating between them.
 - **held**, **resident** — a model the runtime currently has in memory. A held
   model answers immediately; anything else costs a load first.
 - **profile** — what offgrid remembers between runs: one section per adapter,
@@ -209,7 +210,7 @@ $ offgrid run -- -p "explain what this module does"
 |---|---|
 | `offgrid setup [--host HOST]` | Measures this Mac, says what fits, writes the profile. Keeps whatever you edited into it by hand — unless the file no longer loads, which is set aside as `profile.yaml.rejected` and replaced. |
 | `offgrid recommend` | Fetches a published coding table, keeps the models this machine can hold, and prints them at each width they fit at. |
-| `offgrid doctor` | Reports the runtime, the model it is holding, the most that model could be served at, what it is being served at, what the profile asks the next run for, the smallest window the agent starts in, and the agent's dialect. A runtime holding nothing is reported in the model's lines and exits `1`; every other line is read without one. |
+| `offgrid doctor` | Reports the runtime, the model it is holding, the most that model could be served at, what it is being served at, what the profile asks the next run for, the smallest window the agent starts in, the dialects the runtime serves, and the agent's own. A runtime holding nothing is reported in the model's lines and exits `1`; every other line is read without one. |
 | `offgrid run [-m MODEL] [--context-window N] [-- ARGS]` | Starts the agent. Loads `MODEL` when it is not already held, otherwise uses what is. Holds it at `N` where one is asked for. |
 
 The command line beats the `model:` section of the profile, which beats
@@ -317,23 +318,25 @@ Then, in order:
 
 ## Runtimes
 
-| Runtime | Dialect served | Supported |
+| Runtime | Dialects served | Supported |
 |---|---|---|
-| [LM Studio](https://lmstudio.ai/) | `anthropic` | ✅ |
-| [Ollama](https://ollama.com/) | `openai` | ❌ |
+| [LM Studio](https://lmstudio.ai/) | `anthropic`, `openai` | ✅ |
+| [Ollama](https://ollama.com/) | `anthropic`, `openai` | ❌ |
 
 Adding one is a module in `runtimes/` exposing a config class and a
 `connect(config)`, and one line each in the two registries beside it. The
 config declares which keys the runtime section may carry, and offgrid refuses
 the rest on the adapter's behalf. Its name is a property of the class rather
 than a field, so a config cannot claim to be an adapter it is not. What that answers with satisfies `Runtime`: it
-reports a dialect and what it can be asked to do, lists what it has and what it
-holds, holds one model alone, and lets one go. How it reaches that state is its
+reports the dialects it serves and what it can be asked to do, lists what it
+has and what it holds, holds one model alone, and lets one go. How it reaches that state is its
 own business, and nothing above knows which runtime is answering.
 
-Ollama serving the `openai` dialect is the interesting part: pairing it with an
-agent that expects `anthropic` would be refused rather than translated, so it
-needs an agent on the same side or a proxy of your own between them.
+Both serve both shapes, so the pairing check has nothing to refuse among the
+runtimes here. Where it earns its keep is an agent speaking something the
+runtime does not serve: that pair is refused rather than translated, and the
+refusal names every dialect the runtime does serve, so you can see which end to
+change.
 
 <details>
 <summary><b>LM Studio</b> — the endpoints used, and two behaviours worth knowing</summary>

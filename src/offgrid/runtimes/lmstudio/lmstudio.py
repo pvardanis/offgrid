@@ -15,7 +15,7 @@ from offgrid.runtimes.lmstudio.catalogue import (
 )
 from offgrid.runtimes.lmstudio.config import LMStudioConfig
 from offgrid.runtimes.lmstudio.holding import load_model, unload_model
-from offgrid.runtimes.lmstudio.serving import CAPABILITIES
+from offgrid.runtimes.lmstudio.serving import CAPABILITIES, DIALECTS
 from offgrid.shared.exceptions import (
     ModelNotHeldError,
     ModelUnavailableError,
@@ -29,14 +29,14 @@ log = logging.getLogger(__name__)
 class LMStudio:
     """A running copy of LM Studio, at the address it was reached on.
 
-    `dialect` and `capabilities` are facts about LM Studio rather than about
+    `dialects` and `capabilities` are facts about LM Studio rather than about
     one connection to it, so they are settled here and not passed in.
 
     :param config: What the profile settled for this runtime.
     """
 
     config: LMStudioConfig
-    dialect: Dialect = field(init=False, default=Dialect.ANTHROPIC)
+    dialects: frozenset[Dialect] = field(init=False, default=DIALECTS)
     capabilities: Capabilities = field(init=False, default=CAPABILITIES)
 
     def read_catalogue(self) -> list[Model]:

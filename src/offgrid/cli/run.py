@@ -60,7 +60,7 @@ def run(
         # and a window the run could not work at are all settled before the
         # load — the first two here, the window inside `hold_model` — because
         # a load is tens of seconds nobody gets back.
-        require_compatible(runtime.dialect, agent.dialect)
+        require_compatible(runtime.dialects, agent.dialect)
         agent.configure()
         require_hosted_tools_denied(agent.read_hosted_tools())
 
