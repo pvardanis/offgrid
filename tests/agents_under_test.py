@@ -40,6 +40,18 @@ class AgentUnderTest(Protocol):
         """
         ...
 
+    @property
+    def offers_no_hosted_tool(self) -> bool:
+        """Whether this agent has no hosted tool to be permitted at all.
+
+        Stated rather than skipped around, and paid for: an adapter saying so
+        is asked to answer `NONE_OFFERED` with the evidence for it, and an
+        adapter that does offer one and says this goes red instead.
+
+        :return: True where nothing this agent offers runs anywhere but here.
+        """
+        ...
+
     def prepare(
         self,
         monkeypatch: pytest.MonkeyPatch,

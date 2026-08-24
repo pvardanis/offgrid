@@ -42,6 +42,17 @@ class ClaudeCodeUnderTest:
         """
         return HOST
 
+    @property
+    def offers_no_hosted_tool(self) -> bool:
+        """Whether this agent has no hosted tool to be permitted at all.
+
+        WebSearch runs on Anthropic's servers, which is the whole reason this
+        adapter has a guard.
+
+        :return: False.
+        """
+        return False
+
     def prepare(
         self,
         monkeypatch: pytest.MonkeyPatch,

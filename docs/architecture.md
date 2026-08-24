@@ -995,14 +995,23 @@ this one" by letting go of each model in turn before it loads, what that costs
 and what it says while paying it, and a tool whose exit code cannot be taken at
 its word.
 
-`tests/test_agent_conformance.py` is the same for agents. It states twelve
-things, each of which an agent that is not Claude Code still owes:
+`tests/test_agent_conformance.py` is the same for agents, with what an agent
+owes about hosted tools beside it in `tests/test_agent_hosted_tools.py` and the
+list both ask it of in `tests/agent_conformance.py`. Together they state
+thirteen things, each of which an agent that is not Claude Code still owes:
 
 - `configure` writes what is missing, and leaves as they left them the files a
   person then edited — including one edited so that the guard refuses the run,
   which is a refusal to act on rather than something to write over.
 - What an adapter writes for itself satisfies its own guard, and a
   configuration permitting a hosted tool stops a run, saying what to change.
+- An agent offering no hosted tool at all says so in the stand-in, and answers
+  `NONE_OFFERED` with the evidence for it — the two above have no state to put
+  such an agent into and skip, so the claim is asked for rather than assumed.
+  An adapter that does offer one and claims this goes red. An adapter reading
+  nothing and returning the answer whole does not, because for an agent with
+  genuinely nothing hosted there is no configuration a correct reading would
+  answer differently from; what is left is evidence a person can check.
 - `plan` writes nothing and starts nothing. It answers with an environment and
   an argument list carrying the model that will answer and the arguments a
   person typed, in the order they typed them.

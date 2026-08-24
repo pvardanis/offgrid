@@ -1,10 +1,10 @@
 """What Claude Code does with the directory it is run out of and the arguments.
 
-What any agent owes is stated once, in `tests/test_agent_conformance.py`. What
-is here is Claude Code's own: which environment variables carry the model and
-the window it is served at, the arguments offgrid adds, the argument a person
-can add that stops the settings being loaded at all, and what its settings file
-is read as when it holds something nobody can act on.
+What any agent owes is stated in `tests/test_agent_conformance.py`, and hosted
+tools beside it. What is here is Claude Code's own: which environment variables
+carry the model and the window it is served at, the arguments offgrid adds, the
+argument a person can add that stops the settings being loaded at all, and what
+its settings file is read as when it holds something nobody can act on.
 """
 
 import json
