@@ -10,9 +10,13 @@ import json
 
 import pytest
 
-from offgrid.agents.opencode.configuring import PACKAGE, SCHEMA
 from offgrid.shared.exceptions import AgentSettingsError
-from tests.opencode_bindings import SETTINGS, bind, read_written
+from tests.opencode_bindings import (
+    RUNTIME_SPELLINGS,
+    SETTINGS,
+    bind,
+    read_written,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -41,7 +45,13 @@ def test_the_provider_offgrid_writes_speaks_the_openai_protocol(configured, conf
     # 1.18.20, a provider absent from the published registry resolves against
     # this package, so naming it is stating what offgrid relies on rather than
     # what OpenCode would otherwise refuse.
-    assert read_written(config_dir)["provider"]["offgrid"]["npm"] == PACKAGE
+    # Written out rather than imported from the module under test: a constant
+    # compared against itself moves when the source moves, so it could go red
+    # on a missing key and never on a wrong value.
+    assert (
+        read_written(config_dir)["provider"]["offgrid"]["npm"]
+        == "@ai-sdk/openai-compatible"
+    )
 
 
 def test_the_provider_offgrid_writes_is_labelled(configured, config_dir):
@@ -52,7 +62,7 @@ def test_what_offgrid_writes_says_which_schema_it_is(configured, config_dir):
     # More than the four things the ticket enumerates, and deliberate: the
     # file is meant to be edited, and this is what an editor completes and
     # validates it against.
-    assert read_written(config_dir)["$schema"] == SCHEMA
+    assert read_written(config_dir)["$schema"] == "https://opencode.ai/config.json"
 
 
 def test_sharing_is_disabled_in_what_offgrid_writes(configured, config_dir):
@@ -67,10 +77,10 @@ def test_nothing_offgrid_writes_names_a_runtime(configured, config_dir):
     # making it a runtime's name would put a fact about runtimes inside an
     # agent adapter — and would deep-merge with an entry a person wrote for
     # that runtime themselves. The displayed label names none either.
-    written = read_written(config_dir)
+    written = json.dumps(read_written(config_dir)).lower()
 
-    assert set(written["provider"]) == {"offgrid"}
-    assert "lmstudio" not in json.dumps(written).lower()
+    assert set(read_written(config_dir)["provider"]) == {"offgrid"}
+    assert not [spelling for spelling in RUNTIME_SPELLINGS if spelling in written]
 
 
 def test_nothing_offgrid_derives_is_written_where_it_could_go_stale(

@@ -30,6 +30,11 @@ CONTEXT_FLOOR = 25_000
 # Where OpenCode reads the durable file, and the configuration a run derives.
 # Both are read and deep-merged, which is what lets the half a person edits
 # stay in a file while the half offgrid rebuilds every run travels here.
+#
+# Measured on opencode 1.18.20, both ways round, because the direction is what
+# the split rests on: where the two name the same key, the environment wins.
+# So an address a person edits into the file cannot defeat the one offgrid
+# derived — which matters because a wrong address hangs rather than erroring.
 CONFIG_FILE = "OPENCODE_CONFIG"
 CONFIG_CONTENT = "OPENCODE_CONFIG_CONTENT"
 
@@ -40,9 +45,7 @@ def get_opencode_args(passthrough: Passthrough) -> list[str]:
     Nothing of offgrid's own goes on it: which model answers is a key in the
     configuration this module derives, the same way the other adapter carries
     it in the launch's environment. So what a person typed is the whole of the
-    command line after the command, in the order they typed it, and their own
-    model flag beats offgrid's selection exactly as it does for the other
-    adapter.
+    command line after the command, in the order they typed it.
 
     :param passthrough: Arguments handed to the agent unchanged.
 
