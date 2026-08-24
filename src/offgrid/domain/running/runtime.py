@@ -66,10 +66,10 @@ class Runtime(Protocol):
     """A connection to a runtime holding models on this machine."""
 
     @property
-    def dialect(self) -> Dialect:
-        """The API shape the runtime serves.
+    def dialects(self) -> frozenset[Dialect]:
+        """Every API shape the runtime serves, which pairing is tested against.
 
-        :return: The dialect an agent has to speak to talk to it.
+        :return: The dialects an agent may speak to talk to it. Never empty.
         """
         ...
 

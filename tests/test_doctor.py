@@ -69,6 +69,16 @@ def test_doctor_reports_the_agent_the_profile_names_and_what_it_speaks(here):
     assert "anthropic" in result.stderr
 
 
+def test_doctor_reports_every_dialect_the_runtime_serves(here):
+    # What is pairable, rather than one of the answers: a report naming one of
+    # several says nothing about which other agents would run here.
+    runner.invoke(app, ["setup"])
+
+    result = runner.invoke(app, ["doctor"])
+
+    assert "serving   anthropic, openai" in result.stderr
+
+
 def test_doctor_reports_the_model_that_would_answer(here):
     runner.invoke(app, ["setup"])
     result = runner.invoke(app, ["doctor"])

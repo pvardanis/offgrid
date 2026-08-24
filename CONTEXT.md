@@ -30,8 +30,9 @@ decides whether the agent loads the settings offgrid wrote, so a run is refused
 rather than started with its hosted tools reachable.
 
 **dialect** — the HTTP API shape a runtime serves and an agent expects,
-`anthropic` or `openai`. A runtime and an agent may only be paired when their
-dialects match; offgrid refuses the pair rather than translating between them.
+`anthropic` or `openai`. A runtime serves a set of them and an agent speaks
+one, and the two may only be paired when the agent's is among the runtime's;
+offgrid refuses the pair rather than translating between them.
 
 **machine** — this Mac: its chip, its unified memory, and the share of that
 memory the GPU may use. One pool, shared with everything else running.
