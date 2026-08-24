@@ -391,7 +391,7 @@ letting go of a model means letting go of every one of them.
 | Agent | Dialect expected | Supported |
 |---|---|---|
 | [Claude Code](https://claude.com/claude-code) | `anthropic` | ✅ |
-| [OpenCode](https://opencode.ai/) | either, per provider | ❌ |
+| [OpenCode](https://opencode.ai/) | `openai` | ✅ |
 
 Adding one is a module in `agents/`: a config class declaring which keys your
 section carries, then report a dialect, build a launch — an environment and an
@@ -579,5 +579,5 @@ nothing about adapters.
 ## Roadmap
 
 - A way for local sessions to search the web
-- A second runtime, and a second agent
+- A second runtime
 - A model catalogue, and a verified private mode

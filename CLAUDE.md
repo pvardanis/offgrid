@@ -86,7 +86,7 @@ imperative, 50 characters where it fits and never past 72, no trailing period.
 
 Types: `feat`, `fix`, `refactor`, `perf`, `docs`, `test`, `chore`, `build`,
 `ci`, `style`, `revert`. Scopes are the modules — `machine`, `fit`, `model`,
-`dialect`, `profile`, `binding`, `lmstudio`, `claude-code`, `cli` — plus `ci`
+`dialect`, `profile`, `binding`, `lmstudio`, `claude-code`, `opencode`, `cli` — plus `ci`
 and `deps`.
 
 One change per commit: if the subject needs an "and", it is two. Each leaves
