@@ -1,9 +1,9 @@
 """What offgrid writes into the directory OpenCode keeps, and what it leaves.
 
 The other half of the split that `tests/test_opencode.py` covers: only what
-offgrid never revises is written, because `configure` writes what is missing
-and never overwrites — so a person who edited it keeps the edit, and nothing
-derived from the profile can be left here to go stale.
+offgrid never revises is written, and only where there is no file — so a person
+who edited it keeps the edit, and nothing derived from the profile can be left
+here to go stale.
 """
 
 import json
@@ -41,10 +41,9 @@ def configured(config_dir):
 
 
 def test_the_provider_offgrid_writes_speaks_the_openai_protocol(configured, config_dir):
-    # Without it the entry has no transport at all. Measured on opencode
-    # 1.18.20, a provider absent from the published registry resolves against
-    # this package, so naming it is stating what offgrid relies on rather than
-    # what OpenCode would otherwise refuse.
+    # Measured on opencode 1.18.20, a provider absent from the published
+    # registry resolves against this package anyway, so naming it states what
+    # offgrid relies on rather than supplying something OpenCode would miss.
     # Written out rather than imported from the module under test: a constant
     # compared against itself moves when the source moves, so it could go red
     # on a missing key and never on a wrong value.
@@ -59,8 +58,7 @@ def test_the_provider_offgrid_writes_is_labelled(configured, config_dir):
 
 
 def test_what_offgrid_writes_says_which_schema_it_is(configured, config_dir):
-    # More than the four things the ticket enumerates, and deliberate: the
-    # file is meant to be edited, and this is what an editor completes and
+    # The file is meant to be edited, and this is what an editor completes and
     # validates it against.
     assert read_written(config_dir)["$schema"] == "https://opencode.ai/config.json"
 
