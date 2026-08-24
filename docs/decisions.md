@@ -1241,9 +1241,18 @@ migrate a file written under the old one.
 given. Reading it as a fact about the model would drop a `--context-window`
 somebody typed on the strength of an answer about a different one, and then
 tell them the runtime had refused a number it was never shown. A window that
-differs is a question the runtime has not been put, so it is put, and what
-comes back replaces what was known — which is also how a runtime that has
-started granting windows gets noticed.
+differs is a question the runtime has not been put, so it is put — which is
+also how a runtime that has started granting windows gets noticed.
+
+**Every window a runtime discarded is kept, not the last one it discarded.**
+Asking for the same window again restates its answer; asking for a different
+one adds an answer beside it. Keeping one record per model instead would mean
+a run going back to an earlier window finds nothing about it, puts the runtime
+a question it has already answered, and pays the release and load that
+answering it costs — which is the reload the record exists to save. Two
+windows alternating would defeat the file entirely, and a profile window with
+an occasional `--context-window` beside it is exactly that shape. So the file
+grows by the windows that were asked for rather than by the runs that asked.
 
 **The refusals still come first.** A window below the agent's floor or above
 the model's ceiling is refused before the record is consulted, so a number
@@ -1257,17 +1266,23 @@ sixty-second turn on a schedule with nothing to show for it. Deleting the file
 is how a person says to ask again, and `offgrid doctor` names the file, since
 that is the command someone runs when something is not what they asked for.
 
-**It is keyed on the runtime and the model together.** Two models on one
-server disagree about this — measured — and one model may be reached at two
-addresses. Neither alone is the thing the behaviour belongs to.
+**It is keyed on the runtime, its address, the model and the window.** Two
+models on one server disagree about this — measured — one model may be
+reached at two addresses, and an address names one server at a point in time
+rather than for all time: a runtime that stops listening on `127.0.0.1:1234`
+and another that starts there must not be answered with each other's records.
+No one of the four is the thing the behaviour belongs to.
 
 **Two sentences, because offgrid knows two different things.** Where it put
 the window to the runtime and read the answer back, it says the runtime did
 not grant it: a claim about the runtime, with the evidence in hand. Where it
-asked for nothing because that same window was already on record, it says what
-is held and dates the refusal it is repeating: a claim about state. The first
-would be an unfounded attribution in the second case — offgrid made no request
-that run, so nothing of the runtime's was observed.
+asked for nothing because that same window was already on record, it says so,
+dates the refusal it is repeating, and names what the runtime is serving now: a
+claim about the record and about what was read back. The first would be an
+unfounded attribution in the second case — offgrid made no request that run,
+so nothing of the runtime's was observed. Saying the model was "already held"
+would be a third claim, and a worse one: it may have been loaded in the same
+breath, and offgrid never checked.
 
 **Neither sentence says "bug".** Whose fault it is, is exactly what #136 does
 not establish.
@@ -1275,12 +1290,20 @@ not establish.
 ### What it cost in shape
 
 `hold_model` is handed the question rather than the address to answer it from
-— `was_refused: Callable[[str, int], bool]`, closed over records the command
-line read once. Handing it a host would have given it two sources of truth for
-one connection, with nothing able to detect them disagreeing, and would have
-had the domain reaching for a file behind its caller's back. It is the same
-rule `reading.py` follows: handed the lists rather than reaching for them, the
-way `answering.py` is handed a `Runtime`.
+— `was_window_refused_func: Callable[[str, int], bool]`, closed over records
+the command line read once. Handing it a host would have given it two sources
+of truth for one connection, with nothing able to detect them disagreeing, and
+would have had the domain reaching for a file behind its caller's back. It is
+the same rule `reading.py` follows: handed the lists rather than reaching for
+them, the way `answering.py` is handed a `Runtime`.
+
+It takes the model as an argument rather than closing over one because at the
+point the command line reads the file, there may be no model named: a run that
+gives neither `--model` nor a profile model is answered with the resident one,
+and `hold_model` is what resolves that. `doctor` has already read the resident
+model, so it is the only caller that can ask the narrower question — which is
+why the store hands back the records it read and leaves indexing them to
+whoever asked.
 
 The records are read once per command and shared. The question "was this
 window refused" is asked twice in a run — once to decide what to request, once
@@ -1292,7 +1315,14 @@ is the split `sizing/cache.py` and `sizing/reading.py` already make. The store
 holds no opinions; the deciding holds no file.
 
 The file is read the way the profile is read: a pydantic model that refuses a
-key it does not name. A record offgrid cannot make sense of is said out loud
-rather than skipped, because a run that silently reads no memory goes back to
-paying the reload. A file that is not there stays silent — that is every
+key it does not name, and a runtime read as a `RuntimeName` rather than a
+string, so a name offgrid has no adapter for is a mistake in the file rather
+than a record about nothing. A record offgrid cannot make sense of is said out
+loud rather than skipped, because a run that silently reads no memory goes back
+to paying the reload. A file that is not there stays silent — that is every
 machine before the first window is discarded.
+
+One thing the suite cannot hold yet: only `lmstudio` has an adapter, so
+deleting the runtime half of the key leaves every test green. What is covered
+is the record a file holds and the names it refuses. The guard becomes
+testable with the second adapter.
