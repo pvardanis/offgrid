@@ -14,7 +14,7 @@ from offgrid.agents.opencode.launching import (
     CONFIG_CONTENT,
     CONFIG_FILE,
     CONTEXT_FLOOR,
-    describe_the_run,
+    get_derived_configuration,
     get_opencode_args,
 )
 from offgrid.domain.running.agent import Passthrough
@@ -24,8 +24,11 @@ from offgrid.domain.running.launch import Launch
 from offgrid.domain.running.model import Model
 from offgrid.shared.exceptions import AgentSettingsError
 
-# What was measured, and when, so that "nothing hosted" reads as a fact about a
-# version rather than as an adapter whose author never asked the question.
+# What was measured, so that "nothing hosted" reads as a fact about a version
+# rather than as an adapter whose author never asked the question. Measured on
+# 2026-08-24 the way `docs/decisions.md` measured 1.18.14, by reading the tool
+# list it sends: bash, edit, glob, grep, read, skill, task, todowrite, webfetch
+# and write — the same ten, and every one of them runs on this machine.
 MEASURED_AGAINST = "opencode 1.18.20"
 
 
@@ -101,7 +104,7 @@ class OpenCode:
         """
         env = {
             CONFIG_FILE: str(self.config.config_dir / SETTINGS),
-            CONFIG_CONTENT: describe_the_run(
+            CONFIG_CONTENT: get_derived_configuration(
                 model, runtime_host=self.config.runtime_host
             ),
         }
