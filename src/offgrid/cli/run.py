@@ -64,15 +64,18 @@ def run(
         agent.configure()
         require_hosted_tools_denied(agent.read_hosted_tools())
 
-        discarded_windows_path = discarded_windows.DEFAULT_PATH
-        discarded_by_model = discarded_windows.read_discarded_windows(
-            profile.runtime.name, profile.runtime.host, discarded_windows_path
+        what_the_runtime_discarded = discarded_windows.read_discarded_windows(
+            profile.runtime.name,
+            profile.runtime.host,
+            discarded_windows.DEFAULT_PATH,
         )
         model = hold_model(
             runtime,
             model_request,
             context_floor=agent.context_floor,
-            was_window_refused_func=refuse_to_ask_runtime_again(discarded_by_model),
+            was_window_refused_func=refuse_to_ask_runtime_again(
+                what_the_runtime_discarded
+            ),
         )
 
     # Nothing between here and the agent finishing may leave the model held:
@@ -90,7 +93,7 @@ def run(
         tell(f"{model.identifier}, window {served}")
 
         what_became_of_the_window = read_what_became_of_the_window(
-            discarded_by_model, model_request, model
+            what_the_runtime_discarded, model_request, model
         )
         if what_became_of_the_window is not None:
             tell(what_became_of_the_window.said)
@@ -99,7 +102,7 @@ def run(
                 model,
                 runtime=profile.runtime.name,
                 host=profile.runtime.host,
-                file_path=discarded_windows_path,
+                file_path=discarded_windows.DEFAULT_PATH,
             )
             if complaint is not None:
                 tell(complaint)
