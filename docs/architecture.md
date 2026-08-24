@@ -906,9 +906,10 @@ source says where the documentation is silent.
 | llama.cpp | both | router mode only; a timer otherwise | router mode only |
 
 **Every candidate serves both dialects.** All four expose `POST /v1/messages`
-and `POST /v1/chat/completions`. So a runtime states the set it serves, pairing
-is a membership test over it, and `require_compatible` may have no real pair
-left to refuse among runtimes. It still earns its keep on the agent side: Codex CLI accepts
+and `POST /v1/chat/completions`. So a runtime states the set it serves,
+pairing is a membership test over it, and `require_compatible` may have no
+real pair left to refuse among runtimes. It still earns its keep on the
+agent side: Codex CLI accepts
 only the Responses API as of `rust-v0.147.0`, where `WireApi` has one variant
 and `wire_api = "chat"` is a named error.
 

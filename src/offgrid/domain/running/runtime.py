@@ -69,7 +69,8 @@ class Runtime(Protocol):
     def dialects(self) -> frozenset[Dialect]:
         """Every API shape the runtime serves, which pairing is tested against.
 
-        :return: The dialects an agent may speak to talk to it. Never empty.
+        :return: What an agent may speak to talk to it. Never empty, which
+            the conformance suite holds every adapter to.
         """
         ...
 
