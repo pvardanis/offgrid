@@ -1,8 +1,8 @@
 """A runtime serving exactly the dialects a test says, for the pair that is refused.
 
-Every runtime offgrid has an adapter for serves both dialects, so a pair that
-cannot talk has nothing below the adapter to arrange it with — which is what
-this is for. Everything asked over the wire refuses here, so a test that
+LM Studio, the one runtime offgrid has an adapter for, serves both dialects,
+so a pair that cannot talk has nothing below the adapter to arrange it with —
+which is what this is for. Everything asked over the wire refuses here, so a test that
 reaches one of those says so rather than passing on an invented answer; a test
 wanting those answers stands LM Studio's own server in instead.
 """
@@ -31,6 +31,12 @@ CAPABILITIES = Capabilities(
 class StandInRuntime:
     """A runtime whose dialects a test states.
 
+    `let_go` raises where the port says an adapter owes an answer, which is
+    deliberate: a test reaching cleanup with this stood in has already gone
+    past the refusal it was written for, and a masked outcome there would be
+    worse than a loud one. Nothing reaches it while the pairing check refuses
+    before a load.
+
     :param dialects: What it serves.
     """
 
@@ -43,9 +49,9 @@ class StandInRuntime:
         :raise AssertionError: Always.
         """
         raise AssertionError(
-            "the stand-in runtime was asked to read the catalogue, after a check "
-            "that settles before anything is reached. Assert on the "
-            "refusal rather than on what a run would have loaded."
+            "the stand-in runtime was asked to read the catalogue, after the "
+            "pairing check `run` settles before anything is reached. Assert "
+            "on the refusal rather than on what a run would have loaded."
         )
 
     def read_held(self) -> list[Model]:
@@ -54,9 +60,9 @@ class StandInRuntime:
         :raise AssertionError: Always.
         """
         raise AssertionError(
-            "the stand-in runtime was asked to read what it holds, after a check "
-            "that settles before anything is reached. Assert on the "
-            "refusal rather than on what a run would have loaded."
+            "the stand-in runtime was asked to read what it holds, after the "
+            "pairing check `run` settles before anything is reached. Assert "
+            "on the refusal rather than on what a run would have loaded."
         )
 
     def ensure_only(self, model_request: ModelRequest) -> Model:
@@ -67,9 +73,10 @@ class StandInRuntime:
         :raise AssertionError: Always.
         """
         raise AssertionError(
-            "the stand-in runtime was asked to hold a model, after a check "
-            "that settles before anything is reached. Assert on the "
-            "refusal rather than on what a run would have loaded."
+            f"the stand-in runtime was asked to hold {model_request.identifier}, "
+            "after the "
+            "pairing check `run` settles before anything is reached. Assert "
+            "on the refusal rather than on what a run would have loaded."
         )
 
     def let_go(self, identifier: str) -> bool:
@@ -80,9 +87,9 @@ class StandInRuntime:
         :raise AssertionError: Always.
         """
         raise AssertionError(
-            "the stand-in runtime was asked to let a model go, after a check "
-            "that settles before anything is reached. Assert on the "
-            "refusal rather than on what a run would have loaded."
+            f"the stand-in runtime was asked to let {identifier} go, after the "
+            "pairing check `run` settles before anything is reached. Assert "
+            "on the refusal rather than on what a run would have loaded."
         )
 
 
