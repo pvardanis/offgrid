@@ -176,6 +176,35 @@ def test_a_second_run_does_not_put_a_refused_window_to_the_runtime_again(
     assert held["loaded"] is None
 
 
+def test_a_window_refused_before_a_later_one_is_still_not_asked_again(
+    here, monkeypatch
+):
+    # Two windows put to the runtime in turn, and a third run goes back to the
+    # first. Keeping only the last answer forgets the first, so the runtime is
+    # asked a question it has answered and pays the load that answering costs.
+    runner.invoke(app, ["setup"])
+    record_launch(monkeypatch)
+    answer_as_lm_studio(monkeypatch, cold={"a/other-7b": SERVED}, serves=SERVED)
+
+    runner.invoke(app, ["run", "-m", "a/other-7b", "--context-window", str(ASKED_FOR)])
+
+    answer_as_lm_studio(monkeypatch, holding={"a/other-7b": SERVED}, serves=SERVED)
+
+    runner.invoke(app, ["run", "-m", "a/other-7b", "--context-window", "30000"])
+
+    again = answer_as_lm_studio(
+        monkeypatch, holding={"a/other-7b": SERVED}, serves=SERVED
+    )
+
+    third = runner.invoke(
+        app, ["run", "-m", "a/other-7b", "--context-window", str(ASKED_FOR)]
+    )
+
+    assert third.exit_code == 0
+    assert f"offgrid did not ask for {ASKED_FOR}" in third.stderr
+    assert again["loaded"] is None
+
+
 def test_run_says_nothing_where_the_runtime_grants_the_window_asked_for(
     here, monkeypatch
 ):

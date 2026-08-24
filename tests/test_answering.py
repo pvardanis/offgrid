@@ -147,8 +147,8 @@ def _refused(**kept):
     :return: Whether a model was refused exactly this window before.
     """
     return refuse_to_ask_again(
-        {
-            identifier: DiscardedWindow(
+        tuple(
+            DiscardedWindow(
                 host=HOST,
                 identifier=identifier,
                 asked_for=window,
@@ -156,7 +156,7 @@ def _refused(**kept):
                 noticed_at="2026-08-21T14:31:07",
             )
             for identifier, window in kept.items()
-        }
+        )
     )
 
 

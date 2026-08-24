@@ -44,26 +44,23 @@ class WhatBecameOfTheWindow:
 
 
 def refuse_to_ask_again(
-    discarded_windows: dict[str, DiscardedWindow],
+    discarded_windows: tuple[DiscardedWindow, ...],
 ) -> IsWindowRefused:
     """Say which windows this runtime has already refused.
 
     Every model and window it discarded, read once: the answer to each
     question is a membership test rather than another pass over the records.
 
-    :param discarded_windows: What was kept about this runtime, by model.
+    :param discarded_windows: What was kept about this runtime.
     :return: Whether a model was refused exactly this window before.
     """
-    refused = {
-        (identifier, record.asked_for)
-        for identifier, record in discarded_windows.items()
-    }
+    refused = {(record.identifier, record.asked_for) for record in discarded_windows}
 
     return lambda identifier, window: (identifier, window) in refused
 
 
 def read_what_became_of_the_window(
-    discarded_windows: dict[str, DiscardedWindow], request: ModelRequest, model: Model
+    discarded_windows: tuple[DiscardedWindow, ...], request: ModelRequest, model: Model
 ) -> WhatBecameOfTheWindow | None:
     """Say what happened to the window a run asked for, where it did not get it.
 
@@ -85,9 +82,12 @@ def read_what_became_of_the_window(
     if asked_for is None or served is None or served == asked_for:
         return None
 
-    if refuse_to_ask_again(discarded_windows)(model.identifier, asked_for):
-        record = discarded_windows[model.identifier]
+    question = (model.identifier, asked_for)
+    record = next(
+        (r for r in discarded_windows if (r.identifier, r.asked_for) == question), None
+    )
 
+    if record is not None:
         return WhatBecameOfTheWindow(
             said=(
                 f"offgrid did not ask for {asked_for}: the runtime discarded "

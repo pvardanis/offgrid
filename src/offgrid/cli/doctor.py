@@ -36,9 +36,9 @@ class Checkup:
     :param hosted_tools: What the agent says it can reach.
     :param dialect: What the agent speaks.
     :param context_floor: The smallest window the agent can start in.
-    :param discarded: What this runtime did with a window it was asked for,
-        or ``None`` where it refused none and where the record could not be
-        read — which is itself a finding, carried in `unreadable`.
+    :param discarded: Every window this runtime discarded for the model it is
+        holding, and empty where it discarded none and where the records could
+        not be read — which is itself a finding, carried in `unreadable`.
     :param unreadable: Why the records could not be read, where they could
         not. A stale file nobody has heard of is worth a line rather than the
         whole report.
@@ -49,7 +49,7 @@ class Checkup:
     hosted_tools: HostedToolsReport
     dialect: Dialect
     context_floor: int
-    discarded: DiscardedWindow | None
+    discarded: tuple[DiscardedWindow, ...]
     unreadable: str | None
 
 
@@ -98,8 +98,8 @@ def _read_what_can_be_read() -> Checkup:
 
 def _read_what_was_discarded(
     profile: Profile, resident: Model | None
-) -> tuple[DiscardedWindow | None, str | None]:
-    """Read what this runtime did with a window the model was asked to hold at.
+) -> tuple[tuple[DiscardedWindow, ...], str | None]:
+    """Read the windows this runtime discarded for the model it is holding.
 
     A file that will not read is a finding rather than a fault here. Every
     other reading in the report succeeded, and refusing to say any of them
@@ -110,20 +110,20 @@ def _read_what_was_discarded(
     :param profile: What was written down.
     :param resident: The model the runtime is holding, or ``None`` for none.
 
-    :return: What it did with that model's window, and why the records could
-        not be read where they could not.
+    :return: Every window it discarded for that model, and why the records
+        could not be read where they could not.
     """
     if resident is None:
-        return None, None
+        return (), None
 
     try:
         records = discarded_windows.read_discarded_windows(
             profile.runtime.host, discarded_windows.DEFAULT_PATH
         )
     except DiscardedWindowsUnreadableError as error:
-        return None, str(error)
+        return (), str(error)
 
-    return records.get(resident.identifier), None
+    return tuple(r for r in records if r.identifier == resident.identifier), None
 
 
 def _describe_what_was_read(checkup: Checkup) -> tuple[str, ...]:
@@ -207,18 +207,20 @@ def _describe_a_discarded_window(checkup: Checkup) -> tuple[str, ...]:
 
     :param checkup: What the profile, the runtime and the agent answered.
 
-    :return: The line to say, and nothing where no window was discarded.
+    :return: A line for each window discarded and the way back under them, and
+        nothing where none was.
     """
     if checkup.unreadable is not None:
         return (f"discarded {checkup.unreadable}",)
 
-    discarded = checkup.discarded
-
-    if discarded is None:
+    if not checkup.discarded:
         return ()
 
     return (
-        f"discarded {discarded.asked_for} was asked for on {discarded.dated} "
-        f"and {discarded.served} served then, so offgrid is not asking again. "
+        *(
+            f"discarded {record.asked_for} was asked for on {record.dated} "
+            f"and {record.served} served then, so offgrid is not asking again."
+            for record in checkup.discarded
+        ),
         f"Delete {discarded_windows.DEFAULT_PATH} to ask again.",
     )
