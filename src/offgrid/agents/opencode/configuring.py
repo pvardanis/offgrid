@@ -31,8 +31,14 @@ LABEL = "offgrid"
 # who wants sharing back keeps the edit.
 SHARING = "disabled"
 
+# The file is meant to be edited, and this is what gives an editor the
+# completion and validation a person would otherwise be reading OpenCode's
+# provider documentation for. It is a fact about the file's shape rather than
+# anything offgrid derives, so it belongs on this side of the split.
+SCHEMA = "https://opencode.ai/config.json"
+
 DURABLE = {
-    "$schema": "https://opencode.ai/config.json",
+    "$schema": SCHEMA,
     "share": SHARING,
     "provider": {PROVIDER: {"npm": PACKAGE, "name": LABEL}},
 }

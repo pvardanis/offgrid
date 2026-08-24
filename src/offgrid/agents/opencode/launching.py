@@ -51,8 +51,8 @@ def get_opencode_args(passthrough: Passthrough) -> list[str]:
     return ["opencode", *passthrough]
 
 
-def describe_the_run(model: Model, *, runtime_host: str) -> str:
-    """Say what this run settled, as configuration OpenCode reads inline.
+def get_derived_configuration(model: Model, *, runtime_host: str) -> str:
+    """Build everything offgrid derives, as configuration OpenCode reads inline.
 
     The model has to be enumerated: measured on opencode 1.18.20, a provider
     entry carrying the package and the address but no model list resolves no

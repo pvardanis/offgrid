@@ -10,7 +10,7 @@ import json
 
 import pytest
 
-from offgrid.agents.opencode.configuring import PACKAGE
+from offgrid.agents.opencode.configuring import PACKAGE, SCHEMA
 from offgrid.shared.exceptions import AgentSettingsError
 from tests.opencode_bindings import SETTINGS, bind, read_written
 
@@ -46,6 +46,13 @@ def test_the_provider_offgrid_writes_speaks_the_openai_protocol(configured, conf
 
 def test_the_provider_offgrid_writes_is_labelled(configured, config_dir):
     assert read_written(config_dir)["provider"]["offgrid"]["name"]
+
+
+def test_what_offgrid_writes_says_which_schema_it_is(configured, config_dir):
+    # More than the four things the ticket enumerates, and deliberate: the
+    # file is meant to be edited, and this is what an editor completes and
+    # validates it against.
+    assert read_written(config_dir)["$schema"] == SCHEMA
 
 
 def test_sharing_is_disabled_in_what_offgrid_writes(configured, config_dir):
@@ -102,5 +109,12 @@ def test_a_configuration_that_cannot_be_written_says_what_stopped_it(
     in_the_way.write_text("")
     monkeypatch.setattr("offgrid.domain.running.agent.OFFGRID_HOME", in_the_way)
 
-    with pytest.raises(AgentSettingsError, match="cannot be written"):
+    with pytest.raises(AgentSettingsError) as refused:
         bind().configure()
+
+    # The whole sentence, because a refusal naming neither the directory nor
+    # what to do about it is a wall with no door in it.
+    said = str(refused.value)
+    assert str(in_the_way / "opencode") in said
+    assert "cannot be written" in said
+    assert "Fix what is there or what owns it, and run again." in said
