@@ -900,8 +900,10 @@ which of those happened.
 
 ## The candidates the design answers to — built
 
-`CONTEXT.md` names Ollama as a candidate runtime and OpenCode as a candidate
-agent; issue #19 weighs oMLX and records what was measured on this machine.
+`CONTEXT.md` names Ollama as a candidate runtime; issue #19 weighs oMLX and
+records what was measured on this machine. OpenCode was a candidate agent and
+is now an adapter, so what this table says about it is what it was measured
+against rather than what it might need.
 `docs/research/adapter-surfaces.md` records what each documents, and what its
 source says where the documentation is silent.
 
