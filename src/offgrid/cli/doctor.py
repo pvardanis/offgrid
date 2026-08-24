@@ -116,10 +116,10 @@ def _read_what_was_discarded(
     if resident is None:
         return None, None
 
-    kept = discarded_windows.DEFAULT_PATH
-
     try:
-        records = discarded_windows.read_discarded_windows(profile.runtime.host, kept)
+        records = discarded_windows.read_discarded_windows(
+            profile.runtime.host, discarded_windows.DEFAULT_PATH
+        )
     except DiscardedWindowsUnreadableError as error:
         return None, str(error)
 
@@ -209,8 +209,6 @@ def _describe_a_discarded_window(checkup: Checkup) -> tuple[str, ...]:
 
     :return: The line to say, and nothing where no window was discarded.
     """
-    kept = discarded_windows.DEFAULT_PATH
-
     if checkup.unreadable is not None:
         return (f"discarded {checkup.unreadable}",)
 
@@ -222,5 +220,5 @@ def _describe_a_discarded_window(checkup: Checkup) -> tuple[str, ...]:
     return (
         f"discarded {discarded.asked_for} was asked for on {discarded.dated} "
         f"and {discarded.served} served then, so offgrid is not asking again. "
-        f"Delete {kept} to ask again.",
+        f"Delete {discarded_windows.DEFAULT_PATH} to ask again.",
     )

@@ -12,9 +12,9 @@ from offgrid.domain.running.context_window import (
 )
 from offgrid.domain.running.dialect import require_compatible
 from offgrid.domain.running.discarding import (
-    keep_what_the_runtime_did,
     read_what_became_of_the_window,
     refuse_to_ask_again,
+    save_discarded_window_if_new,
 )
 from offgrid.domain.running.hosted_tools import require_hosted_tools_denied
 from offgrid.domain.running.launch import explain_why_it_would_not_start, start
@@ -64,13 +64,15 @@ def run(
         agent.configure()
         require_hosted_tools_denied(agent.read_hosted_tools())
 
-        kept = discarded_windows.DEFAULT_PATH
-        refused = discarded_windows.read_discarded_windows(profile.runtime.host, kept)
+        discarded_windows_path = discarded_windows.DEFAULT_PATH
+        discarded_by_model = discarded_windows.read_discarded_windows(
+            profile.runtime.host, discarded_windows_path
+        )
         model = hold_model(
             runtime,
             model_request,
             context_floor=agent.context_floor,
-            was_refused=refuse_to_ask_again(refused),
+            was_refused=refuse_to_ask_again(discarded_by_model),
         )
 
     # Nothing between here and the agent finishing may leave the model held:
@@ -87,11 +89,16 @@ def run(
 
         tell(f"{model.identifier}, window {served}")
 
-        became = read_what_became_of_the_window(refused, model_request, model)
+        became = read_what_became_of_the_window(
+            discarded_by_model, model_request, model
+        )
         if became is not None:
             tell(became.said)
-            complaint = keep_what_the_runtime_did(
-                became, model, host=profile.runtime.host, kept=kept
+            complaint = save_discarded_window_if_new(
+                became,
+                model,
+                host=profile.runtime.host,
+                file_path=discarded_windows_path,
             )
             if complaint is not None:
                 tell(complaint)

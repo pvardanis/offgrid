@@ -13,7 +13,7 @@ from offgrid.domain.running.context_window import (
     refuse_a_window_above_the_ceiling,
     refuse_a_window_below_the_floor,
 )
-from offgrid.domain.running.discarding import Refused
+from offgrid.domain.running.discarding import IsWindowRefused
 from offgrid.domain.running.model import Model, ModelRequest
 from offgrid.domain.running.runtime import Runtime
 from offgrid.shared.exceptions import ModelUnavailableError
@@ -62,7 +62,7 @@ def hold_model(
     model_request: ModelRequest,
     *,
     context_floor: int,
-    was_refused: Refused,
+    was_refused: IsWindowRefused,
 ) -> Model:
     """Hold the model that will answer: the one asked for, or the one there.
 
