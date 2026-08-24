@@ -30,6 +30,7 @@ def _hand_write(here, *, noticed_at: str, identifier: str = RESIDENT) -> None:
     :param identifier: The model the record is about.
     """
     record = {
+        "runtime": "lmstudio",
         "host": HOST,
         "identifier": identifier,
         "asked_for": ASKED_FOR,
@@ -241,7 +242,9 @@ def test_a_refusal_of_another_window_is_put_to_the_runtime_and_kept(here, monkey
     assert result.exit_code == 0
     assert put["window"] == 30000
     assert "offgrid asked the runtime to hold a/other-7b at 30000" in result.stderr
-    assert '"asked_for": 30000' in (here / "discarded-windows.json").read_text()
+    kept = json.loads((here / "discarded-windows.json").read_text())
+
+    assert [record["asked_for"] for record in kept] == [ASKED_FOR, 30000]
 
 
 def test_a_record_that_cannot_be_written_does_not_take_down_the_run(here, monkeypatch):
