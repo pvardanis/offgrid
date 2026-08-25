@@ -45,7 +45,9 @@ CONTEXT_FLOOR = 25_000
 # and one that redirects the provider hangs the same way. This stops OpenCode
 # reading project configuration at all: measured on opencode 1.18.20, it
 # covers an `opencode.json` there, a `.opencode` directory, and the
-# instructions a project states in `AGENTS.md`.
+# instructions a project states in `AGENTS.md`, `CLAUDE.md` or `CONTEXT.md`.
+# What a person keeps is their own configuration under their home, which the
+# variable leaves alone.
 #
 # Carrying the address inline, which this module does anyway, is not a
 # substitute: the address is safe either way, but a project file also adds
@@ -67,10 +69,12 @@ DISABLED = "1"
 # spellings, to word one sentence — and a walk that drifted from theirs would
 # say the wrong thing confidently.
 PROJECT_CONFIG_CAUTION = (
-    "Project configuration is not read for this run: an `opencode.json`, a "
-    "`.opencode` directory or an `AGENTS.md` in the directory you started from "
-    "is ignored, because one that redirects the provider stalls the run with "
-    "nothing to read. Start OpenCode yourself to use it."
+    "Project configuration is not read for this run: in the directory you "
+    "started from, an `opencode.json`, a `.opencode` directory and the "
+    "instructions in `AGENTS.md`, `CLAUDE.md` or `CONTEXT.md` are all ignored, "
+    "because one that redirects the provider stalls the run with nothing to "
+    "read. Your own configuration under your home is still read. Start "
+    "OpenCode yourself to use what a project states."
 )
 
 

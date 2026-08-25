@@ -15,7 +15,7 @@ from typer.testing import CliRunner
 from offgrid.agents.opencode.launching import PROJECT_CONFIG_CAUTION
 from offgrid.cli import app
 from tests.launches import record_launch
-from tests.opencode_bindings import SETTINGS, bind, plan_for
+from tests.opencode_bindings import bind, plan_for
 from tests.profiles import add_to_section
 
 runner = CliRunner()
@@ -52,25 +52,35 @@ def test_a_configuration_in_the_directory_run_from_cannot_reach_the_run(launch):
 
 def test_the_launch_says_project_configuration_will_not_be_read(launch):
     # Losing it silently is what somebody would otherwise spend half a session
-    # debugging, which is what a caution is for.
+    # debugging, which is what a caution is for. Every kind of file measured on
+    # opencode 1.18.20 to go with the variable is named, because a sentence
+    # naming one of them says the others survive.
     assert launch.caution == (
-        "Project configuration is not read for this run: an `opencode.json`, a "
-        "`.opencode` directory or an `AGENTS.md` in the directory you started "
-        "from is ignored, because one that redirects the provider stalls the "
-        "run with nothing to read. Start OpenCode yourself to use it."
+        "Project configuration is not read for this run: in the directory you "
+        "started from, an `opencode.json`, a `.opencode` directory and the "
+        "instructions in `AGENTS.md`, `CLAUDE.md` or `CONTEXT.md` are all "
+        "ignored, because one that redirects the provider stalls the run with "
+        "nothing to read. Your own configuration under your home is still "
+        "read. Start OpenCode yourself to use what a project states."
     )
 
 
 def test_the_caution_says_the_same_thing_whatever_the_directory_holds(
     agent, tmp_path, monkeypatch
 ):
-    # A standing statement rather than a reading. Wording it out of what is
-    # there would mean reimplementing OpenCode's own upward walk, its stopping
-    # condition and both file spellings, to choose a sentence — and a walk that
-    # drifted from theirs would say the wrong thing confidently.
+    # A guard rather than a slice: nothing on this path reads a directory, so
+    # it cannot be made to fail today. What it stops is the wording being
+    # decided later out of what is there, which would mean reimplementing
+    # OpenCode's own upward walk, its stopping condition and both file
+    # spellings to choose a sentence — and a walk that drifted from theirs
+    # would say the wrong thing confidently.
     beside_nothing = plan_for(agent).caution
 
-    (tmp_path / SETTINGS).write_text("{}")
+    # Spelled out rather than taken from the constant naming the file offgrid
+    # writes for itself: what belongs here is a project's own configuration,
+    # and renaming offgrid's would otherwise leave this writing nothing of the
+    # kind.
+    (tmp_path / "opencode.json").write_text("{}")
     monkeypatch.chdir(tmp_path)
 
     assert plan_for(agent).caution == beside_nothing
