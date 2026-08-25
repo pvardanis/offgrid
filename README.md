@@ -396,9 +396,12 @@ letting go of a model means letting go of every one of them.
 Adding one is a module in `agents/`: a config class declaring which keys your
 section carries, then report a dialect, build a launch — an environment and an
 argument list — and prepare whatever profile it reads. The config carries where
-the runtime listens, filled from the runtime's own section, so an agent that
-writes that into a config file of its own can do it while it configures. Where
-its files live is derived from its name, so nobody writes that down.
+the runtime listens, filled from the runtime's own section, so an adapter has
+it both before it writes anything and while it builds a launch. What it writes
+is what offgrid never revises; anything derived from the profile belongs in the
+launch instead, which is rebuilt every run rather than going stale in a file
+nothing rewrites. Where its files live is derived from its name, so nobody
+writes that down.
 Launches are built rather than exported, so a caller can show one before
 anything runs.
 
@@ -449,6 +452,50 @@ imagines the results would look like, and the agent hands that back as a tool
 result. Reproduced here: the "results" contained a fabricated header and the
 boilerplate reminder from the real tool's output template. Exit code 0, no
 error anywhere. `WebFetch` is genuinely local and stays enabled.
+
+</details>
+
+<details>
+<summary><b>OpenCode</b> — the file it keeps, what each run derives, and the project configuration a run does without</summary>
+
+<br>
+
+Configured through JSON rather than through variables naming each setting, so a
+launch is three variables pointing OpenCode at the JSON:
+
+| Variable | Why |
+|---|---|
+| `OPENCODE_CONFIG` | the file below, which offgrid writes once |
+| `OPENCODE_CONFIG_CONTENT` | everything one run derives: the local runtime, which model answers, and the window and output cap it answers at |
+| `OPENCODE_DISABLE_PROJECT_CONFIG` | so nothing in the directory you started from changes what the run does |
+
+The two halves deep-merge, and so does your own configuration under your home:
+your provider entry, your keys and your timeouts come through a run untouched,
+and only a key offgrid names is overridden.
+
+**Its file lives in `~/.offgrid/opencode/opencode.json`**, and holds only what
+offgrid never revises — the provider entry's package and label, the published
+schema so an editor can check your edits, and `share: disabled`, which is what
+keeps a session transcript off OpenCode's servers. offgrid writes it if it is
+not there and then leaves it alone, because it is meant to be edited.
+
+Everything else is rebuilt every run and carried in the launch, so nothing
+offgrid derives can go stale in a file: a moved runtime, a different model or a
+different window are right on the next run without anything being rewritten.
+The window is what the runtime is actually serving, so OpenCode compacts before
+the runtime truncates. Where the runtime states no window, no limit is sent at
+all — OpenCode refuses a context and an output cap that do not come as a pair.
+
+**Nothing of OpenCode's is denied**, because there is nothing hosted to deny:
+measured against opencode 1.18.20, all ten tools it offers run on this machine,
+and it talks to whatever provider it is pointed at rather than to one vendor.
+
+**A project configuration is not read for the length of a run** — an
+`opencode.json`, a `.opencode` directory and instructions such as `AGENTS.md`,
+in the directory you started from and every directory above it. offgrid cannot
+outrank the providers, agents and permissions one of those adds, so it runs
+with none of them, and says so before the run rather than leaving you to meet
+it mid-session. Start OpenCode yourself to use what a project states.
 
 </details>
 
@@ -506,7 +553,7 @@ raised limit counts from the moment it is raised.
   is the answer.
 - **Translate between dialects.** A runtime and an agent that disagree are
   refused, with what to do about it.
-- **Run anywhere else.** macOS on Apple Silicon, and one adapter each so far.
+- **Run anywhere else.** macOS on Apple Silicon, and one runtime adapter so far.
 
 ## Measured on an M1 Max
 
