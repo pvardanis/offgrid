@@ -44,7 +44,8 @@ def test_a_run_of_a_pair_holds_the_model_and_lets_it_go(
     # never reached the runtime — a usage error exits 2 and leaves nothing
     # loaded, which would satisfy the rest of this on its own.
     assert known in finished.stderr
-    # The agent prints what the model said, so an empty one is a run that
-    # started and never got an answer out of the provider it was pointed at.
+    # Everything offgrid says goes to stderr, so stdout is the agent printing
+    # what the model said and nothing else. A run that never got an answer out
+    # of the provider it was pointed at leaves it empty.
     assert finished.stdout.strip(), finished.stderr
     assert get_held_instances(get_catalogue_payload(host), known) == [], finished.stderr

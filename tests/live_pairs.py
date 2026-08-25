@@ -71,22 +71,25 @@ def get_one_shot_args(agent: str) -> list[str]:
     return list(PAIRS[agent].one_shot)
 
 
-def require_installed(agent: str) -> None:
+def require_installed(agent: str, *, why: str, remedy: str) -> None:
     """Stop the check with words where the agent is not on the PATH.
 
-    A live run covers both pairs, so it needs both agents installed, and a
-    machine without one is owed the binary's name and where to get it rather
-    than whatever an agent that is not there fails as.
+    A live run starts a real agent, so a machine without one is owed the
+    binary's name and where to get it rather than whatever an agent that is
+    not there fails as. Why it is being started and what to do instead differ
+    between a pair the parameters name and the one the profile does, so the
+    caller says both.
 
     :param agent: The agent, as a profile spells it.
+    :param why: Why this run is starting that agent.
+    :param remedy: What to do to run without it.
     """
     pair = PAIRS[agent]
 
     if shutil.which(pair.binary) is None:
         pytest.fail(
-            f"a live run covers {pair.agent}, and there is no `{pair.binary}` on "
-            f"the PATH. Install it from {pair.where_to_get_it}, or leave the pair "
-            f"out with `uv run pytest -m live -k 'not {pair.agent}'`."
+            f"{why}, and there is no `{pair.binary}` on the PATH. Install it "
+            f"from {pair.where_to_get_it}, or {remedy}"
         )
 
 
@@ -126,7 +129,11 @@ def paired(request: pytest.FixtureRequest) -> Iterator[str]:
     """
     agent = str(request.param)
 
-    require_installed(agent)
+    require_installed(
+        agent,
+        why=f"a live run covers {agent}",
+        remedy=f"leave the pair out with `uv run pytest -m live -k 'not {agent}'`.",
+    )
 
     with paired_with(agent, DEFAULT_PATH):
         yield agent
