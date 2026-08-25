@@ -6,20 +6,19 @@ agent as no file, and leaving it alone leaves the agent nothing to load and
 says nothing about why. What is being asked is whether there is an edit to
 lose, which is what these answer.
 
-Three things follow from answering it that way, and none of them is hidden. A
-file that parses is an edit and is kept whole, so one edited down to a key
-offgrid never wrote stays that way; a key offgrid adds in a later version
-reaches no file that is already there; and both are silent. Writing either back
+Two things follow, and neither is hidden. A file that says anything is an edit
+and is kept whole, so one edited down to a key offgrid never wrote stays that
+way, and a key offgrid adds in a later version reaches no file holding an edit.
+Both are silent. Writing either back
 would answer a deliberate edit with a run that quietly disagrees with the file,
 because the key likeliest to be missing is the one deciding something offgrid
 promised — sharing off, a hosted tool denied. What a person can act on instead
 is a guard that reads the file and refuses the run, which is what
 `hosted_tools.py` is for.
 
-Whether the file holds an edit is asked of its text rather than of what the
-text parses to, because `null` is a document a person could have left and is
-also how "nothing" is spelled: deciding off the parsed value would write over
-that one file and no other.
+Whether it holds an edit is asked of its text rather than of what the text
+parses to: `null` is a document somebody could have left and is also how
+"nothing" is spelled, so deciding off the parsed value would write over it.
 """
 
 import json
@@ -31,7 +30,7 @@ INDENT = 2
 """How far the settings offgrid writes are indented, so they read as a file."""
 
 
-def read_what_is_kept(written: Path) -> str | None:
+def read_what_config_is_kept(written: Path) -> str | None:
     """Read what a file holds that a run must not write over.
 
     An empty file holds no edit, so it answers the same as no file at all:
@@ -44,9 +43,9 @@ def read_what_is_kept(written: Path) -> str | None:
     by everything that follows it, so a write would create the target rather
     than the file — somewhere offgrid never looked, and with nothing said.
 
-    What is refused is therefore the link that would create something, not
-    the link that leaves the directory. A live link out of it is followed,
-    and an empty file at the far end is written into like any other.
+    What is refused is therefore the link that would create something, not the
+    link that leaves the directory: a live link out of it is followed, and an
+    empty file at the far end is written into like any other.
 
     :param written: The file to decide about.
 
@@ -77,7 +76,7 @@ def read_what_is_kept(written: Path) -> str | None:
     return body if body.strip() else None
 
 
-def write_where_nothing_is_kept(written: Path, content: str) -> None:
+def write_config_where_nothing_is_kept(written: Path, content: str) -> None:
     """Write a file, unless it holds an edit somebody made.
 
     :param written: The file to decide about.
@@ -86,7 +85,7 @@ def write_where_nothing_is_kept(written: Path, content: str) -> None:
     :raise AgentSettingsError: When what is there cannot be read.
     :raise OSError: When it cannot be written.
     """
-    if read_what_is_kept(written) is None:
+    if read_what_config_is_kept(written) is None:
         written.write_text(content)
 
 
@@ -104,7 +103,7 @@ def write_settings_where_nothing_is_kept(written: Path, settings: dict) -> None:
         JSON.
     :raise OSError: When it cannot be written.
     """
-    body = read_what_is_kept(written)
+    body = read_what_config_is_kept(written)
 
     if body is None:
         written.write_text(json.dumps(settings, indent=INDENT) + "\n")

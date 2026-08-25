@@ -7,7 +7,7 @@ the profile would be written once and then be wrong, silently, the moment the
 profile changed. Everything offgrid derives travels in the launch instead.
 
 A file that is there and says none of this keeps its own keys and gets none of
-these added. `domain/running/keeping.py` says why that is the answer rather
+these added. `domain/running/keeping_config.py` says why that is the answer rather
 than merging them in.
 """
 

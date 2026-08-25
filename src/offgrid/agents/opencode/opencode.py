@@ -22,7 +22,7 @@ from offgrid.agents.opencode.launching import (
 from offgrid.domain.running.agent import Passthrough
 from offgrid.domain.running.dialect import Dialect
 from offgrid.domain.running.hosted_tools import HostedToolsReport, HostedToolsStatus
-from offgrid.domain.running.keeping import write_settings_where_nothing_is_kept
+from offgrid.domain.running.keeping_config import write_settings_where_nothing_is_kept
 from offgrid.domain.running.launch import Launch
 from offgrid.domain.running.model import Model
 from offgrid.shared.exceptions import AgentSettingsError
