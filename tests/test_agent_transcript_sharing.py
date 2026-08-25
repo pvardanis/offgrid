@@ -38,9 +38,16 @@ def test_a_run_that_could_publish_a_transcript_is_stopped(
 
     agent.configure()
 
+    # That the whole reading stops the run, and separately that this subject
+    # is what stops it. The guard refuses on the first unsettled reading, so
+    # asserting this subject's words against the whole tuple would pass only
+    # while every other subject happened to be settled — and would then start
+    # failing about the wrong one.
+    with pytest.raises(CouldLeaveThisMachineError):
+        require_nothing_leaves(agent.read_what_leaves_this_machine())
     found = read_about(agent, Subject.TRANSCRIPT_SHARING)
     with pytest.raises(CouldLeaveThisMachineError) as refused:
-        require_nothing_leaves(agent.read_what_leaves_this_machine())
+        require_nothing_leaves((found,))
     assert found.detail and found.detail in str(refused.value)
     assert found.remedy and found.remedy in str(refused.value)
 
@@ -51,9 +58,16 @@ def test_what_could_publish_a_transcript_is_not_written_over(
     # The same split the hosted-tool reading rests on. Writing the key back
     # would answer a deliberate edit with a run that quietly disagrees with
     # the file, and the guard could never report it again.
+    #
+    # An agent whose sharing lives on the command line has no file to write
+    # over, and comparing an empty directory against itself would pass while
+    # asserting nothing — the vacuity #155 was filed about. So it skips, and
+    # what the skip costs is the two tests either side, which do run for it.
     passthrough = agent_under_test.arrange_a_transcript_that_leaves(tmp_path)
-    agent = agent_under_test.prepare(monkeypatch, tmp_path, passthrough=passthrough)
     arranged = read_everything_under(tmp_path)
+    if not arranged:
+        pytest.skip(f"{agent_under_test.name} shares through an argument, not a file")
+    agent = agent_under_test.prepare(monkeypatch, tmp_path, passthrough=passthrough)
 
     agent.configure()
 

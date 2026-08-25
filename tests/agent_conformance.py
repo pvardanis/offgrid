@@ -56,12 +56,19 @@ def read_about(agent: Agent, subject: Subject) -> Reading:
 
     :return: What it said about that one.
 
-    :raise StopIteration: When the adapter answered about no such thing, which
-        `tests/test_agent_leaving.py` is what says so properly.
+    :raise AssertionError: When the adapter answered about no such thing,
+        naming the subject and what it did answer about — a bare `next` would
+        raise `StopIteration` here, which names neither.
     """
     readings = agent.read_what_leaves_this_machine()
+    found = [reading for reading in readings if reading.subject is subject]
 
-    return next(reading for reading in readings if reading.subject is subject)
+    assert found, (
+        f"the adapter said nothing about {subject}. It answered about "
+        f"{[str(reading.subject) for reading in readings]}."
+    )
+
+    return found[0]
 
 
 def plan_for_a_model(agent: Agent) -> Launch:

@@ -73,8 +73,14 @@ def test_a_configuration_that_permits_a_hosted_tool_stops_a_run(
     agent = agent_under_test.prepare(monkeypatch, tmp_path)
     found = read_about(agent, Subject.HOSTED_TOOLS)
 
-    with pytest.raises(CouldLeaveThisMachineError) as refused:
+    # The whole reading stops the run, and this subject is what stops it. Kept
+    # apart because the guard refuses on the first unsettled reading: asserting
+    # this subject's words against the whole tuple would pass only while every
+    # other subject happened to be settled.
+    with pytest.raises(CouldLeaveThisMachineError):
         require_nothing_leaves(agent.read_what_leaves_this_machine())
+    with pytest.raises(CouldLeaveThisMachineError) as refused:
+        require_nothing_leaves((found,))
 
     said = str(refused.value)
     assert found.detail and found.detail in said
