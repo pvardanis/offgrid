@@ -4,7 +4,11 @@ Primary-source research, gathered 2026-08-11. Everything below records what a
 vendor documents, what its OpenAPI spec declares, or what its source says when
 the documentation is silent. Nothing recorded here has been revised since;
 where it points at offgrid's own code it names modules and functions rather
-than lines, so that the pointers survive the code moving. It is **not** a recommendation about offgrid's
+than lines, so that the pointers survive the code moving. What a later
+measurement settled is added beside the finding it settles, dated and marked
+**Settled**, rather than written over it — a reading gathered from documents
+and one taken from a running program are different kinds of claim, and which
+one a sentence is has to stay visible. It is **not** a recommendation about offgrid's
 design: there is no proposed port shape here, no method signatures, and no
 union-of-features table saying every capability should be supported. The four
 questions are answered so that someone else can decide which operations belong
@@ -702,6 +706,14 @@ human-readable `name`. What OpenCode assumes about output-token limits or
 context windows was not established from the providers doc; it may live in
 `models.mdx` or in models.dev metadata, neither of which was read.
 
+**Settled 2026-08-24, on opencode 1.18.20.** It assumes neither: both are
+per-model configuration, under `provider.<id>.models.<model>.limit` as
+`context` and `output`. The two are required together — a `limit` naming one of
+them is refused as an invalid configuration before a token is generated, and
+omitting `limit` entirely is accepted. Measured by running it against a local
+server rather than read, and `src/offgrid/agents/opencode/launching.py` is what
+offgrid does with the answer.
+
 **Codex** takes its key from a named environment variable rather than a literal:
 `env_key` is "Environment variable that stores the user's API key for this
 provider", and `experimental_bearer_token` exists but its own doc comment says
@@ -806,6 +818,15 @@ was not read. What is visible is that its three local examples all use the
 OpenAI-compatible package, so tool use goes over `/v1/chat/completions`
 function calling rather than the Anthropic tool schema.
 
+**Partly settled 2026-08-24, on opencode 1.18.20**, by running a real turn
+against a local server and capturing what it sent. Tool use does go over
+`/v1/chat/completions` function calling, as the package predicted; it sends ten
+tools and honours the `output` cap as `max_tokens`; context and output limits
+are per-model configuration rather than assumptions (section 6). What a turn
+does not answer is what it requires as opposed to what it happened to do —
+whether it needs streaming, and what it does with a server that lacks something
+it asked for, are still unread.
+
 **Codex assumes the Responses API, and that is the whole story.** Beyond the
 `wire_api` gate in section 5, Ollama's integration note adds one operational
 assumption worth recording: "Codex requires a larger context window. It is
@@ -876,6 +897,14 @@ These could not be settled from primary sources, with what was tried.
    about streaming, tool-call format, context limits or output limits. Its
    `models.mdx`, its `@ai-sdk/openai-compatible` dependency, and the models.dev
    metadata it reads were all unread, and any of them could carry the answer.
+
+   **Partly settled 2026-08-24, on opencode 1.18.20**, not by reading any of
+   those but by running a turn against a local server. Context and output
+   limits it assumes nothing about — they are per-model configuration, and
+   required together (section 6). Tool calls go over `/v1/chat/completions`
+   function calling, ten tools in the request. What stays open is what it
+   *requires* rather than what one turn showed: streaming, and how it behaves
+   against a server missing something it asked for.
 
 9. **Whether OpenCode's built-in `anthropic` provider works against a local
    `/v1/messages`.** The doc shows `baseURL` being overridable "for any
