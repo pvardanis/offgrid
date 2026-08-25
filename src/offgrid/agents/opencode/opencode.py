@@ -7,6 +7,7 @@ nothing offgrid derives able to go stale.
 
 from dataclasses import dataclass, field
 
+from offgrid.agents.opencode import leaving
 from offgrid.agents.opencode.cautioning import say_what_the_run_costs
 from offgrid.agents.opencode.config import OpenCodeConfig
 from offgrid.agents.opencode.configuring import DURABLE, SETTINGS
@@ -19,7 +20,6 @@ from offgrid.agents.opencode.launching import (
     get_derived_configuration,
     get_opencode_args,
 )
-from offgrid.agents.opencode.leaving import read_what_leaves_this_machine
 from offgrid.domain.running.agent import Passthrough
 from offgrid.domain.running.config_editing import write_settings_where_nothing_is_kept
 from offgrid.domain.running.dialect import Dialect
@@ -55,10 +55,13 @@ class OpenCode:
         Only what offgrid never revises, and only where there is no edit to
         lose: the file is meant to be edited, and a person who turned sharing
         back on keeps that. A file that says nothing is written into rather
-        than left, because `share` is written here and the published schema
-        states no default for it — an emptied file makes no promise about
-        whether a transcript leaves this machine, and nothing else would say
-        so, since this adapter answers about hosted tools from a constant.
+        than left, because `share` is written here and nothing states a
+        default for it — an emptied file makes no promise about whether a
+        transcript leaves this machine.
+
+        What keeps that from being silent is `leaving.py`, which reads the key
+        back: an edit this call will not write into is one a run refuses on,
+        naming the file and the value to set.
 
         :raise AgentSettingsError: When what is there cannot be read, or what
             is missing cannot be written.
@@ -88,7 +91,7 @@ class OpenCode:
         :raise AgentSettingsError: When the file is there and cannot be read,
             which says nothing either way about sharing.
         """
-        return read_what_leaves_this_machine(self.config.config_dir / SETTINGS)
+        return leaving.read_what_leaves_this_machine(self.config.config_dir / SETTINGS)
 
     def plan(self, model: Model) -> Launch:
         """Work out how to start OpenCode against a local runtime.
