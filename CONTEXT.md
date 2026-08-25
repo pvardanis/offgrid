@@ -87,7 +87,8 @@ there is one.
 **caution** — what a person is owed before a run starts, because the agent will
 otherwise do something they meet mid-session. An agent's own words, since only
 it knows what it will do and which of its commands is the way out. Claude Code's
-is about compaction; most launches carry none.
+is about compaction, OpenCode's about the project configuration a run does not
+read.
 
 **profile** — what offgrid remembers between runs. YAML, hand-editable, one per
 machine. A section per adapter, and one holding a **model request**, which the

@@ -14,6 +14,9 @@ from offgrid.agents.opencode.launching import (
     CONFIG_CONTENT,
     CONFIG_FILE,
     CONTEXT_FLOOR,
+    DISABLED,
+    PROJECT_CONFIG,
+    PROJECT_CONFIG_CAUTION,
     get_derived_configuration,
     get_opencode_args,
 )
@@ -107,6 +110,11 @@ class OpenCode:
             CONFIG_CONTENT: get_derived_configuration(
                 model, runtime_host=self.config.runtime_host
             ),
+            PROJECT_CONFIG: DISABLED,
         }
 
-        return Launch(env=env, argv=get_opencode_args(self.passthrough))
+        return Launch(
+            env=env,
+            argv=get_opencode_args(self.passthrough),
+            caution=PROJECT_CONFIG_CAUTION,
+        )
