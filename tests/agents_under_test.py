@@ -74,6 +74,18 @@ class AgentUnderTest(Protocol):
         """
         ...
 
+    def edit_the_configuration(self, home: Path) -> None:
+        """Change what offgrid wrote, the way a person plausibly would.
+
+        The adapter makes the edit, because what counts as one is a key in a
+        JSON file for one agent and a sentence of prose for another — and it
+        has to leave every file readable by the agent that loads it, since a
+        file offgrid keeps is a file that goes on to be read.
+
+        :param home: Where offgrid keeps what it writes for this run.
+        """
+        ...
+
     def write_a_configuration_permitting_a_hosted_tool(self, home: Path) -> None:
         """Leave a configuration behind that denies no hosted tool.
 

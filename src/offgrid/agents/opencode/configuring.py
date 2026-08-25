@@ -1,14 +1,14 @@
 """What offgrid writes into a fresh OpenCode directory.
 
-Only what offgrid never revises is here. `configure` writes this where there is
-no file at all and never touches one that is there, because it cannot tell
-offgrid's own earlier write from a person's deliberate edit — so anything
-derived from the profile would be written once and then be wrong, silently, the
-moment the profile changed. Everything offgrid derives travels in the launch
-instead.
+Only what offgrid never revises is here. `configure` writes this where the file
+holds no edit and never touches one that does, because it cannot tell offgrid's
+own earlier write from a person's deliberate edit — so anything derived from
+the profile would be written once and then be wrong, silently, the moment the
+profile changed. Everything offgrid derives travels in the launch instead.
 
-That the check is the file rather than each key is issue #155: a file that is
-there but says none of this gets nothing added.
+A file that is there and says none of this keeps its own keys and gets none of
+these added. `domain/running/keeping.py` says why that is the answer rather
+than merging them in.
 """
 
 SETTINGS = "opencode.json"

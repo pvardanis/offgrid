@@ -1,22 +1,16 @@
-"""What offgrid writes into the directory OpenCode keeps, and what it leaves.
+"""What offgrid writes into a fresh OpenCode directory.
 
 The other half of the split that `tests/test_opencode.py` covers: only what
-offgrid never revises is written, and only where there is no file — so a person
-who edited it keeps the edit, and nothing derived from the profile can be left
-here to go stale.
+offgrid never revises is written, so nothing derived from the profile can be
+left here to go stale. What happens to a file that is already there is beside
+this, in `tests/test_opencode_keeping.py`.
 """
 
 import json
 
 import pytest
 
-from offgrid.shared.exceptions import AgentSettingsError
-from tests.opencode_bindings import (
-    RUNTIME_SPELLINGS,
-    SETTINGS,
-    bind,
-    read_written,
-)
+from tests.opencode_bindings import RUNTIME_SPELLINGS, bind, read_written
 
 
 @pytest.fixture(autouse=True)
@@ -93,36 +87,3 @@ def test_nothing_offgrid_derives_is_written_where_it_could_go_stale(
     assert "baseURL" not in written
     assert "models" not in written
     assert "127.0.0.1" not in written
-
-
-def test_an_edited_configuration_is_left_as_a_person_left_it(config_dir):
-    # Sharing is offgrid's default rather than offgrid's decision: somebody
-    # who wants it back edits the file and keeps the edit.
-    agent = bind()
-    agent.configure()
-    (config_dir / SETTINGS).write_text('{"share": "manual"}\n')
-
-    agent.configure()
-
-    assert read_written(config_dir)["share"] == "manual"
-
-
-def test_a_configuration_that_cannot_be_written_says_what_stopped_it(
-    tmp_path, monkeypatch
-):
-    # The command line reports offgrid's own errors and lets everything else
-    # reach the terminal as a traceback, which is no use to whoever owns the
-    # directory that would not take the file.
-    in_the_way = tmp_path / "not-a-directory"
-    in_the_way.write_text("")
-    monkeypatch.setattr("offgrid.domain.running.agent.OFFGRID_HOME", in_the_way)
-
-    with pytest.raises(AgentSettingsError) as refused:
-        bind().configure()
-
-    # The whole sentence, because a refusal naming neither the directory nor
-    # what to do about it is a wall with no door in it.
-    said = str(refused.value)
-    assert str(in_the_way / "opencode") in said
-    assert "cannot be written" in said
-    assert "Fix what is there or what owns it, and run again." in said

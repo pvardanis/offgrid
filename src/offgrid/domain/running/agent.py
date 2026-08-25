@@ -107,12 +107,12 @@ class Agent(Protocol):
     def configure(self) -> None:
         """Write what the agent needs and does not have.
 
-        What is already there is left alone: a configuration is meant to be
-        edited, and a run is no place to lose those edits — including an edit
-        that leaves a hosted tool reachable, which the reading below reports
-        and this call has no business overwriting.
+        An edit is left alone: a run is no place to lose one — including an
+        edit leaving a hosted tool reachable, which the reading below reports
+        and this call has no business writing over. What decides is whether
+        the file holds an edit, not whether it is there; see `keeping.py`.
 
-        :raise AgentSettingsError: When what is missing cannot be written.
+        :raise AgentSettingsError: When it cannot be read, or cannot be written.
         """
         ...
 
