@@ -63,7 +63,7 @@ PROJECT_CONFIG = "OPENCODE_DISABLE_PROJECT_CONFIG"
 # What OpenCode reads as true. Measured on opencode 1.18.20: it lowercases the
 # value and takes `1` or `true`, so anything else — `0`, `yes` and an empty
 # string alike — leaves project configuration read.
-DISABLED = "1"
+PROJECT_CONFIG_DISABLED = "1"
 
 # Said as a standing fact about an offgrid run rather than conditioned on
 # whether such a file is there. Deciding that would mean reimplementing
