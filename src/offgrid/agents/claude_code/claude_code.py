@@ -7,6 +7,7 @@ before anything runs.
 
 from dataclasses import dataclass, field
 
+from offgrid.agents.claude_code import leaving
 from offgrid.agents.claude_code.compacting import (
     explain_what_will_not_compact,
     get_compaction_setting,
@@ -24,7 +25,6 @@ from offgrid.agents.claude_code.launching import (
     TOKEN,
     get_claude_args,
 )
-from offgrid.agents.claude_code.leaving import read_what_leaves_this_machine
 from offgrid.domain.running.agent import Passthrough
 from offgrid.domain.running.config_editing import (
     write_config_where_nothing_is_kept,
@@ -95,7 +95,7 @@ class ClaudeCode:
         :raise AgentSettingsError: When the settings are there and cannot be
             read, which says nothing either way about either.
         """
-        return read_what_leaves_this_machine(
+        return leaving.read_what_leaves_this_machine(
             self.config.config_dir / SETTINGS, self.passthrough
         )
 

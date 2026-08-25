@@ -139,8 +139,12 @@ agents/            one package per agent
                    what is read back out of them
     compacting.py  what it compacts against, and what is said where
                    it will not
-    leaving.py     what a run of it could send off this machine, read
-                   out of its settings and its arguments
+    leaving.py     what a run of it could send off this machine, which
+                   is the two readings below
+    hosted_tools.py  whether WebSearch can still be reached, out of the
+                   settings and the argument that loads them
+    publishing.py  whether an argument puts the session on Anthropic's
+                   servers, which no setting decides
   opencode/
     opencode.py    what an agent is asked, in OpenCode's terms
     config.py      what it is run out of, as a profile says it
@@ -1105,9 +1109,9 @@ for the other. Nor is the second even on disk for every agent: sharing is a key
 in a file for OpenCode and an argument on the command line for Claude Code, so
 that one both writes what it needs and answers with the arguments to bind. An
 edit also has to leave the file readable by the agent that loads it, since a
-file offgrid keeps is a file that goes on to be read. Everything else is read off disk by walking
-that directory, so a `configure` leaving an extra file behind is caught by a
-suite that names no file.
+file offgrid keeps is a file that goes on to be read. Everything else is read
+off disk by walking that directory, so a `configure` leaving an extra file
+behind is caught by a suite that names no file.
 
 Two of those statements are why the guard is a named member at all. A
 `read_what_leaves_this_machine` answering `DENIED` without reading anything
