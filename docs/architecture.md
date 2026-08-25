@@ -22,7 +22,7 @@ flowchart TD
     end
     subgraph domain ["domain/"]
         sizing["sizing/<br/>machine · fit · listing · leaderboard · speed ·<br/>quality · shortlist · recommendation"]
-        running["running/<br/>model · dialect · capabilities · hosted_tools ·<br/>launch · runtime · agent · keeping · answering"]
+        running["running/<br/>model · dialect · capabilities · hosted_tools ·<br/>launch · runtime · agent · keeping_config · answering"]
         profile["profile/"]
     end
     subgraph shared ["shared/"]
@@ -175,8 +175,8 @@ domain/
     launch.py      an environment and an argument list, and running one
     runtime.py     what offgrid asks of a runtime, and which ones there are
     agent.py       what offgrid asks of an agent, and which ones there are
-    keeping.py     whether a configuration file holds an edit to keep, and
-                   what is refused rather than guessed about
+    keeping_config.py  whether a configuration file holds an edit to
+                   keep, and what is refused rather than guessed about
     answering.py   which model answers, and making it the one that does
     asking.py      what a run will ask for, said before it asks
     discarded_windows.py  which windows a runtime was asked for and did
@@ -620,7 +620,7 @@ jobs. `configure` writes what is missing and leaves alone what a person edited
 than something to write over. `read_hosted_tools` says what this run could
 reach, and is the privacy promise in `docs/decisions.md` made legible.
 
-What counts as an edit is `domain/running/keeping.py`, asked once for both
+What counts as an edit is `domain/running/keeping_config.py`, asked once for both
 adapters, because deciding it per adapter is how one of them comes to decide it
 by existence alone. A file that parses is an edit and is kept whole; a key
 missing from it is not written back, since the key likeliest to be missing is

@@ -31,11 +31,11 @@ from offgrid.agents.claude_code.launching import (
 from offgrid.domain.running.agent import Passthrough
 from offgrid.domain.running.dialect import Dialect
 from offgrid.domain.running.hosted_tools import HostedToolsReport, HostedToolsStatus
-from offgrid.domain.running.keeping import (
+from offgrid.domain.running.keeping_config import (
     read_as_json,
-    read_what_is_kept,
+    read_what_config_is_kept,
+    write_config_where_nothing_is_kept,
     write_settings_where_nothing_is_kept,
-    write_where_nothing_is_kept,
 )
 from offgrid.domain.running.launch import Launch
 from offgrid.domain.running.model import Model
@@ -76,7 +76,9 @@ class ClaudeCode:
         try:
             self.config.config_dir.mkdir(parents=True, exist_ok=True)
 
-            write_where_nothing_is_kept(self.config.config_dir / NOTES, INSTRUCTIONS)
+            write_config_where_nothing_is_kept(
+                self.config.config_dir / NOTES, INSTRUCTIONS
+            )
             write_settings_where_nothing_is_kept(
                 self.config.config_dir / SETTINGS, SLIM_SETTINGS
             )
@@ -114,7 +116,7 @@ class ClaudeCode:
         # `configure` asks it. Read off what the text parses to, a file holding
         # `null` would be called empty and answered with the remedy for an
         # empty one — and that remedy is to run the command already running.
-        body = read_what_is_kept(settings)
+        body = read_what_config_is_kept(settings)
 
         if body is None:
             return HostedToolsReport(

@@ -110,7 +110,7 @@ class Agent(Protocol):
         An edit is left alone: a run is no place to lose one — including an
         edit leaving a hosted tool reachable, which the reading below reports
         and this call has no business writing over. What decides is whether
-        the file holds an edit, not whether it is there; see `keeping.py`.
+        the file holds an edit, not whether it is there; see `keeping_config.py`.
 
         :raise AgentSettingsError: When it cannot be read, or cannot be written.
         """
