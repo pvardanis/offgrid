@@ -1482,3 +1482,51 @@ yourself to use what a project states.
 What was turned down is doing nothing at all, on the strength of inline
 configuration outranking a project file. That reading is correct, and it covers
 one key out of a class.
+
+## A configuration is decided by what it holds, not by whether it is there
+
+Both agent adapters wrote what was missing by asking whether the file existed.
+A file that was there and said nothing — emptied, cut off part way, edited down
+— therefore got nothing written and no error. For OpenCode that costs the
+package, and measured on 1.18.20 a provider entry without it resolves no model:
+the run loops and then fails with "Model unloaded." Sharing disabled is in the
+same file, and that is the promise about transcripts made above.
+
+**What decides is now whether the file holds an edit somebody made.** No file
+and an empty file answer alike, because whatever emptied it left nothing
+anybody chose, so offgrid writes into it. A file that holds something offgrid
+cannot read at all is refused, naming itself: bytes that are not text, and
+settings that are not JSON. `domain/running/keeping.py` answers that once for
+every adapter rather than each adapter answering it, because deciding it per
+adapter is how one of them came to decide it by existence alone.
+
+**What was turned down is merging the missing keys back in.** It is the reading
+the OpenCode spec in #147 argued for — "writes the provider entry, its package,
+its label and sharing disabled" is key-level language — and it contradicts a
+promise the port already makes. `configure` may not write over an edit that
+leaves a hosted tool reachable, because `read_hosted_tools` reports that edit
+with a remedy and a run refuses on it. The stand-in's own example is a settings
+file holding `{"theme": "mine"}`: merging would put `permissions.deny` back
+into it, so the guard could never report `PERMITTED` on the ordinary path
+again. A refusal a person can act on would have become a silent rewrite of
+their file, which is the failure the seam was split to prevent.
+
+So two things stay unfixed on purpose, and both are silent. A file edited down
+to keys offgrid never wrote keeps them and gets nothing added; and a key
+offgrid starts writing in a later version reaches no file that is already
+there. The second is the upgrade path #155 asked about, and it is out of scope
+rather than handled — what a person gets instead is a guard that reads the file
+and refuses the run, which OpenCode does not yet have for sharing.
+
+**Whether there is an edit is asked of the file's text, not of what the text
+parses to.** `null` is a document somebody could have left and is also how
+"nothing" is spelled, so deciding off the parsed value would write over that
+one file and no other.
+
+A symbolic link whose target is gone is refused rather than followed. It is
+absent by every reading that follows it — `Path.exists()` included, which
+swallows the error and answers False — so the check for absence said write, and
+the write followed the link and created the target outside the directory
+offgrid owns, with nothing said about it. A link to a file that is there is
+still followed, because pointing a configuration somewhere else is a thing
+people do deliberately.
