@@ -47,6 +47,12 @@ def read_what_config_is_kept(written: Path) -> str | None:
     link that leaves the directory: a live link out of it is followed, and an
     empty file at the far end is written into like any other.
 
+    A missing directory answers the same as a missing file — one
+    `FileNotFoundError` covers both, and nothing needs them apart, since
+    `configure` makes the directory before it asks. Every other way a read can
+    fail is refused rather than answered: a directory where the file belongs,
+    permissions, a link that loops.
+
     :param written: The file to decide about.
 
     :return: What it holds, or nothing where there is no edit to keep.
