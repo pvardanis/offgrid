@@ -1532,3 +1532,57 @@ the write followed the link and created the target outside the directory
 offgrid owns, with nothing said about it. A link to a file that is there is
 still followed, because pointing a configuration somewhere else is a thing
 people do deliberately.
+
+## A run is asked what could leave this machine, not what tools are hosted
+
+The slot that read hosted tools now reads everything a run could send off this
+machine, and answers one reading per subject rather than one status. `Subject`
+names them — hosted tools, transcript sharing — and `require_nothing_leaves`
+refuses on the first that is not settled.
+
+**What made it necessary is that OpenCode's `share` was written once and never
+read.** `configure` leaves an edited file exactly as it found it, correctly,
+and the adapter answered about hosted tools from a constant, correctly. So the
+one file deciding whether a transcript leaves this machine had nothing reading
+it: a person who turned sharing back on, or who edited the file down to keys
+offgrid never wrote, got a clean `doctor` and a run that went ahead. That is
+the guard the entry above promised and did not have.
+
+**One slot rather than two.** A second port member would duplicate the enum,
+the guard and the conformance shape for a question with the same four answers
+and the same decision behind it. What a second member would have bought is
+telling the two apart, and a reading carrying its own subject buys that instead
+— `run` refuses naming which one, and `doctor` prints a line each.
+
+**One reading per subject rather than one status.** Folding them would make a
+refusal unable to say which of the two caused it, and they are fixed in
+different places by different edits: a key in a JSON file, an argument on a
+command line. `tests/test_agent_leaving.py` asks every adapter for every
+subject, so a subject added later goes red on every adapter rather than on
+none — which is the only thing standing between a new subject and an adapter
+that silently never answers about it.
+
+**What `share` unset means is unknown, and that is the measurement.** The
+published schema states an enum of `manual`, `auto` and `disabled` and no
+default. Measured on 2026-08-25 against opencode 1.18.23 with `opencode debug
+config`, an empty configuration and no project configuration read: `share` is
+absent from what it resolves rather than filled in. So offgrid cannot say a
+transcript stays here, and an edited file that states no `share` answers
+`UNWRITTEN` and stops the run. Its remedy is the edit rather than "run again",
+because `configure` will not write into a file holding an edit — which is why
+the remedy travels on the reading and is not read off the status.
+
+**Claude Code answers about sharing too, and not with `NONE_OFFERED`.**
+Measured against claude 2.1.245 by reading `--help`: `--cloud` opens a session
+on Anthropic's servers and `--environment` opens one on a named self-hosted
+pool, so a run carrying either is not a local run whatever the profile names.
+There is no setting for it, so the whole of the reading is the command line.
+`--teleport`, `--remote-control` and `--from-pr` each touch a session somewhere
+else and none was measured; claiming a complete list off `--help` would be the
+invented fact this file exists to keep out, so they are issue #167 instead.
+
+**`doctor` prints a line per reading, and `DENIED` alone prints no detail.**
+That is the one answer with nothing behind it to check and nothing to act on.
+`NONE_OFFERED` still prints its evidence, because a claim that an agent has no
+such thing is worth exactly what the dated measurement beside it is, and the
+report is where a person reads that.

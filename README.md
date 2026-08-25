@@ -479,6 +479,12 @@ schema so an editor can check your edits, and `share: disabled`, which is what
 keeps a session transcript off OpenCode's servers. offgrid writes it if it is
 not there and then leaves it alone, because it is meant to be edited.
 
+**And it reads `share` back before every run.** A file offgrid has left alone
+is a file nothing else will correct, so an edit that turns sharing on — or one
+that leaves the key out, which the published schema gives no default for and
+opencode 1.18.23 fills in with nothing — stops the run, naming the file and
+what to set. `offgrid doctor` says the same thing without costing a load.
+
 Everything else is rebuilt every run and carried in the launch, so nothing
 offgrid derives can go stale in a file: a moved runtime, a different model or a
 different window are right on the next run without anything being rewritten.
