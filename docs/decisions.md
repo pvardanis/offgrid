@@ -1334,3 +1334,151 @@ One thing the suite cannot hold yet: only `lmstudio` has an adapter, so
 deleting the runtime half of the key leaves every test green. What is covered
 is the record a file holds and the names it refuses. The guard becomes
 testable with the second adapter.
+
+## A runtime serves a set of dialects, not one
+
+The runtime port carried a single `dialect`, and the LM Studio adapter stated
+`anthropic`. So `require_compatible` refused an agent speaking `openai` against
+a server that serves it — the refusal was offgrid's model of runtimes rather
+than anything the runtime does, and the second agent could not be run at all
+until the model was fixed.
+
+The survey that contradicted it was already in the repo.
+`docs/research/adapter-surfaces.md` records all four candidate runtimes
+exposing both shapes, and this decisions file has said since "A port states
+what is wanted" that the pairing check no longer discriminates between
+runtimes. The port outlived the finding.
+
+So a runtime answers with a `frozenset[Dialect]` and the check is a membership
+test. An agent speaking any one of the set pairs with the runtime; an agent
+speaking something outside it is still refused before a load, which is the case
+the check exists for — Codex CLI accepts only the Responses API, and there is
+nothing among these runtimes that serves it.
+
+**The set is a constant, settled without reaching the server.** It sits in
+`runtimes/lmstudio/serving.py` beside the capabilities, because what LM Studio
+exposes is a fact about the application rather than about one connection to it.
+That is what lets an impossible pair be refused before a run pays for a load,
+which is the whole value of refusing early.
+
+**What it does not claim is that either shape is served completely.** Exposing
+an endpoint and serving a dialect are different statements, and LM Studio
+answers `count_tokens` with a `200` while logging that the endpoint does not
+exist. What a runtime owes to count as serving a dialect fully stays open as
+issue #43, and the constant carries that caveat where a reader will meet it.
+
+**An empty set is a fault in the adapter, and the refusal says so.** Offering a
+translating proxy to somebody whose runtime serves nothing sends them to build
+a translator with one end unattached, so that message names the adapter
+instead. The conformance suite is what holds every adapter to a non-empty set;
+nothing in the type says it.
+
+**The dialects are named in sorted order.** A dialect hashes by its name and
+string hashes are salted per process, so a message built from the set's own
+order names them differently between two runs of the same refusal. Sorting is
+one line and it is what makes the sentence quotable in a bug report.
+
+## What an adapter writes, and what one run derives
+
+`configure` writes what is not there and never touches what is, because it
+cannot tell offgrid's own earlier write from a person's deliberate edit. That
+is a settled decision, and against OpenCode it decides a second one: anything
+derived from the profile, written into that file once, is silently wrong the
+moment the profile changes. A moved address, a different model, a different
+window — the file keeps saying the old one, and a wrong address in OpenCode
+**hangs** rather than erroring, which is the failure nobody gets a message
+about.
+
+So the split is not between a file and an environment. It is between what
+offgrid never revises and what one run settles.
+
+**The durable half** is the provider entry's shape: the published `$schema`, so
+the file a person is meant to edit gets completion and validation; the npm
+package that speaks the OpenAI-compatible protocol; the label OpenCode
+displays; and `share: disabled`, which is the setting in that file deciding
+whether a transcript leaves this machine. Sharing goes here rather than in the
+derived half because it is a standing choice about this machine — somebody who
+wants sharing back keeps the edit.
+
+**The derived half** is where the runtime listens, which model answers, and the
+window and output cap it answers at. It travels as inline configuration in
+`OPENCODE_CONFIG_CONTENT`, rebuilt every run, so none of it can go stale and
+`plan` still writes nothing — the address is then something a person can be
+shown before anything starts, which a file's contents are not.
+
+**The ordering the split rests on was measured**, on opencode 1.18.20, with all
+three configurations deliberately set to conflicting values:
+
+    inline  >  the file offgrid writes  >  a person's own configuration
+
+and measured both ways round, because `configure` never overwrites: an address
+hand-edited into offgrid's file has to lose to the derived one. The three deep
+merge rather than replace, so a person's own provider entry, key and timeouts
+come through a run untouched, and only a key offgrid names is overridden.
+
+**The provider is called `offgrid` rather than the runtime's name.** OpenCode
+takes any string, so nothing requires it to be one — and making it one would
+put a fact about runtimes inside an agent adapter, and would deep-merge with a
+provider entry a person wrote for that runtime themselves. A name of offgrid's
+own collides with nothing they wrote.
+
+**The model is enumerated rather than named.** Measured on 1.18.20, a provider
+entry carrying the package and the address but no model list resolves no model
+at all, so pointing at the provider is not enough to reach one.
+
+Two smaller things fall out of the same axis. The window written is what the
+runtime settled on rather than the model's ceiling, because telling OpenCode
+the larger of the two asks it to compact after the runtime has already
+truncated the prefix. And where the runtime states no window, the entry carries
+no `limit` at all rather than one naming an output cap alone: the published
+schema requires `context` and `output` together and refuses the half, so the
+cap goes with the window. That is a real loss, and issue #154 is what a person
+is owed about it.
+
+## A project configuration is switched off, and a person is told before the run
+
+A configuration in the directory a run started from beats the file offgrid
+writes. It does not beat what the run carries inline — measured on opencode
+1.18.20 with a project file pointing the provider at a dead port, which
+answered through the derived address rather than stalling. So the address is
+safe either way.
+
+What it is not safe from is everything else such a file states: providers,
+agents, permissions and the instructions a project keeps in `AGENTS.md`,
+`CLAUDE.md` or `CONTEXT.md`. offgrid never writes any of those, so it cannot
+outrank them, and a run that quietly picks up a project's own agents and
+permissions is not the run offgrid described.
+
+`OPENCODE_DISABLE_PROJECT_CONFIG=1` covers the class rather than the one key,
+and that is why it is set even though the address needs no defending. What
+OpenCode reads as true was measured too: it lowercases the value and takes `1`
+or `true`, so `0`, `yes` and an empty string alike leave project configuration
+read — the constant is named for what it switches off rather than for the
+string it happens to be.
+
+**Because that takes something away from somebody who put it there
+deliberately, the launch carries a caution.** That slot already exists, for the
+compaction window Claude Code will not honour, and it exists for this reason:
+what there is to say is one agent's own, so the domain cannot word it and a
+member every adapter had to answer would be one vendor's quirk asked of all of
+them.
+
+Where it lands is one line before the agent starts, and not before the model is
+held: a caution rides on a `Launch`, and a `Launch` is what `plan` builds out of
+the model a run has already settled. So a person reads it after paying for a
+load rather than instead of paying for one, which is later than #148 asked for.
+Nothing about this sentence depends on the model, so what would move it earlier
+is a way for a caution to be read before `plan` — which is the same question
+#93's story 16 asks about showing one in `doctor`, and is not settled here.
+
+**The caution is a standing statement, not a finding.** Saying it only where
+such a file exists would mean reimplementing OpenCode's own upward directory
+walk — its stopping condition and both file spellings — to word one sentence,
+and a walk that drifted from theirs would say the wrong thing confidently. For
+the same reason the sentence names what a person is likeliest to have rather
+than claiming a complete list, and says what to do instead: start OpenCode
+yourself to use what a project states.
+
+What was turned down is doing nothing at all, on the strength of inline
+configuration outranking a project file. That reading is correct and covers one
+key.
