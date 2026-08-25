@@ -393,11 +393,9 @@ runtime honours the number, and the model states the ceiling. An adapter with
 settings of its own puts them in its own section, which is what the second
 agent needs: opencode learns where the runtime listens from a
 `provider.<name>.options.baseURL` block rather than from a variable naming the
-address, so its adapter has to be told the host. That block reaches opencode
-from the environment as well as from a file — `OPENCODE_CONFIG_CONTENT` carries
-it and outranks the file, measured on 1.18.20 — so what settles is that the
-agent's section carries the host, not which half of opencode's configuration
-ends up stating it.
+address, so its adapter has to be told the host. Which half of opencode's
+configuration ends up stating it is `docs/decisions.md`'s business; what the
+profile settles is that the agent's section carries it.
 
 ```yaml
 runtime:
