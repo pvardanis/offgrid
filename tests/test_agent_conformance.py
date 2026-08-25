@@ -7,12 +7,12 @@ configuration lives in, which tool is the one with nothing here to run it —
 all of that stays in that adapter's own file.
 
 Two things an agent owes are beside this rather than in it: what it writes for
-itself and what it refuses to write over, in `tests/test_agent_configuration.py`,
-and what it says about the tools offgrid cannot run for it, in
-`tests/test_agent_hosted_tools.py`.
-
-An adapter is done when all three pass. `tests/agents_under_test.py` is where a
-second one joins, and it is the only edit to the suite that adding one takes.
+itself and what it refuses to write over, in `tests/test_agent_configuration.py`;
+and what a run could send off this machine, in `tests/test_agent_leaving.py`
+with a file per subject beside it, `tests/test_agent_hosted_tools.py` and
+`tests/test_agent_transcript_sharing.py`. An adapter is done when all of them
+pass. `tests/agents_under_test.py` is where a second one joins, and it is the
+only edit to the suite that adding one takes.
 
 `tmp_path` is where offgrid keeps what it writes for the length of one test,
 which is what lets these say what was written without knowing which files any

@@ -21,6 +21,12 @@ HOST = "127.0.0.1:1234"
 # WebSearch reachable again.
 PERMITTING = '{"theme": "mine"}\n'
 
+# An argument a person could plausibly type, which sends the whole session to
+# Anthropic's servers whatever model the profile names. Spelled here rather
+# than reached for out of the adapter, so that a rename in the adapter is
+# caught by a test failing rather than by a test still agreeing with itself.
+PUBLISHING = "--cloud"
+
 
 @dataclass(frozen=True)
 class ClaudeCodeUnderTest:
@@ -85,6 +91,19 @@ class ClaudeCodeUnderTest:
         self.write_a_configuration_permitting_a_hosted_tool(home)
 
         (home / self.name / "CLAUDE.md").write_text("# Mine\n\nAnswer briefly.\n")
+
+    def arrange_a_transcript_that_leaves(self, home: Path) -> Passthrough:
+        """Ask for a session that runs on Anthropic's servers.
+
+        Nothing on disk, because there is nothing on disk to write: Claude
+        Code has no setting for this, and the whole of the answer is an
+        argument a person types.
+
+        :param home: Where offgrid keeps what it writes for this run.
+
+        :return: The argument that opens a cloud session.
+        """
+        return (PUBLISHING,)
 
     def write_a_configuration_permitting_a_hosted_tool(self, home: Path) -> None:
         """Leave settings behind that no longer deny WebSearch.

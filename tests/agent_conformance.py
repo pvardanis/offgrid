@@ -12,6 +12,7 @@ import pytest
 
 from offgrid.domain.running.agent import Agent
 from offgrid.domain.running.launch import Launch
+from offgrid.domain.running.leaving import Reading, Subject
 from offgrid.domain.running.model import Model
 from tests.agents_under_test import AGENTS_UNDER_TEST
 
@@ -41,6 +42,26 @@ def read_everything_under(home: Path) -> dict[str, bytes]:
         for path in sorted(home.rglob("*"))
         if path.is_file()
     }
+
+
+def read_about(agent: Agent, subject: Subject) -> Reading:
+    """Pick out what an agent said about one way off this machine.
+
+    The reading answers about every subject at once, and a test is about one
+    of them: picking rather than indexing keeps a test from depending on the
+    order an adapter happens to answer in.
+
+    :param agent: The adapter under test.
+    :param subject: The way off this machine to read about.
+
+    :return: What it said about that one.
+
+    :raise StopIteration: When the adapter answered about no such thing, which
+        `tests/test_agent_leaving.py` is what says so properly.
+    """
+    readings = agent.read_what_leaves_this_machine()
+
+    return next(reading for reading in readings if reading.subject is subject)
 
 
 def plan_for_a_model(agent: Agent) -> Launch:

@@ -11,7 +11,8 @@ import pytest
 
 from offgrid.agents.claude_code import prepare
 from offgrid.agents.claude_code.config import ClaudeCodeConfig
-from offgrid.domain.running.hosted_tools import HostedToolsStatus
+from offgrid.domain.running.leaving import Status, Subject
+from tests.agent_conformance import read_about
 from tests.claude_code_under_test import HOST
 
 SETTINGS = "settings.json"
@@ -51,9 +52,9 @@ def test_settings_holding_null_are_kept_and_reported_as_a_person_can_act_on(
 
     agent.configure()
 
-    found = agent.read_hosted_tools()
+    found = read_about(agent, Subject.HOSTED_TOOLS)
     assert (config_dir / SETTINGS).read_text() == "null\n"
-    assert found.status is HostedToolsStatus.PERMITTED
+    assert found.status is Status.PERMITTED
     assert found.remedy and "delete the file" in found.remedy
 
 
@@ -68,4 +69,4 @@ def test_emptied_settings_are_written_again_and_then_deny_websearch(config_dir):
 
     agent.configure()
 
-    assert agent.read_hosted_tools().status is HostedToolsStatus.DENIED
+    assert read_about(agent, Subject.HOSTED_TOOLS).status is Status.DENIED

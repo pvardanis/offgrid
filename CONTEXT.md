@@ -24,10 +24,21 @@ server-side executor answers it, and the agent renders the call as a result.
 An invented answer, with no error. An agent is launched with its hosted tools
 denied.
 
+**transcript sharing** — an agent publishing the session to its vendor's
+servers, as a link somebody can open or as a session that runs there outright.
+The quieter failure of the two: the run works exactly as asked and the reading
+leaves the machine anyway. A run is refused rather than started where it is
+not settled.
+
+**what could leave this machine** — the two above together, which is what an
+agent is asked about before a run starts and what `doctor` reports. One reading
+each, because they are fixed in different places by different edits.
+
 **passthrough** — the arguments a person types after offgrid's own, handed to
-the agent unchanged. offgrid reads them as well as passing them: one of them
-decides whether the agent loads the settings offgrid wrote, so a run is refused
-rather than started with its hosted tools reachable.
+the agent unchanged. offgrid reads them as well as passing them: one decides
+whether the agent loads the settings offgrid wrote, and another runs the whole
+session on the vendor's servers, so a run is refused rather than started with
+something able to leave this machine.
 
 **dialect** — the HTTP API shape a runtime serves and an agent expects,
 `anthropic` or `openai`. A runtime serves a set of them and an agent speaks

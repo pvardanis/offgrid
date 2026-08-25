@@ -10,7 +10,7 @@ parses is a file a person edited, and the key likeliest to be missing from one
 is the key that decides something offgrid promises — sharing off for OpenCode,
 WebSearch denied for Claude Code. Putting those back silently would trade a
 refusal a person can act on for a run that quietly disagrees with their file,
-which is what `read_hosted_tools` exists to prevent.
+which is what `read_what_leaves_this_machine` exists to prevent.
 
 `tmp_path` is where offgrid keeps what it writes for the length of one test,
 which is what lets these say what was written without knowing which files any

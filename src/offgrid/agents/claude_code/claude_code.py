@@ -17,27 +17,22 @@ from offgrid.agents.claude_code.configuring import (
     NOTES,
     SETTINGS,
     SLIM_SETTINGS,
-    get_denied_tools,
 )
 from offgrid.agents.claude_code.launching import (
     CONTEXT_FLOOR,
     MAX_OUTPUT_TOKENS,
-    SOURCES,
     TOKEN,
-    WRITTEN_SOURCE,
     get_claude_args,
-    get_dropped_settings_sources,
 )
+from offgrid.agents.claude_code.leaving import read_what_leaves_this_machine
 from offgrid.domain.running.agent import Passthrough
 from offgrid.domain.running.config_editing import (
-    read_as_json,
-    read_what_config_is_kept,
     write_config_where_nothing_is_kept,
     write_settings_where_nothing_is_kept,
 )
 from offgrid.domain.running.dialect import Dialect
-from offgrid.domain.running.hosted_tools import HostedToolsReport, HostedToolsStatus
 from offgrid.domain.running.launch import Launch
+from offgrid.domain.running.leaving import Reading
 from offgrid.domain.running.model import Model
 from offgrid.shared.exceptions import AgentSettingsError
 
@@ -88,59 +83,20 @@ class ClaudeCode:
                 "there or what owns it, and run again."
             ) from error
 
-    def read_hosted_tools(self) -> HostedToolsReport:
-        """Say whether WebSearch can still be reached from this run.
+    def read_what_leaves_this_machine(self) -> tuple[Reading, ...]:
+        """Say what this run could send off this machine, one way at a time.
 
-        Both halves of it, in the order they bite: an argument that stops the
-        settings being loaded leaves them beside the point, however they read.
+        Where each is read, and why it is read where it is, is in
+        `leaving.py` — WebSearch out of a settings file and the argument
+        deciding whether it is loaded, publishing out of the command line.
 
-        :return: What it found, and what to change.
+        :return: One reading for each way off this machine.
 
         :raise AgentSettingsError: When the settings are there and cannot be
-            read, which says nothing either way about WebSearch.
+            read, which says nothing either way about either.
         """
-        dropped = get_dropped_settings_sources(self.passthrough)
-
-        if dropped is not None:
-            return HostedToolsReport(
-                status=HostedToolsStatus.PERMITTED,
-                detail=(
-                    f"{SOURCES} {','.join(dropped)} does not name "
-                    f"`{WRITTEN_SOURCE}`, so nothing loads the deny on WebSearch."
-                ),
-                remedy=f"Add `{WRITTEN_SOURCE}` to the list, or drop the argument.",
-            )
-
-        settings = self.config.config_dir / SETTINGS
-        # Whether there is anything to read is asked of the text, the same way
-        # `configure` asks it. Read off what the text parses to, a file holding
-        # `null` would be called empty and answered with the remedy for an
-        # empty one — and that remedy is to run the command already running.
-        body = read_what_config_is_kept(settings)
-
-        if body is None:
-            return HostedToolsReport(
-                status=HostedToolsStatus.UNWRITTEN,
-                detail=f"{settings} holds nothing, so nothing denies WebSearch.",
-                remedy="`offgrid run` writes it before it starts the agent.",
-            )
-
-        if "WebSearch" in get_denied_tools(read_as_json(body, settings)):
-            return HostedToolsReport(
-                status=HostedToolsStatus.DENIED,
-                detail=f"{settings} denies WebSearch.",
-            )
-
-        return HostedToolsReport(
-            status=HostedToolsStatus.PERMITTED,
-            detail=(
-                f"{settings} does not deny WebSearch, which runs on Anthropic's "
-                "servers: against a local model there is nothing to run it, so "
-                "the model invents a result and the agent returns it as an answer."
-            ),
-            remedy=(
-                "Add it to permissions.deny, or delete the file and offgrid writes one."
-            ),
+        return read_what_leaves_this_machine(
+            self.config.config_dir / SETTINGS, self.passthrough
         )
 
     def plan(self, model: Model) -> Launch:

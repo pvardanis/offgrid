@@ -13,8 +13,8 @@ from pydantic import computed_field
 
 from offgrid.domain.running.agent import AgentConfig, AgentName, Prepare
 from offgrid.domain.running.dialect import Dialect
-from offgrid.domain.running.hosted_tools import HostedToolsReport, HostedToolsStatus
 from offgrid.domain.running.launch import Launch
+from offgrid.domain.running.leaving import Reading, Status, Subject
 from offgrid.domain.running.model import Model
 from offgrid.domain.running.runtime import RuntimeConfig, RuntimeName
 
@@ -74,14 +74,14 @@ class StandInAgent:
     def configure(self) -> None:
         """Write nothing, having nothing to write."""
 
-    def read_hosted_tools(self) -> HostedToolsReport:
-        """Answer that there is nothing to reach, having no tools at all.
+    def read_what_leaves_this_machine(self) -> tuple[Reading, ...]:
+        """Say nothing here could leave, about every subject the port asks about.
 
-        :return: What an agent with no hosted tool says.
+        :return: One reading per subject, each saying there is nothing.
         """
-        return HostedToolsReport(
-            status=HostedToolsStatus.NONE_OFFERED,
-            detail="a stand-in offers no tool that runs anywhere else.",
+        return tuple(
+            Reading(subject=way, status=Status.NONE_OFFERED, detail=f"no {way}.")
+            for way in Subject
         )
 
     def plan(self, model: Model) -> Launch:

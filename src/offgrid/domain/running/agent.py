@@ -17,8 +17,8 @@ from typing import Protocol
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 from offgrid.domain.running.dialect import Dialect
-from offgrid.domain.running.hosted_tools import HostedToolsReport
 from offgrid.domain.running.launch import Launch
+from offgrid.domain.running.leaving import Reading
 from offgrid.domain.running.model import Model
 from offgrid.shared.home import OFFGRID_HOME
 
@@ -108,38 +108,38 @@ class Agent(Protocol):
         """Write what the agent needs and does not have.
 
         An edit is left alone: a run is no place to lose one — including an
-        edit leaving a hosted tool reachable, which the reading below reports
-        and this call has no business writing over. What decides is whether
-        the file holds an edit, not whether it is there; see `config_editing.py`.
+        edit leaving something able to reach off this machine, which the
+        reading below reports and this call has no business writing over. What
+        decides is whether the file holds an edit, not whether it is there; see
+        `config_editing.py`.
 
         :raise AgentSettingsError: When it cannot be read, or cannot be written.
         """
         ...
 
-    def read_hosted_tools(self) -> HostedToolsReport:
-        """Say what this agent can reach that offgrid cannot run here.
+    def read_what_leaves_this_machine(self) -> tuple[Reading, ...]:
+        """Say what this run could send off this machine, one way at a time.
 
-        Its own member rather than part of configuring, because the failure
-        it describes is silent: a tool that runs on its vendor's servers has
-        nothing to run it against a model on this machine, so the model emits
-        the call as prose and the agent returns that as a result — an
-        invented answer, with no error anywhere.
+        Its own member rather than part of configuring, because the failures
+        it describes are silent: a hosted tool called against a model held
+        here comes back as an invented answer, and a published transcript
+        leaves while the run works exactly as asked.
 
-        It answers rather than refuses, so that one reading serves both the
-        command that must not proceed and the command that only reports. It
-        reads the arguments as well as the configuration, because a
-        configuration only denies where the agent loads it, and an agent
-        takes arguments deciding whether it does.
+        One reading per subject rather than one answer, because those are
+        fixed in different files by different edits, and a refusal that could
+        not say which it was about would send a person to read both. Every
+        subject in `Subject` is answered, an agent that has no such thing
+        included: that answer is `NONE_OFFERED` with the evidence for it.
 
-        It writes nothing and changes nothing. Rewriting a configuration
-        would overrule an edit a person made deliberately, and dropping an
-        argument would launch something other than what they typed — so the
-        remedy it carries is words rather than an action.
+        It answers rather than refuses, so one reading serves both the command
+        that must not proceed and the one that only reports; it reads arguments
+        as well as configuration, writes nothing, and its remedy is words.
 
-        :return: What it found, and what to change.
+        :return: One reading for each way off this machine, saying what was
+            found and what to change.
 
         :raise AgentSettingsError: When the configuration is there and cannot
-            be read at all, which is not an answer about hosted tools.
+            be read at all, which is no answer about any of them.
         """
         ...
 

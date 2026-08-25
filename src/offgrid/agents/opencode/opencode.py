@@ -19,20 +19,14 @@ from offgrid.agents.opencode.launching import (
     get_derived_configuration,
     get_opencode_args,
 )
+from offgrid.agents.opencode.leaving import read_what_leaves_this_machine
 from offgrid.domain.running.agent import Passthrough
 from offgrid.domain.running.config_editing import write_settings_where_nothing_is_kept
 from offgrid.domain.running.dialect import Dialect
-from offgrid.domain.running.hosted_tools import HostedToolsReport, HostedToolsStatus
 from offgrid.domain.running.launch import Launch
+from offgrid.domain.running.leaving import Reading
 from offgrid.domain.running.model import Model
 from offgrid.shared.exceptions import AgentSettingsError
-
-# What was measured, so that "nothing hosted" reads as a fact about a version
-# rather than as an adapter whose author never asked the question. Measured on
-# 2026-08-24 the way `docs/decisions.md` measured 1.18.14, by reading the tool
-# list it sends: bash, edit, glob, grep, read, skill, task, todowrite, webfetch
-# and write — the same ten, and every one of them runs on this machine.
-MEASURED_AGAINST = "opencode 1.18.20"
 
 
 @dataclass(frozen=True)
@@ -81,25 +75,20 @@ class OpenCode:
                 "there or what owns it, and run again."
             ) from error
 
-    def read_hosted_tools(self) -> HostedToolsReport:
-        """Say that OpenCode offers no tool offgrid cannot run here.
+    def read_what_leaves_this_machine(self) -> tuple[Reading, ...]:
+        """Say what this run could send off this machine, one way at a time.
 
-        Every tool it offers runs on this machine, and it speaks to whatever
-        provider it is pointed at rather than to one vendor's servers, so there
-        is nothing server-side to deny. Dated, because that is a fact about a
-        version rather than a standing property of the agent.
+        Where each is read, and what each was measured against, is in
+        `leaving.py` — nothing hosted from a tool list read off a live server,
+        sharing from the key in the file `configure` writes and then leaves
+        alone.
 
-        :return: That there is nothing to permit, and what that was measured
-            against.
+        :return: One reading for each way off this machine.
+
+        :raise AgentSettingsError: When the file is there and cannot be read,
+            which says nothing either way about sharing.
         """
-        return HostedToolsReport(
-            status=HostedToolsStatus.NONE_OFFERED,
-            detail=(
-                f"Measured against {MEASURED_AGAINST}: every tool it offers runs "
-                "on this machine, and it talks to whatever provider it is pointed "
-                "at rather than to one vendor, so there is nothing hosted to deny."
-            ),
-        )
+        return read_what_leaves_this_machine(self.config.config_dir / SETTINGS)
 
     def plan(self, model: Model) -> Launch:
         """Work out how to start OpenCode against a local runtime.

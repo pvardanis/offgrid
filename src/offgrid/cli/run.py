@@ -16,8 +16,8 @@ from offgrid.domain.running.discarding import (
     refuse_to_ask_runtime_again,
     save_discarded_window_if_new,
 )
-from offgrid.domain.running.hosted_tools import require_hosted_tools_denied
 from offgrid.domain.running.launch import explain_why_it_would_not_start, start
+from offgrid.domain.running.leaving import require_nothing_leaves
 from offgrid.domain.running.model import (
     read_what_was_typed,
     settle_what_to_run,
@@ -56,13 +56,13 @@ def run(
             stored=profile.model,
         )
 
-        # A dialect that cannot be paired, a run that would undo a guarantee
-        # and a window the run could not work at are all settled before the
-        # load — the first two here, the window inside `hold_model` — because
-        # a load is tens of seconds nobody gets back.
+        # A dialect that cannot be paired, a run that could send something off
+        # this machine and a window the run could not work at are all settled
+        # before the load — the first two here, the window inside `hold_model`
+        # — because a load is tens of seconds nobody gets back.
         require_compatible(runtime.dialects, agent.dialect)
         agent.configure()
-        require_hosted_tools_denied(agent.read_hosted_tools())
+        require_nothing_leaves(agent.read_what_leaves_this_machine())
 
         what_the_runtime_discarded = discarded_windows.read_discarded_windows(
             profile.runtime.name,
