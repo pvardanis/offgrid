@@ -29,14 +29,14 @@ from offgrid.agents.claude_code.launching import (
     get_dropped_settings_sources,
 )
 from offgrid.domain.running.agent import Passthrough
-from offgrid.domain.running.dialect import Dialect
-from offgrid.domain.running.hosted_tools import HostedToolsReport, HostedToolsStatus
-from offgrid.domain.running.keeping_config import (
+from offgrid.domain.running.config_editing import (
     read_as_json,
     read_what_config_is_kept,
     write_config_where_nothing_is_kept,
     write_settings_where_nothing_is_kept,
 )
+from offgrid.domain.running.dialect import Dialect
+from offgrid.domain.running.hosted_tools import HostedToolsReport, HostedToolsStatus
 from offgrid.domain.running.launch import Launch
 from offgrid.domain.running.model import Model
 from offgrid.shared.exceptions import AgentSettingsError
