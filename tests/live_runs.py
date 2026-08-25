@@ -1,9 +1,9 @@
 """Starting a real `offgrid run`, and putting back what one leaves behind.
 
 A live run is a subprocess, so nothing a test patches reaches it: it reads the
-stored profile and writes into the real home. Both files that start one ask
-for the same two things, so they are here, and the root `conftest.py`
-registers this as a plugin so both find them.
+stored profile and writes into the real home. Both files that start one need
+it started the same way and what it records put back, so that is here, and the
+root `conftest.py` registers this as a plugin so both find them.
 """
 
 import shutil
@@ -22,13 +22,15 @@ from tests.live_pairs import require_installed
 ANSWER_SECONDS = 600
 
 # A window to ask for and read back, rather than inheriting whatever the
-# profile stores. Above both agents' floors so either starts, and small enough
-# that the smoke model is served at it rather than clamped to something else.
+# profile stores. Above the floor either adapter states — both state 25,000,
+# OpenCode's as a placeholder — and small enough that the smoke model is served
+# at it rather than clamped to something else.
 STATED_WINDOW = 32768
 
-# What a run exits with when it refused before the agent, and what offgrid
-# exits with when the agent would not start. Neither is a run that reached
-# the agent, which is what every check that starts one is about.
+# What offgrid exits with when it refused before the agent, and when the agent
+# would not start. An agent that started and then failed on its own terms exits
+# 1 as well, so these are a floor rather than a proof: a check wanting to know
+# that a run reached the agent reads what the run said too.
 REFUSALS = (1, 127)
 
 
@@ -104,6 +106,10 @@ def stored_agent() -> str:
     except OffgridError as error:
         pytest.skip(f"no profile to read the agent from: {error}")
 
-    require_installed(agent)
+    require_installed(
+        agent,
+        why=f"the profile names {agent}",
+        remedy=f"name an agent this machine has in {DEFAULT_PATH}.",
+    )
 
     return agent
