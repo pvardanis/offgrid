@@ -1564,9 +1564,26 @@ that silently never answers about it.
 
 **What `share` unset means is unknown, and that is the measurement.** The
 published schema states an enum of `manual`, `auto` and `disabled` and no
-default. Measured on 2026-08-25 against opencode 1.18.23 with `opencode debug
-config`, an empty configuration and no project configuration read: `share` is
-absent from what it resolves rather than filled in. So offgrid cannot say a
+default. Measured on 2026-08-25 against opencode 1.18.23, and the isolation is
+the measurement — pointing `OPENCODE_CONFIG` at an empty file is not enough,
+because a person's own `~/.config/opencode/opencode.json` still deep-merges
+under it and supplies whatever `share` they set. Read this way instead, from a
+directory with no configuration in it:
+
+```
+printf '{}' > /tmp/empty.json
+env HOME=/tmp/none XDG_CONFIG_HOME=/tmp/none/.config \
+    OPENCODE_CONFIG=/tmp/empty.json OPENCODE_DISABLE_PROJECT_CONFIG=1 \
+    opencode debug config
+```
+
+What comes back holds `$schema`, `agent`, `mode`, `plugin`, `command` and
+`username`, and no `share` at all: it is absent from what OpenCode resolves
+rather than filled in. Run without `XDG_CONFIG_HOME` the same command answers
+`"share": "disabled"`, which is the reader's own setting and not a default —
+that reading is how this claim gets doubted, so the isolation is written down
+rather than assumed. `opencode debug config` also rewrites the file
+`OPENCODE_CONFIG` points at, so it is pointed at a throwaway. So offgrid cannot say a
 transcript stays here, and an edited file that states no `share` answers
 `UNWRITTEN` and stops the run. Its remedy is the edit rather than "run again",
 because `configure` will not write into a file holding an edit — which is why
