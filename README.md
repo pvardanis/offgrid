@@ -453,6 +453,14 @@ result. Reproduced here: the "results" contained a fabricated header and the
 boilerplate reminder from the real tool's output template. Exit code 0, no
 error anywhere. `WebFetch` is genuinely local and stays enabled.
 
+**A run asking for a cloud session is refused too.** Measured against claude
+2.1.245, `--cloud` opens a session on Anthropic's servers and `--environment`
+opens one on a named self-hosted pool, so either sends the whole session off
+this machine whatever model your profile names. Passing one after `--` stops
+the run before the load, naming the argument. Three more arguments touch a
+session somewhere else — `--teleport`, `--remote-control` and `--from-pr` —
+and none has been measured, so none is checked yet; that is issue #167.
+
 </details>
 
 <details>
