@@ -144,6 +144,8 @@ agents/            one package per agent
                    only what offgrid never revises
     launching.py   the configuration a run derives, and the command
                    it is started with
+    cautioning.py  what a run takes away and what it leaves unsized,
+                   said before it starts
 leaderboards/      one module per published list, and the registry
   onyx.py          fetching and parsing the page
 ```

@@ -12,7 +12,7 @@ command line does with an `opencode` profile is in `tests/test_cli_opencode.py`.
 import pytest
 from typer.testing import CliRunner
 
-from offgrid.agents.opencode.launching import PROJECT_CONFIG_CAUTION
+from offgrid.agents.opencode.cautioning import PROJECT_CONFIG_CAUTION
 from offgrid.cli import app
 from tests.launches import record_launch
 from tests.opencode_bindings import bind, plan_for

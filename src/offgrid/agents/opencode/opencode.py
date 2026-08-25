@@ -7,6 +7,7 @@ nothing offgrid derives able to go stale.
 
 from dataclasses import dataclass, field
 
+from offgrid.agents.opencode.cautioning import PROJECT_CONFIG_CAUTION
 from offgrid.agents.opencode.config import OpenCodeConfig
 from offgrid.agents.opencode.configuring import DURABLE, SETTINGS
 from offgrid.agents.opencode.launching import (
@@ -14,7 +15,6 @@ from offgrid.agents.opencode.launching import (
     CONFIG_FILE,
     CONTEXT_FLOOR,
     PROJECT_CONFIG,
-    PROJECT_CONFIG_CAUTION,
     PROJECT_CONFIG_DISABLED,
     get_derived_configuration,
     get_opencode_args,
