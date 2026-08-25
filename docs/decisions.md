@@ -634,13 +634,13 @@ immediately, since opencode learns where the runtime listens from a
 `provider.<name>.options.baseURL` block rather than from a variable naming the
 address, the way Claude Code reads `ANTHROPIC_BASE_URL`.
 
-That block was taken to reach opencode only from a file it is configured with,
-and it does not: `OPENCODE_CONFIG_CONTENT` carries the same JSON in the
-environment, and measured on opencode 1.18.20 it outranks the file. What that
-changes is which half of opencode's configuration states the address, not
-whether the agent's section has to carry it — the adapter is bound to what the
-profile settled either way. Where the address ends up, and why, is under "What
-an adapter writes, and what one run derives".
+A file is not the only thing that block reaches opencode from:
+`OPENCODE_CONFIG_CONTENT` carries the same JSON in the environment, and
+measured on opencode 1.18.20 it outranks the file. That decides which half of
+opencode's configuration states the address rather than whether the agent's
+section carries it — the adapter is bound to what the profile settled either
+way. Which half, and why, is under "What an adapter writes, and what one run
+derives".
 
 So the profile nests: `agent: AgentConfig` and `runtime: RuntimeConfig`, each
 carrying a `name` and whatever else that adapter reads, with `host` moving
@@ -1385,9 +1385,9 @@ cannot tell offgrid's own earlier write from a person's deliberate edit. That
 is a settled decision, and against OpenCode it decides a second one: anything
 derived from the profile, written into that file once, is silently wrong the
 moment the profile changes. A moved address, a different model, a different
-window — the file keeps saying the old one, and a wrong address in OpenCode
-**hangs** rather than erroring, which is the failure nobody gets a message
-about.
+window — the file keeps saying the old one, and an address OpenCode cannot
+reach **hangs** rather than erroring, measured on 1.18.20 at a dead port as
+much as at a wrong one. That is the failure nobody gets a message about.
 
 So the split is not between a file and an environment. It is between what
 offgrid never revises and what one run settles.
@@ -1480,5 +1480,5 @@ than claiming a complete list, and says what to do instead: start OpenCode
 yourself to use what a project states.
 
 What was turned down is doing nothing at all, on the strength of inline
-configuration outranking a project file. That reading is correct and covers one
-key.
+configuration outranking a project file. That reading is correct, and it covers
+one key out of a class.

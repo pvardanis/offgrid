@@ -492,7 +492,8 @@ and it talks to whatever provider it is pointed at rather than to one vendor.
 
 **A project configuration is not read for the length of a run** — an
 `opencode.json`, a `.opencode` directory and instructions such as `AGENTS.md`,
-in the directory you started from and every directory above it. offgrid cannot
+in the directory you started from and every directory above it up to the
+project root. offgrid cannot
 outrank the providers, agents and permissions one of those adds, so it runs
 with none of them, and says so before the run rather than leaving you to meet
 it mid-session. Start OpenCode yourself to use what a project states.

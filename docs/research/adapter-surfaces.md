@@ -5,10 +5,9 @@ vendor documents, what its OpenAPI spec declares, or what its source says when
 the documentation is silent. Nothing recorded here has been revised since;
 where it points at offgrid's own code it names modules and functions rather
 than lines, so that the pointers survive the code moving. What a later
-measurement settled is added beside the finding it settles, dated and marked
-**Settled**, rather than written over it — a reading gathered from documents
-and one taken from a running program are different kinds of claim, and which
-one a sentence is has to stay visible. It is **not** a recommendation about offgrid's
+measurement settled sits beside the finding, dated and marked **Settled**,
+rather than written over it: a reading from documents and one from a running
+program are different kinds of claim. It is **not** a recommendation about offgrid's
 design: there is no proposed port shape here, no method signatures, and no
 union-of-features table saying every capability should be supported. The four
 questions are answered so that someone else can decide which operations belong
