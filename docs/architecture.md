@@ -1060,6 +1060,8 @@ that leaves the deny in a file nothing loads, and the settings shapes Claude Cod
 itself ignores. `tests/test_opencode.py` and
 `tests/test_opencode_configuring.py`: the split between the file OpenCode keeps
 and the configuration a run derives, and which side of it each thing lands on.
+`tests/test_opencode_project_config.py`: what a run takes away from the
+directory it was started in, and that a person is told before it starts.
 
 **A fake `Runtime` only where the socket cannot reach.** It is the exception,
 not the default: something satisfying the Protocol proves how the domain
