@@ -12,6 +12,7 @@ and neither file grows the other's.
 """
 
 import json
+from collections.abc import Mapping
 
 import httpx
 import pytest
@@ -29,7 +30,7 @@ SERVED = 212224
 def answer_as_lm_studio(
     monkeypatch: pytest.MonkeyPatch,
     *,
-    holding: dict[str, int] | None = None,
+    holding: Mapping[str, int | None] | None = None,
     cold: dict[str, int] | None = None,
     ceiling: int | None = CEILING,
     ceilings: dict[str, int | None] | None = None,
@@ -43,7 +44,8 @@ def answer_as_lm_studio(
     two numbers differ.
 
     :param monkeypatch: The test's patcher.
-    :param holding: Models in memory, against the context each is served at.
+    :param holding: Models in memory, against the context each is served at,
+        or ``None`` for one held at a context the server states nothing about.
     :param cold: Models it has and is not holding.
     :param ceiling: The context every model states before it is loaded.
     :param ceilings: What one model states, where that differs from the rest.
