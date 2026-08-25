@@ -27,13 +27,22 @@ MAX_OUTPUT_TOKENS = 8192
 CONTEXT_FLOOR = 25_000
 
 # Where OpenCode reads the durable file, and the configuration a run derives.
-# Both are read and deep-merged, which is what lets the half a person edits
-# stay in a file while the half offgrid rebuilds every run travels here.
 #
-# Measured on opencode 1.18.20, both ways round, because the direction is what
-# the split rests on: where the two name the same key, the environment wins.
-# So an address a person edits into the file cannot defeat the one offgrid
-# derived — which matters because a wrong address hangs rather than erroring.
+# Neither replaces what a person already has. OpenCode reads their own
+# configuration as well and deep-merges all three, so their provider entry,
+# their key and their timeouts come through a run untouched — only a key
+# offgrid names is overridden. Measured on opencode 1.18.20 with all three
+# deliberately set to conflicting values:
+#
+#     inline  >  the file offgrid writes  >  a person's own configuration
+#
+# The first of those is what the split rests on, and it was measured both ways
+# round: `configure` never overwrites its file once it is there, so an address
+# hand-edited into it has to lose to the derived one — and a wrong address
+# hangs rather than erroring, which is the failure nobody gets a message about.
+#
+# A configuration in the directory the run started from outranks all three.
+# That is issue #148.
 CONFIG_FILE = "OPENCODE_CONFIG"
 CONFIG_CONTENT = "OPENCODE_CONFIG_CONTENT"
 
