@@ -631,8 +631,16 @@ reason.
 `host` sat flat beside `runtime` as though it were global, and there was
 nowhere for an adapter's own settings to go — which the second agent needs
 immediately, since opencode learns where the runtime listens from a
-`provider.<name>.options.baseURL` block in a file it must be configured with,
-rather than from an environment variable at launch.
+`provider.<name>.options.baseURL` block rather than from a variable naming the
+address, the way Claude Code reads `ANTHROPIC_BASE_URL`.
+
+That block was taken to reach opencode only from a file it is configured with,
+and it does not: `OPENCODE_CONFIG_CONTENT` carries the same JSON in the
+environment, and measured on opencode 1.18.20 it outranks the file. What that
+changes is which half of opencode's configuration states the address, not
+whether the agent's section has to carry it — the adapter is bound to what the
+profile settled either way. Where the address ends up, and why, is under "What
+an adapter writes, and what one run derives".
 
 So the profile nests: `agent: AgentConfig` and `runtime: RuntimeConfig`, each
 carrying a `name` and whatever else that adapter reads, with `host` moving
