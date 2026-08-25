@@ -27,7 +27,7 @@ class Launch:
         name.
     :param caution: What a person is owed before this runs, where the agent
         will do something they would otherwise meet mid-session. Nothing for
-        an agent with nothing to say, which is most launches.
+        an agent with nothing to say.
     """
 
     env: dict[str, str]

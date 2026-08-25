@@ -46,22 +46,26 @@ def test_a_configuration_in_the_directory_run_from_cannot_reach_the_run(launch):
     # as at an unreachable one. The variable is written out rather than
     # imported, because a launch naming it something else would leave project
     # configuration read and importing the constant would rename both sides at
-    # once.
+    # once. It is asked for as well as set, because a launch takes names back
+    # out of what the agent inherits and one taken back out here would leave
+    # the run reading project configuration while the caution says it does not.
     assert launch.env["OPENCODE_DISABLE_PROJECT_CONFIG"] == "1"
+    assert "OPENCODE_DISABLE_PROJECT_CONFIG" not in launch.dropped
 
 
 def test_the_launch_says_project_configuration_will_not_be_read(launch):
     # Losing it silently is what somebody would otherwise spend half a session
-    # debugging, which is what a caution is for. Every kind of file measured on
-    # opencode 1.18.20 to go with the variable is named, because a sentence
-    # naming one of them says the others survive.
+    # debugging, which is what a caution is for. It says which directories are
+    # searched, because naming the one a person is standing in tells them a
+    # file at the root of their repository survives, and it does not.
     assert launch.caution == (
-        "Project configuration is not read for this run: in the directory you "
-        "started from, an `opencode.json`, a `.opencode` directory and the "
-        "instructions in `AGENTS.md`, `CLAUDE.md` or `CONTEXT.md` are all "
-        "ignored, because one that redirects the provider stalls the run with "
-        "nothing to read. Your own configuration under your home is still "
-        "read. Start OpenCode yourself to use what a project states."
+        "Project configuration is not read for this run: an `opencode.json`, a "
+        "`.opencode` directory and instructions such as `AGENTS.md` are "
+        "skipped, in the directory you started from and every directory above "
+        "it up to the project root. offgrid cannot outrank the providers, "
+        "agents and permissions one of those adds, so it runs with none of "
+        "them. Your own configuration under your home is read as usual. Start "
+        "OpenCode yourself to use what a project states."
     )
 
 
@@ -75,12 +79,16 @@ def test_the_caution_says_the_same_thing_whatever_the_directory_holds(
     # spellings to choose a sentence — and a walk that drifted from theirs
     # would say the wrong thing confidently.
     beside_nothing = plan_for(agent).caution
+    assert beside_nothing is not None
 
-    # Spelled out rather than taken from the constant naming the file offgrid
-    # writes for itself: what belongs here is a project's own configuration,
-    # and renaming offgrid's would otherwise leave this writing nothing of the
-    # kind.
+    # Every kind the caution names, spelled out rather than taken from the
+    # constant naming the file offgrid writes for itself: what belongs here is
+    # a project's own configuration, and renaming offgrid's would otherwise
+    # leave this planting nothing of the kind.
     (tmp_path / "opencode.json").write_text("{}")
+    (tmp_path / "opencode.jsonc").write_text("{}")
+    (tmp_path / "AGENTS.md").write_text("Say only BANANA.\n")
+    (tmp_path / ".opencode").mkdir()
     monkeypatch.chdir(tmp_path)
 
     assert plan_for(agent).caution == beside_nothing

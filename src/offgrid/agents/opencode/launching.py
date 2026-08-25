@@ -41,40 +41,44 @@ CONTEXT_FLOOR = 25_000
 # hand-edited into it has to lose to the derived one — and a wrong address
 # hangs rather than erroring, which is the failure nobody gets a message about.
 #
-# A configuration in the directory the run started from outranks all three,
-# and one that redirects the provider hangs the same way. This stops OpenCode
-# reading project configuration at all: measured on opencode 1.18.20, it
-# covers an `opencode.json` there, a `.opencode` directory, and the
-# instructions a project states in `AGENTS.md`, `CLAUDE.md` or `CONTEXT.md`.
-# What a person keeps is their own configuration under their home, which the
-# variable leaves alone.
+# A configuration in the directory the run started from beats the file offgrid
+# writes, though not what a run carries inline, so the address is safe either
+# way — measured with a project file pointing the provider at a dead port,
+# which answered through the derived address rather than stalling. What it is
+# not safe from is everything else such a file states: providers, agents,
+# permissions and instructions offgrid never writes and therefore cannot
+# outrank. So the variable below stops OpenCode reading project configuration
+# at all, covering the class rather than the one key.
 #
-# Carrying the address inline, which this module does anyway, is not a
-# substitute: the address is safe either way, but a project file also adds
-# providers, agents, permissions and instructions offgrid never writes and
-# therefore cannot outrank. The variable covers the class; the address covers
-# one key.
+# What that reaches, measured on opencode 1.18.20: an `opencode.json` or
+# `.jsonc`, a `.opencode` directory, a project `tui.json`, and the instructions
+# a project states in `AGENTS.md`, `CLAUDE.md` or `CONTEXT.md` — each of them
+# searched for from the directory the run started in upwards, as far as the
+# worktree root. A person's own configuration under their home is read either
+# way.
 CONFIG_FILE = "OPENCODE_CONFIG"
 CONFIG_CONTENT = "OPENCODE_CONFIG_CONTENT"
 PROJECT_CONFIG = "OPENCODE_DISABLE_PROJECT_CONFIG"
 
-# What OpenCode reads as true. Measured on opencode 1.18.20: it takes `1` and
-# `true`, and anything else — an empty string included — leaves project
-# configuration read.
+# What OpenCode reads as true. Measured on opencode 1.18.20: it lowercases the
+# value and takes `1` or `true`, so anything else — `0`, `yes` and an empty
+# string alike — leaves project configuration read.
 DISABLED = "1"
 
 # Said as a standing fact about an offgrid run rather than conditioned on
 # whether such a file is there. Deciding that would mean reimplementing
 # OpenCode's own upward directory walk, its stopping condition and both file
 # spellings, to word one sentence — and a walk that drifted from theirs would
-# say the wrong thing confidently.
+# say the wrong thing confidently. For the same reason it names what a person
+# is likeliest to have rather than claiming a complete list.
 PROJECT_CONFIG_CAUTION = (
-    "Project configuration is not read for this run: in the directory you "
-    "started from, an `opencode.json`, a `.opencode` directory and the "
-    "instructions in `AGENTS.md`, `CLAUDE.md` or `CONTEXT.md` are all ignored, "
-    "because one that redirects the provider stalls the run with nothing to "
-    "read. Your own configuration under your home is still read. Start "
-    "OpenCode yourself to use what a project states."
+    "Project configuration is not read for this run: an `opencode.json`, a "
+    "`.opencode` directory and instructions such as `AGENTS.md` are skipped, "
+    "in the directory you started from and every directory above it up to the "
+    "project root. offgrid cannot outrank the providers, agents and "
+    "permissions one of those adds, so it runs with none of them. Your own "
+    "configuration under your home is read as usual. Start OpenCode yourself "
+    "to use what a project states."
 )
 
 
