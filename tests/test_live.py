@@ -6,18 +6,17 @@ it does not have, or that ids the second copy of a model the way a double was
 told it does. This is the check that no double can stand in for.
 
 It lets go of whatever the runtime is holding, which is what a run does.
+
+The runtime it talks to and the run it starts are arranged in
+`tests/live_runtime.py` and `tests/live_runs.py`, which the checks here and
+the ones over the endpoints both ask for.
 """
 
-import shutil
 import subprocess
-from collections.abc import Iterator
 
 import httpx
 import pytest
 
-from offgrid.cli.binding import read_profile
-from offgrid.domain.profile import DEFAULT_PATH
-from offgrid.domain.running.discarded_windows import DEFAULT_PATH as KEPT_PATH
 from offgrid.runtimes.lmstudio import connect
 from offgrid.runtimes.lmstudio.catalogue import (
     get_catalogue_payload,
@@ -26,101 +25,11 @@ from offgrid.runtimes.lmstudio.catalogue import (
     parse_models_from_payload,
 )
 from offgrid.runtimes.lmstudio.config import LMStudioConfig
-from offgrid.runtimes.lmstudio.holding import LOAD, LOAD_TIMEOUT_SECONDS, unload_model
-from offgrid.shared.exceptions import OffgridError
+from offgrid.runtimes.lmstudio.holding import LOAD, LOAD_TIMEOUT_SECONDS
+from tests.live_runs import PROMPT, REFUSALS, STATED_WINDOW, run_offgrid
+from tests.live_runtime import free_every_copy
 
 pytestmark = pytest.mark.live
-
-ANSWER_SECONDS = 600
-
-# A window to ask for and read back. Above Claude Code's floor so the agent
-# starts, and small enough that the smoke model is served at it rather than
-# clamped to something else.
-STATED_WINDOW = 32768
-
-
-@pytest.fixture
-def host() -> str:
-    """Where the runtime listens, as the stored profile says.
-
-    :return: The address from the profile.
-    """
-    try:
-        return read_profile(DEFAULT_PATH).runtime.host
-    except OffgridError as error:
-        pytest.skip(f"no profile to read the runtime's address from: {error}")
-
-
-@pytest.fixture
-def known(host: str, smoke_model: str) -> str:
-    """Skip unless the runtime has the model the check needs.
-
-    :param host: Where the runtime listens.
-    :param smoke_model: The model the check loads.
-
-    :return: The model identifier.
-    """
-    try:
-        payload = get_catalogue_payload(host)
-    except OffgridError as error:
-        pytest.skip(f"no runtime answering: {error}")
-
-    if smoke_model not in {
-        model.identifier for model in parse_models_from_payload(payload)
-    }:
-        pytest.skip(f"{smoke_model} is not downloaded: `lms get {smoke_model}`")
-
-    return smoke_model
-
-
-@pytest.fixture
-def held_twice(host: str, known: str) -> Iterator[str]:
-    """Hold the model exactly twice, and free what is left of it afterwards.
-
-    Whatever was held first is freed, so that two loads mean two copies. A
-    developer with this model already open in LM Studio would otherwise get
-    three, and a count that says nothing about what the release did.
-
-    :param host: Where the runtime listens.
-    :param known: The model the check loads.
-
-    :yield: The model identifier, with two copies of it in memory.
-    """
-    try:
-        _free(host, known)
-
-        for _ in range(2):
-            httpx.post(
-                f"http://{host}{LOAD}",
-                json={"model": known},
-                timeout=LOAD_TIMEOUT_SECONDS,
-            ).raise_for_status()
-
-        yield known
-    finally:
-        # Including a load that failed after the first one landed, which would
-        # otherwise leave this machine holding what the check is about.
-        _free(host, known)
-
-
-def _free(host: str, identifier: str) -> None:
-    """Let go of every copy of a model, whatever any one of them answers.
-
-    A release that raises partway leaves the copies after it resident, which
-    is the outcome this exists to prevent — on the one check allowed to touch
-    the machine it runs on.
-
-    :param host: Where the runtime listens.
-    :param identifier: The model to free every copy of.
-    """
-    for instance in get_held_instances(get_catalogue_payload(host), identifier):
-        try:
-            unload_model(host, instance)
-        except OffgridError as error:
-            print(f"{instance} would not go: {error}")
-
-
-REFUSALS = (1, 127)
 
 
 def test_every_copy_of_a_model_held_twice_is_let_go_of(host: str, held_twice: str):
@@ -136,10 +45,10 @@ def test_every_copy_of_a_model_held_twice_is_let_go_of(host: str, held_twice: st
 
 
 def test_a_run_lets_go_of_the_model_it_held(host: str, known: str):
-    # Not that the agent succeeded: a model this small answers a 21k-token
-    # prefix with whatever it can, and that is its business. What offgrid
-    # owes is that it got that far, and that the memory came back.
-    finished = _run(known)
+    # Not that the agent succeeded: a model this small answers with whatever
+    # it can, and that is its business. What offgrid owes is that it got that
+    # far, and that the memory came back.
+    finished = _run(known, window=STATED_WINDOW)
 
     assert finished.returncode not in REFUSALS, finished.stderr
     # Exit codes alone cannot tell a run that held a model from one that
@@ -185,7 +94,7 @@ def test_a_window_asked_for_leaves_one_copy_and_then_none(host: str, known: str)
     # Changing a window means loading again, and a second load against this
     # server serves a second copy rather than replacing the first. What the
     # run owes is one copy while it runs and none after it.
-    _free(host, known)
+    free_every_copy(host, known)
     httpx.post(
         f"http://{host}{LOAD}",
         json={"model": known, "context_length": 4096},
@@ -205,7 +114,7 @@ def test_a_window_above_the_ceiling_is_refused_rather_than_served(
     # This server takes a window above a model's own maximum, answers that it
     # loaded it, and reports the impossible number back — so a double cannot
     # say that the refusal is offgrid's to make. Only this can.
-    _free(host, known)
+    free_every_copy(host, known)
     ceiling = next(
         model.context_ceiling
         for model in parse_models_from_payload(get_catalogue_payload(host))
@@ -222,59 +131,12 @@ def test_a_window_above_the_ceiling_is_refused_rather_than_served(
     assert get_held_instances(get_catalogue_payload(host), known) == []
 
 
-@pytest.fixture(autouse=True)
-def _keep_what_a_live_run_records_out_of_the_way(tmp_path) -> Iterator[None]:
-    """Put back what a live run writes about a discarded window.
-
-    A live run is a subprocess, so nothing a test patches reaches it, and it
-    writes into the real home. Nothing about a discarded window expires, so a
-    record left behind here would quietly stop a later run of this person's
-    own asking for that window.
-
-    :param tmp_path: Where the real file is held while the test runs.
-
-    :return: Nothing; what was there is put back afterwards.
-    """
-    kept = tmp_path / "discarded-windows.json"
-    had_one = KEPT_PATH.exists()
-
-    if had_one:
-        shutil.copy2(KEPT_PATH, kept)
-
-    try:
-        yield
-    finally:
-        KEPT_PATH.unlink(missing_ok=True)
-
-        if had_one:
-            shutil.copy2(kept, KEPT_PATH)
-
-
 def _run(identifier: str, window: int | None = None) -> subprocess.CompletedProcess:
-    """Start an agent against a model and wait for it to finish.
+    """Start the agent the profile names against a model, and wait for it.
 
     :param identifier: The model to run against.
     :param window: The window to ask for, or ``None`` to inherit.
 
     :return: What offgrid exited with, and what it said.
     """
-    asked = ["--context-window", str(window)] if window else []
-
-    return subprocess.run(
-        [
-            "uv",
-            "run",
-            "offgrid",
-            "run",
-            "-m",
-            identifier,
-            *asked,
-            "--",
-            "-p",
-            "reply with the two letters OK and nothing else",
-        ],
-        capture_output=True,
-        text=True,
-        timeout=ANSWER_SECONDS,
-        check=False,
-    )
+    return run_offgrid(identifier, ["-p", PROMPT], window)

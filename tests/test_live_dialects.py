@@ -13,27 +13,12 @@ asked about, and LM Studio answers that without holding anything.
 import httpx
 import pytest
 
-from offgrid.cli.binding import read_profile
-from offgrid.domain.profile import DEFAULT_PATH
 from offgrid.domain.running.dialect import Dialect
 from offgrid.runtimes.lmstudio.serving import DIALECTS
-from offgrid.shared.exceptions import OffgridError
 
 pytestmark = pytest.mark.live
 
 ASK = {"model": "nothing-is-held", "messages": [], "max_tokens": 1}
-
-
-@pytest.fixture
-def host() -> str:
-    """Where the runtime listens, as the stored profile says.
-
-    :return: The address from the profile.
-    """
-    try:
-        return read_profile(DEFAULT_PATH).runtime.host
-    except OffgridError as error:
-        pytest.skip(f"no profile to read the runtime's address from: {error}")
 
 
 def _refusal(host: str, endpoint: str) -> dict:
