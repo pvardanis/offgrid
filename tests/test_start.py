@@ -65,6 +65,18 @@ def test_the_agent_keeps_the_rest_of_the_callers_environment(monkeypatch):
     assert started["env"]["EXAMPLE_FROM_THE_CALLER"] == "kept"
 
 
+def test_what_the_launch_settled_beats_what_the_caller_exported(monkeypatch):
+    # Every guarantee a launch makes rests on this: a person who exported the
+    # variable offgrid is about to set would otherwise answer in its place,
+    # while offgrid tells them what it settled.
+    monkeypatch.setenv("ANTHROPIC_BASE_URL", "https://api.anthropic.com")
+    started = _agent(monkeypatch, _Agent())
+
+    start(LAUNCH)
+
+    assert started["env"]["ANTHROPIC_BASE_URL"] == "http://127.0.0.1:1234"
+
+
 def test_a_setting_offgrid_drops_does_not_reach_the_agent(monkeypatch):
     # An agent inherits what offgrid does not name, so leaving a variable
     # unwritten leaves whatever a person exported answering in offgrid's
