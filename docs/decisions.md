@@ -1380,9 +1380,11 @@ one line and it is what makes the sentence quotable in a bug report.
 
 ## What an adapter writes, and what one run derives
 
-`configure` writes what is not there and never touches what is, because it
-cannot tell offgrid's own earlier write from a person's deliberate edit. That
-is a settled decision, and against OpenCode it decides a second one: anything
+`configure` writes where there is no edit to lose and never touches one that is
+there, because it cannot tell offgrid's own earlier write from a person's
+deliberate edit. What counts as an edit is settled further down, under "A
+configuration is decided by what it holds, not by whether it is there". Against
+OpenCode it decides a second thing: anything
 derived from the profile, written into that file once, is silently wrong the
 moment the profile changes. A moved address, a different model, a different
 window — the file keeps saying the old one, and an address OpenCode cannot
