@@ -79,7 +79,12 @@ def read_what_config_is_kept(config_path: Path) -> str | None:
 
 
 def write_config_where_nothing_is_kept(config_path: Path, content: str) -> None:
-    """Write a file, unless it holds an edit somebody made.
+    """Write a configuration read as prose, unless it holds an edit.
+
+    Nothing is parsed, because prose has no shape to be wrong: the agent reads
+    whatever a person wrote as instructions. The settings below are refused
+    when they will not parse, because there the agent loads a document, and
+    one it cannot parse it does not load at all.
 
     :param config_path: The file to decide about.
     :param content: What to write where there is no edit to keep.
