@@ -63,10 +63,14 @@ def test_the_openai_endpoint_answers_in_the_openai_shape(host: str):
 
     refusal = _refusal(host, "/v1/chat/completions")
 
-    # OpenAI's envelope nests the error and names the parameter at fault;
-    # Anthropic's tags the body itself. Asserting the shape rather than the
-    # status is what tells the two apart on a server that serves both.
-    assert "param" in refusal["error"]
+    # This endpoint carries the complaint under `error` and tags nothing else,
+    # where the Anthropic one tags the body as an error and nests a typed one
+    # inside. Asserting the shape rather than the status is what tells the two
+    # apart on a server that serves both — and the tag is the whole of the
+    # difference, since LM Studio answers here with a bare string rather than
+    # the object naming a parameter that OpenAI's own service returns.
+    assert refusal["error"]
+    assert "type" not in refusal
 
 
 def test_the_anthropic_endpoint_answers_in_the_anthropic_shape(host: str):
