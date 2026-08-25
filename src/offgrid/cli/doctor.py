@@ -49,7 +49,7 @@ def _read_what_can_be_read() -> Checkup:
     return Checkup(
         profile=profile,
         resident=resident,
-        leaves=agent.read_what_leaves_this_machine(),
+        could_leave=agent.read_what_leaves_this_machine(),
         dialect=agent.dialect,
         served=runtime.dialects,
         context_floor=agent.context_floor,

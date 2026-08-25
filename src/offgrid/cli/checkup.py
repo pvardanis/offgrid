@@ -27,8 +27,8 @@ class Checkup:
     :param resident: The model the runtime is holding, or ``None`` where it
         holds none — which the rest of the report survives, because a runtime
         holding nothing still answered.
-    :param leaves: What the agent says about each way this run could reach off
-        this machine, one reading each.
+    :param could_leave: What the agent says about each way this run could
+        reach off this machine, one reading each.
     :param dialect: What the agent speaks.
     :param served: Every dialect the runtime serves, which says whether an
         agent other than this one would pair with it.
@@ -42,7 +42,7 @@ class Checkup:
 
     profile: Profile
     resident: Model | None
-    leaves: tuple[Reading, ...]
+    could_leave: tuple[Reading, ...]
     dialect: Dialect
     served: frozenset[Dialect]
     context_floor: int
@@ -69,7 +69,7 @@ def describe_what_was_read(checkup: Checkup) -> tuple[str, ...]:
         f"profile   {describe_what_is_asked_for(profile.model)}",
         f"agent     {profile.agent.name.value}, speaking {checkup.dialect.value}",
         f"floor     {checkup.context_floor}",
-        *describe_what_could_leave(checkup.leaves),
+        *describe_what_could_leave(checkup.could_leave),
     )
 
     return (*said, *_describe_a_discarded_window(checkup))
@@ -106,7 +106,8 @@ def _describe_the_model(model: Model | None, request: ModelRequest) -> tuple[str
     if request.identifier is not None:
         return (HELD_NOTHING, *unknown)
 
-    # Under the line it is about, where the hosted reading puts its own.
+    # Under the line it is about, where a reading about what could leave puts
+    # its own.
     return (
         HELD_NOTHING,
         "          Load a model in the runtime, or name one under `model:` "
