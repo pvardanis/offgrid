@@ -22,7 +22,7 @@ flowchart TD
     end
     subgraph domain ["domain/"]
         sizing["sizing/<br/>machine · fit · listing · leaderboard · speed ·<br/>quality · shortlist · recommendation"]
-        running["running/<br/>model · dialect · capabilities · hosted_tools ·<br/>launch · runtime · agent · answering"]
+        running["running/<br/>model · dialect · capabilities · hosted_tools ·<br/>launch · runtime · agent · keeping · answering"]
         profile["profile/"]
     end
     subgraph shared ["shared/"]
@@ -175,6 +175,8 @@ domain/
     launch.py      an environment and an argument list, and running one
     runtime.py     what offgrid asks of a runtime, and which ones there are
     agent.py       what offgrid asks of an agent, and which ones there are
+    keeping.py     whether a configuration file holds an edit to keep, and
+                   what is refused rather than guessed about
     answering.py   which model answers, and making it the one that does
     asking.py      what a run will ask for, said before it asks
     discarded_windows.py  which windows a runtime was asked for and did
@@ -618,6 +620,13 @@ jobs. `configure` writes what is missing and leaves alone what a person edited
 than something to write over. `read_hosted_tools` says what this run could
 reach, and is the privacy promise in `docs/decisions.md` made legible.
 
+What counts as an edit is `domain/running/keeping.py`, asked once for both
+adapters, because deciding it per adapter is how one of them comes to decide it
+by existence alone. A file that parses is an edit and is kept whole; a key
+missing from it is not written back, since the key likeliest to be missing is
+the one deciding something offgrid promised, and putting it back would answer a
+person's deliberate edit with a run that quietly disagrees with their file.
+
 It is a slot in the port rather than one adapter's business because the failure
 it describes is silent. A hosted tool called against a local model returns
 invented prose that reads as an answer, with no error anywhere. Codex CLI
@@ -1007,13 +1016,25 @@ and what it says while paying it, and a tool whose exit code cannot be taken at
 its word.
 
 `tests/test_agent_conformance.py` is the same for agents, with what an agent
-owes about hosted tools beside it in `tests/test_agent_hosted_tools.py` and the
-list both ask it of in `tests/agent_conformance.py`. Together they state
-thirteen things, each of which an agent that is not Claude Code still owes:
+writes for itself and keeps beside it in `tests/test_agent_configuration.py`,
+what it refuses rather than guess about in
+`tests/test_agent_configuration_refused.py`, what it owes about hosted tools in
+`tests/test_agent_hosted_tools.py`, and the list all four ask it of in
+`tests/agent_conformance.py`. Together they state seventeen things, each of
+which an agent that is not Claude Code still owes:
 
 - `configure` writes what is missing, and leaves as they left them the files a
   person then edited — including one edited so that the guard refuses the run,
   which is a refusal to act on rather than something to write over.
+- A file that holds no edit is written into rather than left: one emptied or cut
+  down to whitespace is as unusable to the agent as no file, and leaving it says
+  nothing about why the agent then fails.
+- A file that is neither an edit nor an absence is refused, and says which file
+  and what to do about it: bytes that are not text, and a link whose target is
+  gone — which reads as absent to everything that follows it, so a write would
+  create a file at the far end instead of configuring this one. A link with a
+  file at the far end is followed, wherever it points, because pointing a
+  configuration elsewhere is deliberate.
 - What an adapter writes for itself satisfies its own guard, and a
   configuration permitting a hosted tool stops a run, saying what to change.
 - An agent offering no hosted tool at all says so in the stand-in, and answers
@@ -1043,11 +1064,16 @@ precisely so that an agent writing it into a file of its own has it before
 doing what the port was shaped to allow.
 
 `tests/agents_under_test.py` is the parametrization. A stand-in points its agent
-at a directory the test owns, and supplies the one thing the suite cannot write
-for itself: a configuration permitting a hosted tool, which is a key in a JSON
-file for Claude Code and a table in a TOML file for the next agent. Everything
-else is read off disk by walking that directory, so a `configure` leaving an
-extra file behind is caught by a suite that names no file.
+at a directory the test owns, and supplies the two things the suite cannot
+write for itself: a configuration permitting a hosted tool, and an edit a
+person could plausibly have made. Neither has one shape — permitting a tool is
+a key in a JSON file for Claude Code and would be a table in a TOML file for an
+agent that kept one, and an edit is a key in a JSON file for one of Claude
+Code's two files and a sentence of prose for the other. An edit also has to
+leave the file readable by the agent that loads it, since a file offgrid keeps
+is a file that goes on to be read. Everything else is read off disk by walking
+that directory, so a `configure` leaving an extra file behind is caught by a
+suite that names no file.
 
 Two of those statements are why the guard is a named member at all. A
 `read_hosted_tools` answering `DENIED` without reading anything satisfies the
@@ -1062,6 +1088,9 @@ that leaves the deny in a file nothing loads, and the settings shapes Claude Cod
 itself ignores. `tests/test_opencode.py` and
 `tests/test_opencode_configuring.py`: the split between the file OpenCode keeps
 and the configuration a run derives, and which side of it each thing lands on.
+`tests/test_opencode_keeping.py` and `tests/test_claude_code_keeping.py`: what
+each does about a file that is already there, which for Claude Code includes
+the two calls agreeing about what nothing in it means.
 `tests/test_opencode_project_config.py`: what a run takes away from the
 directory it was started in, and that a person is told before it starts.
 

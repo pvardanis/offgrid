@@ -5,7 +5,6 @@ argument list. Both are built rather than exported, so a caller can show them
 before anything runs.
 """
 
-import json
 from dataclasses import dataclass, field
 
 from offgrid.agents.claude_code.compacting import (
@@ -32,6 +31,12 @@ from offgrid.agents.claude_code.launching import (
 from offgrid.domain.running.agent import Passthrough
 from offgrid.domain.running.dialect import Dialect
 from offgrid.domain.running.hosted_tools import HostedToolsReport, HostedToolsStatus
+from offgrid.domain.running.keeping import (
+    read_as_json,
+    read_what_is_kept,
+    write_settings_where_nothing_is_kept,
+    write_where_nothing_is_kept,
+)
 from offgrid.domain.running.launch import Launch
 from offgrid.domain.running.model import Model
 from offgrid.shared.exceptions import AgentSettingsError
@@ -60,17 +65,21 @@ class ClaudeCode:
     def configure(self) -> None:
         """Write the settings and the notes that are not there.
 
-        Both are meant to be edited, so what is already there is left as it
-        is — including settings that leave WebSearch reachable, which are
-        still an edit rather than something to write over.
+        Both are meant to be edited, so an edit is left as it is — including
+        settings that leave WebSearch reachable, which the reading below
+        reports rather than something this call writes over. A file that says
+        nothing is not an edit, and is written into.
 
-        :raise AgentSettingsError: When what is missing cannot be written.
+        :raise AgentSettingsError: When what is there cannot be read, or what
+            is missing cannot be written.
         """
         try:
             self.config.config_dir.mkdir(parents=True, exist_ok=True)
 
-            self._write_missing(NOTES, INSTRUCTIONS)
-            self._write_missing(SETTINGS, json.dumps(SLIM_SETTINGS, indent=2) + "\n")
+            write_where_nothing_is_kept(self.config.config_dir / NOTES, INSTRUCTIONS)
+            write_settings_where_nothing_is_kept(
+                self.config.config_dir / SETTINGS, SLIM_SETTINGS
+            )
         except OSError as error:
             raise AgentSettingsError(
                 f"{self.config.config_dir} cannot be written: {error}. Fix what is "
@@ -101,15 +110,20 @@ class ClaudeCode:
             )
 
         settings = self.config.config_dir / SETTINGS
+        # Whether there is anything to read is asked of the text, the same way
+        # `configure` asks it. Read off what the text parses to, a file holding
+        # `null` would be called empty and answered with the remedy for an
+        # empty one — and that remedy is to run the command already running.
+        body = read_what_is_kept(settings)
 
-        if not settings.exists():
+        if body is None:
             return HostedToolsReport(
                 status=HostedToolsStatus.UNWRITTEN,
-                detail=f"{settings} is not there, so nothing denies WebSearch.",
+                detail=f"{settings} holds nothing, so nothing denies WebSearch.",
                 remedy="`offgrid run` writes it before it starts the agent.",
             )
 
-        if "WebSearch" in get_denied_tools(self._read_settings()):
+        if "WebSearch" in get_denied_tools(read_as_json(body, settings)):
             return HostedToolsReport(
                 status=HostedToolsStatus.DENIED,
                 detail=f"{settings} denies WebSearch.",
@@ -159,45 +173,3 @@ class ClaudeCode:
             dropped=dropped,
             caution=explain_what_will_not_compact(served),
         )
-
-    def _write_missing(self, name: str, content: str) -> None:
-        """Write one file of the configuration, unless it is already there.
-
-        :param name: What the file is called inside the directory.
-        :param content: What to write where there is nothing.
-
-        :raise OSError: When it cannot be written.
-        """
-        written = self.config.config_dir / name
-
-        if not written.exists():
-            written.write_text(content)
-
-    def _read_settings(self) -> object:
-        """Read the settings file as whatever it holds.
-
-        Reading is apart from parsing because bytes that are not text never
-        reach the parser, and calling that bad JSON sends someone looking for
-        a bracket. `UnicodeDecodeError` is a `ValueError`, so it would.
-
-        :return: What the file holds, in whatever shape it was written.
-
-        :raise AgentSettingsError: When it cannot be read, or is not JSON.
-        """
-        settings = self.config.config_dir / SETTINGS
-
-        try:
-            body = settings.read_text()
-        except (OSError, UnicodeDecodeError) as error:
-            raise AgentSettingsError(
-                f"{settings} cannot be read: {error}. Fix what it is or what "
-                "owns it, or delete it and offgrid writes one."
-            ) from error
-
-        try:
-            return json.loads(body)
-        except ValueError as error:
-            raise AgentSettingsError(
-                f"{settings} is not readable as JSON: {error}. Fix it, or delete it "
-                "and offgrid writes one."
-            ) from error

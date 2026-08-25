@@ -30,9 +30,11 @@ class HostedToolsStatus(StrEnum):
     configuration being read at all; both leave the tool reachable, and
     differ only in what they say to do about it.
 
-    `UNWRITTEN` — the agent has one and there is no configuration yet to
-    speak either way: a machine that has run `offgrid setup` and never
-    `offgrid run`. Nothing is wrong, and nothing has been written.
+    `UNWRITTEN` — the agent has one and the configuration says nothing either
+    way, because there is nothing in it to say anything: a machine that has
+    run `offgrid setup` and never `offgrid run`, or a file left holding
+    nothing. Either way `configure` writes one, so this is a state a run
+    passes through rather than one anybody has to fix.
 
     A `StrEnum` so that a reading prints into a line of `doctor` without
     reaching for `.value`, which `Dialect` and `AgentName` have no call to do:

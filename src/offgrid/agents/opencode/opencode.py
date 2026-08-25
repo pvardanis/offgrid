@@ -5,7 +5,6 @@ a launch carries both — the second rebuilt every run, which is what keeps
 nothing offgrid derives able to go stale.
 """
 
-import json
 from dataclasses import dataclass, field
 
 from offgrid.agents.opencode.config import OpenCodeConfig
@@ -23,6 +22,7 @@ from offgrid.agents.opencode.launching import (
 from offgrid.domain.running.agent import Passthrough
 from offgrid.domain.running.dialect import Dialect
 from offgrid.domain.running.hosted_tools import HostedToolsReport, HostedToolsStatus
+from offgrid.domain.running.keeping import write_settings_where_nothing_is_kept
 from offgrid.domain.running.launch import Launch
 from offgrid.domain.running.model import Model
 from offgrid.shared.exceptions import AgentSettingsError
@@ -58,19 +58,23 @@ class OpenCode:
     def configure(self) -> None:
         """Write the provider entry that is not there.
 
-        Only what offgrid never revises, and only where there is nothing: the
-        file is meant to be edited, and a person who turned sharing back on
-        keeps that.
+        Only what offgrid never revises, and only where there is no edit to
+        lose: the file is meant to be edited, and a person who turned sharing
+        back on keeps that. A file that says nothing is written into rather
+        than left, because `share` is written here and the published schema
+        states no default for it — an emptied file makes no promise about
+        whether a transcript leaves this machine, and nothing else would say
+        so, since this adapter answers about hosted tools from a constant.
 
-        :raise AgentSettingsError: When what is missing cannot be written.
+        :raise AgentSettingsError: When what is there cannot be read, or what
+            is missing cannot be written.
         """
-        written = self.config.config_dir / SETTINGS
-
         try:
             self.config.config_dir.mkdir(parents=True, exist_ok=True)
 
-            if not written.exists():
-                written.write_text(json.dumps(DURABLE, indent=2) + "\n")
+            write_settings_where_nothing_is_kept(
+                self.config.config_dir / SETTINGS, DURABLE
+            )
         except OSError as error:
             raise AgentSettingsError(
                 f"{self.config.config_dir} cannot be written: {error}. Fix what is "

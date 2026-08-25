@@ -6,10 +6,12 @@ happens to do. Which environment variable carries the model, which file the
 configuration lives in, which tool is the one with nothing here to run it —
 all of that stays in that adapter's own file.
 
-What an agent owes about the tools offgrid cannot run for it is beside this,
-in `tests/test_agent_hosted_tools.py`.
+Two things an agent owes are beside this rather than in it: what it writes for
+itself and what it refuses to write over, in `tests/test_agent_configuration.py`,
+and what it says about the tools offgrid cannot run for it, in
+`tests/test_agent_hosted_tools.py`.
 
-An adapter is done when both pass. `tests/agents_under_test.py` is where a
+An adapter is done when all three pass. `tests/agents_under_test.py` is where a
 second one joins, and it is the only edit to the suite that adding one takes.
 
 `tmp_path` is where offgrid keeps what it writes for the length of one test,
@@ -69,33 +71,6 @@ def test_an_agent_states_the_smallest_window_it_can_start_in(
     assert agent.context_floor > 0
     assert told.context_floor == agent.context_floor
     assert read_everything_under(tmp_path) == {}
-
-
-def test_what_an_agent_needs_and_does_not_have_is_written(
-    agent_under_test: AgentUnderTest, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-):
-    agent = agent_under_test.prepare(monkeypatch, tmp_path)
-
-    agent.configure()
-
-    assert read_everything_under(tmp_path) != {}
-
-
-def test_what_a_person_edited_is_left_as_they_left_it(
-    agent_under_test: AgentUnderTest, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-):
-    # A configuration is meant to be edited, and a run is no place to lose
-    # those edits. Every file the agent writes, because which of them a person
-    # is allowed to keep is not the adapter's to choose.
-    agent = agent_under_test.prepare(monkeypatch, tmp_path)
-    agent.configure()
-    for name in read_everything_under(tmp_path):
-        (tmp_path / name).write_bytes(b"mine\n")
-    edited = read_everything_under(tmp_path)
-
-    agent.configure()
-
-    assert read_everything_under(tmp_path) == edited
 
 
 def test_planning_a_launch_writes_nothing(

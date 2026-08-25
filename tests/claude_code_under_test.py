@@ -72,6 +72,20 @@ class ClaudeCodeUnderTest:
 
         return prepare(ClaudeCodeConfig(runtime_host=HOST), passthrough)
 
+    def edit_the_configuration(self, home: Path) -> None:
+        """Change both files the way a person plausibly would.
+
+        Each edit takes out what offgrid wrote rather than adding beside it,
+        because a key that is still there is kept by anything — including a
+        `configure` that merged what was missing back in, which is the reading
+        this promise is worth having against.
+
+        :param home: Where offgrid keeps what it writes for this run.
+        """
+        self.write_a_configuration_permitting_a_hosted_tool(home)
+
+        (home / self.name / "CLAUDE.md").write_text("# Mine\n\nAnswer briefly.\n")
+
     def write_a_configuration_permitting_a_hosted_tool(self, home: Path) -> None:
         """Leave settings behind that no longer deny WebSearch.
 

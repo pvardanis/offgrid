@@ -16,6 +16,11 @@ from offgrid.domain.running.agent import Agent, Passthrough
 
 HOST = "127.0.0.1:1234"
 
+# A configuration a person could plausibly have written: sharing back on, and
+# no sign of what offgrid put there. Their key rather than an addition beside
+# offgrid's, because a key still in the file is kept by any reading at all.
+EDITED = '{"share": "manual"}\n'
+
 
 @dataclass(frozen=True)
 class OpenCodeUnderTest:
@@ -67,6 +72,21 @@ class OpenCodeUnderTest:
         monkeypatch.setattr("offgrid.domain.running.agent.OFFGRID_HOME", home)
 
         return prepare(OpenCodeConfig(runtime_host=HOST), passthrough)
+
+    def edit_the_configuration(self, home: Path) -> None:
+        """Change the file the way a person plausibly would.
+
+        Sharing turned back on, which is the edit this agent's configuration
+        exists to be able to keep: `docs/decisions.md` promises no transcript
+        leaves this machine, and somebody who wants theirs to keeps the edit
+        that says so rather than having it written over every run.
+
+        :param home: Where offgrid keeps what it writes for this run.
+        """
+        settings = home / self.name / "opencode.json"
+        settings.parent.mkdir(parents=True, exist_ok=True)
+
+        settings.write_text(EDITED)
 
     def write_a_configuration_permitting_a_hosted_tool(self, home: Path) -> None:
         """Leave behind a configuration permitting a hosted tool, which is none.
