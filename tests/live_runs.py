@@ -13,11 +13,13 @@ from pathlib import Path
 
 import pytest
 
+from offgrid.cli.binding import read_profile
+from offgrid.domain.profile import DEFAULT_PATH
 from offgrid.domain.running.discarded_windows import DEFAULT_PATH as KEPT_PATH
+from offgrid.shared.exceptions import OffgridError
+from tests.live_pairs import require_installed
 
 ANSWER_SECONDS = 600
-
-PROMPT = "reply with the two letters OK and nothing else"
 
 # A window to ask for and read back, rather than inheriting whatever the
 # profile stores. Above both agents' floors so either starts, and small enough
@@ -65,7 +67,7 @@ def keep_what_a_live_run_records_out_of_the_way(
     :param request: The running test, which is left alone unless it is live.
     :param tmp_path: Where the real file is held while the test runs.
 
-    :yield: Nothing; what was there is put back afterwards.
+    :return: Nothing; what was there is put back afterwards.
     """
     if request.node.get_closest_marker("live") is None:
         yield
@@ -84,3 +86,24 @@ def keep_what_a_live_run_records_out_of_the_way(
 
         if had_one:
             shutil.copy2(kept, KEPT_PATH)
+
+
+@pytest.fixture
+def stored_agent() -> str:
+    """Whichever agent the profile on this machine already names.
+
+    What a check about the runtime rather than about a pair runs, so that its
+    passthrough is spelled the way the agent it will actually start reads it.
+    A binary missing from the PATH is said in words here too, since a check
+    that is not about the agent still starts one.
+
+    :return: The agent, as the profile spells it.
+    """
+    try:
+        agent = read_profile(DEFAULT_PATH).agent.name.value
+    except OffgridError as error:
+        pytest.skip(f"no profile to read the agent from: {error}")
+
+    require_installed(agent)
+
+    return agent
