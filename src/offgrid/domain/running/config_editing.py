@@ -10,7 +10,7 @@ Two things follow, and neither is hidden: a file edited down to a key offgrid
 never wrote keeps it that way, and a key offgrid starts writing later reaches
 no file holding an edit. Writing either back would answer a deliberate edit
 with a run that quietly disagrees with the file, so what a person gets instead
-is a guard that reads it and refuses the run — `hosted_tools.py`.
+is a guard that reads it and refuses the run — `leaving.py`.
 
 Whether it holds an edit is asked of its text rather than of what the text
 parses to: `null` is a document somebody could have left and is also how

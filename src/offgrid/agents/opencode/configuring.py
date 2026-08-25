@@ -33,9 +33,12 @@ LABEL = "offgrid"
 # A transcript leaving this machine is the promise `docs/decisions.md` makes,
 # and this is the setting in the file that decides it. Written out rather than
 # left to a default: the published schema states an enum of manual, auto and
-# disabled and no default for it, so what applies unset is unknown. It goes in
-# the durable half because it is a standing choice about this machine, so
-# somebody who wants sharing back keeps the edit.
+# disabled and no default for it, and measured on 1.18.23 OpenCode fills none
+# in, so what applies unset is unknown. It goes in the durable half because it
+# is a standing choice about this machine, so somebody who wants sharing back
+# keeps the edit — and `leaving.py` reads the key back, so an edit that leaves
+# it unstated is reported rather than written over.
+SHARING_KEY = "share"
 SHARING = "disabled"
 
 # The file is meant to be edited, and this is what gives an editor the
@@ -46,6 +49,6 @@ SCHEMA = "https://opencode.ai/config.json"
 
 DURABLE = {
     "$schema": SCHEMA,
-    "share": SHARING,
+    SHARING_KEY: SHARING,
     "provider": {PROVIDER: {"npm": PACKAGE, "name": LABEL}},
 }

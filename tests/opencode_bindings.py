@@ -1,23 +1,57 @@
 """OpenCode bound the way the command line binds it, for the tests about it.
 
-Two files ask about this adapter — what a run derives for one launch, and what
-offgrid writes into the directory it keeps — and both start from the same
-binding and read the same two places back.
+Several files ask about this adapter — what a run derives for one launch, what
+offgrid writes into the directory it keeps, and what a command says about it —
+and they start from the same binding and read the same two places back.
 """
 
 import json
 from pathlib import Path
 
+from typer.testing import CliRunner
+
 from offgrid.agents import create_agent_config
 from offgrid.agents.opencode import prepare
 from offgrid.agents.opencode.launching import CONFIG_CONTENT
+from offgrid.cli import app
 from offgrid.domain.running.agent import Agent, Passthrough
 from offgrid.domain.running.launch import Launch
 from offgrid.domain.running.model import Model
+from tests.profiles import add_to_section
 
 HOST = "127.0.0.1:1234"
 WANTED = "qwen/qwen3.6-35b-a3b"
 SETTINGS = "opencode.json"
+NAMED = "opencode"
+
+
+def name_opencode(here: Path) -> None:
+    """Write a profile, then switch the agent the way a person would.
+
+    `setup` writes the Claude Code adapter and is deliberately not taught to
+    choose, so naming OpenCode is the one-line hand-edit it takes to switch.
+
+    :param here: Where the profile is.
+    """
+    CliRunner().invoke(app, ["setup"])
+
+    add_to_section(here, "agent", name=NAMED)
+
+
+def write_configuration(here: Path, body: str) -> None:
+    """Leave a configuration in the directory OpenCode is run out of.
+
+    The directory as well as the file, because a hand-edited configuration is
+    a thing a person can leave on a machine that has never run the agent.
+
+    :param here: Where offgrid keeps what it writes.
+    :param body: What the file holds.
+    """
+    config = here / NAMED
+    config.mkdir(exist_ok=True)
+
+    (config / SETTINGS).write_text(body)
+
 
 # Every spelling of a runtime's name a value might carry, because the claim is
 # that this adapter knows runtimes have no names at all — and a check for the

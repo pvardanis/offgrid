@@ -2,12 +2,13 @@
 
 from dataclasses import dataclass
 
+from offgrid.cli.leaving import describe_what_could_leave
 from offgrid.domain.profile import Profile
 from offgrid.domain.running import discarded_windows
 from offgrid.domain.running.asking import describe_what_is_asked_for
 from offgrid.domain.running.dialect import Dialect
 from offgrid.domain.running.discarded_windows import DiscardedWindow
-from offgrid.domain.running.hosted_tools import HostedToolsReport, HostedToolsStatus
+from offgrid.domain.running.leaving import Reading
 from offgrid.domain.running.model import Model, ModelRequest
 from offgrid.shared.wording import describe_what_was_stated
 
@@ -26,7 +27,8 @@ class Checkup:
     :param resident: The model the runtime is holding, or ``None`` where it
         holds none — which the rest of the report survives, because a runtime
         holding nothing still answered.
-    :param hosted_tools: What the agent says it can reach.
+    :param leaves: What the agent says about each way this run could reach off
+        this machine, one reading each.
     :param dialect: What the agent speaks.
     :param served: Every dialect the runtime serves, which says whether an
         agent other than this one would pair with it.
@@ -40,7 +42,7 @@ class Checkup:
 
     profile: Profile
     resident: Model | None
-    hosted_tools: HostedToolsReport
+    leaves: tuple[Reading, ...]
     dialect: Dialect
     served: frozenset[Dialect]
     context_floor: int
@@ -58,7 +60,7 @@ def describe_what_was_read(checkup: Checkup) -> tuple[str, ...]:
 
     :return: The lines to say, in the order they are read.
     """
-    profile, hosted_tools = checkup.profile, checkup.hosted_tools
+    profile = checkup.profile
 
     said = (
         f"runtime   {profile.runtime.name.value} at {profile.runtime.host}, reachable",
@@ -67,17 +69,10 @@ def describe_what_was_read(checkup: Checkup) -> tuple[str, ...]:
         f"profile   {describe_what_is_asked_for(profile.model)}",
         f"agent     {profile.agent.name.value}, speaking {checkup.dialect.value}",
         f"floor     {checkup.context_floor}",
-        f"hosted    {hosted_tools.status}",
+        *describe_what_could_leave(checkup.leaves),
     )
 
-    said = (*said, *_describe_a_discarded_window(checkup))
-
-    # What a run would refuse with, said here instead of after the load it
-    # was run to save. Nothing to act on where nothing can be reached.
-    if hosted_tools.status is HostedToolsStatus.DENIED:
-        return said
-
-    return (*said, f"          {hosted_tools.detail} {hosted_tools.remedy}".rstrip())
+    return (*said, *_describe_a_discarded_window(checkup))
 
 
 def _describe_the_model(model: Model | None, request: ModelRequest) -> tuple[str, ...]:

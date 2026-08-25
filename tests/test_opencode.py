@@ -11,7 +11,8 @@ import pytest
 
 from offgrid.agents.opencode import prepare
 from offgrid.domain.running.dialect import Dialect
-from offgrid.domain.running.hosted_tools import HostedToolsStatus
+from offgrid.domain.running.leaving import Status, Subject
+from tests.agent_conformance import read_about
 from tests.doubles import StandInAgentConfig
 from tests.opencode_bindings import (
     HOST,
@@ -143,7 +144,7 @@ def test_opencode_offers_no_hosted_tool_and_says_what_that_was_measured_on(agent
     # The case the reading was designed for: an agent with nothing hosted
     # says something true and dated rather than implementing a guard whose
     # body does nothing.
-    found = agent.read_hosted_tools()
+    found = read_about(agent, Subject.HOSTED_TOOLS)
 
-    assert found.status is HostedToolsStatus.NONE_OFFERED
+    assert found.status is Status.NONE_OFFERED
     assert "1.18.20" in found.detail

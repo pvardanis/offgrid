@@ -83,18 +83,20 @@ class AgentSettingsError(OffgridError):
     """The agent's settings cannot be written, or cannot be read at all.
 
     A file that says something offgrid will not back is not this: that is an
-    answer about what the run could reach, and `HostedToolReachableError`
+    answer about what the run could reach, and `CouldLeaveThisMachineError`
     carries it.
     """
 
 
-class HostedToolReachableError(OffgridError):
-    """A tool that runs on a vendor's servers can be reached from this run.
+class CouldLeaveThisMachineError(OffgridError):
+    """Something this run could send off this machine is not settled.
 
-    Named for what is true rather than for where it was found: a settings
-    file that permits one and an argument that stops that file being read
-    leave the same thing reachable, and a person reading the error cares
-    about the reach, not which of the two caused it.
+    A tool that runs on a vendor's servers and a transcript published to one
+    both reach off it, and either is enough. Named for what is true rather
+    than for where it was found: a settings file that permits one and an
+    argument that stops that file being read leave the same thing reachable,
+    and a person reading the error cares about the reach, not which of the two
+    caused it. Which subject it was about is the first words of the message.
     """
 
 

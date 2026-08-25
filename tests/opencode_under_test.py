@@ -88,6 +88,20 @@ class OpenCodeUnderTest:
 
         settings.write_text(EDITED)
 
+    def arrange_a_transcript_that_leaves(self, home: Path) -> Passthrough:
+        """Turn sharing back on in the file, the way a person would.
+
+        The whole of it is on disk, so nothing is bound: `share` is a key
+        OpenCode reads out of its own configuration rather than an argument.
+
+        :param home: Where offgrid keeps what it writes for this run.
+
+        :return: Nothing, there being no argument in it.
+        """
+        self.edit_the_configuration(home)
+
+        return ()
+
     def write_a_configuration_permitting_a_hosted_tool(self, home: Path) -> None:
         """Leave behind a configuration permitting a hosted tool, which is none.
 

@@ -86,6 +86,26 @@ class AgentUnderTest(Protocol):
         """
         ...
 
+    def arrange_a_transcript_that_leaves(self, home: Path) -> Passthrough:
+        """Put this agent into a state where a transcript could leave.
+
+        The adapter arranges it, because it has no one shape: for one agent it
+        is a key edited in a JSON file and for another an argument that runs
+        the session somewhere else entirely. So this both writes what it needs
+        to write and answers with the arguments to bind, and an adapter using
+        only one of the two leaves the other empty.
+
+        Every agent has such a state, so nothing skips here: an agent that
+        could not be made to publish a transcript would be one nothing could
+        ask to, which no agent offgrid runs is.
+
+        :param home: Where offgrid keeps what it writes for this run.
+
+        :return: The arguments to bind the adapter with, and none where the
+            state is entirely on disk.
+        """
+        ...
+
     def write_a_configuration_permitting_a_hosted_tool(self, home: Path) -> None:
         """Leave a configuration behind that denies no hosted tool.
 

@@ -22,7 +22,7 @@ flowchart TD
     end
     subgraph domain ["domain/"]
         sizing["sizing/<br/>machine · fit · listing · leaderboard · speed ·<br/>quality · shortlist · recommendation"]
-        running["running/<br/>model · dialect · capabilities · hosted_tools ·<br/>launch · runtime · agent · config_editing · answering"]
+        running["running/<br/>model · dialect · capabilities · leaving ·<br/>launch · runtime · agent · config_editing · answering"]
         profile["profile/"]
     end
     subgraph shared ["shared/"]
@@ -111,6 +111,8 @@ cli/               the layer, a module per command and the four attached
   doctor.py        what can be read before a run costs a load
   checkup.py       what a run can be told before it costs a load, and
                    how it reads
+  leaving.py       how what a run could send off this machine reads in
+                   that report
   recommend.py     what a published list says this machine can hold
   run.py           hold a model, start the agent, let the model go
   reporting.py     what offgrid's own errors look like at the terminal
@@ -137,6 +139,8 @@ agents/            one package per agent
                    what is read back out of them
     compacting.py  what it compacts against, and what is said where
                    it will not
+    leaving.py     what a run of it could send off this machine, read
+                   out of its settings and its arguments
   opencode/
     opencode.py    what an agent is asked, in OpenCode's terms
     config.py      what it is run out of, as a profile says it
@@ -146,6 +150,8 @@ agents/            one package per agent
                    it is started with
     cautioning.py  what a run takes away and what it leaves unsized,
                    said before it starts
+    leaving.py     what a run of it could send off this machine, read
+                   out of the file `configure` writes and leaves alone
 leaderboards/      one module per published list, and the registry
   onyx.py          fetching and parsing the page
 ```
@@ -173,7 +179,8 @@ domain/
                    numbers deciding that
     dialect.py     which API shapes can be paired
     capabilities.py  what a runtime can be asked to do
-    hosted_tools.py  what an agent can reach that offgrid cannot run here
+    leaving.py     what a run could send off this machine, and
+                   whether that stops it
     launch.py      an environment and an argument list, and running one
     runtime.py     what offgrid asks of a runtime, and which ones there are
     agent.py       what offgrid asks of an agent, and which ones there are
@@ -249,9 +256,9 @@ sequenceDiagram
     Note over C,G: the only place a name becomes an adapter, and<br/>where a key its adapter does not read is refused
     C->>D: require_compatible(runtime.dialects, agent.dialect)
     C->>A: configure()
-    C->>A: read_hosted_tools()
-    A-->>C: HostedToolsReport
-    C->>C: require_hosted_tools_denied(report)
+    C->>A: read_what_leaves_this_machine()
+    A-->>C: one Reading per way off this machine
+    C->>C: require_nothing_leaves(readings)
     Note over C,A: everything knowable before a load, before the load
     C->>W: read_discarded_windows(runtime, host, file_path)
     W-->>C: every window this runtime discarded, by model and window
@@ -596,7 +603,7 @@ class Agent(Protocol):
     def context_floor(self) -> int: ...
 
     def configure(self) -> None: ...
-    def read_hosted_tools(self) -> HostedToolsReport: ...
+    def read_what_leaves_this_machine(self) -> tuple[Reading, ...]: ...
     def plan(self, model: Model) -> Launch: ...
 ```
 
@@ -619,8 +626,9 @@ nothing can disagree about it.
 **`configure` and the reading are separate calls** because they are separate
 jobs. `configure` writes what is missing and leaves alone what a person edited
 — including settings the reading will call permitted, which are an edit rather
-than something to write over. `read_hosted_tools` says what this run could
-reach, and is the privacy promise in `docs/decisions.md` made legible.
+than something to write over. `read_what_leaves_this_machine` says what this
+run could send off this machine, and is the privacy promise in
+`docs/decisions.md` made legible.
 
 What counts as an edit is `domain/running/config_editing.py`, asked once for both
 adapters, because deciding it per adapter is how one of them comes to decide it
@@ -629,21 +637,30 @@ missing from it is not written back, since the key likeliest to be missing is
 the one deciding something offgrid promised, and putting it back would answer a
 person's deliberate edit with a run that quietly disagrees with their file.
 
-It is a slot in the port rather than one adapter's business because the failure
-it describes is silent. A hosted tool called against a local model returns
-invented prose that reads as an answer, with no error anywhere. Codex CLI
+It is a slot in the port rather than one adapter's business because the
+failures it describes are silent. A hosted tool called against a local model
+returns invented prose that reads as an answer, with no error anywhere; a
+published transcript leaves while the run works exactly as asked. Codex CLI
 carries `supports_standalone_web_search`, so the second agent has the same
 class of tool — and without a named slot, its adapter ships without the
 reading and nothing says so.
 
+**It answers one reading per subject**, rather than one status covering both.
+They are settled in different places by different edits — a key in a file, an
+argument on a command line — so a refusal that could not say which of them it
+was about would send a person to read both, and a `doctor` line that folded
+them would lose one of the two facts. `Subject` is the list, and
+`tests/test_agent_leaving.py` asks every adapter for every one of them, so a
+subject added later goes red on every adapter rather than on none.
+
 **The adapter answers and offgrid decides**, the way `dialect` and
-`require_compatible` already divide. Which tools are hosted, what the
-configuration says and which arguments stop it being read are the adapter's
-knowledge; that a reachable one stops a run is offgrid's rule, and would tell
-a person nothing if it held for one agent and not another. That split is what
-lets `run` refuse and `doctor` report the same reading — and it is why an
-agent with no hosted tool answers `none_offered` rather than implementing a
-guard that does nothing.
+`require_compatible` already divide. Which tools are hosted, which key
+publishes a transcript, what the configuration says and which arguments matter
+are the adapter's knowledge; that anything able to leave stops a run is
+offgrid's rule, and would tell a person nothing if it held for one agent and
+not another. That split is what lets `run` refuse and `doctor` report the same
+reading — and it is why an agent with no hosted tool answers `none_offered`
+rather than implementing a guard that does nothing.
 
 **It reads the arguments as well as the configuration**, because a
 configuration only denies where the agent loads it, and the arguments after
@@ -1020,9 +1037,11 @@ its word.
 `tests/test_agent_conformance.py` is the same for agents, with what an agent
 writes for itself and keeps beside it in `tests/test_agent_configuration.py`,
 what it refuses rather than guess about in
-`tests/test_agent_configuration_refused.py`, what it owes about hosted tools in
-`tests/test_agent_hosted_tools.py`, and the list all four ask it of in
-`tests/agent_conformance.py`. Together they state seventeen things, each of
+`tests/test_agent_configuration_refused.py`, what it owes about the reading as
+a whole in `tests/test_agent_leaving.py`, what it owes about each way off this
+machine in `tests/test_agent_hosted_tools.py` and
+`tests/test_agent_transcript_sharing.py`, and the list all six ask it of in
+`tests/agent_conformance.py`. Together they state twenty-two things, each of
 which an agent that is not Claude Code still owes:
 
 - `configure` writes what is missing, and leaves as they left them the files a
@@ -1039,6 +1058,16 @@ which an agent that is not Claude Code still owes:
   configuration elsewhere is deliberate.
 - What an adapter writes for itself satisfies its own guard, and a
   configuration permitting a hosted tool stops a run, saying what to change.
+- Every way off this machine is answered, an agent that has none of one
+  included: a subject nobody answered is a `run` that asks, gets a tuple back,
+  refuses nothing and starts.
+- A run that could publish a transcript of itself is stopped, saying what to
+  set or which argument to drop — and the file it was read out of is left
+  exactly as it was, since a run that fixed it would turn something a person
+  can act on into a silent rewrite.
+- What an adapter writes for itself settles sharing rather than merely not
+  refusing it, so an ordinary first run is not refused over a key nobody
+  wrote.
 - An agent offering no hosted tool at all says so in the stand-in, and answers
   `NONE_OFFERED` with the evidence for it — the two above have no state to put
   such an agent into and skip, so the claim is asked for rather than assumed.
@@ -1066,19 +1095,23 @@ precisely so that an agent writing it into a file of its own has it before
 doing what the port was shaped to allow.
 
 `tests/agents_under_test.py` is the parametrization. A stand-in points its agent
-at a directory the test owns, and supplies the two things the suite cannot
-write for itself: a configuration permitting a hosted tool, and an edit a
-person could plausibly have made. Neither has one shape — permitting a tool is
-a key in a JSON file for Claude Code and would be a table in a TOML file for an
-agent that kept one, and an edit is a key in a JSON file for one of Claude
-Code's two files and a sentence of prose for the other. An edit also has to
-leave the file readable by the agent that loads it, since a file offgrid keeps
-is a file that goes on to be read. Everything else is read off disk by walking
+at a directory the test owns, and supplies the three things the suite cannot
+write for itself: a configuration permitting a hosted tool, a state in which a
+transcript could leave, and an edit a person could plausibly have made. None
+has one shape — permitting a tool is a key in a JSON file for Claude Code and
+would be a table in a TOML file for an agent that kept one, and an edit is a
+key in a JSON file for one of Claude Code's two files and a sentence of prose
+for the other. Nor is the second even on disk for every agent: sharing is a key
+in a file for OpenCode and an argument on the command line for Claude Code, so
+that one both writes what it needs and answers with the arguments to bind. An
+edit also has to leave the file readable by the agent that loads it, since a
+file offgrid keeps is a file that goes on to be read. Everything else is read off disk by walking
 that directory, so a `configure` leaving an extra file behind is caught by a
 suite that names no file.
 
 Two of those statements are why the guard is a named member at all. A
-`read_hosted_tools` answering `DENIED` without reading anything satisfies the
+`read_what_leaves_this_machine` answering `DENIED` without reading anything
+satisfies the
 Protocol and the type checker both, and is the silent failure the slot exists to
 prevent; a `configure` that writes over an edit is invisible to both as well.
 Each was checked by making the change and watching the suite go red.
