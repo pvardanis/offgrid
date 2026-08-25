@@ -7,7 +7,7 @@ nothing offgrid derives able to go stale.
 
 from dataclasses import dataclass, field
 
-from offgrid.agents.opencode.cautioning import PROJECT_CONFIG_CAUTION
+from offgrid.agents.opencode.cautioning import say_what_the_run_costs
 from offgrid.agents.opencode.config import OpenCodeConfig
 from offgrid.agents.opencode.configuring import DURABLE, SETTINGS
 from offgrid.agents.opencode.launching import (
@@ -120,5 +120,5 @@ class OpenCode:
         return Launch(
             env=env,
             argv=get_opencode_args(self.passthrough),
-            caution=PROJECT_CONFIG_CAUTION,
+            caution=say_what_the_run_costs(model.context_window),
         )
