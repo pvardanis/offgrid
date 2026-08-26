@@ -14,15 +14,21 @@ from offgrid.domain.running.model import ModelRequest
 from offgrid.shared.exceptions import ProfileError
 from tests.profiles import HOST, build_profile
 
-NAMED_MODEL = "qwen/qwen3.6-35b-a3b"
+# Long enough that a writer wrapping its lines would fold this one, and a name
+# of the shape a published quantization actually carries.
+NAMED_MODEL = (
+    "mradermacher/Qwen3.6-Coder-35B-A3B-Instruct-abliterated-i1-GGUF/"
+    "Qwen3.6-Coder-35B-A3B-Instruct-abliterated.i1-Q4_K_M.gguf"
+)
 
 # A file as somebody keeps one: a note above each section, a blank line between
-# them, and the name written before the address rather than after it.
+# them, the name written before the address rather than after it, and the
+# address in quotes it does not need.
 HAND_EDITED = f"""\
 # The runtime this machine talks to.
 runtime:
   name: lmstudio
-  host: 127.0.0.1:1234
+  host: "127.0.0.1:1234"
 
 agent:
   name: claude-code  # what `offgrid run` starts
@@ -101,6 +107,53 @@ def test_a_file_holding_a_key_offgrid_cannot_act_on_is_written_whole(tmp_path):
     assert read_profile(path).runtime.host == HOST
 
 
+def test_a_section_gaining_a_key_before_the_end_is_written_whole(tmp_path):
+    # A key written into a section that something follows lands after the
+    # blank line and the comment introducing what is next, which leaves that
+    # comment standing over a key it says nothing about.
+    path = tmp_path / "profile.yaml"
+    path.write_text(
+        f"# What to run.\nmodel:\n  identifier: {NAMED_MODEL}\n\n"
+        "# Where the runtime listens.\n"
+        f'runtime:\n  name: lmstudio\n  host: "{HOST}"\nagent:\n  name: claude-code\n'
+    )
+
+    save_profile(read_profile(path), path)
+
+    written = path.read_text()
+    assert "# Where the runtime listens.\n  context_window:" not in written
+    assert "#" not in written
+    assert read_profile(path).model.identifier == NAMED_MODEL
+
+
+def test_a_section_holding_a_key_offgrid_cannot_act_on_is_written_whole(tmp_path):
+    # The same as a key at the top of the file, one level down: `setup` writes
+    # over a profile it refused, and a key carried into the fresh one would be
+    # refused all over again by the next read.
+    path = tmp_path / "profile.yaml"
+    path.write_text(
+        HAND_EDITED.replace("  name: lmstudio", "  name: lmstudio\n  chip: Apple M1")
+    )
+
+    save_profile(build_profile(), path)
+
+    assert "chip" not in path.read_text()
+    assert read_profile(path).runtime.host == HOST
+
+
+def test_saving_what_was_just_saved_writes_the_same_file(tmp_path):
+    # A save that moved something each time would take a file further from
+    # what its owner typed with every run, without ever failing.
+    path = tmp_path / "profile.yaml"
+    path.write_text(TYPED_BY_HAND)
+    save_profile(read_profile(path), path)
+    once = path.read_text()
+
+    save_profile(read_profile(path), path)
+
+    assert path.read_text() == once
+
+
 def test_a_key_typed_twice_is_refused_rather_than_read_as_the_last_one(tmp_path):
     # A profile is hand-edited, and a key that is there twice is a mistake to
     # report: reading the second and dropping the first answers with a value
@@ -108,8 +161,15 @@ def test_a_key_typed_twice_is_refused_rather_than_read_as_the_last_one(tmp_path)
     path = tmp_path / "profile.yaml"
     path.write_text(f"runtime:\n  name: lmstudio\n  host: {HOST}\n  host: 10.0.0.5:1\n")
 
-    with pytest.raises(ProfileError, match="duplicate key"):
+    with pytest.raises(ProfileError) as refused:
         read_profile(path)
+
+    said = str(refused.value)
+    assert "says a key twice, at line 4" in said
+    assert "Delete the line you do not want." in said
+    # The parser offers a link to switching the check off, which is the one
+    # thing a person reading this should not do.
+    assert "suppress" not in said
 
 
 def test_a_profile_written_where_there_is_none_is_written_whole(tmp_path):

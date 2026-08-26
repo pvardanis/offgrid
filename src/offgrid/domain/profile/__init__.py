@@ -11,9 +11,9 @@ from offgrid.domain.profile.profile import (
     Profile,
     create_profile,
     load_yaml,
-    save_profile,
 )
 from offgrid.domain.profile.refusing import refuse_profile_section
+from offgrid.domain.profile.saving import save_profile
 from offgrid.domain.profile.structure import refuse_a_flat_profile
 
 __all__ = [
