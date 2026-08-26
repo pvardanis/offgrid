@@ -25,8 +25,10 @@ from pathlib import Path
 
 import pytest
 
+from offgrid.domain.running.agent import AgentName
 from offgrid.domain.running.dialect import Dialect
 from offgrid.domain.running.launch import Launch
+from offgrid.domain.running.presence import say_where_an_agent_comes_from
 from tests.agent_conformance import (
     EVERY_AGENT,
     WANTED,
@@ -80,11 +82,9 @@ def test_an_agent_names_the_command_that_would_be_run(
     # Whether the agent is on this machine is a `PATH` lookup, and a lookup
     # needs the name to look up. It cannot be derived from the adapter's own
     # name — `claude-code` runs `claude` — and reading it off a launch would
-    # mean building one, which takes a model nothing has yet.
-    #
-    # A bare name rather than a path, because a path is where it is on the
-    # machine it was written on, and looking one up on `PATH` is the only
-    # answer about this machine.
+    # mean building one, which takes a model nothing has yet. A bare name
+    # rather than a path, because a path is where it sits on the machine it
+    # was written on, and a `PATH` lookup is the only answer about this one.
     agent = agent_under_test.prepare(monkeypatch, tmp_path)
 
     assert agent.command
@@ -187,3 +187,14 @@ def test_where_the_runtime_listens_reaches_the_agent(
     ]
 
     assert any(agent_under_test.address in said for said in told)
+
+
+def test_an_agent_offgrid_runs_has_somewhere_to_be_got_from(
+    agent_under_test: AgentUnderTest,
+):
+    # A machine without the agent is sent to the page it is published from, so
+    # an adapter added without one turns `doctor` into a refusal about
+    # offgrid's own dict — on the machine least able to act on it.
+    said = say_where_an_agent_comes_from(AgentName(agent_under_test.name))
+
+    assert "https://" in said

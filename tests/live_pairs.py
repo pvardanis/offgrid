@@ -7,11 +7,13 @@ profile's to say and nothing else's, so a pair is arranged by naming it in the
 stored profile for the length of one check and putting the profile back.
 
 One record per agent, so a third one is a line here rather than an edit in
-four places. What differs is the binary a machine needs on the PATH and the
-spelling that asks one question and exits.
+four places. What differs is the command a machine needs on the PATH and the
+spelling that asks one question and exits. Whether that command is there, and
+where a machine without it is sent, come from `presence.py` — the same answers
+`doctor` reports, so a live check and a report cannot disagree about the same
+machine.
 """
 
-import shutil
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -21,6 +23,11 @@ import pytest
 import yaml
 
 from offgrid.domain.profile import DEFAULT_PATH
+from offgrid.domain.running.agent import AgentName
+from offgrid.domain.running.presence import (
+    find_agent_on_path,
+    say_where_an_agent_comes_from,
+)
 
 PROMPT = "reply with the two letters OK and nothing else"
 
@@ -30,14 +37,13 @@ class Pair:
     """One agent a live run pairs the runtime with.
 
     :param agent: The agent, as a profile spells it.
-    :param binary: What the machine needs on the PATH to start it.
-    :param where_to_get_it: Where a machine without it is sent.
+    :param binary: What the machine needs on the PATH to start it, which is
+        what that agent's adapter states as its command.
     :param one_shot: What asks one question and has it exit.
     """
 
     agent: str
     binary: str
-    where_to_get_it: str
     one_shot: tuple[str, ...]
 
 
@@ -47,13 +53,11 @@ PAIRS = {
         Pair(
             agent="claude-code",
             binary="claude",
-            where_to_get_it="https://docs.claude.com/en/docs/claude-code/setup",
             one_shot=("-p", PROMPT),
         ),
         Pair(
             agent="opencode",
             binary="opencode",
-            where_to_get_it="https://opencode.ai/docs/",
             one_shot=("run", PROMPT),
         ),
     )
@@ -75,10 +79,13 @@ def require_installed(agent: str, *, why: str, remedy: str) -> None:
     """Stop the check with words where the agent is not on the PATH.
 
     A live run starts a real agent, so a machine without one is owed the
-    binary's name and where to get it rather than whatever an agent that is
+    command's name and where to get it rather than whatever an agent that is
     not there fails as. Why it is being started and what to do instead differ
     between a pair the parameters name and the one the profile does, so the
     caller says both.
+
+    The lookup is the domain's, so what this check calls missing is what
+    `doctor` calls missing.
 
     :param agent: The agent, as a profile spells it.
     :param why: Why this run is starting that agent.
@@ -86,10 +93,10 @@ def require_installed(agent: str, *, why: str, remedy: str) -> None:
     """
     pair = PAIRS[agent]
 
-    if shutil.which(pair.binary) is None:
+    if find_agent_on_path(pair.binary) is None:
         pytest.fail(
-            f"{why}, and there is no `{pair.binary}` on the PATH. Install it "
-            f"from {pair.where_to_get_it}, or {remedy}"
+            f"{why}, and there is no `{pair.binary}` on the PATH. "
+            f"{say_where_an_agent_comes_from(AgentName(agent))} Or {remedy}"
         )
 
 
