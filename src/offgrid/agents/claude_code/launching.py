@@ -20,6 +20,9 @@ TOKEN = "local"
 # cramped session. A fact about this agent, so nothing may set it.
 CONTEXT_FLOOR = 25_000
 
+# What a launch runs, and what `PATH` is searched for before one is built.
+COMMAND = "claude"
+
 # Claude Code reads three sources, and this argument confines it to the ones
 # it names. `user` is the one CLAUDE_CONFIG_DIR points at, so it is the one
 # offgrid writes the deny into and the one a list may not leave out.
@@ -35,7 +38,7 @@ def get_claude_args(passthrough: Passthrough) -> list[str]:
     :return: The command and its arguments.
     """
     return [
-        "claude",
+        COMMAND,
         # No --mcp-config alongside it, so no servers load at all.
         "--strict-mcp-config",
         # Volatile sections move into the first message, leaving the cached

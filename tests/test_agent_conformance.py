@@ -74,6 +74,28 @@ def test_an_agent_states_the_smallest_window_it_can_start_in(
     assert read_everything_under(tmp_path) == {}
 
 
+def test_an_agent_names_the_command_that_would_be_run(
+    agent_under_test: AgentUnderTest, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):
+    # Whether the agent is on this machine is a `PATH` lookup, and a lookup
+    # needs the name to look up. It cannot be derived from the adapter's own
+    # name — `claude-code` runs `claude` — and reading it off a launch would
+    # mean building one, which takes a model nothing has yet.
+    #
+    # A bare name rather than a path, because a path is where it is on the
+    # machine it was written on, and looking one up on `PATH` is the only
+    # answer about this machine.
+    agent = agent_under_test.prepare(monkeypatch, tmp_path)
+
+    assert agent.command
+    assert Path(agent.command).name == agent.command, (
+        f"{agent.command} is a path rather than a command to look up"
+    )
+    # What is looked up is what runs, so an adapter cannot name one command
+    # and start another.
+    assert plan_for_a_model(agent).argv[0] == agent.command
+
+
 def test_planning_a_launch_writes_nothing(
     agent_under_test: AgentUnderTest, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ):
