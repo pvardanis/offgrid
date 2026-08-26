@@ -142,6 +142,8 @@ agents/            one package per agent
                    settings and the argument that loads them
     publishing.py  whether an argument runs the session in the cloud
                    instead, which no setting decides
+    keeping.py     where a conversation lands, which is the directory
+                   that carries the settings as well
   opencode/
     opencode.py    what an agent is asked, in OpenCode's terms
     config.py      what it is run out of, as a profile says it
@@ -156,6 +158,8 @@ agents/            one package per agent
                    measured to say so
     sharing.py     whether an argument or the file could let a transcript
                    leave, the argument read first
+    keeping.py     where a conversation lands, which is the store the
+                   launch moves rather than anything in the file
 leaderboards/      one module per published list, and the registry
   onyx.py          fetching and parsing the page
 ```
@@ -185,6 +189,8 @@ domain/
     capabilities.py  what a runtime can be asked to do
     leaving.py     what a run could send off this machine, and
                    whether that stops it
+    keeping.py     where an agent keeps what it wrote down of a
+                   session, and the way back into one
     launch.py      an environment and an argument list, and running one
     runtime.py     what offgrid asks of a runtime, and which ones there are
     agent.py       what offgrid asks of an agent, and which ones there are
@@ -608,6 +614,7 @@ class Agent(Protocol):
 
     def configure(self) -> None: ...
     def read_what_leaves_this_machine(self) -> tuple[Reading, ...]: ...
+    def read_where_conversations_are_kept(self) -> Conversations: ...
     def plan(self, model: Model) -> Launch: ...
 ```
 
@@ -656,6 +663,19 @@ was about would send a person to read both, and a `doctor` line that folded
 them would lose one of the two facts. `Subject` is the list, and
 `tests/test_agent_leaving.py` asks every adapter for every one of them, so a
 subject added later goes red on every adapter rather than on none.
+
+**Where a conversation is kept is a member of its own**, not a third subject on
+the reading above. A run is its own installation, so `claude --resume <id>` in
+an ordinary terminal finds nothing for a session offgrid started minutes
+earlier — the transcript is intact and where offgrid put it. That is a hazard
+about where finished files sit rather than about a run sending something out,
+and `Status` does not describe it: a directory is not `DENIED`, `PERMITTED` or
+`UNWRITTEN`, and `NONE_OFFERED` would say the agent keeps no conversations at
+all. `docs/decisions.md` has why the partition stays, under "A conversation
+started here is resumed here". `Conversations` carries the directory and the
+command that opens one, both the adapter's, and `doctor` prints them on every
+run: after the OpenCode convergence there is no second case, so a branch with
+one arm would claim a kind of agent that does not exist.
 
 **The adapter answers and offgrid decides**, the way `dialect` and
 `require_compatible` already divide. Which tools are hosted, which key
@@ -1044,8 +1064,9 @@ what it refuses rather than guess about in
 `tests/test_agent_configuration_refused.py`, what it owes about the reading as
 a whole in `tests/test_agent_leaving.py`, what it owes about each way off this
 machine in `tests/test_agent_hosted_tools.py` and
-`tests/test_agent_transcript_sharing.py`, and the list all six ask it of in
-`tests/agent_conformance.py`. Together they state twenty-one things, each of
+`tests/test_agent_transcript_sharing.py`, where it keeps a conversation it
+started in `tests/test_agent_keeping.py`, and the list all seven ask it of in
+`tests/agent_conformance.py`. Together they state twenty-four things, each of
 which an agent that is not Claude Code still owes:
 
 - `configure` writes what is missing, and leaves as they left them the files a
@@ -1079,6 +1100,11 @@ which an agent that is not Claude Code still owes:
   nothing and returning the answer whole does not, because for an agent with
   genuinely nothing hosted there is no configuration a correct reading would
   answer differently from; what is left is evidence a person can check.
+- A conversation a run starts is kept inside the installation offgrid owns and
+  not where the agent keeps one started by hand, and the answer names the
+  command that opens one again — a directory on its own is what a person
+  already had. Asking writes nothing, so it holds on a machine that has never
+  run the agent.
 - `plan` writes nothing and starts nothing. It answers with an environment and
   an argument list carrying the model that will answer and the arguments a
   person typed, in the order they typed them.

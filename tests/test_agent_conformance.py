@@ -10,7 +10,8 @@ Two things an agent owes are beside this rather than in it: what it writes for
 itself and what it refuses to write over, in `tests/test_agent_configuration.py`;
 and what a run could send off this machine, in `tests/test_agent_leaving.py`
 with a file per subject beside it, `tests/test_agent_hosted_tools.py` and
-`tests/test_agent_transcript_sharing.py`. An adapter is done when all of them
+`tests/test_agent_transcript_sharing.py`; and where it keeps a conversation it
+started, in `tests/test_agent_keeping.py`. An adapter is done when all of them
 pass. `tests/agents_under_test.py` is where a second one joins, and it is the
 only edit to the suite that adding one takes.
 
