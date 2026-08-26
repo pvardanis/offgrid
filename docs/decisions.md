@@ -1735,3 +1735,189 @@ the two are the same question, and they are not.
 **`doctor` says it on every run rather than where an installation is kept
 apart.** After OpenCode moves there is no other case, and a branch with one arm
 would claim a second kind of agent that does not exist.
+
+## The picker is built before the second runtime, and pays for it
+
+Two orders were available. The second runtime first, so that the picker's
+model row and its dialect-refusal pane are each drawn from two implementations
+rather than one; or the picker first, accepting that both are generalisations
+from LM Studio alone. The second was chosen on timing: the picker is what
+someone arriving from the README meets, and the second runtime is what a person
+who is already running gains.
+
+**The cost is named rather than discovered.** The two surfaces expected to move
+when the second runtime lands are the model row's columns — identifier, held,
+size on disk, ceiling, fits — and the dialect-refusal pane, which names every
+dialect a runtime serves. Both are shaped by what one adapter happens to be
+able to answer. The runtime conformance suites are what will show the
+difference, because they are what asks every adapter the same question.
+
+Nothing else in the picker is expected to move. The keys, the widget, the
+report pane's arithmetic and the write-back are all about offgrid rather than
+about a runtime.
+
+## The picker exits before the agent starts
+
+It is a launcher, not a wrapper. No pty, no drawing around a foreign terminal
+application, no owning the screen while the agent has it. `run` carries out the
+same sequence in plain text whether it was reached from the picker or from a
+command line — the same steps, the same wording, the same exit codes — and the
+picker never holds or lets go of a model itself. Arming records a wish.
+
+**This is the same sentence as "a model is let go when the agent exits".** offgrid
+waits for the agent rather than becoming it, so that a model is let go when the
+agent exits; a surface that stayed on screen for the length of a session would
+be a second thing holding the terminal for exactly as long. Keeping offgrid's
+screen time to the bookends around a run is also what keeps the run sequence in
+one place: duplicating it inside a widget is how two surfaces come to word the
+same fact differently.
+
+## Textual is chosen for its test driver, not for its widgets
+
+Textual, over three alternatives. Rich alone is a renderer with no input loop
+or focus model. prompt_toolkit is lower level and its test story is thinner.
+Sequential prompt libraries have no persistent screen, so no report that
+recomputes as a highlight moves.
+
+**The deciding factor is `Pilot`.** This project tests what a person sees, at
+seams that are named in `CLAUDE.md` before anything is built. A toolkit whose
+surfaces can only be checked by a human looking at them would have made the
+picker the one place that rule does not hold, on the day it was written.
+Textual is also pure Python with no build step, which matters for a project
+that is cloned rather than installed.
+
+Frame snapshots are rejected for the same reason they are elsewhere: they break
+on every cosmetic change and pass on wrong content, which is the inverse of
+asserting on the message a person reads.
+
+## Writing the profile back keeps the file a person's
+
+The README advertises `profile.yaml` as hand-editable, and the adapters' own
+config files are written once and then left alone. A picker that saves by
+dumping the parsed document back would take a person's comments and key order
+with it the first time they pressed the key that writes.
+
+**So the write-back round-trips, and that is a new dependency.** The current
+library dumps only; preserving comments, key order and formatting means one
+that parses into a document it can write back. The cost is one more thing to
+install for a surface that is not the only way to edit the file. It is paid
+because the alternative is a save that quietly destroys the thing the README
+told a person they could do.
+
+**An unasked-for window stays unwritten.** `model.context_window` is saved only
+where a window was explicitly chosen. An absent window means whatever the
+runtime remembers, and materialising it into a number is a behaviour change
+wearing a save's clothes.
+
+## An agent states its command, and one function does the lookup
+
+The `Agent` port gains a stated fact beside `dialect` and `context_floor`: the
+command a launch would run. Presence is then one domain function doing a `PATH`
+lookup, and the picker and `doctor` both call it.
+
+**It is not an `is_present()` per adapter.** The behaviour is identical for
+every agent, and a port member that every implementation answers the same way
+is an invitation to drift — one adapter resolving symlinks, another checking a
+directory, and two surfaces disagreeing about one machine. It cannot be derived
+from the adapter's name either: `claude-code` runs `claude`. Nor from a
+`Launch`, since building one needs a `Model`, and the whole point is to answer
+before a model has been loaded.
+
+**`doctor` gains the line too.** Without it the picker would know something
+about the machine that the report does not, which is the failure the shared
+lookup exists to prevent. Presence is tested against a `PATH` the test
+controls, never against whatever is installed where the suite runs.
+
+## What the picker assembles is a profile, because a plan is something else
+
+Runtime, agent and model are exactly what the profile holds, so the picker is a
+profile editor whose subject happens to be in memory rather than on disk.
+`enter` runs with it and makes it the remembered one; `s` runs with it once.
+
+**It is deliberately not called a plan.** `Agent.plan(model) -> Launch` already
+owns that word: a plan there is what one agent adapter builds for one model,
+after everything has been settled. A second meaning — everything a person
+assembled before anything was settled — is precisely the collision the glossary
+exists to prevent. `CONTEXT.md`'s `profile` entry widens by a clause instead,
+and this feature introduces no new vocabulary at all.
+
+## `enter` writes, because that is where the reflex was learnt
+
+Three keys: `enter` runs and saves, `s` runs for this run only, `q` leaves
+having changed nothing. This is the polarity Claude Code's model picker
+documents — "`Enter`: switch model and save as your default", "`s`: switch
+model for this session only" — and most people meeting offgrid will have learnt
+it there. Inverting it would turn a reflex into a trap.
+
+**The safer polarity was passed over knowingly.** The reverse — `enter` for
+once, a second key to save — cannot destroy anything by muscle memory, and here
+the write is wider than Claude Code's: offgrid's profile carries runtime, agent
+and model where `/model` writes one field, so trying an agent once rewrites
+three keys unless the other binding is remembered. The mitigation is on screen
+rather than in the keymap. The footer says which key writes, the footer says
+when what is assembled differs from what the file holds, and a save says what
+it wrote rather than only naming the model.
+
+**The convention is evidence, not a fixed point.** Claude Code moved this
+binding once already: in v2.1.144 through v2.1.152 `d` saved a default and
+`Enter` applied to the session only, and by v2.1.153 it was the present
+arrangement — nine patch versions. Whoever revisits this should check what it
+does now rather than trusting the sentence above.
+
+## A row that cannot be armed is the widget's guarantee, not a hand-written one
+
+Every list is an `OptionList`. Read at Textual 8.2.8, `DataTable` has no
+per-row disabled concept at all — `disabled` there is the widget-level one
+inherited from `Widget` — while `OptionList` takes `Option(..., disabled=...)`,
+dims the row, and refuses to rest a highlight on it or to emit a selection from
+it.
+
+**The constraint decides the widget, and it is not about looks.** Absent
+things — an agent that is not installed, a model that does not fit — must be
+visible and unreachable. With `OptionList` that is the cursor's own behaviour;
+with `DataTable` it would be a refusal written by hand on select, in a surface
+built specifically so that nobody discovers an absence at exit `127`. A guard
+someone can forget to write is not the same guarantee as one that cannot be
+reached around.
+
+The cost is real and accepted: columns are padded text rather than real ones,
+so alignment is ours to keep, and there is no sorting for free. The only
+ordering needed is held models first, which is ours anyway because it is about
+what a load costs rather than about the strings in a column.
+
+## The fit column is table stakes, and the served window is the part nobody has
+
+`docs/research/picker-idiom.md` was written to survey the idiom and falsified a
+third of what this feature was assumed to be for. Recorded here so that the
+assumption is not rebuilt from memory, and so the README does not claim it.
+
+**Showing whether a model fits this machine before committing is not novel.**
+Jan has carried a per-row fit pill since v0.8.0, computed from weights plus a
+cache estimate against usable memory, with a branch written specifically for
+Apple Silicon. Its estimator scales the cache with a window, but the per-row
+caller passes a constant 8,192 rather than any window the model would be served
+at; only the pill beside the model already selected takes a real one. GPT4All
+has had a `RAM required` column for years, from a figure published in its
+catalogue. `lms load --estimate-only`
+prices a load from the command line. The column is worth having and should be
+presented as the ordinary thing it is.
+
+**The window a model would be served at, before committing, was not found
+anywhere.** Every figure in the survey is either a model's ceiling or a window
+somebody asked for. The one served-window report found is `ollama ps`, which is
+of a model already resident — the position `doctor` already occupies. **And
+that a swap costs a load and throws away a cached prefix was found once, in
+Claude Code, about a server-side cache and a remote model**: nothing is made
+resident there and nothing is let go of. No tool in the survey that holds a
+model on the machine it runs on says what a swap costs.
+
+So the report pane's worth is the second and third together, on a machine that
+holds the model, and that is what it should be built and described for.
+
+**Nothing here rests on LM Studio's own estimator.** Run on this machine on
+2026-08-26, `lms load --estimate-only` returned byte-identical figures for
+three models at windows 128 times apart, which contradicts its documentation
+and matches what `docs/research/adapter-surfaces.md` already measured for the
+other flag that is said to be honoured. Every model here is MLX, so the
+finding is bounded to that path. offgrid's own sizing stays the source of the
+fit column.
