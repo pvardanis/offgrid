@@ -1603,3 +1603,45 @@ That is the one answer with nothing behind it to check and nothing to act on.
 `NONE_OFFERED` still prints its evidence, because a claim that an agent has no
 such thing is worth exactly what the dated measurement beside it is, and the
 report is where a person reads that.
+
+## The command line is read before the file, for both agents
+
+Review found the same silent failure #162 was filed about, one layer over.
+`opencode run --help` at 1.18.23 offers `--share`, "share the session".
+`offgrid run` hands the whole command line through, and the OpenCode reading
+was taking only the file — so `offgrid run -- run "..." --share` answered
+`transcript sharing: denied` off a file saying `disabled` and started the run.
+A file was answering a question nobody had asked.
+
+**So a reading takes the passthrough as well as the settings, and reads the
+argument first.** That is the shape the hosted-tool reading already had, where
+`--setting-sources` decides whether the file binds at all; sharing is the same
+sentence with a different flag. `Status.PERMITTED` had said so all along —
+"an argument may ask for it directly" — and one adapter did not.
+
+Whether `--share` beats `"share": "disabled"` in the file was deliberately not
+measured, because measuring it means publishing a real session. offgrid does
+not need to know: it cannot promise a transcript stays here while an argument
+asks for one, so the run stops either way and names the argument.
+
+## The guard counts the readings it was given
+
+`require_nothing_leaves` iterated and raised on the first unsettled reading, so
+an adapter answering `()` — or about one subject and not the other — was
+refused nothing and started. The module said this belonged in the conformance
+suite because only a suite asking every adapter can see it. That was wrong
+about the function: `Subject` is in scope, the whole tuple is in hand, and the
+suite's list of adapters is hand-maintained, so a third adapter added to the
+registry and not to that list would have been type-correct and unasked.
+
+It now refuses a tuple that does not answer every subject exactly once, as a
+`ValueError` rather than the error a person reads: an adapter is wrong, not a
+machine. It refuses in `Subject` order rather than in the adapter's, so a
+person gets the same one thing to fix each run until they have.
+
+**A `Reading` is checked where it is built.** An unsettled reading with no
+remedy refused a run while saying nothing to do, and `remedy` defaulting to
+empty made that the easy mistake. Both invariants — a detail always, a remedy
+wherever the reading stops a run — are now the constructor's, so an actionless
+refusal cannot be built rather than being caught by whichever conformance test
+happens to exercise that path.
