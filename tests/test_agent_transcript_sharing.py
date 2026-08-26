@@ -38,18 +38,16 @@ def test_a_run_that_could_publish_a_transcript_is_stopped(
 
     agent.configure()
 
-    # That the whole reading stops the run, and separately that this subject
-    # is what stops it. The guard refuses on the first unsettled reading, so
-    # asserting this subject's words against the whole tuple would pass only
-    # while every other subject happened to be settled — and would then start
-    # failing about the wrong one.
-    with pytest.raises(CouldLeaveThisMachineError):
-        require_nothing_leaves(agent.read_what_leaves_this_machine())
+    # The message is asserted whole rather than by substring, so it says which
+    # subject stopped the run: a substring check would pass on a refusal about
+    # some other subject that happened to quote the same words.
     found = read_about(agent, Subject.TRANSCRIPT_SHARING)
+
     with pytest.raises(CouldLeaveThisMachineError) as refused:
-        require_nothing_leaves((found,))
-    assert found.detail and found.detail in str(refused.value)
-    assert found.remedy and found.remedy in str(refused.value)
+        require_nothing_leaves(agent.read_what_leaves_this_machine())
+
+    assert str(refused.value) == f"{Subject.TRANSCRIPT_SHARING}: {found.said}"
+    assert found.detail and found.remedy
 
 
 def test_what_could_publish_a_transcript_is_not_written_over(
