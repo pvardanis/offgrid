@@ -6,6 +6,7 @@ own rather than in here.
 """
 
 from dataclasses import dataclass
+from pathlib import Path
 
 import httpx
 import pytest
@@ -13,12 +14,18 @@ from pydantic import computed_field
 
 from offgrid.domain.running.agent import AgentConfig, AgentName, Prepare
 from offgrid.domain.running.dialect import Dialect
+from offgrid.domain.running.keeping import Conversations
 from offgrid.domain.running.launch import Launch
 from offgrid.domain.running.leaving import Reading, Status, Subject
 from offgrid.domain.running.model import Model
 from offgrid.domain.running.runtime import RuntimeConfig, RuntimeName
 
 CEILING = 262144
+
+# Nowhere on any machine, and named rather than derived: this stand-in is bound
+# by a registry rather than out of a config, so it has no directory of its own
+# to answer with, and a test reading this back would be reading the double.
+KEPT_IN = Path("/nowhere-real/stand-in")
 
 
 class StandInAgentConfig(AgentConfig):
@@ -82,6 +89,15 @@ class StandInAgent:
         return tuple(
             Reading(subject=way, status=Status.NONE_OFFERED, detail=f"no {way}.")
             for way in Subject
+        )
+
+    def read_where_conversations_are_kept(self) -> Conversations:
+        """Say it keeps them somewhere of offgrid's, having nowhere of its own.
+
+        :return: A directory under offgrid's, and the way back into one.
+        """
+        return Conversations(
+            kept_in=KEPT_IN, resumed_by="`offgrid run -- --resume` opens one."
         )
 
     def plan(self, model: Model) -> Launch:

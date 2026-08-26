@@ -1,11 +1,11 @@
 """What every file asking an adapter what it owes works from.
 
 The suite states what being an agent means and asks it of every adapter in
-`AGENTS_UNDER_TEST`. What it asks is spread over six files — what an
+`AGENTS_UNDER_TEST`. What it asks is spread over seven files — what an
 agent writes for itself, what it refuses to write over, what it owes about the
-reading as a whole, one file for each way off this machine, and everything else
-it owes — and all six ask it of the same list, against a directory the test
-owns.
+reading as a whole, one file for each way off this machine, where it keeps a
+conversation it started, and everything else it owes — and all seven ask it of
+the same list, against a directory the test owns.
 """
 
 from pathlib import Path

@@ -2,8 +2,9 @@
 
 An adapter binds its own settings once and answers with something satisfying
 ``Agent``. Its two attributes are settled when that happens — both facts about
-the agent itself, neither of them anyone's to choose; its three methods act —
-two on the configuration, one on nothing at all.
+the agent itself, neither of them anyone's to choose; its four methods act —
+two on the configuration, one on where the agent keeps what it writes down, one
+on nothing at all.
 
 Why it is shaped this way is in `docs/architecture.md` under "The agent seam".
 """
@@ -17,6 +18,7 @@ from typing import Protocol
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 from offgrid.domain.running.dialect import Dialect
+from offgrid.domain.running.keeping import Conversations
 from offgrid.domain.running.launch import Launch
 from offgrid.domain.running.leaving import Reading
 from offgrid.domain.running.model import Model
@@ -140,6 +142,23 @@ class Agent(Protocol):
 
         :raise AgentSettingsError: When the configuration is there and cannot
             be read at all, which is no answer about any of them.
+        """
+        ...
+
+    def read_where_conversations_are_kept(self) -> Conversations:
+        """Say where a conversation this run starts is kept, and the way back.
+
+        Its own member rather than a subject on the reading above, because
+        nothing here left the machine: this is where finished files sit, which
+        is a hazard of its own — a person who cannot find a session they had
+        minutes ago is told the transcript is gone.
+
+        A run is its own installation, so the agent started on its own reads a
+        different store and finds none of them. Nothing decides that at read
+        time and there is no state to be in, so it answers rather than refuses,
+        writes nothing, and holds for a machine that has never run the agent.
+
+        :return: Where they are kept, and how to open one again.
         """
         ...
 
