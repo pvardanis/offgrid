@@ -8,10 +8,11 @@ turns it on or off, so the whole of the answer is the command line.
 from offgrid.domain.running.agent import Passthrough
 from offgrid.domain.running.leaving import Reading, Status, Subject
 
-# What `--help` on the version below says creates a session that runs on
-# Anthropic's servers: `--cloud` opens one, and `--environment` opens one on a
-# named self-hosted pool. Either sends the whole session off this machine
-# whatever model the profile names, so a run carrying one is not a local run.
+# What `--help` on the version below says creates a session that runs
+# somewhere other than this machine: `--cloud` opens one, and `--environment`
+# opens one on a named self-hosted pool — off this machine either way, though
+# only the first is Anthropic's own, which is why neither the message nor this
+# comment says "Anthropic's servers" of both.
 #
 # The list is what was measured rather than everything `--help` hints at —
 # `--teleport`, `--remote-control` and `--from-pr` each touch a session
@@ -38,7 +39,7 @@ def read_transcript_sharing(passthrough: Passthrough) -> Reading:
             detail=(
                 f"Measured against {MEASURED_AGAINST}: neither "
                 f"{' nor '.join(f'`{flag}`' for flag in CLOUD_ARGUMENTS)}, which "
-                "`--help` says create a session on Anthropic's servers, is here."
+                "`--help` calls cloud sessions, is here."
             ),
         )
 
@@ -46,8 +47,8 @@ def read_transcript_sharing(passthrough: Passthrough) -> Reading:
         subject=Subject.TRANSCRIPT_SHARING,
         status=Status.PERMITTED,
         detail=(
-            f"`{asked}` runs this session on Anthropic's servers, so the whole "
-            "of it leaves this machine whatever model the profile names."
+            f"`{asked}` runs this session in the cloud rather than here, so the "
+            "whole of it leaves this machine whatever model the profile names."
         ),
         remedy="Drop the argument to run against the model held here.",
     )
