@@ -7,20 +7,26 @@ the whole of the answer is the directory the launch points the agent at.
 
 from pathlib import Path
 
-from offgrid.domain.running.keeping import Conversations
+from offgrid.domain.running.conversations import Conversations
 
 # What `claude --help` offers at the version below: `-r, --resume [value]`,
 # which resumes by session ID or opens a picker over what is there.
 RESUME = "--resume"
+OFFERS_RESUME = "claude 2.1.246"
 
 # `CLAUDE_CONFIG_DIR` decides where conversations are written as well as where
-# settings are read, measured against the version below: pointing it at
-# offgrid's own directory moved every conversation there with it, which is why
-# `claude --resume <id>` outside a run answers "No conversation found with
-# session ID" for a session offgrid started minutes earlier. claude 2.1.246 has
-# no argument or variable separating the two, so this is a fact about the
-# directory rather than a choice offgrid makes twice.
-MEASURED_AGAINST = "claude 2.1.246"
+# settings are read, measured against the version below and recorded in
+# `docs/decisions.md`: pointing it at offgrid's own directory moved every
+# conversation there with it, which is why `claude --resume <id>` outside a run
+# answers "No conversation found with session ID" for a session offgrid started
+# minutes earlier. Nothing there separates where conversations are written from
+# where settings are read, so it is a fact about the directory rather than a
+# choice offgrid makes twice.
+#
+# The two versions are apart because the readings are: the flag was read off
+# `--help` on the release installed here, and the directory was measured on the
+# one before it. Stamping both with the later would claim a reading nobody took.
+CARRIES_CONVERSATIONS = "claude 2.1.245"
 
 
 def read_where_conversations_are_kept(config_dir: Path) -> Conversations:
@@ -38,9 +44,10 @@ def read_where_conversations_are_kept(config_dir: Path) -> Conversations:
         kept_in=config_dir,
         resumed_by=(
             f"`offgrid run -- {RESUME}` opens a picker over these and "
-            f"`offgrid run -- {RESUME} <id>` opens one by session. Measured "
-            f"against {MEASURED_AGAINST}, `CLAUDE_CONFIG_DIR` carries "
-            "conversations as well as settings, so `claude` started outside a "
-            "run reads a different directory and finds none of them."
+            f"`offgrid run -- {RESUME} <id>` opens one by session, measured "
+            f"against {OFFERS_RESUME}. Measured against {CARRIES_CONVERSATIONS}, "
+            "`CLAUDE_CONFIG_DIR` carries conversations as well as settings, so "
+            "`claude` started outside a run reads a different directory and "
+            "finds none of them."
         ),
     )

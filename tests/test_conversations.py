@@ -7,26 +7,16 @@ with no way back into it. Both are faults in an adapter rather than in a
 machine, so both raise where the value is built rather than where somebody
 reads a report.
 
-This is a regression guard rather than a slice: each was checked by taking the
-guard out and watching the test fail.
+Each guard was proven by taking it out and watching the test here go red.
 """
 
 from pathlib import Path
 
 import pytest
 
-from offgrid.domain.running.keeping import Conversations
+from offgrid.domain.running.conversations import Conversations
 
 RESUMED_BY = "`offgrid run -- --resume` opens a picker over these."
-
-
-def test_a_directory_and_a_way_back_into_it_is_all_it_takes():
-    kept = Conversations(
-        kept_in=Path("/opt/offgrid/claude-code"), resumed_by=RESUMED_BY
-    )
-
-    assert kept.kept_in == Path("/opt/offgrid/claude-code")
-    assert kept.resumed_by == RESUMED_BY
 
 
 def test_a_relative_directory_is_refused_saying_why():

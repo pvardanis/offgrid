@@ -13,8 +13,8 @@ import pytest
 from pydantic import computed_field
 
 from offgrid.domain.running.agent import AgentConfig, AgentName, Prepare
+from offgrid.domain.running.conversations import Conversations
 from offgrid.domain.running.dialect import Dialect
-from offgrid.domain.running.keeping import Conversations
 from offgrid.domain.running.launch import Launch
 from offgrid.domain.running.leaving import Reading, Status, Subject
 from offgrid.domain.running.model import Model

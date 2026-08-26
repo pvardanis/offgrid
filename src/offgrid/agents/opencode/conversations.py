@@ -7,7 +7,7 @@ launch points `XDG_DATA_HOME` at, and that variable is the whole of the answer.
 
 from pathlib import Path
 
-from offgrid.domain.running.keeping import Conversations
+from offgrid.domain.running.conversations import Conversations
 
 # What `opencode run --help` and `opencode session --help` offer at the version
 # below: `-c, --continue` takes up the last session, `-s, --session <id>` takes
@@ -16,11 +16,16 @@ CONTINUE = "--continue"
 SESSION = "--session"
 LISTING = "session list"
 
-# Measured on the version below, against a store nothing had written to: all
-# three read the database under the directory `XDG_DATA_HOME` names, and
-# `session list` there answered with nothing while the same command outside a
-# run listed a person's own sessions. So which store is read is settled by what
-# a run sets and by nothing else.
+# What was measured on the version below, and no more than it: `session list`
+# with `XDG_DATA_HOME` pointed at a directory nothing had written to created the
+# store there and answered with nothing, while the same command without the
+# variable listed a person's own sessions. So which store is read is settled by
+# what a run sets.
+#
+# The two resuming flags were not measured, because measuring one means
+# generating against whatever it resolves to — the same reason `sharing.py`
+# leaves `--share` unmeasured. What would settle it is a session started under a
+# run and taken up again by identifier.
 MEASURED_AGAINST = "opencode 1.18.23"
 
 
@@ -41,8 +46,8 @@ def read_where_conversations_are_kept(store: Path) -> Conversations:
             f"`offgrid run -- run {CONTINUE}` takes up the last one, "
             f"`offgrid run -- run {SESSION} <id>` one by identifier, and "
             f"`offgrid run -- {LISTING}` names what is there. Measured against "
-            f"{MEASURED_AGAINST}, all three read the store `XDG_DATA_HOME` "
-            "points at, so `opencode` started outside a run lists a person's "
+            f"{MEASURED_AGAINST}, the listing reads the store `XDG_DATA_HOME` "
+            "points at, so `opencode` started outside a run names a person's "
             "own sessions rather than these."
         ),
     )

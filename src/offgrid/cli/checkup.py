@@ -5,9 +5,9 @@ from dataclasses import dataclass
 from offgrid.domain.profile import Profile
 from offgrid.domain.running import discarded_windows
 from offgrid.domain.running.asking import describe_what_is_asked_for
+from offgrid.domain.running.conversations import Conversations
 from offgrid.domain.running.dialect import Dialect
 from offgrid.domain.running.discarded_windows import DiscardedWindow
-from offgrid.domain.running.keeping import Conversations
 from offgrid.domain.running.leaving import Reading, Status
 from offgrid.domain.running.model import Model, ModelRequest
 from offgrid.shared.wording import describe_what_was_stated

@@ -142,8 +142,8 @@ agents/            one package per agent
                    settings and the argument that loads them
     publishing.py  whether an argument runs the session in the cloud
                    instead, which no setting decides
-    keeping.py     where a conversation lands, which is the directory
-                   that carries the settings as well
+    conversations.py  where a conversation lands, which is the
+                   directory that carries the settings as well
   opencode/
     opencode.py    what an agent is asked, in OpenCode's terms
     config.py      what it is run out of, as a profile says it
@@ -158,8 +158,8 @@ agents/            one package per agent
                    measured to say so
     sharing.py     whether an argument or the file could let a transcript
                    leave, the argument read first
-    keeping.py     where a conversation lands, which is the store the
-                   launch moves rather than anything in the file
+    conversations.py  where a conversation lands, which is the store
+                   the launch moves rather than anything in the file
 leaderboards/      one module per published list, and the registry
   onyx.py          fetching and parsing the page
 ```
@@ -189,7 +189,7 @@ domain/
     capabilities.py  what a runtime can be asked to do
     leaving.py     what a run could send off this machine, and
                    whether that stops it
-    keeping.py     where an agent keeps what it wrote down of a
+    conversations.py  where an agent keeps what it wrote down of a
                    session, and the way back into one
     launch.py      an environment and an argument list, and running one
     runtime.py     what offgrid asks of a runtime, and which ones there are
@@ -1065,7 +1065,7 @@ what it refuses rather than guess about in
 a whole in `tests/test_agent_leaving.py`, what it owes about each way off this
 machine in `tests/test_agent_hosted_tools.py` and
 `tests/test_agent_transcript_sharing.py`, where it keeps a conversation it
-started in `tests/test_agent_keeping.py`, and the list all seven ask it of in
+started in `tests/test_agent_conversations.py`, and the list all seven ask it of in
 `tests/agent_conformance.py`. Together they state twenty-four things, each of
 which an agent that is not Claude Code still owes:
 
