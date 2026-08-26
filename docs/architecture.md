@@ -143,8 +143,8 @@ agents/            one package per agent
                    is the two readings below
     hosted_tools.py  whether WebSearch can still be reached, out of the
                    settings and the argument that loads them
-    publishing.py  whether an argument puts the session on Anthropic's
-                   servers, which no setting decides
+    publishing.py  whether an argument runs the session in the cloud
+                   instead, which no setting decides
   opencode/
     opencode.py    what an agent is asked, in OpenCode's terms
     config.py      what it is run out of, as a profile says it
@@ -154,8 +154,11 @@ agents/            one package per agent
                    it is started with
     cautioning.py  what a run takes away and what it leaves unsized,
                    said before it starts
-    leaving.py     what a run of it could send off this machine, read
-                   out of the file `configure` writes and leaves alone
+    leaving.py     what a run of it could send off this machine, which
+                   is the tool list it was measured with and the reading
+                   below
+    sharing.py     whether an argument or the file could let a transcript
+                   leave, the argument read first
 leaderboards/      one module per published list, and the registry
   onyx.py          fetching and parsing the page
 ```
@@ -1045,7 +1048,7 @@ what it refuses rather than guess about in
 a whole in `tests/test_agent_leaving.py`, what it owes about each way off this
 machine in `tests/test_agent_hosted_tools.py` and
 `tests/test_agent_transcript_sharing.py`, and the list all six ask it of in
-`tests/agent_conformance.py`. Together they state twenty-two things, each of
+`tests/agent_conformance.py`. Together they state twenty-one things, each of
 which an agent that is not Claude Code still owes:
 
 - `configure` writes what is missing, and leaves as they left them the files a
