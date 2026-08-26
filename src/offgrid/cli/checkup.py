@@ -1,15 +1,18 @@
 """What a run can be told before it costs a load, and how it reads."""
 
 from dataclasses import dataclass
+from pathlib import Path
 
 from offgrid.domain.profile import Profile
 from offgrid.domain.running import discarded_windows
+from offgrid.domain.running.agent import AgentName
 from offgrid.domain.running.asking import describe_what_is_asked_for
 from offgrid.domain.running.conversations import Conversations
 from offgrid.domain.running.dialect import Dialect
 from offgrid.domain.running.discarded_windows import DiscardedWindow
 from offgrid.domain.running.leaving import Reading, Status
 from offgrid.domain.running.model import Model, ModelRequest
+from offgrid.domain.running.presence import say_where_an_agent_comes_from
 from offgrid.shared.wording import describe_what_was_stated
 
 HELD_NOTHING = "model     nothing held"
@@ -19,27 +22,26 @@ HELD_NOTHING = "model     nothing held"
 class Checkup:
     """Everything `doctor` read, including what it found nothing to read.
 
-    Readings rather than the things that answered them: the agent port can
-    write its own settings, and a value the report is built from has no call
-    to carry the means of doing it.
-
     :param profile: What was written down.
     :param resident: The model the runtime is holding, or ``None`` where it
-        holds none — which the rest of the report survives, because a runtime
-        holding nothing still answered.
+        holds none — which the rest of the report survives, a runtime holding
+        nothing having still answered.
     :param could_leave: What the agent says about each way this run could
-        reach off this machine, one reading each.
+        reach off this machine.
     :param kept: Where the agent keeps a conversation a run starts, and how to
-        open one again — which nothing outside a run finds.
+        open one again.
     :param dialect: What the agent speaks.
-    :param served: Every dialect the runtime serves, which says whether an
-        agent other than this one would pair with it.
+    :param served: Every dialect the runtime serves, which says whether
+        another agent would pair with it.
     :param context_floor: The smallest window the agent can start in.
+    :param command: What starting the agent runs, which is what was looked up.
+    :param found_at: Where the `PATH` a run inherits has that command, and
+        ``None`` where it has not got it at all.
     :param discarded: Every window this runtime discarded for the model it is
-        holding, and empty where it discarded none and where the records could
-        not be read — which is itself a finding, carried in `unreadable`.
-    :param unreadable: Why the records could not be read, where they could not.
-        A stale file nobody has heard of is worth a line, not the whole report.
+        holding, and empty where it discarded none and where the records would
+        not read — itself a finding, carried in `unreadable`.
+    :param unreadable: Why the records would not read, where they would not. A
+        stale file nobody has heard of is worth a line, not the whole report.
     """
 
     profile: Profile
@@ -49,15 +51,14 @@ class Checkup:
     dialect: Dialect
     served: frozenset[Dialect]
     context_floor: int
+    command: str
+    found_at: Path | None
     discarded: tuple[DiscardedWindow, ...]
     unreadable: str | None
 
 
 def describe_what_was_read(checkup: Checkup) -> tuple[str, ...]:
     """Put the report into the lines it is read as.
-
-    A value rather than a run of statements that each print, so what the
-    report says is settled in one place and said in another.
 
     :param checkup: What the profile, the runtime and the agent answered.
 
@@ -71,6 +72,7 @@ def describe_what_was_read(checkup: Checkup) -> tuple[str, ...]:
         *_describe_the_model(checkup.resident, profile.model),
         f"profile   {describe_what_is_asked_for(profile.model)}",
         f"agent     {profile.agent.name.value}, speaking {checkup.dialect.value}",
+        *_describe_where_the_agent_is(checkup, profile.agent.name),
         f"floor     {checkup.context_floor}",
         *_describe_what_could_leave(checkup.could_leave),
         *_describe_where_conversations_are_kept(checkup.kept),
@@ -79,18 +81,32 @@ def describe_what_was_read(checkup: Checkup) -> tuple[str, ...]:
     return (*said, *_describe_a_discarded_window(checkup))
 
 
+def _describe_where_the_agent_is(checkup: Checkup, name: AgentName) -> tuple[str, ...]:
+    """Say the command a run would start, and where the `PATH` has it.
+
+    Said at all because the alternative is exit 127, after a model has been
+    loaded and let go again. Where it comes from goes under the line it is
+    about — a link and not a command, for the reason `presence.py` gives.
+
+    :param checkup: What was read.
+    :param name: The agent the profile names, which is what is not installed.
+
+    :return: The command's line, and where to get it where it is not here.
+    """
+    if checkup.found_at is not None:
+        return (f"command   {checkup.command}, at {checkup.found_at}",)
+
+    return (
+        f"command   {checkup.command}, not on PATH",
+        f"          {say_where_an_agent_comes_from(name)}",
+    )
+
+
 def _describe_what_could_leave(readings: tuple[Reading, ...]) -> tuple[str, ...]:
     """Say what each way off this machine is in, and how to close an open one.
 
-    One line per reading, so the report says which of them it is telling
-    somebody about, with what a run would refuse with under the line it is
-    about — said here instead of after the load the command was run to save.
-
-    `DENIED` alone says no more than the state, because that is the one answer
-    with nothing behind it to check and nothing to act on: the lines beside it
-    are what somebody came for. `NONE_OFFERED` says its detail, because a claim
-    that an agent has no such thing is only worth what the evidence beside it
-    is, and this report is where a person reads that evidence.
+    One line per reading, so the report says which it is telling somebody
+    about. `DENIED` says no more, having nothing behind it to check.
 
     :param readings: What the agent said about each way off this machine.
 
@@ -110,13 +126,7 @@ def _describe_what_could_leave(readings: tuple[Reading, ...]) -> tuple[str, ...]
 def _describe_where_conversations_are_kept(kept: Conversations) -> tuple[str, ...]:
     """Say where a conversation this run starts lands, and the way back into it.
 
-    On every run rather than where an installation is kept apart, because there
-    is no second case: every agent offgrid runs is run out of a directory of
-    offgrid's, so a branch with one arm would claim a kind of agent that does
-    not exist.
-
-    The way back goes under the directory, where a reading about what could
-    leave puts its remedy: a directory on its own is what a person already had.
+    The way back goes under the directory: one on its own is what a person had.
 
     :param kept: Where the agent keeps them, and how to open one again.
 
@@ -128,17 +138,15 @@ def _describe_where_conversations_are_kept(kept: Conversations) -> tuple[str, ..
 def _describe_the_model(model: Model | None, request: ModelRequest) -> tuple[str, ...]:
     """Say which model would answer, and at what, or that none would.
 
-    A runtime holding nothing keeps its lines in the column, the two numbers
-    marked `unknown` rather than left out: a number about a model that is not
-    held is unknown, where `unstated` is what a held model states when the
-    runtime says no number for it.
+    A runtime holding nothing keeps its lines in the column, marked `unknown`
+    rather than left out, where `unstated` is a held model's own silence.
 
     :param model: The model the runtime is holding, or ``None`` for none.
     :param request: What the profile asks the next run for, which decides
         whether a runtime holding nothing needs a hand.
 
-    :return: The model's lines, and what to do about a runtime holding
-        nothing where the profile names none either.
+    :return: The model's lines, and what to do about a runtime holding nothing
+        where the profile names none either.
     """
     if model is not None:
         return (
@@ -169,10 +177,7 @@ def _describe_the_model(model: Model | None, request: ModelRequest) -> tuple[str
 def _describe_a_discarded_window(checkup: Checkup) -> tuple[str, ...]:
     """Say that offgrid stopped asking for a window, and how to make it ask.
 
-    Deleting the file makes offgrid ask again, so this is where it is named:
-    `doctor` is what a person runs when something is not what they asked for.
-    The number the runtime served then is said as what it was — what it serves
-    now is the `window` line above, and the two are read together.
+    Deleting the file makes offgrid ask again, so this is where it is named.
 
     :param checkup: What the profile, the runtime and the agent answered.
 

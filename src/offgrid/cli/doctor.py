@@ -10,6 +10,7 @@ from offgrid.domain.running import discarded_windows
 from offgrid.domain.running.answering import find_resident_model
 from offgrid.domain.running.discarded_windows import DiscardedWindow
 from offgrid.domain.running.model import Model
+from offgrid.domain.running.presence import find_agent_on_path
 from offgrid.shared.exceptions import DiscardedWindowsUnreadableError
 from offgrid.shared.say import tell
 
@@ -54,6 +55,8 @@ def _read_what_can_be_read() -> Checkup:
         dialect=agent.dialect,
         served=runtime.dialects,
         context_floor=agent.context_floor,
+        command=agent.command,
+        found_at=find_agent_on_path(agent.command),
         discarded=discarded,
         unreadable=unreadable,
     )

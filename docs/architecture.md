@@ -192,6 +192,8 @@ domain/
     launch.py      an environment and an argument list, and running one
     runtime.py     what offgrid asks of a runtime, and which ones there are
     agent.py       what offgrid asks of an agent, and which ones there are
+    presence.py    whether the agent is on this machine, and where it is
+                   published from where it is not
     config_editing.py  whether a configuration file holds an edit to
                    keep, and what is refused rather than guessed about
     answering.py   which model answers, and making it the one that does
