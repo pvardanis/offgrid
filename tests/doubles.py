@@ -91,8 +91,9 @@ class StandInAgent:
             for way in Subject
         )
 
-    def read_where_conversations_are_kept(self) -> Conversations:
-        """Say it keeps them somewhere of offgrid's, having nowhere of its own.
+    @property
+    def conversations(self) -> Conversations:
+        """It keeps them somewhere of offgrid's, having nowhere of its own.
 
         :return: A directory under offgrid's, and the way back into one.
         """

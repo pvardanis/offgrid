@@ -50,7 +50,7 @@ def _read_what_can_be_read() -> Checkup:
         profile=profile,
         resident=resident,
         could_leave=agent.read_what_leaves_this_machine(),
-        kept=agent.read_where_conversations_are_kept(),
+        kept=agent.conversations,
         dialect=agent.dialect,
         served=runtime.dialects,
         context_floor=agent.context_floor,

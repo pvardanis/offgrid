@@ -1,9 +1,10 @@
 """What offgrid asks of an agent, and which ones there are.
 
 An adapter binds its own settings once and answers with something satisfying
-``Agent``. Its two attributes are settled when that happens — both facts about
-the agent itself, neither of them anyone's to choose; its four methods act —
-three on the configuration, one on nothing at all.
+``Agent``. Its three attributes are settled when that happens — two facts about
+the agent itself and one about the directory it is bound to, none of them
+anyone's to choose; its three methods act — two on the configuration, one on
+nothing at all.
 
 Why it is shaped this way is in `docs/architecture.md` under "The agent seam".
 """
@@ -105,6 +106,33 @@ class Agent(Protocol):
         """
         ...
 
+    @property
+    def conversations(self) -> Conversations:
+        """Where a conversation this run starts is kept, and the way back in.
+
+        An attribute rather than a call, because it is settled when the
+        adapter binds: it reads nothing, writes nothing, and answers the same
+        on a machine that has never run the agent. The reading below is a call
+        for the opposite reason — it opens files and can fail on them.
+
+        Its own member rather than a subject on that reading, because nothing
+        here left the machine: this is where finished files sit, which is a
+        hazard of its own — a person who cannot find a session they had
+        minutes ago is told the transcript is gone.
+
+        A run is its own installation, so what an adapter answers with is a
+        directory of offgrid's rather than the one the agent reads when a
+        person starts it themselves. What that costs them is the adapter's to
+        say, in its own terms and against the version it measured.
+
+        :return: Where they are kept, and how to open one again.
+
+        :raise ValueError: When the adapter answers with a relative directory
+            or names no way back in, which is an adapter being wrong rather
+            than a machine.
+        """
+        ...
+
     def configure(self) -> None:
         """Write what the agent needs and does not have.
 
@@ -141,31 +169,6 @@ class Agent(Protocol):
 
         :raise AgentSettingsError: When the configuration is there and cannot
             be read at all, which is no answer about any of them.
-        """
-        ...
-
-    def read_where_conversations_are_kept(self) -> Conversations:
-        """Say where a conversation this run starts is kept, and the way back.
-
-        Its own member rather than a subject on the reading above, because
-        nothing here left the machine: this is where finished files sit, which
-        is a hazard of its own — a person who cannot find a session they had
-        minutes ago is told the transcript is gone.
-
-        A run is its own installation, so what an adapter answers with is a
-        directory of offgrid's rather than the one the agent reads when a
-        person starts it themselves. What that costs them is the adapter's to
-        say, in its own terms and against the version it measured.
-
-        Nothing decides it at read time and there is no state to be in, so it
-        answers rather than refuses, writes nothing, and holds for a machine
-        that has never run the agent.
-
-        :return: Where they are kept, and how to open one again.
-
-        :raise ValueError: When the adapter answers with a relative directory
-            or names no way back in, which is an adapter being wrong rather
-            than a machine.
         """
         ...
 

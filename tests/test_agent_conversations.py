@@ -39,7 +39,7 @@ def test_every_agent_keeps_a_conversation_inside_the_installation_offgrid_owns(
     # where resuming it silently changes which model answers.
     agent = agent_under_test.prepare(monkeypatch, tmp_path)
 
-    kept = agent.read_where_conversations_are_kept()
+    kept = agent.conversations
 
     assert kept.kept_in.is_relative_to(tmp_path), (
         f"{agent_under_test.name} keeps conversations at {kept.kept_in}, which is "
@@ -50,13 +50,13 @@ def test_every_agent_keeps_a_conversation_inside_the_installation_offgrid_owns(
 def test_the_directory_reported_is_the_one_the_launch_points_the_agent_at(
     agent_under_test: AgentUnderTest, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ):
-    # The two say the same thing twice, in different calls, and nothing but
+    # The two say the same thing twice, in two places, and nothing but
     # this holds them together: an adapter whose launch moved and whose reading
     # did not hands a person a confident path with nothing at the end of it,
     # which is worse than the silence it replaced.
     agent = agent_under_test.prepare(monkeypatch, tmp_path)
 
-    kept = agent.read_where_conversations_are_kept()
+    kept = agent.conversations
     launch = plan_for_a_model(agent)
 
     assert str(kept.kept_in) in launch.env.values(), (
@@ -75,7 +75,7 @@ def test_every_agent_says_how_to_get_back_into_one(
     # reads a different one.
     agent = agent_under_test.prepare(monkeypatch, tmp_path)
 
-    kept = agent.read_where_conversations_are_kept()
+    kept = agent.conversations
 
     assert "offgrid run" in kept.resumed_by, (
         f"{agent_under_test.name} says to resume with `{kept.resumed_by}`, which "
@@ -91,7 +91,7 @@ def test_asking_where_conversations_are_kept_writes_nothing(
     # question.
     agent = agent_under_test.prepare(monkeypatch, tmp_path)
 
-    kept = agent.read_where_conversations_are_kept()
+    kept = agent.conversations
 
     # The directory itself as well as what is in it: an adapter that made the
     # store on its way past would leave nothing `read_everything_under` can

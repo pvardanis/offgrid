@@ -105,8 +105,9 @@ class ClaudeCode:
             read_transcript_sharing(self.passthrough),
         )
 
-    def read_where_conversations_are_kept(self) -> Conversations:
-        """Say where a conversation this run starts is kept, and the way back.
+    @property
+    def conversations(self) -> Conversations:
+        """Where a conversation this run starts is kept, and the way back in.
 
         The same directory the launch carries, because for this agent that one
         variable settles both what is read and what is written. The layout

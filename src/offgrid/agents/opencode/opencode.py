@@ -110,8 +110,9 @@ class OpenCode:
             ),
         )
 
-    def read_where_conversations_are_kept(self) -> Conversations:
-        """Say where a conversation this run starts is kept, and the way back.
+    @property
+    def conversations(self) -> Conversations:
+        """Where a conversation this run starts is kept, and the way back in.
 
         The same store the launch points `XDG_DATA_HOME` at, because that
         variable is what moves the database a session lands in. The layout
