@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 
 from offgrid.agents.opencode.cautioning import say_what_the_run_costs
 from offgrid.agents.opencode.config import OpenCodeConfig
-from offgrid.agents.opencode.configuring import DURABLE, SETTINGS
+from offgrid.agents.opencode.configuring import DATA_HOME, DURABLE, SETTINGS, STORE
 from offgrid.agents.opencode.hosted_tools import read_hosted_tools
 from offgrid.agents.opencode.launching import (
     CONFIG_CONTENT,
@@ -113,6 +113,7 @@ class OpenCode:
                 model, runtime_host=self.config.runtime_host
             ),
             PROJECT_CONFIG: PROJECT_CONFIG_DISABLED,
+            DATA_HOME: str(self.config.config_dir / STORE),
         }
 
         return Launch(

@@ -1703,20 +1703,24 @@ puts no conversation of its own where a run against a vendor's model would find
 it. It cannot stop one being copied there, and nothing in a transcript says
 which kind of model wrote it, so a guarantee is not offgrid's to make.
 
-**OpenCode does not keep to this yet, and its conversations are the evidence.**
-The database under a person's own data directory holds 132 assistant messages
-naming provider `offgrid` — a provider that exists only in what a run derives
-inline, so those conversations name a provider nothing outside a run has. What
-happens on resuming one outside a run was not measured, because measuring it
-means generating against whatever it resolves to.
+**OpenCode keeps to it through `XDG_DATA_HOME`, and its conversations were the
+evidence it did not.** The database under a person's own data directory holds
+132 assistant messages naming provider `offgrid` — a provider that exists only
+in what a run derives inline, so those conversations name a provider nothing
+outside a run has. What happens on resuming one outside a run was not measured,
+because measuring it means generating against whatever it resolves to. Those
+stay where they are; what a run writes from here does not join them.
 
-**Moving them is one variable.** Measured on opencode 1.18.23, `XDG_DATA_HOME`
-moves the whole store: a fresh database, `repos/` and `log/` appear under it.
-That it also moves the `credential` table is a reason rather than a cost — a
-run that cannot reach a person's saved keys cannot spend them, which is the
-same sentence the rest of this file makes about hosted tools and sharing. The
-variable is nobody's in particular, so what else writes into the moved
-directory during a real run is measured before anything claims it.
+**Moving them is one variable, and one variable is not all of it.** Measured on
+opencode 1.18.23 and through a real run, `XDG_DATA_HOME` moves the database,
+`repos/`, `snapshot/` and the log. That it also moves the `credential` table is
+a reason rather than a cost — a run that cannot reach a person's saved keys
+cannot spend them, which is the same sentence the rest of this file makes about
+hosted tools and sharing. What the same measurement found is that
+`prompt-history.jsonl`, which records what a person typed, is under
+`XDG_STATE_HOME` and stays in their own directory. The variable being nobody's
+in particular is what made one of them enough to claim and not enough to
+finish; issue #184 carries the second.
 
 **Where a conversation is kept is its own member on the agent port, beside what
 could leave this machine.** It reads as though it belongs among the subjects:
