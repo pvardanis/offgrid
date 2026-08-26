@@ -122,7 +122,7 @@ def _describe_where_conversations_are_kept(kept: Conversations) -> tuple[str, ..
 
     :return: The lines to say, in the order they are read.
     """
-    return (f"kept      {kept.kept_in}", f"          {kept.resumed_by}")
+    return (f"kept      {kept.kept_in}", f"          {kept.said}")
 
 
 def _describe_the_model(model: Model | None, request: ModelRequest) -> tuple[str, ...]:

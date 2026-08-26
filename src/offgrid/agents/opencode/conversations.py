@@ -7,6 +7,7 @@ launch points `XDG_DATA_HOME` at, and that variable is the whole of the answer.
 
 from pathlib import Path
 
+from offgrid.agents.opencode.configuring import DATA_HOME
 from offgrid.domain.running.conversations import Conversations
 
 # What `opencode run --help` and `opencode session --help` offer at the version
@@ -15,12 +16,17 @@ from offgrid.domain.running.conversations import Conversations
 CONTINUE = "--continue"
 SESSION = "--session"
 LISTING = "session list"
+OFFERS_RESUMING = "opencode 1.18.23"
 
 # What was measured on the version below, and no more than it: `session list`
 # with `XDG_DATA_HOME` pointed at a directory nothing had written to created the
 # store there and answered with nothing, while the same command without the
 # variable listed a person's own sessions. So which store is read is settled by
-# what a run sets.
+# what points that variable, which a run is one of.
+#
+# The listing is named with the variable rather than through `offgrid run`,
+# because a run holds a model and lets it go again on its way out: looking a
+# session up would cost the load the session is being looked up to avoid.
 #
 # The two resuming flags were not measured, because measuring one means
 # generating against whatever it resolves to — the same reason `sharing.py`
@@ -43,11 +49,11 @@ def read_where_conversations_are_kept(store: Path) -> Conversations:
     return Conversations(
         kept_in=store,
         resumed_by=(
-            f"`offgrid run -- run {CONTINUE}` takes up the last one, "
-            f"`offgrid run -- run {SESSION} <id>` one by identifier, and "
-            f"`offgrid run -- {LISTING}` names what is there. Measured against "
-            f"{MEASURED_AGAINST}, the listing reads the store `XDG_DATA_HOME` "
-            "points at, so `opencode` started outside a run names a person's "
-            "own sessions rather than these."
+            f"`offgrid run -- run {CONTINUE}` takes up the last one and "
+            f"`offgrid run -- run {SESSION} <id>` one by identifier, measured "
+            f"against {OFFERS_RESUMING}. To read what is there without holding "
+            f"a model, point `{DATA_HOME}` at it and run `opencode {LISTING}`: "
+            f"measured against {MEASURED_AGAINST}, that listing answers out of "
+            "the store the variable names."
         ),
     )

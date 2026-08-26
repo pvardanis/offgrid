@@ -1065,9 +1065,9 @@ what it refuses rather than guess about in
 a whole in `tests/test_agent_leaving.py`, what it owes about each way off this
 machine in `tests/test_agent_hosted_tools.py` and
 `tests/test_agent_transcript_sharing.py`, where it keeps a conversation it
-started in `tests/test_agent_conversations.py`, and the list all seven ask it of in
-`tests/agent_conformance.py`. Together they state twenty-four things, each of
-which an agent that is not Claude Code still owes:
+started in `tests/test_agent_conversations.py`, and the list all seven ask it
+of in `tests/agent_conformance.py`. Together they state twenty-five things,
+each of which an agent that is not Claude Code still owes:
 
 - `configure` writes what is missing, and leaves as they left them the files a
   person then edited — including one edited so that the guard refuses the run,
@@ -1103,8 +1103,11 @@ which an agent that is not Claude Code still owes:
 - A conversation a run starts is kept inside the installation offgrid owns and
   not where the agent keeps one started by hand, and the answer names the
   command that opens one again — a directory on its own is what a person
-  already had. Asking writes nothing, so it holds on a machine that has never
-  run the agent.
+  already had. The directory it names is the one the launch points the agent
+  at, since the two state the same fact in different calls and an adapter whose
+  launch moved and whose reading did not hands somebody a path with nothing at
+  the end of it. Asking writes nothing and does not create the directory it
+  reports, so it holds on a machine that has never run the agent.
 - `plan` writes nothing and starts nothing. It answers with an environment and
   an argument list carrying the model that will answer and the arguments a
   person typed, in the order they typed them.

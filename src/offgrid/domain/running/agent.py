@@ -3,8 +3,7 @@
 An adapter binds its own settings once and answers with something satisfying
 ``Agent``. Its two attributes are settled when that happens — both facts about
 the agent itself, neither of them anyone's to choose; its four methods act —
-two on the configuration, one on where the agent keeps what it writes down, one
-on nothing at all.
+three on the configuration, one on nothing at all.
 
 Why it is shaped this way is in `docs/architecture.md` under "The agent seam".
 """
@@ -153,12 +152,20 @@ class Agent(Protocol):
         is a hazard of its own — a person who cannot find a session they had
         minutes ago is told the transcript is gone.
 
-        A run is its own installation, so the agent started on its own reads a
-        different store and finds none of them. Nothing decides that at read
-        time and there is no state to be in, so it answers rather than refuses,
-        writes nothing, and holds for a machine that has never run the agent.
+        A run is its own installation, so what an adapter answers with is a
+        directory of offgrid's rather than the one the agent reads when a
+        person starts it themselves. What that costs them is the adapter's to
+        say, in its own terms and against the version it measured.
+
+        Nothing decides it at read time and there is no state to be in, so it
+        answers rather than refuses, writes nothing, and holds for a machine
+        that has never run the agent.
 
         :return: Where they are kept, and how to open one again.
+
+        :raise ValueError: When the adapter answers with a relative directory
+            or names no way back in, which is an adapter being wrong rather
+            than a machine.
         """
         ...
 

@@ -20,7 +20,11 @@ from pathlib import Path
 
 import pytest
 
-from tests.agent_conformance import EVERY_AGENT, read_everything_under
+from tests.agent_conformance import (
+    EVERY_AGENT,
+    plan_for_a_model,
+    read_everything_under,
+)
 from tests.agents_under_test import AgentUnderTest
 
 pytestmark = EVERY_AGENT
@@ -40,6 +44,25 @@ def test_every_agent_keeps_a_conversation_inside_the_installation_offgrid_owns(
     assert kept.kept_in.is_relative_to(tmp_path), (
         f"{agent_under_test.name} keeps conversations at {kept.kept_in}, which is "
         f"outside the {tmp_path} offgrid runs it out of."
+    )
+
+
+def test_the_directory_reported_is_the_one_the_launch_points_the_agent_at(
+    agent_under_test: AgentUnderTest, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):
+    # The two say the same thing twice, in different calls, and nothing but
+    # this holds them together: an adapter whose launch moved and whose reading
+    # did not hands a person a confident path with nothing at the end of it,
+    # which is worse than the silence it replaced.
+    agent = agent_under_test.prepare(monkeypatch, tmp_path)
+
+    kept = agent.read_where_conversations_are_kept()
+    launch = plan_for_a_model(agent)
+
+    assert str(kept.kept_in) in launch.env.values(), (
+        f"{agent_under_test.name} reports {kept.kept_in} and points the agent at "
+        f"{sorted(launch.env.values())}, so the report names a directory no run "
+        "writes into."
     )
 
 
@@ -68,6 +91,11 @@ def test_asking_where_conversations_are_kept_writes_nothing(
     # question.
     agent = agent_under_test.prepare(monkeypatch, tmp_path)
 
-    agent.read_where_conversations_are_kept()
+    kept = agent.read_where_conversations_are_kept()
 
+    # The directory itself as well as what is in it: an adapter that made the
+    # store on its way past would leave nothing `read_everything_under` can
+    # see, since that walks files, and the report would have answered its own
+    # question.
+    assert not kept.kept_in.exists()
     assert read_everything_under(tmp_path) == {}
