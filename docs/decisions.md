@@ -1967,11 +1967,37 @@ key alone leaves the comment standing over whatever followed, saying something
 false about it. Written whole, the file loses the edits, and the file it lost
 them from is the one already set aside beside it.
 
+**What a save produced is checked against what it read, line for line.** A key
+written into a section that something follows does not land at the end of that
+section: it lands after the blank line and the comment that introduce whatever
+is next, so the comment ends up standing over a key it says nothing about.
+Reaching into how the parser hangs comments to place the key by hand is more
+than this is worth, so the save reads its own output instead — every line of
+the file that was there, in order, either untouched or the same key carrying a
+new value, and anything new only after the end. Where that does not hold, the
+file is written whole. It covers the case above and whichever ones nobody has
+thought of yet, which is why it is a check on the result rather than one more
+rule about the input.
+
 **A key typed twice is refused rather than read as the last one.** `pyyaml`
 took the second and dropped the first without a word. The file is hand-edited,
-so two answers to one key is a mistake to report, and the reader now says which
-key and which line. It comes with the parser rather than being written here,
-and it is kept for the reason every other profile refusal is.
+so two answers to one key is a mistake to report. The parser's own words are
+not passed through: they name the line the mapping starts on before the line
+the key repeats on, and they close by linking to how the check is switched off,
+which is the one thing a person reading it should not do. Offgrid says the
+line and what to do about it.
+
+**The file is replaced rather than written into.** It now holds comments and an
+order that nothing can write again, so a write that stops halfway through a
+file it has already truncated is a loss with nowhere to read it back from. What
+a save writes goes to `profile.yaml.writing` and is renamed over the profile,
+which is one operation as far as anybody watching is concerned.
+
+**`ruamel.yaml` reads YAML 1.2, where `pyyaml` read 1.1.** An unquoted `yes`,
+`no`, `on` or `off` is now the word rather than a boolean. It is the better
+reading for a hand-edited file — `host: no` was a machine called `False` — and
+the one case offgrid had written a guard for, a window typed as `yes`, is still
+refused, now for saying a word where a number belongs.
 
 **`ruamel.yaml` replaces `pyyaml`, rather than joining it.** PyYAML parses to
 plain mappings and loses everything around them, so there is no round-trip to
@@ -1979,7 +2005,7 @@ be had from it; keeping both would leave two answers to what YAML this project
 reads. It is the whole dependency change: the profile is the only YAML offgrid
 writes.
 
-The parser is named in `domain/profile/keeping.py` alone. Everything else asks
-for a mapping or a piece of text, so the library is one module's business —
-including the tests, which read and write the profile through the same two
-calls.
+The library is named in `domain/profile/keeping.py` alone, errors included.
+Everything else asks for a mapping or a piece of text, so it is one module's
+business — including the tests, which read and write the profile through the
+same two calls.
