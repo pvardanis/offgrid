@@ -5,6 +5,7 @@ the file, the refusals and the shape offgrid read before this one can each be
 their own module without a caller having to know which is which.
 """
 
+from offgrid.domain.profile.keeping import dump_yaml, read_yaml
 from offgrid.domain.profile.profile import (
     DEFAULT_PATH,
     Profile,
@@ -19,7 +20,9 @@ __all__ = [
     "DEFAULT_PATH",
     "Profile",
     "create_profile",
+    "dump_yaml",
     "load_yaml",
+    "read_yaml",
     "refuse_a_flat_profile",
     "refuse_profile_section",
     "save_profile",

@@ -8,10 +8,8 @@ person would.
 
 from pathlib import Path
 
-import yaml
-
 from offgrid.agents import create_agent_config
-from offgrid.domain.profile import Profile
+from offgrid.domain.profile import Profile, dump_yaml, read_yaml
 from offgrid.runtimes import create_runtime_config
 
 HOST = "127.0.0.1:1234"
@@ -60,6 +58,19 @@ def drop_section(home: Path, section: str) -> None:
     _write(home, written)
 
 
+def read_mapping(text: str) -> dict:
+    """Read a profile file as the mapping a test asks questions of.
+
+    :param text: What the file holds.
+
+    :return: The mapping in it.
+    """
+    body = read_yaml(text)
+    assert isinstance(body, dict)
+
+    return body
+
+
 def _read(home: Path) -> dict:
     """Read what the stored profile holds.
 
@@ -67,7 +78,7 @@ def _read(home: Path) -> dict:
 
     :return: The mapping in the file.
     """
-    return yaml.safe_load((home / "profile.yaml").read_text())
+    return read_mapping((home / "profile.yaml").read_text())
 
 
 def _write(home: Path, written: dict) -> None:
@@ -76,4 +87,4 @@ def _write(home: Path, written: dict) -> None:
     :param home: Where offgrid keeps the profile.
     :param written: What the file should hold.
     """
-    (home / "profile.yaml").write_text(yaml.safe_dump(written, sort_keys=False))
+    (home / "profile.yaml").write_text(dump_yaml(written))

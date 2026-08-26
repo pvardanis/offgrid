@@ -204,6 +204,8 @@ domain/
                    of the one that was
   profile/         what is remembered between runs
     profile.py     the file, and what is read out of it
+    keeping.py     reading and writing YAML without losing the comments,
+                   the blank lines and the order somebody typed
     refusing.py    what a section offgrid cannot read reads like
     structure.py   whether it is built the way offgrid reads one
 ```
@@ -903,9 +905,9 @@ an adapter that forgets its registry entry fails rather than raising a
 `KeyError` at someone's terminal.
 
 **The profile is written with `model_dump(mode="json")`.** A plain
-`model_dump()` answers with the enum member, and `yaml.safe_dump` cannot
-represent one — `RepresenterError: cannot represent an object`. The round-trip
-tests in `tests/test_profile.py` catch it, but the type does not say so.
+`model_dump()` answers with the enum member, and the writer cannot represent
+one — `RepresenterError: cannot represent an object`. The round-trip tests in
+`tests/test_profile.py` catch it, but the type does not say so.
 
 A dict keyed by an enum, rather than entry points or an importable path from
 the profile. The

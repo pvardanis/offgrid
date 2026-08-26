@@ -10,7 +10,7 @@ requires-python = ">=3.13"
 dependencies = [
     "httpx>=0.28",
     "pydantic>=2.11",
-    "pyyaml>=6.0",
+    "ruamel-yaml>=0.18",
     "typer>=0.16",
 ]
 
