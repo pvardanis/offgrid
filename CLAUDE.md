@@ -66,7 +66,10 @@ server. Report what a finding got wrong beside what it got right.
 - Sphinx docstrings on every public module, class and function: `:param:`,
   `:return:`, `:raise:`.
 - Blank lines between the steps inside a function.
-- Files under 200 lines, organised by domain rather than by kind.
+- Files under 200 lines, organised by domain rather than by kind. The
+  number is a prompt to ask whether a file holds two ideas; cohesion is
+  what answers it. Say when a file runs past it, rather than splitting or
+  cutting prose to land under it.
 - Names say what a thing does, never how it is built or what it used to be.
 - Comments explain why something is there. Never what it replaced.
 - Fail fast, and name the operation, the input, and what to do next.

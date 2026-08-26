@@ -1062,14 +1062,18 @@ and it lists the commands rather than finding them, so a fifth command added
 without a line there fails a test instead of quietly reading the developer's
 own machine.
 
-## A file runs to 200 lines before the hook asks about it
+## A file runs to 200 lines before anybody asks about it
 
 The limit is a prompt to ask whether a file holds two ideas, and at 150 it was
 answering that question itself: files that read as one thing were being split
 because of a number, and a split made for length leaves two modules neither of
-which says what it is for. 200 is where the ratchet sits instead — still a
-ratchet, so a file already past it is left alone until an edit makes it longer.
-Cohesion is what decides a split; the hook only says when to look.
+which says what it is for. 200 is where the question gets asked instead.
+
+Nothing enforces it. A hook refused an edit that took a file past the number,
+and what that bought was #169: two files shrunk to land on exactly 200, one of
+them by deleting rationale that was still true. A guard that can be satisfied
+by deleting the reasons is worse than the number it guards, so the number is
+said to a person and they decide. Cohesion is what decides a split.
 
 Whether the order of a run belongs in a domain module rather than in
 `run.py` is still #12's question. This decision does not answer it; it makes
