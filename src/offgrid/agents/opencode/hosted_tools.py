@@ -1,15 +1,10 @@
-"""What an OpenCode run could send off this machine, read out of what it loads.
+"""Whether OpenCode offers a tool offgrid cannot run on this machine.
 
-Two subjects and two modules, the same shape the Claude Code adapter uses.
-Nothing hosted is answered here from a measurement, since it is a fact about a
-version rather than about a configuration; sharing is read out of the command
-line and the file, in `sharing.py`.
+Answered from a measurement rather than from a configuration, because it is a
+fact about a version: there is nothing in a file that could change it, and an
+adapter with nothing to check still owes the claim and the evidence for it.
 """
 
-from pathlib import Path
-
-from offgrid.agents.opencode.sharing import read_transcript_sharing
-from offgrid.domain.running.agent import Passthrough
 from offgrid.domain.running.leaving import Reading, Status, Subject
 
 # The tool list, measured on 2026-08-24 the way `docs/decisions.md` measured
@@ -21,25 +16,7 @@ from offgrid.domain.running.leaving import Reading, Status, Subject
 HOSTED_MEASURED_AGAINST = "opencode 1.18.20"
 
 
-def read_what_leaves_this_machine(
-    settings: Path, passthrough: Passthrough
-) -> tuple[Reading, ...]:
-    """Say what this OpenCode run could send off this machine.
-
-    :param settings: The configuration file offgrid writes for this agent.
-    :param passthrough: What was handed to the agent unchanged.
-
-    :return: One reading for each way off this machine.
-
-    :raise AgentSettingsError: When the file is there and cannot be read.
-    """
-    return (
-        _read_hosted_tools(),
-        read_transcript_sharing(settings, passthrough),
-    )
-
-
-def _read_hosted_tools() -> Reading:
+def read_hosted_tools() -> Reading:
     """Say that OpenCode offers no tool offgrid cannot run here.
 
     :return: That there is nothing to permit, and what that was measured
