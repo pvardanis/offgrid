@@ -11,6 +11,7 @@ this is where a person is told.
 from typer.testing import CliRunner
 
 from offgrid.cli import app
+from offgrid.domain.running.conversations import STARTED_ON_ITS_OWN
 from tests.opencode_bindings import name_opencode
 
 runner = CliRunner()
@@ -27,6 +28,10 @@ def test_doctor_says_where_a_conversation_is_kept_and_how_to_open_one(here):
     assert result.exit_code == 0
     assert f"kept      {here / 'claude-code'}\n" in result.stderr
     assert "offgrid run -- --resume" in result.stderr
+    # The finding, not only the remedy. It is the domain's sentence rather than
+    # the adapter's, so a report that said the adapter's half alone would leave
+    # a person with a command and no reason to think they needed it.
+    assert STARTED_ON_ITS_OWN in result.stderr
 
 
 def test_doctor_says_it_on_a_machine_that_has_never_run_the_agent(here):
