@@ -98,6 +98,16 @@ def get_derived_configuration(model: Model, *, runtime_host: str) -> str:
             "model": f"{PROVIDER}/{model.identifier}",
             "provider": {
                 PROVIDER: {
+                    # The address the package hangs its own path off, which is
+                    # not the runtime's address. Measured against a server
+                    # logging what it was asked for: opencode 1.18.23 through
+                    # `@ai-sdk/openai-compatible` asks for exactly
+                    # `/chat/completions` and supplies no version segment,
+                    # where claude 2.1.246 asks for the whole `/v1/messages`.
+                    # So the `/v1` is the half of the endpoint this agent
+                    # leaves to whoever configures it, and it is right for a
+                    # runtime serving the OpenAI dialect under `/v1` — which is
+                    # LM Studio, as `tests/test_live_dialects.py` holds it to.
                     "options": {"baseURL": f"http://{runtime_host}/v1"},
                     "models": {model.identifier: _describe_the_model(model)},
                 }
