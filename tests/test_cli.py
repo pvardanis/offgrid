@@ -23,7 +23,7 @@ from tests.doubles import StandInAgent, answer_as_an_agent
 from tests.launches import record_launch
 from tests.lmstudio_endpoint import refuse_to_let_go
 from tests.lmstudio_server import RESIDENT, answer_as_lm_studio
-from tests.profiles import add_to_section, read_mapping
+from tests.profiles import add_to_section, read_written
 
 GIB = 1024**3
 runner = CliRunner()
@@ -150,7 +150,7 @@ def test_setup_writes_nothing_it_measured_into_the_profile(here):
     # here would be a second answer, wrong from the next reboot onwards.
     runner.invoke(app, ["setup"])
 
-    written = read_mapping((here / "profile.yaml").read_text())
+    written = read_written((here / "profile.yaml").read_text())
 
     assert set(written) == {"runtime", "agent", "model"}
     assert set(written["runtime"]) == {"name", "host"}
@@ -161,7 +161,7 @@ def test_setup_writes_the_shape_offgrid_reads(here):
     # thing a person does after `setup` is fix the file it just wrote.
     runner.invoke(app, ["setup"])
 
-    written = read_mapping((here / "profile.yaml").read_text())
+    written = read_written((here / "profile.yaml").read_text())
 
     assert written["runtime"] == {"name": "lmstudio", "host": "127.0.0.1:1234"}
     assert written["agent"] == {"name": "claude-code"}

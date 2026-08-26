@@ -58,7 +58,7 @@ def drop_section(home: Path, section: str) -> None:
     _write(home, written)
 
 
-def read_mapping(text: str) -> dict:
+def read_written(text: str) -> dict:
     """Read a profile file as the mapping a test asks questions of.
 
     :param text: What the file holds.
@@ -78,7 +78,7 @@ def _read(home: Path) -> dict:
 
     :return: The mapping in the file.
     """
-    return read_mapping((home / "profile.yaml").read_text())
+    return read_written((home / "profile.yaml").read_text())
 
 
 def _write(home: Path, written: dict) -> None:

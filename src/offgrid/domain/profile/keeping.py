@@ -51,22 +51,22 @@ def dump_yaml(said: object) -> str:
 def keep_hand_edits(already: str, said: dict) -> str:
     """State what a mapping says over the file that is already there.
 
-    A key the file names is answered where it stands; a key it never named is
-    written after what is there, which is where the next one would be typed. A
-    key the file holds and the mapping does not is taken out, so the file goes
-    on saying what offgrid can act on and nothing else.
+    A key the file names is answered where it stands, and a key it never named
+    is written after what is there, which is where the next one would be typed.
+
+    A file holding a key the mapping does not is written whole instead, and so
+    is one that is not YAML at all. There is nothing to keep in either: a
+    comment stands above the key it is about, and taking that key out would
+    leave the comment saying something false about whatever follows it.
 
     :param already: What the file holds, or ``""`` where there is no file.
     :param said: What it should now say.
 
     :return: The text to write, carrying whatever was there around the values.
-
-    :raise YAMLError: Never — a file that is not YAML is written over rather
-        than merged into, since there is nothing in it to keep.
     """
     document = _read_mapping(already)
 
-    if document is None:
+    if document is None or not _holds_only(document, said):
         return dump_yaml(said)
 
     _restate(document, said)
@@ -90,15 +90,33 @@ def _read_mapping(text: str) -> dict | None:
     return body if isinstance(body, dict) else None
 
 
+def _holds_only(document: dict, said: dict) -> bool:
+    """Say whether a document names nothing the mapping does not.
+
+    :param document: The mapping as the file holds it.
+    :param said: What it should now say.
+
+    :return: ``True`` where every key the file names is one the mapping has,
+        section by section. A key the file leaves out is not a disagreement:
+        it is written in.
+    """
+    return all(
+        key in said
+        and (
+            not isinstance(held, dict)
+            or not isinstance(said[key], dict)
+            or _holds_only(held, said[key])
+        )
+        for key, held in document.items()
+    )
+
+
 def _restate(document: dict, said: dict) -> None:
     """Say what a mapping says in a document, key by key and in place.
 
     :param document: The mapping as the file holds it.
     :param said: What it should now say.
     """
-    for dropped in [key for key in document if key not in said]:
-        del document[dropped]
-
     for key, value in said.items():
         held = document.get(key)
 

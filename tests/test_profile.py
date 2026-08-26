@@ -15,7 +15,7 @@ from offgrid.domain.running.runtime import RuntimeName
 from offgrid.runtimes import create_runtime_config
 from offgrid.shared.exceptions import ProfileError
 from tests.doubles import StandInAgentConfig
-from tests.profiles import HOST, NAMED, build_profile, read_mapping
+from tests.profiles import HOST, NAMED, build_profile, read_written
 
 
 def test_a_saved_profile_reads_back_the_same(tmp_path):
@@ -30,7 +30,7 @@ def test_a_profile_is_readable_yaml(tmp_path):
     path = tmp_path / "profile.yaml"
     save_profile(build_profile(), path)
 
-    on_disk = read_mapping(path.read_text())
+    on_disk = read_written(path.read_text())
     assert on_disk["runtime"] == {"host": HOST, "name": "lmstudio"}
     assert on_disk["agent"] == {"name": "claude-code"}
 
@@ -57,7 +57,7 @@ def test_a_setting_only_one_adapter_reads_is_written_down(tmp_path):
 
     save_profile(Profile(runtime=runtime, agent=agent), path)
 
-    assert read_mapping(path.read_text())["agent"]["theme"] == "light"
+    assert read_written(path.read_text())["agent"]["theme"] == "light"
 
 
 def test_a_profile_typed_by_hand_loads(tmp_path):

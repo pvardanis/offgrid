@@ -12,9 +12,8 @@ both back here.
 from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, Field, SerializeAsAny, ValidationError
-from ruamel.yaml import YAMLError
 
-from offgrid.domain.profile.keeping import keep_hand_edits, read_yaml
+from offgrid.domain.profile.keeping import YAMLError, keep_hand_edits, read_yaml
 from offgrid.domain.profile.structure import (
     refuse_a_flat_profile,
     refuse_a_model_without_a_section,
@@ -66,9 +65,10 @@ class Profile(BaseModel):
 def save_profile(profile: Profile, path: Path = DEFAULT_PATH) -> None:
     """Write a profile where a later run will find it.
 
-    What is on disk is written over key by key rather than replaced, because
-    the file is hand-edited: the comments, the blank lines and the order
-    somebody chose are theirs, and only the values are offgrid's to state.
+    A file already saying what offgrid can act on is written over key by key
+    rather than replaced, because it is hand-edited: the comments, the blank
+    lines and the order somebody chose are theirs, and only the values are
+    offgrid's to state. Any other file is written whole.
 
     :param profile: The profile to store.
     :param path: Where to write it.
