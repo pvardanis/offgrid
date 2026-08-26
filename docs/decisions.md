@@ -1720,16 +1720,26 @@ outside a run has. What happens on resuming one outside a run was not measured,
 because measuring it means generating against whatever it resolves to. Those
 stay where they are; what a run writes from here does not join them.
 
-**Moving them is one variable, and one variable is not all of it.** Measured on
+**Moving them is two variables, and one variable read as all of it.** Measured on
 opencode 1.18.23 and through a real run, `XDG_DATA_HOME` moves the database,
 `repos/`, `snapshot/` and the log. That it also moves the `credential` table is
 a reason rather than a cost — a run that cannot reach a person's saved keys
 cannot spend them, which is the same sentence the rest of this file makes about
 hosted tools and sharing. What the same measurement found is that
 `prompt-history.jsonl`, which records what a person typed, is under
-`XDG_STATE_HOME` and stays in their own directory. The variable being nobody's
-in particular is what made one of them enough to claim and not enough to
-finish; issue #184 carries the second.
+`XDG_STATE_HOME` instead, so a launch carries that variable too, at `state/`
+beside the store. The variable being nobody's in particular is what made one of
+them read as enough.
+
+**What a person typed only lands where the interactive interface writes it.** A
+one-shot `offgrid run -- run "..."` leaves `locks/` under the state directory
+and nothing else, so the suite as it stood would have called the store the whole
+of it either way. Measured on opencode 1.18.23 by typing into the interface and
+then through a real run: `prompt-history.jsonl` and the `model.json` recording
+what was last answered through both land under the moved directory, and a
+person's own history is untouched. A directory a run writes nothing into on the
+path the tests take is a directory that has to be measured the way a person uses
+it.
 
 **Where a conversation is kept is its own member on the agent port, beside what
 could leave this machine.** It reads as though it belongs among the subjects:

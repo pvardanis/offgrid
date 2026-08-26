@@ -23,6 +23,7 @@ HOST = "127.0.0.1:1234"
 WANTED = "qwen/qwen3.6-35b-a3b"
 SETTINGS = "opencode.json"
 STORE = "store"
+STATE = "state"
 NAMED = "opencode"
 
 
