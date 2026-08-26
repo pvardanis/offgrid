@@ -9,10 +9,11 @@ differently and are fixed differently, so an adapter answers about each in
 turn — one reading per subject — rather than folding them into a status that
 cannot say which of them a refusal was about.
 
-That every adapter answers about every subject is stated in
-`tests/test_agent_leaving.py` rather than guarded here: an adapter that answers
-about nothing satisfies this module and the type checker both, and only a suite
-asking every adapter for every subject sees it.
+An adapter answering about fewer subjects than there are satisfies the type
+checker, so the guard counts them: a reading nobody gave is refused before any
+of them is read. `tests/test_agent_leaving.py` asks every adapter the same
+thing, which is where an adapter finds out; this is what keeps it true of a
+run and not only of the suite.
 """
 
 from dataclasses import dataclass
@@ -36,36 +37,16 @@ class Subject(StrEnum):
 class Status(StrEnum):
     """What an agent found about one of those, in this configuration.
 
-    A hosted tool runs on its vendor's servers. Against a model held here
-    there is nothing to run it, so the model emits the call as prose and the
-    agent returns that as a result — an invented answer, with no error
-    anywhere. A published transcript is the other failure: the run works
-    exactly as asked and the reading leaves the machine anyway, which is the
-    promise `docs/decisions.md` makes. These are the four answers an adapter
-    can give about either.
-
     `NONE_OFFERED` — the agent has no such thing at all. Not an absence of
-    checking: a measured fact about that agent at a stated version, recorded
-    with the evidence beside it.
+    checking: a measured fact about a stated version, with the evidence beside
+    it. `DENIED` — it has one and what it will load refuses it, which is what a
+    healthy machine reports. `PERMITTED` — it has one and nothing stops it,
+    whether the configuration says so, an argument stops it being read, or an
+    argument asks for it. `UNWRITTEN` — it has one and nothing says either way.
 
-    `DENIED` — the agent has one and what it will load refuses it. What a
-    healthy machine reports.
-
-    `PERMITTED` — the agent has one and nothing stops it. The configuration
-    may say so outright, or an argument may stop the configuration being read
-    at all, or an argument may ask for it directly; all of them leave it
-    reachable, and differ only in what they say to do about it.
-
-    `UNWRITTEN` — the agent has one and nothing it will load says either way.
-    Two configurations reach this and they are fixed differently, which is why
-    the remedy travels on the reading rather than being read off the status: a
-    file holding nothing is one `configure` writes on its way past, and a file
-    holding an edit that never mentions the setting is one only a person can
-    finish, since `configure` will not write into an edit.
-
-    A `StrEnum` so that a reading prints into a line of `doctor` without
-    reaching for `.value`, which `Dialect` and `AgentName` have no call to do:
-    they are keys in a profile, and these are read off a report.
+    Two configurations reach `UNWRITTEN` and are fixed differently — one
+    `configure` writes on its way past, one only a person can finish — which is
+    why the remedy travels on the reading rather than off the status.
     """
 
     NONE_OFFERED = auto()
@@ -84,13 +65,35 @@ class Reading:
     :param subject: Which way off the machine this is about.
     :param status: Whether it can be reached.
     :param detail: What the adapter found, in its own terms.
-    :param remedy: What to change, named the way that agent names it.
+    :param remedy: What to change, named the way that agent names it. Empty
+        only where the reading settles nothing needing a change.
     """
 
     subject: Subject
     status: Status
     detail: str
     remedy: str = ""
+
+    def __post_init__(self) -> None:
+        """Refuse a reading a person could not act on, where it stops a run.
+
+        A refusal carrying no remedy is a wall with no door in it, and the
+        default above makes leaving one out the easy mistake.
+
+        :raise ValueError: When the detail is empty, or a reading that stops a
+            run says nothing to do about it.
+        """
+        if not self.detail.strip():
+            raise ValueError(
+                f"a reading about {self.subject} says nothing it found, and "
+                "every status is a claim `doctor` prints the evidence for."
+            )
+
+        if not self.stays_here and not self.remedy.strip():
+            raise ValueError(
+                f"a reading about {self.subject} is {self.status} and names "
+                "nothing to change, so a run refuses on it saying nothing to do."
+            )
 
     @property
     def stays_here(self) -> bool:
@@ -100,6 +103,17 @@ class Reading:
         """
         return self.status in (Status.NONE_OFFERED, Status.DENIED)
 
+    @property
+    def said(self) -> str:
+        """What the adapter found and what to do about it, as one sentence.
+
+        One join for the refusal and the report both, so the two cannot come
+        to disagree about the gap an empty remedy leaves.
+
+        :return: The detail, and the remedy where there is one.
+        """
+        return f"{self.detail} {self.remedy}".strip()
+
 
 def require_nothing_leaves(readings: tuple[Reading, ...]) -> None:
     """Refuse a run that could send something off this machine.
@@ -108,18 +122,30 @@ def require_nothing_leaves(readings: tuple[Reading, ...]) -> None:
     for one agent and not another would tell a person nothing. Only the
     wording is the adapter's.
 
-    The first reading that is not settled is what it refuses with, so a person
-    is given one thing to fix rather than a list to read: the run is made again
-    once they have, and the next reading answers then.
+    It refuses with the first unsettled reading in `Subject` order, so a person
+    gets one thing to fix rather than a list, and the same one each run until
+    they have. A subject nobody answered is refused before any is read: an
+    adapter dropping one would otherwise be refused nothing and started.
 
     :param readings: What the agent said about each way off this machine.
 
     :raise CouldLeaveThisMachineError: When any of them is not settled.
+    :raise ValueError: When they do not answer every subject exactly once,
+        which is an adapter that is wrong rather than a machine that is.
     """
-    for reading in readings:
-        if reading.stays_here:
-            continue
+    answered = [reading.subject for reading in readings]
 
-        raise CouldLeaveThisMachineError(
-            f"{reading.subject}: {reading.detail} {reading.remedy}".strip()
+    if sorted(answered) != sorted(Subject):
+        raise ValueError(
+            f"the agent answered about {[str(s) for s in answered]}, and a run "
+            f"is asked about {[str(s) for s in Subject]}, once each. An adapter "
+            "with no such thing answers NONE_OFFERED and the evidence for it."
         )
+
+    by_subject = {reading.subject: reading for reading in readings}
+
+    for subject in Subject:
+        reading = by_subject[subject]
+
+        if not reading.stays_here:
+            raise CouldLeaveThisMachineError(f"{subject}: {reading.said}")
