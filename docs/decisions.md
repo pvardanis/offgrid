@@ -1944,3 +1944,32 @@ and matches what `docs/research/adapter-surfaces.md` already measured for the
 other flag that is said to be honoured. Every model here is MLX, so the
 finding is bounded to that path. offgrid's own sizing stays the source of the
 fit column.
+
+## A profile is written back as the file that was there
+
+The profile file is advertised as hand-editable, and every adapter config
+offgrid writes is written once and then left alone for the same reason. A save
+that reformatted the file would make that invitation conditional on never
+saving — which is what the picker's save key is about to do on every run.
+
+**The values are offgrid's, and everything else in the file is not.** What is
+on disk is written over key by key: a key the file names is answered where it
+stands, a key it never named is written after what is there, and a key offgrid
+cannot act on is taken out. Comments, blank lines and the order somebody chose
+survive, because none of them are offgrid's to state.
+
+A key is taken out rather than left alone because of the one caller that writes
+over a file it could not read: `setup` sets a refused profile aside as
+`.yaml.rejected` and writes a fresh one over the original. A measured machine
+left behind in that file would be refused all over again by the next read.
+
+**`ruamel.yaml` replaces `pyyaml`, rather than joining it.** PyYAML parses to
+plain mappings and loses everything around them, so there is no round-trip to
+be had from it; keeping both would leave two answers to what YAML this project
+reads. It is the whole dependency change: the profile is the only YAML offgrid
+writes.
+
+The parser is named in `domain/profile/keeping.py` alone. Everything else asks
+for a mapping or a piece of text, so the library is one module's business —
+including the tests, which read and write the profile through the same two
+calls.
