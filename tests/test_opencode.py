@@ -18,6 +18,7 @@ from tests.opencode_bindings import (
     HOST,
     RUNTIME_SPELLINGS,
     SETTINGS,
+    STATE,
     STORE,
     WANTED,
     bind,
@@ -129,6 +130,21 @@ def test_the_conversations_a_run_leaves_behind_are_kept_where_offgrid_put_them(
     # what this is for.
     assert launch.env["XDG_DATA_HOME"] == str(tmp_path / "opencode" / STORE)
     assert "XDG_DATA_HOME" not in launch.dropped
+
+
+def test_the_prompts_a_person_types_are_kept_where_offgrid_put_them(launch, tmp_path):
+    # The variable above moves the store and nothing else. What a person typed
+    # is written somewhere else again, under the state directory, so a run that
+    # moved only the store would leave every prompt of a session in a person's
+    # own — which is the same hazard, one directory over.
+    #
+    # Measured on opencode 1.18.23 by typing into the interactive interface:
+    # `prompt-history.jsonl` and `model.json` land under this variable's value,
+    # beside the `locks/` a one-shot run leaves there on its own.
+    #
+    # Written out and then not dropped for the same reasons as the store above.
+    assert launch.env["XDG_STATE_HOME"] == str(tmp_path / "opencode" / STATE)
+    assert "XDG_STATE_HOME" not in launch.dropped
 
 
 def test_the_command_line_carries_only_what_a_person_typed(agent):

@@ -37,10 +37,8 @@ SETTINGS = "opencode.json"
 # authenticated to watch a key become unreachable, so what was measured is
 # where the file is looked for.
 #
-# What it does not move is `prompt-history.jsonl`, which records what a person
-# typed and sits under `XDG_STATE_HOME`. The interactive interface is what
-# fills it, so a one-shot run leaves it empty. Issue #184 moves that directory
-# too.
+# What it does not move is what a person typed, which is under the variable
+# below — one directory over and the same hazard.
 #
 # Not OpenCode's variable in particular — anything a run spawns sees the moved
 # value, which is the price of one variable moving as much as it does.
@@ -74,6 +72,25 @@ OFFERS_RESUMING = "opencode 1.18.23"
 # leaves `--share` unmeasured. What would settle it is a session started under a
 # run and taken up again by identifier.
 READS_THE_STORE = "opencode 1.18.23"
+
+# The rest of what a run leaves behind, which the variable above does not
+# reach. Measured on opencode 1.18.23 by typing into the interactive
+# interface: `prompt-history.jsonl` lands here, one JSON object per line each
+# carrying the `input` a person typed, and `model.json` beside it listing the
+# models recently answered through, the ones marked favourite, and a variant
+# for each — provider and model together, so it names the provider a run
+# derives inline as readily as one a person set up themselves. A one-shot run
+# writes neither and leaves only `locks/`, which is what let the store alone
+# read as the whole of it.
+#
+# What a person typed is what a session was, so this is a conversation by the
+# reading `CONTEXT.md` gives the word, and it belongs to the installation the
+# same way the store does.
+STATE_HOME = "XDG_STATE_HOME"
+
+# Beside the store rather than inside it, and named for the same reason: this
+# value also has `opencode/` hung off it.
+STATE = "state"
 
 # OpenCode takes any string as a provider identifier, so nothing requires this
 # to be a runtime's name — and making it one would put a fact about runtimes

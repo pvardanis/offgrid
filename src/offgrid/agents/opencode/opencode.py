@@ -18,6 +18,8 @@ from offgrid.agents.opencode.configuring import (
     READS_THE_STORE,
     SESSION,
     SETTINGS,
+    STATE,
+    STATE_HOME,
     STORE,
 )
 from offgrid.agents.opencode.hosted_tools import read_hosted_tools
@@ -148,6 +150,7 @@ class OpenCode:
             ),
             PROJECT_CONFIG: PROJECT_CONFIG_DISABLED,
             DATA_HOME: str(self.config.config_dir / STORE),
+            STATE_HOME: str(self.config.config_dir / STATE),
         }
 
         return Launch(
