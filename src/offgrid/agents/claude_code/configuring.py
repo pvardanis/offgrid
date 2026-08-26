@@ -3,10 +3,34 @@
 The settings and the notes are what a person edits, and what counts as a
 denial is what the agent itself reads: a rule Claude Code does not honour is
 not one offgrid may count as protection.
+
+What that directory holds besides them is here too. It carries the
+conversations as well as the settings, which is a fact about the variable
+pointing at it rather than anything offgrid writes.
 """
 
 SETTINGS = "settings.json"
 NOTES = "CLAUDE.md"
+
+# What `claude --help` offers at the version below: `-r, --resume [value]`,
+# "Resume a conversation by session ID, or open interactive picker with
+# optional search term".
+RESUME = "--resume"
+OFFERS_RESUME = "claude 2.1.246"
+
+# `CLAUDE_CONFIG_DIR` decides where conversations are written as well as where
+# settings are read, measured against the version below and recorded in
+# `docs/decisions.md`: pointing it at offgrid's own directory moved every
+# conversation there with it, which is why `claude --resume <id>` outside a run
+# answers "No conversation found with session ID" for a session offgrid started
+# minutes earlier. No argument or variable separates where conversations are
+# written from where settings are read, so it is a fact about the directory
+# rather than a choice offgrid makes twice.
+#
+# The two stamps differ because the readings do: one off `--help`, one from a
+# run that moved the directory. Stamping both with either would claim a reading
+# nobody took.
+CARRIES_CONVERSATIONS = "claude 2.1.245"
 
 # nothing to run it, so the model emits a tool call as prose and the agent
 # returns it as a result: an invented answer, with no error.

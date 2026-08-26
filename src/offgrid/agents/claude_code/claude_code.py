@@ -7,15 +7,17 @@ before anything runs.
 
 from dataclasses import dataclass, field
 
-from offgrid.agents.claude_code import conversations
 from offgrid.agents.claude_code.compacting import (
     explain_what_will_not_compact,
     get_compaction_setting,
 )
 from offgrid.agents.claude_code.config import ClaudeCodeConfig
 from offgrid.agents.claude_code.configuring import (
+    CARRIES_CONVERSATIONS,
     INSTRUCTIONS,
     NOTES,
+    OFFERS_RESUME,
+    RESUME,
     SETTINGS,
     SLIM_SETTINGS,
 )
@@ -107,11 +109,23 @@ class ClaudeCode:
         """Say where a conversation this run starts is kept, and the way back.
 
         The same directory the launch carries, because for this agent that one
-        variable settles both what is read and what is written.
+        variable settles both what is read and what is written. The layout
+        beneath it is not named: the `projects/` a transcript lands under is
+        Claude Code's own, and naming it would be offgrid claiming something it
+        does not settle.
 
         :return: Where they are kept, and how to open one again.
         """
-        return conversations.read_where_conversations_are_kept(self.config.config_dir)
+        return Conversations(
+            kept_in=self.config.config_dir,
+            resumed_by=(
+                f"`offgrid run -- {RESUME}` opens a picker over these and "
+                f"`offgrid run -- {RESUME} <id>` opens one by session, measured "
+                f"against {OFFERS_RESUME}. Measured against "
+                f"{CARRIES_CONVERSATIONS}, `CLAUDE_CONFIG_DIR` carries "
+                "conversations as well as settings, which is what moved them here."
+            ),
+        )
 
     def plan(self, model: Model) -> Launch:
         """Work out how to start Claude Code against a local runtime.

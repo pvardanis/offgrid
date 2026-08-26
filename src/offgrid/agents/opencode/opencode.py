@@ -7,10 +7,19 @@ nothing offgrid derives able to go stale.
 
 from dataclasses import dataclass, field
 
-from offgrid.agents.opencode import conversations
 from offgrid.agents.opencode.cautioning import say_what_the_run_costs
 from offgrid.agents.opencode.config import OpenCodeConfig
-from offgrid.agents.opencode.configuring import DATA_HOME, DURABLE, SETTINGS, STORE
+from offgrid.agents.opencode.configuring import (
+    CONTINUE,
+    DATA_HOME,
+    DURABLE,
+    LISTING,
+    OFFERS_RESUMING,
+    READS_THE_STORE,
+    SESSION,
+    SETTINGS,
+    STORE,
+)
 from offgrid.agents.opencode.hosted_tools import read_hosted_tools
 from offgrid.agents.opencode.launching import (
     CONFIG_CONTENT,
@@ -105,12 +114,22 @@ class OpenCode:
         """Say where a conversation this run starts is kept, and the way back.
 
         The same store the launch points `XDG_DATA_HOME` at, because that
-        variable is what moves the database a session lands in.
+        variable is what moves the database a session lands in. The layout
+        beneath it is not named: the `opencode/` hung off that value, and the
+        database and write-ahead log inside it, are OpenCode's own.
 
         :return: Where they are kept, and how to open one again.
         """
-        return conversations.read_where_conversations_are_kept(
-            self.config.config_dir / STORE
+        return Conversations(
+            kept_in=self.config.config_dir / STORE,
+            resumed_by=(
+                f"`offgrid run -- run {CONTINUE}` takes up the last one and "
+                f"`offgrid run -- run {SESSION} <id>` one by identifier, "
+                f"measured against {OFFERS_RESUMING}. To read what is there "
+                f"without holding a model, point `{DATA_HOME}` at it and run "
+                f"`opencode {LISTING}`: measured against {READS_THE_STORE}, "
+                "that listing answers out of the store the variable names."
+            ),
         )
 
     def plan(self, model: Model) -> Launch:

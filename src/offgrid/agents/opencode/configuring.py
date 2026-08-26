@@ -51,6 +51,30 @@ DATA_HOME = "XDG_DATA_HOME"
 # would put a store called `opencode` inside `opencode/`.
 STORE = "store"
 
+# What `opencode run --help` and `opencode session --help` offer at the version
+# below: `-c, --continue` takes up the last session, `-s, --session <id>` takes
+# up one by identifier, and `opencode session list` names what is there.
+CONTINUE = "--continue"
+SESSION = "--session"
+LISTING = "session list"
+OFFERS_RESUMING = "opencode 1.18.23"
+
+# What was measured of that store on the version below, and no more than it:
+# `session list` with `XDG_DATA_HOME` pointed at a directory nothing had written
+# to created the store there and answered with nothing, while the same command
+# without the variable listed a person's own sessions. So which store is read is
+# settled by what points that variable, which a run is one of.
+#
+# The listing is named with the variable rather than through `offgrid run`,
+# because a run holds a model and lets it go again on its way out: looking a
+# session up would cost the load the session is being looked up to avoid.
+#
+# The two resuming flags were not measured, because measuring one means
+# generating against whatever it resolves to — the same reason `sharing.py`
+# leaves `--share` unmeasured. What would settle it is a session started under a
+# run and taken up again by identifier.
+READS_THE_STORE = "opencode 1.18.23"
+
 # OpenCode takes any string as a provider identifier, so nothing requires this
 # to be a runtime's name — and making it one would put a fact about runtimes
 # inside an agent adapter. It would also deep-merge with a provider entry a

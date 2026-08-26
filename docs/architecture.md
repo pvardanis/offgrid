@@ -133,7 +133,8 @@ agents/            one package per agent
   claude_code/
     claude_code.py what an agent is asked, in Claude Code's terms
     config.py      what it is run out of, as a profile says it
-    configuring.py what offgrid writes into its directory
+    configuring.py what offgrid writes into its directory, and what
+                   that directory carries besides it
     launching.py   the arguments and sizes it is started with, and
                    what is read back out of them
     compacting.py  what it compacts against, and what is said where
@@ -142,14 +143,13 @@ agents/            one package per agent
                    settings and the argument that loads them
     publishing.py  whether an argument runs the session in the cloud
                    instead, which no setting decides
-    conversations.py  where a conversation lands, which is the
-                   directory that carries the settings as well
   opencode/
     opencode.py    what an agent is asked, in OpenCode's terms
     config.py      what it is run out of, as a profile says it
     configuring.py what offgrid writes into its directory, which is
                    only what offgrid never revises, and the names of
-                   what sits under that directory
+                   what sits under that directory, the store a
+                   conversation lands in among them
     launching.py   the configuration a run derives, and the command
                    it is started with
     cautioning.py  what a run takes away and what it leaves unsized,
@@ -158,8 +158,6 @@ agents/            one package per agent
                    measured to say so
     sharing.py     whether an argument or the file could let a transcript
                    leave, the argument read first
-    conversations.py  where a conversation lands, which is the store
-                   the launch moves rather than anything in the file
 leaderboards/      one module per published list, and the registry
   onyx.py          fetching and parsing the page
 ```
