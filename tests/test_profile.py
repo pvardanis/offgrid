@@ -6,17 +6,16 @@ section says is in `test_profile_model.py`.
 """
 
 import pytest
-import yaml
 
 from offgrid.cli.binding import read_profile
-from offgrid.domain.profile import Profile, save_profile
+from offgrid.domain.profile import Profile, dump_yaml, save_profile
 from offgrid.domain.running.agent import AgentName
 from offgrid.domain.running.model import ModelRequest
 from offgrid.domain.running.runtime import RuntimeName
 from offgrid.runtimes import create_runtime_config
 from offgrid.shared.exceptions import ProfileError
 from tests.doubles import StandInAgentConfig
-from tests.profiles import HOST, NAMED, build_profile
+from tests.profiles import HOST, NAMED, build_profile, read_mapping
 
 
 def test_a_saved_profile_reads_back_the_same(tmp_path):
@@ -31,7 +30,7 @@ def test_a_profile_is_readable_yaml(tmp_path):
     path = tmp_path / "profile.yaml"
     save_profile(build_profile(), path)
 
-    on_disk = yaml.safe_load(path.read_text())
+    on_disk = read_mapping(path.read_text())
     assert on_disk["runtime"] == {"host": HOST, "name": "lmstudio"}
     assert on_disk["agent"] == {"name": "claude-code"}
 
@@ -58,7 +57,7 @@ def test_a_setting_only_one_adapter_reads_is_written_down(tmp_path):
 
     save_profile(Profile(runtime=runtime, agent=agent), path)
 
-    assert yaml.safe_load(path.read_text())["agent"]["theme"] == "light"
+    assert read_mapping(path.read_text())["agent"]["theme"] == "light"
 
 
 def test_a_profile_typed_by_hand_loads(tmp_path):
@@ -118,7 +117,7 @@ def test_a_profile_that_is_not_a_mapping_is_refused(tmp_path):
 
 def test_a_profile_missing_a_field_names_the_field(tmp_path):
     path = tmp_path / "profile.yaml"
-    path.write_text(yaml.safe_dump({"runtime": {"name": "lmstudio"}}))
+    path.write_text(dump_yaml({"runtime": {"name": "lmstudio"}}))
 
     with pytest.raises(ProfileError, match="host"):
         read_profile(path)

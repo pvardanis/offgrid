@@ -21,14 +21,14 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
-import yaml
 
-from offgrid.domain.profile import DEFAULT_PATH
+from offgrid.domain.profile import DEFAULT_PATH, dump_yaml
 from offgrid.domain.running.agent import AgentName
 from offgrid.domain.running.agent_presence import (
     find_agent_on_path,
     say_where_an_agent_comes_from,
 )
+from tests.profiles import read_mapping
 
 PROMPT = "reply with the two letters OK and nothing else"
 
@@ -116,11 +116,11 @@ def paired_with(agent: str, profile_path: Path) -> Iterator[None]:
     :yield: Nothing; the profile names the agent inside the block.
     """
     was = profile_path.read_text()
-    body = yaml.safe_load(was)
+    body = read_mapping(was)
     body["agent"] = {**body["agent"], "name": agent}
 
     try:
-        profile_path.write_text(yaml.safe_dump(body, sort_keys=False))
+        profile_path.write_text(dump_yaml(body))
 
         yield
     finally:

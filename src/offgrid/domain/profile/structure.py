@@ -11,8 +11,7 @@ shape left, this file goes and nothing else moves.
 
 from pathlib import Path
 
-import yaml
-
+from offgrid.domain.profile.keeping import dump_yaml
 from offgrid.domain.running.agent import AgentName
 from offgrid.domain.running.runtime import RuntimeName
 from offgrid.shared.exceptions import ProfileError
@@ -87,12 +86,11 @@ def _get_example() -> str:
 
     :return: A profile to copy.
     """
-    return yaml.safe_dump(
+    return dump_yaml(
         {
             "runtime": {"name": RuntimeName.LMSTUDIO.value, "host": EXAMPLE_HOST},
             "agent": {"name": AgentName.CLAUDE_CODE.value},
-        },
-        sort_keys=False,
+        }
     ).strip()
 
 
@@ -130,6 +128,4 @@ def _get_model_example(named: object) -> str:
     """
     identifier = named if isinstance(named, str) and named else EXAMPLE_MODEL
 
-    return yaml.safe_dump(
-        {"model": {"identifier": identifier}}, sort_keys=False
-    ).strip()
+    return dump_yaml({"model": {"identifier": identifier}}).strip()

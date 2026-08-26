@@ -11,9 +11,10 @@ both back here.
 
 from pathlib import Path
 
-import yaml
 from pydantic import BaseModel, ConfigDict, Field, SerializeAsAny, ValidationError
+from ruamel.yaml import YAMLError
 
+from offgrid.domain.profile.keeping import keep_hand_edits, read_yaml
 from offgrid.domain.profile.structure import (
     refuse_a_flat_profile,
     refuse_a_model_without_a_section,
@@ -65,16 +66,22 @@ class Profile(BaseModel):
 def save_profile(profile: Profile, path: Path = DEFAULT_PATH) -> None:
     """Write a profile where a later run will find it.
 
+    What is on disk is written over key by key rather than replaced, because
+    the file is hand-edited: the comments, the blank lines and the order
+    somebody chose are theirs, and only the values are offgrid's to state.
+
     :param profile: The profile to store.
     :param path: Where to write it.
     """
     path.parent.mkdir(parents=True, exist_ok=True)
 
     # Dumped as what YAML can carry: a plain dump answers with the enum member
-    # itself, which `safe_dump` refuses with `cannot represent an object`.
+    # itself, which the writer refuses with `cannot represent an object`.
     written = profile.model_dump(mode="json")
 
-    path.write_text(yaml.safe_dump(written, sort_keys=False))
+    already = path.read_text() if path.exists() else ""
+
+    path.write_text(keep_hand_edits(already, written))
 
 
 def load_yaml(path: Path = DEFAULT_PATH) -> dict:
@@ -95,8 +102,8 @@ def load_yaml(path: Path = DEFAULT_PATH) -> dict:
         raise ProfileError(f"No profile at {path}. Run `offgrid setup` to make one.")
 
     try:
-        body = yaml.safe_load(path.read_text())
-    except yaml.YAMLError as error:
+        body = read_yaml(path.read_text())
+    except YAMLError as error:
         raise ProfileError(
             f"{path} is not readable as YAML: {error}. Fix it by hand, or run "
             "`offgrid setup` to write it again."
