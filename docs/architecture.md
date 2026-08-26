@@ -110,9 +110,8 @@ cli/               the layer, a module per command and the four attached
   setup.py         measure this machine, and write the profile
   doctor.py        what can be read before a run costs a load
   checkup.py       what a run can be told before it costs a load, and
-                   how it reads
-  leaving.py       how what a run could send off this machine reads in
-                   that report
+                   how it reads — the readings about what could leave
+                   among them
   recommend.py     what a published list says this machine can hold
   run.py           hold a model, start the agent, let the model go
   reporting.py     what offgrid's own errors look like at the terminal
