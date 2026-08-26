@@ -21,26 +21,30 @@ HELD_NOTHING = "model     nothing held"
 class Checkup:
     """Everything `doctor` read, including what it found nothing to read.
 
+    Readings rather than the things that answered them: the agent port can
+    write its own settings, and a value the report is built from has no call
+    to carry the means of doing it.
+
     :param profile: What was written down.
     :param resident: The model the runtime is holding, or ``None`` where it
-        holds none — which the rest of the report survives, a runtime holding
-        nothing having still answered.
+        holds none — which the rest of the report survives, because a runtime
+        holding nothing still answered.
     :param could_leave: What the agent says about each way this run could
-        reach off this machine.
+        reach off this machine, one reading each.
     :param kept: Where the agent keeps a conversation a run starts, and how to
-        open one again.
+        open one again — which nothing outside a run finds.
     :param dialect: What the agent speaks.
-    :param served: Every dialect the runtime serves, which says whether
-        another agent would pair with it.
+    :param served: Every dialect the runtime serves, which says whether an
+        agent other than this one would pair with it.
     :param context_floor: The smallest window the agent can start in.
     :param command: What starting the agent runs, which is what was looked up.
     :param found_at: Where the `PATH` a run inherits has that command, and
         ``None`` where it has not got it at all.
     :param discarded: Every window this runtime discarded for the model it is
-        holding, and empty where it discarded none and where the records would
-        not read — itself a finding, carried in `unreadable`.
-    :param unreadable: Why the records would not read, where they would not. A
-        stale file nobody has heard of is worth a line, not the whole report.
+        holding, and empty where it discarded none and where the records could
+        not be read — which is itself a finding, carried in `unreadable`.
+    :param unreadable: Why the records could not be read, where they could not.
+        A stale file nobody has heard of is worth a line, not the whole report.
     """
 
     profile: Profile
@@ -58,6 +62,9 @@ class Checkup:
 
 def describe_what_was_read(checkup: Checkup) -> tuple[str, ...]:
     """Put the report into the lines it is read as.
+
+    A value rather than a run of statements that each print, so what the
+    report says is settled in one place and said in another.
 
     :param checkup: What the profile, the runtime and the agent answered.
 
@@ -83,9 +90,12 @@ def describe_what_was_read(checkup: Checkup) -> tuple[str, ...]:
 def _describe_where_the_agent_is(checkup: Checkup) -> tuple[str, ...]:
     """Say the command a run would start, and where the `PATH` has it.
 
-    Said at all because the alternative is exit 127, after a model has been
-    loaded and let go again. Where it comes from goes under the line it is
-    about — a link and not a command, for the reason `presence.py` gives.
+    Said at all because the alternative is exit 127, met after a model has
+    been loaded and let go again for a run that was never going to start.
+
+    Where it comes from goes under the line it is about, where a reading about
+    what could leave puts its remedy. A link and not a command to type, for
+    the reason `presence.py` gives.
 
     :param checkup: What was read, the profile it names the agent in included.
 
@@ -103,8 +113,15 @@ def _describe_where_the_agent_is(checkup: Checkup) -> tuple[str, ...]:
 def _describe_what_could_leave(readings: tuple[Reading, ...]) -> tuple[str, ...]:
     """Say what each way off this machine is in, and how to close an open one.
 
-    One line per reading, so the report says which it is telling somebody
-    about. `DENIED` says no more, having nothing behind it to check.
+    One line per reading, so the report says which of them it is telling
+    somebody about, with what a run would refuse with under the line it is
+    about — said here instead of after the load the command was run to save.
+
+    `DENIED` alone says no more than the state, because that is the one answer
+    with nothing behind it to check and nothing to act on: the lines beside it
+    are what somebody came for. `NONE_OFFERED` says its detail, because a claim
+    that an agent has no such thing is only worth what the evidence beside it
+    is, and this report is where a person reads that evidence.
 
     :param readings: What the agent said about each way off this machine.
 
@@ -124,7 +141,13 @@ def _describe_what_could_leave(readings: tuple[Reading, ...]) -> tuple[str, ...]
 def _describe_where_conversations_are_kept(kept: Conversations) -> tuple[str, ...]:
     """Say where a conversation this run starts lands, and the way back into it.
 
-    The way back goes under the directory: one on its own is what a person had.
+    On every run rather than where an installation is kept apart, because there
+    is no second case: every agent offgrid runs is run out of a directory of
+    offgrid's, so a branch with one arm would claim a kind of agent that does
+    not exist.
+
+    The way back goes under the directory, where a reading about what could
+    leave puts its remedy: a directory on its own is what a person already had.
 
     :param kept: Where the agent keeps them, and how to open one again.
 
@@ -136,15 +159,17 @@ def _describe_where_conversations_are_kept(kept: Conversations) -> tuple[str, ..
 def _describe_the_model(model: Model | None, request: ModelRequest) -> tuple[str, ...]:
     """Say which model would answer, and at what, or that none would.
 
-    A runtime holding nothing keeps its lines in the column, marked `unknown`
-    rather than left out, where `unstated` is a held model's own silence.
+    A runtime holding nothing keeps its lines in the column, the two numbers
+    marked `unknown` rather than left out: a number about a model that is not
+    held is unknown, where `unstated` is what a held model states when the
+    runtime says no number for it.
 
     :param model: The model the runtime is holding, or ``None`` for none.
     :param request: What the profile asks the next run for, which decides
         whether a runtime holding nothing needs a hand.
 
-    :return: The model's lines, and what to do about a runtime holding nothing
-        where the profile names none either.
+    :return: The model's lines, and what to do about a runtime holding
+        nothing where the profile names none either.
     """
     if model is not None:
         return (
@@ -175,7 +200,10 @@ def _describe_the_model(model: Model | None, request: ModelRequest) -> tuple[str
 def _describe_a_discarded_window(checkup: Checkup) -> tuple[str, ...]:
     """Say that offgrid stopped asking for a window, and how to make it ask.
 
-    Deleting the file makes offgrid ask again, so this is where it is named.
+    Deleting the file makes offgrid ask again, so this is where it is named:
+    `doctor` is what a person runs when something is not what they asked for.
+    The number the runtime served then is said as what it was — what it serves
+    now is the `window` line above, and the two are read together.
 
     :param checkup: What the profile, the runtime and the agent answered.
 
