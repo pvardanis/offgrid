@@ -206,6 +206,9 @@ domain/
     profile.py     the file, and what is read out of it
     keeping.py     reading and writing YAML without losing the comments,
                    the blank lines and the order somebody typed
+    saving.py      writing it where a later run will find it
+    restating.py   what a save writes over the file that is there, and
+                   when it writes a whole one instead
     refusing.py    what a section offgrid cannot read reads like
     structure.py   whether it is built the way offgrid reads one
 ```

@@ -45,10 +45,11 @@ class Model:
 def refuse_a_yes_or_no(value: object) -> object:
     """Refuse a flag written where a number of tokens belongs.
 
-    YAML reads `yes`, `on` and `true` as a boolean, and a boolean is an
-    integer to anything that does not look: `32768` and `yes` both arrive as
-    numbers, the second one as 1. The run is then refused against the agent's
-    floor, naming a window nobody wrote.
+    A boolean is an integer to anything that does not look: `32768` and `true`
+    both arrive as numbers, the second one as 1. The run is then refused
+    against the agent's floor, naming a window nobody wrote. The file's reader
+    answers `yes` and `on` with the word rather than a boolean, so what this
+    catches is what a caller hands over directly.
 
     :param value: What the file or the caller said the window is.
 

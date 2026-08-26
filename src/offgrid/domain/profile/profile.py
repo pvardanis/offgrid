@@ -13,7 +13,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, Field, SerializeAsAny, ValidationError
 
-from offgrid.domain.profile.keeping import YAMLError, keep_hand_edits, read_yaml
+from offgrid.domain.profile.keeping import DuplicateKeyError, YAMLError, read_yaml
 from offgrid.domain.profile.structure import (
     refuse_a_flat_profile,
     refuse_a_model_without_a_section,
@@ -62,28 +62,6 @@ class Profile(BaseModel):
     model: ModelRequest = Field(default_factory=ModelRequest)
 
 
-def save_profile(profile: Profile, path: Path = DEFAULT_PATH) -> None:
-    """Write a profile where a later run will find it.
-
-    A file already saying what offgrid can act on is written over key by key
-    rather than replaced, because it is hand-edited: the comments, the blank
-    lines and the order somebody chose are theirs, and only the values are
-    offgrid's to state. Any other file is written whole.
-
-    :param profile: The profile to store.
-    :param path: Where to write it.
-    """
-    path.parent.mkdir(parents=True, exist_ok=True)
-
-    # Dumped as what YAML can carry: a plain dump answers with the enum member
-    # itself, which the writer refuses with `cannot represent an object`.
-    written = profile.model_dump(mode="json")
-
-    already = path.read_text() if path.exists() else ""
-
-    path.write_text(keep_hand_edits(already, written))
-
-
 def load_yaml(path: Path = DEFAULT_PATH) -> dict:
     """Read the stored profile as the mapping it holds.
 
@@ -103,6 +81,12 @@ def load_yaml(path: Path = DEFAULT_PATH) -> dict:
 
     try:
         body = read_yaml(path.read_text())
+    except DuplicateKeyError as error:
+        raise ProfileError(
+            f"{path} says a key twice, at line {_get_line(error)}. A profile "
+            "answers each key once, and offgrid will not pick which of the two "
+            "you meant. Delete the line you do not want."
+        ) from error
     except YAMLError as error:
         raise ProfileError(
             f"{path} is not readable as YAML: {error}. Fix it by hand, or run "
@@ -147,3 +131,13 @@ def create_profile(
             f"The profile does not describe a run offgrid can make:\n\n{error}"
             "\n\nFix it by hand, or run `offgrid setup` to write it again."
         ) from error
+
+
+def _get_line(error: DuplicateKeyError) -> int:
+    """Say which line of the file a key was found on a second time.
+
+    :param error: What the reader refused.
+
+    :return: The line, counted from one as an editor counts them.
+    """
+    return error.problem_mark.line + 1

@@ -51,9 +51,9 @@ def test_a_request_naming_neither_is_what_a_bare_run_asks():
 
 
 def test_a_window_written_as_yes_is_not_a_window_of_one():
-    # YAML reads `yes` as true, and a bool is an int to anything that does not
-    # look: `gt=0` then passes it as 1, and the run is refused for a number
-    # nobody wrote. `no` was refused all along, which is the worse asymmetry.
+    # A bool is an int to anything that does not look: `gt=0` then passes it
+    # as 1, and the run is refused for a number nobody wrote. `no` was refused
+    # all along, which is the worse asymmetry.
     with pytest.raises(ValidationError, match="not yes or no"):
         ModelRequest(context_window=True)
 
