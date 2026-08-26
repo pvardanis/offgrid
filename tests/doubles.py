@@ -69,6 +69,7 @@ class StandInAgent:
 
     :param dialect: What it speaks.
     :param context_floor: The smallest window it can start in.
+    :param command: What a launch of it would run.
     :param refusal: What planning a launch raises, where a test wants that.
     """
 
@@ -76,6 +77,7 @@ class StandInAgent:
     # Its own number, not the one the written adapter states: a test that
     # passed on either would be proving nothing about which was asked.
     context_floor: int = 12_000
+    command: str = "claude"
     refusal: Exception | None = None
 
     def configure(self) -> None:
@@ -113,7 +115,7 @@ class StandInAgent:
         if self.refusal:
             raise self.refusal
 
-        return Launch(env={}, argv=["claude"])
+        return Launch(env={}, argv=[self.command])
 
 
 def answer_as_an_agent(monkeypatch: pytest.MonkeyPatch, agent: StandInAgent) -> None:

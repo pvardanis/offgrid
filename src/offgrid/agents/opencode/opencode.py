@@ -24,6 +24,7 @@ from offgrid.agents.opencode.configuring import (
 )
 from offgrid.agents.opencode.hosted_tools import read_hosted_tools
 from offgrid.agents.opencode.launching import (
+    COMMAND,
     CONFIG_CONTENT,
     CONFIG_FILE,
     CONTEXT_FLOOR,
@@ -51,8 +52,8 @@ class OpenCode:
     than passed: what is read to decide whether a run is safe is then the same
     thing that is launched.
 
-    `dialect` and `context_floor` are facts about OpenCode rather than about
-    one binding, so they are settled here and not passed in.
+    `dialect`, `context_floor` and `command` are facts about OpenCode rather
+    than about one binding, so they are settled here and not passed in.
 
     :param config: What the profile and the run settled for this agent.
     :param passthrough: Arguments handed to the agent unchanged.
@@ -62,6 +63,7 @@ class OpenCode:
     passthrough: Passthrough = ()
     dialect: Dialect = field(init=False, default=Dialect.OPENAI)
     context_floor: int = field(init=False, default=CONTEXT_FLOOR)
+    command: str = field(init=False, default=COMMAND)
 
     def configure(self) -> None:
         """Write the provider entry that is not there.

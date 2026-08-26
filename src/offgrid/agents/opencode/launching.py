@@ -26,6 +26,9 @@ MAX_OUTPUT_TOKENS = 8192
 # have run, which is the safe direction. Issue #153 is the measurement.
 CONTEXT_FLOOR = 25_000
 
+# What a launch runs, and what `PATH` is searched for before one is built.
+COMMAND = "opencode"
+
 # Where OpenCode reads the durable file, and the configuration a run derives.
 #
 # Neither replaces what a person already has. OpenCode reads their own
@@ -78,7 +81,7 @@ def get_opencode_args(passthrough: Passthrough) -> list[str]:
 
     :return: The command and its arguments.
     """
-    return ["opencode", *passthrough]
+    return [COMMAND, *passthrough]
 
 
 def get_derived_configuration(model: Model, *, runtime_host: str) -> str:

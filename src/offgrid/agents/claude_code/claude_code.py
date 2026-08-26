@@ -23,6 +23,7 @@ from offgrid.agents.claude_code.configuring import (
 )
 from offgrid.agents.claude_code.hosted_tools import read_hosted_tools
 from offgrid.agents.claude_code.launching import (
+    COMMAND,
     CONTEXT_FLOOR,
     MAX_OUTPUT_TOKENS,
     TOKEN,
@@ -50,8 +51,8 @@ class ClaudeCode:
     than passed: what is read to decide whether a run is safe is then the same
     thing that is launched.
 
-    `dialect` and `context_floor` are facts about Claude Code rather than
-    about one binding, so they are settled here and not passed in.
+    `dialect`, `context_floor` and `command` are facts about Claude Code
+    rather than about one binding, so they are settled here and not passed in.
 
     :param config: What the profile and the run settled for this agent.
     :param passthrough: Arguments handed to the agent unchanged.
@@ -61,6 +62,7 @@ class ClaudeCode:
     passthrough: Passthrough = ()
     dialect: Dialect = field(init=False, default=Dialect.ANTHROPIC)
     context_floor: int = field(init=False, default=CONTEXT_FLOOR)
+    command: str = field(init=False, default=COMMAND)
 
     def configure(self) -> None:
         """Write the settings and the notes that are not there.
