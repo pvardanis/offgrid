@@ -1645,3 +1645,29 @@ empty made that the easy mistake. Both invariants — a detail always, a remedy
 wherever the reading stops a run — are now the constructor's, so an actionless
 refusal cannot be built rather than being caught by whichever conformance test
 happens to exercise that path.
+
+## An address is what a client does not ask for itself
+
+Issue #156 read the `/v1` in the OpenCode adapter's `baseURL` as a fact about
+where a runtime serves its OpenAI API, asserted two layers from where a runtime
+is described, and asked whether it belonged beside `Dialect` or on the runtime
+port instead.
+
+Measured against a server logging the path it was asked for: opencode 1.18.23
+through `@ai-sdk/openai-compatible` asks for `/chat/completions`, and claude
+2.1.246 asks for `/v1/messages`. Both endpoints sit under `/v1` on LM Studio,
+which `tests/test_live_dialects.py` already proves by refusal. The two adapters
+carry different addresses because their clients ask for different amounts of
+the path, not because the runtimes differ.
+
+**So the address stays in the agent adapter, stamped with what was measured.**
+Moving a prefix to the runtime port cannot work: a runtime stating `/v1` for the
+Anthropic dialect — where it truthfully serves it — would hand Claude Code
+`http://host/v1` and make it ask for `/v1/v1/messages`. A runtime-side answer
+would have to state whole endpoints and have each agent adapter subtract its own
+client's suffix, which is more machinery for a fact one adapter already knows
+about itself.
+
+What the second runtime falsifies is the other half of the sentence: a runtime
+serving the OpenAI dialect anywhere but `/v1` breaks this address, and the
+comment names that runtime so the claim can be checked rather than assumed.
