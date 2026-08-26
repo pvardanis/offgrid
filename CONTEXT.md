@@ -113,9 +113,12 @@ it knows what it will do and which of its commands is the way out. Claude Code's
 is about compaction, OpenCode's about the project configuration a run does not
 read.
 
-**profile** — what offgrid remembers between runs. YAML, hand-editable, one per
-machine. A section per adapter, and one holding a **model request**, which the
-command line beats key by key.
+**profile** — what offgrid remembers between runs, and what a run is assembled
+from. YAML, hand-editable, one per machine. A section per adapter, and one
+holding a **model request**, which the command line beats key by key. A run is
+assembled from the same three things the file holds — a runtime, an agent and a
+model — whether they came from the file, from the command line, or from
+somewhere they were picked.
 
 **bind** — to turn what a profile names into the runtime and agent a run talks
 to. A section of the file is a name and whatever that adapter reads; it becomes
