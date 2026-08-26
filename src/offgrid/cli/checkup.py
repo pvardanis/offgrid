@@ -2,13 +2,12 @@
 
 from dataclasses import dataclass
 
-from offgrid.cli.leaving import describe_what_could_leave
 from offgrid.domain.profile import Profile
 from offgrid.domain.running import discarded_windows
 from offgrid.domain.running.asking import describe_what_is_asked_for
 from offgrid.domain.running.dialect import Dialect
 from offgrid.domain.running.discarded_windows import DiscardedWindow
-from offgrid.domain.running.leaving import Reading
+from offgrid.domain.running.leaving import Reading, Status
 from offgrid.domain.running.model import Model, ModelRequest
 from offgrid.shared.wording import describe_what_was_stated
 
@@ -69,10 +68,38 @@ def describe_what_was_read(checkup: Checkup) -> tuple[str, ...]:
         f"profile   {describe_what_is_asked_for(profile.model)}",
         f"agent     {profile.agent.name.value}, speaking {checkup.dialect.value}",
         f"floor     {checkup.context_floor}",
-        *describe_what_could_leave(checkup.could_leave),
+        *_describe_what_could_leave(checkup.could_leave),
     )
 
     return (*said, *_describe_a_discarded_window(checkup))
+
+
+def _describe_what_could_leave(readings: tuple[Reading, ...]) -> tuple[str, ...]:
+    """Say what each way off this machine is in, and how to close an open one.
+
+    One line per reading, so the report says which of them it is telling
+    somebody about, with what a run would refuse with under the line it is
+    about — said here instead of after the load the command was run to save.
+
+    `DENIED` alone says no more than the state, because that is the one answer
+    with nothing behind it to check and nothing to act on: the lines beside it
+    are what somebody came for. `NONE_OFFERED` says its detail, because a claim
+    that an agent has no such thing is only worth what the evidence beside it
+    is, and this report is where a person reads that evidence.
+
+    :param readings: What the agent said about each way off this machine.
+
+    :return: The lines to say, in the order the agent answered them.
+    """
+    said: tuple[str, ...] = ()
+
+    for reading in readings:
+        said = (*said, f"leaves    {reading.subject}: {reading.status}")
+
+        if reading.status is not Status.DENIED:
+            said = (*said, f"          {reading.said}")
+
+    return said
 
 
 def _describe_the_model(model: Model | None, request: ModelRequest) -> tuple[str, ...]:
