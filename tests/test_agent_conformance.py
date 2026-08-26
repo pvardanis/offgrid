@@ -36,6 +36,7 @@ from tests.agent_conformance import (
     read_everything_under,
 )
 from tests.agents_under_test import AgentUnderTest
+from tests.live_pairs import PAIRS
 
 pytestmark = EVERY_AGENT
 
@@ -187,6 +188,18 @@ def test_where_the_runtime_listens_reaches_the_agent(
     ]
 
     assert any(agent_under_test.address in said for said in told)
+
+
+def test_a_live_check_looks_up_the_command_the_adapter_states(
+    agent_under_test: AgentUnderTest, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):
+    # The live checks keep their own record of what a machine needs on the
+    # PATH. An adapter renaming its command leaves that record looking up a
+    # name nothing runs, and the check then passes on a machine that cannot
+    # start the agent — which is what it is there to refuse.
+    agent = agent_under_test.prepare(monkeypatch, tmp_path)
+
+    assert PAIRS[agent_under_test.name].binary == agent.command
 
 
 def test_an_agent_offgrid_runs_has_somewhere_to_be_got_from(

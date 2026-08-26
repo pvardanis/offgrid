@@ -149,6 +149,24 @@ def test_doctor_prints_a_ceiling_of_zero_as_zero(here, monkeypatch):
     assert "window    0" in result.stderr
 
 
+def test_doctor_prints_the_command_the_agent_itself_would_be_started_by(
+    here, monkeypatch
+):
+    # Asked of the agent, the way the floor above it is: a second adapter
+    # started by another command would otherwise be reported as the one this
+    # was written against, which both happen to share.
+    from offgrid.domain.running.dialect import Dialect
+
+    answer_as_an_agent(
+        monkeypatch, StandInAgent(dialect=Dialect.ANTHROPIC, command="some-other-agent")
+    )
+    runner.invoke(app, ["setup"])
+
+    result = runner.invoke(app, ["doctor"])
+
+    assert "command   some-other-agent" in result.stderr
+
+
 def test_doctor_reports_where_the_agent_a_run_would_start_was_found(here):
     # A missing agent is otherwise met at exit 127, after a model has been
     # loaded and let go again for a run that was never going to start.
@@ -163,11 +181,16 @@ def test_doctor_reports_where_the_agent_a_run_would_start_was_found(here):
 def test_doctor_says_where_an_agent_that_is_not_installed_comes_from(here):
     # Where it comes from rather than what to type: an install command is a
     # fact about somebody else's project, and it goes stale without a word.
+    #
+    # Another agent's command is on the PATH, so what this proves is that the
+    # lookup answers about the one the profile names — an empty PATH would
+    # pass whether or not it discriminated.
     runner.invoke(app, ["setup"])
+    install_agent(here, "opencode")
 
     result = runner.invoke(app, ["doctor"])
 
     assert "command   claude, not on PATH" in result.stderr
-    assert "https://claude.com/claude-code" in result.stderr
+    assert "https://docs.claude.com/en/docs/claude-code/setup" in result.stderr
     assert "brew" not in result.stderr
     assert "npm" not in result.stderr

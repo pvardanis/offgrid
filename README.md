@@ -184,6 +184,7 @@ ceiling   262144
 window    262144
 profile   asks for nothing, so a run takes whatever is held
 agent     claude-code, speaking anthropic
+command   claude, at /opt/homebrew/bin/claude
 floor     25000
 ```
 
@@ -211,7 +212,7 @@ $ offgrid run -- -p "explain what this module does"
 |---|---|
 | `offgrid setup [--host HOST]` | Measures this Mac, says what fits, writes the profile. Keeps whatever you edited into it by hand — unless the file no longer loads, which is set aside as `profile.yaml.rejected` and replaced. |
 | `offgrid recommend` | Fetches a published coding table, keeps the models this machine can hold, and prints them at each width they fit at. |
-| `offgrid doctor` | Reports the runtime, the model it is holding, the most that model could be served at, what it is being served at, what the profile asks the next run for, the smallest window the agent starts in, the dialects the runtime serves, and the agent's own dialect. A runtime holding nothing is reported in the model's lines and exits `1`; every other line is read without one. |
+| `offgrid doctor` | Reports the runtime, the model it is holding, the most that model could be served at, what it is being served at, what the profile asks the next run for, whether the agent it names is on the `PATH`, the smallest window the agent starts in, the dialects the runtime serves, and the agent's own dialect. A runtime holding nothing is reported in the model's lines and exits `1`; every other line is read without one. |
 | `offgrid run [-m MODEL] [--context-window N] [-- ARGS]` | Starts the agent. Loads `MODEL` when it is not already held, otherwise uses what is. Holds it at `N` where one is asked for. |
 
 The command line beats the `model:` section of the profile, which beats
