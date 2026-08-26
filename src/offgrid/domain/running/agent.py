@@ -17,8 +17,8 @@ from typing import Protocol
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 
+from offgrid.domain.running.conversations import Conversations
 from offgrid.domain.running.dialect import Dialect
-from offgrid.domain.running.keeping import Conversations
 from offgrid.domain.running.launch import Launch
 from offgrid.domain.running.leaving import Reading
 from offgrid.domain.running.model import Model

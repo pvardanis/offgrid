@@ -42,10 +42,10 @@ def test_doctor_says_it_on_a_machine_that_has_never_run_the_agent(here):
 
 
 def test_doctor_says_it_for_the_other_agent_too(here):
-    # No branch: after the OpenCode convergence there is no second case, and
-    # one agent's line missing would be the same silence issue #180 was filed
-    # about. The store rather than the directory beside it, because that is
-    # what `XDG_DATA_HOME` moves.
+    # No branch: every agent offgrid runs is run out of a directory of
+    # offgrid's, so a line one of them did not get would leave that person with
+    # the silence this command exists to break. The store rather than the
+    # directory beside it, because that is what `XDG_DATA_HOME` moves.
     name_opencode(here)
 
     result = runner.invoke(app, ["doctor"])

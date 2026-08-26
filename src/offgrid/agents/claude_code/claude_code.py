@@ -7,7 +7,7 @@ before anything runs.
 
 from dataclasses import dataclass, field
 
-from offgrid.agents.claude_code import keeping
+from offgrid.agents.claude_code import conversations
 from offgrid.agents.claude_code.compacting import (
     explain_what_will_not_compact,
     get_compaction_setting,
@@ -32,8 +32,8 @@ from offgrid.domain.running.config_editing import (
     write_config_where_nothing_is_kept,
     write_settings_where_nothing_is_kept,
 )
+from offgrid.domain.running.conversations import Conversations
 from offgrid.domain.running.dialect import Dialect
-from offgrid.domain.running.keeping import Conversations
 from offgrid.domain.running.launch import Launch
 from offgrid.domain.running.leaving import Reading
 from offgrid.domain.running.model import Model
@@ -111,7 +111,7 @@ class ClaudeCode:
 
         :return: Where they are kept, and how to open one again.
         """
-        return keeping.read_where_conversations_are_kept(self.config.config_dir)
+        return conversations.read_where_conversations_are_kept(self.config.config_dir)
 
     def plan(self, model: Model) -> Launch:
         """Work out how to start Claude Code against a local runtime.
