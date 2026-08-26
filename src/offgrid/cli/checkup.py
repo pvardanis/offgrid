@@ -5,7 +5,6 @@ from pathlib import Path
 
 from offgrid.domain.profile import Profile
 from offgrid.domain.running import discarded_windows
-from offgrid.domain.running.agent import AgentName
 from offgrid.domain.running.asking import describe_what_is_asked_for
 from offgrid.domain.running.conversations import Conversations
 from offgrid.domain.running.dialect import Dialect
@@ -72,7 +71,7 @@ def describe_what_was_read(checkup: Checkup) -> tuple[str, ...]:
         *_describe_the_model(checkup.resident, profile.model),
         f"profile   {describe_what_is_asked_for(profile.model)}",
         f"agent     {profile.agent.name.value}, speaking {checkup.dialect.value}",
-        *_describe_where_the_agent_is(checkup, profile.agent.name),
+        *_describe_where_the_agent_is(checkup),
         f"floor     {checkup.context_floor}",
         *_describe_what_could_leave(checkup.could_leave),
         *_describe_where_conversations_are_kept(checkup.kept),
@@ -81,15 +80,14 @@ def describe_what_was_read(checkup: Checkup) -> tuple[str, ...]:
     return (*said, *_describe_a_discarded_window(checkup))
 
 
-def _describe_where_the_agent_is(checkup: Checkup, name: AgentName) -> tuple[str, ...]:
+def _describe_where_the_agent_is(checkup: Checkup) -> tuple[str, ...]:
     """Say the command a run would start, and where the `PATH` has it.
 
     Said at all because the alternative is exit 127, after a model has been
     loaded and let go again. Where it comes from goes under the line it is
     about — a link and not a command, for the reason `presence.py` gives.
 
-    :param checkup: What was read.
-    :param name: The agent the profile names, which is what is not installed.
+    :param checkup: What was read, the profile it names the agent in included.
 
     :return: The command's line, and where to get it where it is not here.
     """
@@ -98,7 +96,7 @@ def _describe_where_the_agent_is(checkup: Checkup, name: AgentName) -> tuple[str
 
     return (
         f"command   {checkup.command}, not on PATH",
-        f"          {say_where_an_agent_comes_from(name)}",
+        f"          {say_where_an_agent_comes_from(checkup.profile.agent.name)}",
     )
 
 

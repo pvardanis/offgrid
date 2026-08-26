@@ -153,11 +153,11 @@ def test_doctor_reports_where_the_agent_a_run_would_start_was_found(here):
     # A missing agent is otherwise met at exit 127, after a model has been
     # loaded and let go again for a run that was never going to start.
     runner.invoke(app, ["setup"])
-    install_agent(here, "claude")
+    installed = install_agent(here, "claude")
 
     result = runner.invoke(app, ["doctor"])
 
-    assert f"command   claude, at {here / 'bin' / 'claude'}" in result.stderr
+    assert f"command   claude, at {installed}" in result.stderr
 
 
 def test_doctor_says_where_an_agent_that_is_not_installed_comes_from(here):

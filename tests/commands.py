@@ -17,12 +17,12 @@ MACHINE = Machine(
     chip="Apple M1 Max", memory_bytes=64 * GIB, wired_limit_bytes=56 * GIB
 )
 
-# Which commands read the machine, and which name the profile. Listed rather
-# than found, so a command added without a line here fails a test instead of
-# quietly reaching the developer's own machine.
 BIN = "bin"
 """The one directory on the `PATH` a command under test is given."""
 
+# Which commands read the machine, and which name the profile. Listed rather
+# than found, so a command added without a line here fails a test instead of
+# quietly reaching the developer's own machine.
 MEASURING = ("setup", "recommend")
 READING_THE_PROFILE = ("setup", "doctor", "recommend", "run")
 

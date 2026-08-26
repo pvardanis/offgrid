@@ -46,8 +46,16 @@ def say_where_an_agent_comes_from(name: AgentName) -> str:
 
     :return: A sentence naming where to get it.
 
-    :raise KeyError: When offgrid has an adapter for an agent and no page for
-        it, which is this module having been left behind rather than a machine
-        being short of something.
+    :raise ValueError: When offgrid has an adapter for an agent and no page
+        for it, which is this module having been left behind rather than a
+        machine being short of something.
     """
-    return f"Get {name.value} from {WHERE_AGENTS_COME_FROM[name]}."
+    published = WHERE_AGENTS_COME_FROM.get(name)
+
+    if published is None:
+        raise ValueError(
+            f"offgrid runs {name.value} and has no page to send anybody to for "
+            f"it. Add one to WHERE_AGENTS_COME_FROM in {__name__}."
+        )
+
+    return f"Get {name.value} from {published}."
