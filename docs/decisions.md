@@ -1954,14 +1954,24 @@ saving — which is what the picker's save key is about to do on every run.
 
 **The values are offgrid's, and everything else in the file is not.** What is
 on disk is written over key by key: a key the file names is answered where it
-stands, a key it never named is written after what is there, and a key offgrid
-cannot act on is taken out. Comments, blank lines and the order somebody chose
-survive, because none of them are offgrid's to state.
+stands, and a key it never named is written after what is there. Comments,
+blank lines and the order somebody chose survive, because none of them are
+offgrid's to state.
 
-A key is taken out rather than left alone because of the one caller that writes
-over a file it could not read: `setup` sets a refused profile aside as
-`.yaml.rejected` and writes a fresh one over the original. A measured machine
-left behind in that file would be refused all over again by the next read.
+**A file holding a key offgrid cannot act on is written whole instead.** There
+is one caller that writes over a file it could not read: `setup` sets a refused
+profile aside as `.yaml.rejected` and writes a fresh one over the original. A
+measured machine left behind in that file would be refused all over again by
+the next read, so it goes — and the comment above it goes with it. Taking the
+key alone leaves the comment standing over whatever followed, saying something
+false about it. Written whole, the file loses the edits, and the file it lost
+them from is the one already set aside beside it.
+
+**A key typed twice is refused rather than read as the last one.** `pyyaml`
+took the second and dropped the first without a word. The file is hand-edited,
+so two answers to one key is a mistake to report, and the reader now says which
+key and which line. It comes with the parser rather than being written here,
+and it is kept for the reason every other profile refusal is.
 
 **`ruamel.yaml` replaces `pyyaml`, rather than joining it.** PyYAML parses to
 plain mappings and loses everything around them, so there is no round-trip to
