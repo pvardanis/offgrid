@@ -28,7 +28,7 @@ from offgrid.domain.running.agent_presence import (
     find_agent_on_path,
     say_where_an_agent_comes_from,
 )
-from tests.profiles import read_mapping
+from tests.profiles import read_written
 
 PROMPT = "reply with the two letters OK and nothing else"
 
@@ -116,7 +116,7 @@ def paired_with(agent: str, profile_path: Path) -> Iterator[None]:
     :yield: Nothing; the profile names the agent inside the block.
     """
     was = profile_path.read_text()
-    body = read_mapping(was)
+    body = read_written(was)
     body["agent"] = {**body["agent"], "name": agent}
 
     try:

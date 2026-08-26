@@ -19,7 +19,7 @@ it is. These seams are agreed, and anything else needs a new agreement:
 | Seam | What is tested there |
 |---|---|
 | `offgrid setup`, `doctor`, `recommend`, `run` | what a person sees and what gets launched |
-| the profile file | that a hand-edited profile loads, and which ones are refused |
+| the profile file | that a hand-edited profile loads, which ones are refused, and that a hand edit survives being written back |
 | the discarded-windows file | that a hand-edited record loads, and which ones are refused |
 | a runtime adapter's parsing | a payload captured from a live server |
 | a leaderboard adapter's parsing | a payload captured from the live page |
