@@ -609,10 +609,11 @@ class Agent(Protocol):
     def dialect(self) -> Dialect: ...
     @property
     def context_floor(self) -> int: ...
+    @property
+    def conversations(self) -> Conversations: ...
 
     def configure(self) -> None: ...
     def read_what_leaves_this_machine(self) -> tuple[Reading, ...]: ...
-    def read_where_conversations_are_kept(self) -> Conversations: ...
     def plan(self, model: Model) -> Launch: ...
 ```
 
@@ -662,8 +663,13 @@ them would lose one of the two facts. `Subject` is the list, and
 `tests/test_agent_leaving.py` asks every adapter for every one of them, so a
 subject added later goes red on every adapter rather than on none.
 
-**Where a conversation is kept is a member of its own**, not a third subject on
-the reading above. A run is its own installation, so `claude --resume <id>` in
+**Where a conversation is kept is an attribute of its own**, not a third
+subject on the reading above. It sits beside `dialect` and `context_floor`
+rather than among the calls, because it is settled when the adapter binds: it
+reads nothing, writes nothing, and answers the same on a machine that has never
+run the agent, where the reading above opens files and can fail on them.
+
+A run is its own installation, so `claude --resume <id>` in
 an ordinary terminal finds nothing for a session offgrid started minutes
 earlier — the transcript is intact and where offgrid put it. That is a hazard
 about where finished files sit rather than about a run sending something out,
