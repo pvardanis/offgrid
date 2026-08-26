@@ -325,6 +325,23 @@ def test_every_agent_offgrid_names_has_an_adapter_bound_to_it():
     )
 
 
+def test_every_agent_offgrid_names_has_somewhere_to_be_got_from():
+    # A machine without the agent is sent to the page it is published from,
+    # and `say_where_an_agent_comes_from` answers a sentence about offgrid
+    # being at fault rather than refusing, so that one line failing does not
+    # take a whole report with it. This is what keeps that sentence unread.
+    from offgrid.domain.running.agent import AgentName
+    from offgrid.domain.running.presence import WHERE_AGENTS_COME_FROM
+
+    assert set(WHERE_AGENTS_COME_FROM) == set(AgentName), _say_what_to_bind(
+        set(AgentName),
+        set(WHERE_AGENTS_COME_FROM),
+        enum="AgentName",
+        registry="WHERE_AGENTS_COME_FROM",
+        module="offgrid/domain/running/presence.py",
+    )
+
+
 def test_offgrid_has_at_least_one_published_list_to_read():
     # Nothing names a leaderboard — no profile key, no argument — so the
     # registry is the whole statement of which lists there are. An empty one

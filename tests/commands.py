@@ -50,7 +50,9 @@ def answer_as_a_mac(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
 
     The `PATH` is the test's own and starts empty, so what a command reports
     about an agent being installed is what the test arranged rather than what
-    the machine running the suite happens to have.
+    the machine running the suite happens to have. Nothing else under test
+    shells out by a bare name — a test that does will find nothing until it
+    puts what it needs there with `install_agent`.
 
     :param monkeypatch: The test's patcher.
     :param tmp_path: Where the profile goes, and the agent's directory beside
