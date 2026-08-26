@@ -1671,3 +1671,63 @@ about itself.
 What the second runtime falsifies is the other half of the sentence: a runtime
 serving the OpenAI dialect anywhere but `/v1` breaks this address, and the
 comment names that runtime so the claim can be checked rather than assumed.
+
+## A conversation started here is resumed here
+
+`claude --resume <id>` typed in an ordinary terminal answers "No conversation
+found with session ID", for a session offgrid started minutes earlier. The same
+argument through `offgrid run -- --resume <id>` opens it. The transcript is
+intact and where offgrid put it: measured against claude 2.1.245,
+`CLAUDE_CONFIG_DIR` decides where conversations are written as well as where
+settings are read, so pointing it at `~/.offgrid/claude-code/` moved every
+conversation there with it.
+
+**That stays, because the alternative is a session answering from somewhere it
+was not written for.** A conversation started here answers from a model held on
+this machine, with hosted tools denied and a window of tens of thousands of
+tokens rather than hundreds. Left in the directory the agent uses by default,
+it appears in the picker of a run against a vendor's model, where resuming it
+silently changes which model answers and what the session costs. The other
+direction is worse: a long conversation from such a run, resumed against a
+model held here, has its prefix truncated to fit.
+
+**So an offgrid run is its own installation, and that is the whole state and
+not the conversations alone.** Plugins, hooks, a person's own instructions and
+the agent's onboarding are all in it, and none of them reach a run. One
+directory per agent under `~/.offgrid/` is what makes that true, and splitting
+it is not on offer: claude 2.1.245 has no argument or variable that separates
+where conversations are written from where settings are read.
+
+**It is what offgrid does, not a promise about what cannot happen.** Offgrid
+puts no conversation of its own where a run against a vendor's model would find
+it. It cannot stop one being copied there, and nothing in a transcript says
+which kind of model wrote it, so a guarantee is not offgrid's to make.
+
+**OpenCode does not keep to this yet, and its conversations are the evidence.**
+The database under a person's own data directory holds 132 assistant messages
+naming provider `offgrid` — a provider that exists only in what a run derives
+inline, so those conversations name a provider nothing outside a run has. What
+happens on resuming one outside a run was not measured, because measuring it
+means generating against whatever it resolves to.
+
+**Moving them is one variable.** Measured on opencode 1.18.23, `XDG_DATA_HOME`
+moves the whole store: a fresh database, `repos/` and `log/` appear under it.
+That it also moves the `credential` table is a reason rather than a cost — a
+run that cannot reach a person's saved keys cannot spend them, which is the
+same sentence the rest of this file makes about hosted tools and sharing. The
+variable is nobody's in particular, so what else writes into the moved
+directory during a real run is measured before anything claims it.
+
+**Where a conversation is kept is its own member on the agent port, beside what
+could leave this machine.** It reads as though it belongs among the subjects:
+one line in `doctor`, one module per adapter, a conformance suite that makes
+every adapter answer. But `Status` does not fit it. A directory is not
+`DENIED`, `PERMITTED` or `UNWRITTEN`, and `NONE_OFFERED` would say the agent
+keeps no conversations at all. Every subject there is about a run sending
+something out; this is about where finished files sit, which is a hazard even
+though nothing left the machine. A fifth status used by one subject would say
+the two are the same question, and they are not.
+
+**`doctor` says it on every run rather than where an installation is kept
+apart.** After OpenCode moves there is no other case, and a branch with one arm
+would claim a second kind of agent that does not exist.
