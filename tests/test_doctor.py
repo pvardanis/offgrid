@@ -9,6 +9,7 @@ import httpx
 from typer.testing import CliRunner
 
 from offgrid.cli import app
+from tests.commands import install_agent
 from tests.doubles import StandInAgent, answer_as_an_agent, serve_get
 from tests.lmstudio_server import RESIDENT, answer_as_lm_studio
 from tests.profiles import add_to_section
@@ -146,3 +147,27 @@ def test_doctor_prints_a_ceiling_of_zero_as_zero(here, monkeypatch):
 
     assert "ceiling   0" in result.stderr
     assert "window    0" in result.stderr
+
+
+def test_doctor_reports_where_the_agent_a_run_would_start_was_found(here):
+    # A missing agent is otherwise met at exit 127, after a model has been
+    # loaded and let go again for a run that was never going to start.
+    runner.invoke(app, ["setup"])
+    install_agent(here, "claude")
+
+    result = runner.invoke(app, ["doctor"])
+
+    assert f"command   claude, at {here / 'bin' / 'claude'}" in result.stderr
+
+
+def test_doctor_says_where_an_agent_that_is_not_installed_comes_from(here):
+    # Where it comes from rather than what to type: an install command is a
+    # fact about somebody else's project, and it goes stale without a word.
+    runner.invoke(app, ["setup"])
+
+    result = runner.invoke(app, ["doctor"])
+
+    assert "command   claude, not on PATH" in result.stderr
+    assert "https://claude.com/claude-code" in result.stderr
+    assert "brew" not in result.stderr
+    assert "npm" not in result.stderr
