@@ -17,6 +17,18 @@ Studio today; Ollama is a candidate. Not "backend", not "server".
 **agent** — the coding tool being launched. Claude Code and OpenCode, one of
 which a profile names. Not "client".
 
+**installation** — the state an agent is run out of under offgrid: what it is
+configured with, and everything the agent keeps beside that, conversations
+included. Offgrid's rather than the person's own, at `~/.offgrid/<agent>/`
+rather than where the agent keeps its state when someone starts it themselves.
+So a conversation started under offgrid is resumed under offgrid, and none of
+a person's own plugins, hooks or instructions reach a run.
+
+**conversation** — what an agent writes down of a session so that it can be
+returned to. Claude Code keeps one per session under its configuration
+directory; OpenCode keeps them in a database under its data directory. A
+conversation belongs to the installation it was started in.
+
 **hosted tool** — a tool whose work happens on the vendor's servers rather
 than on this machine, and which therefore cannot run at all against a model
 held here. WebSearch is one: asked to search, the model emits the call, no
