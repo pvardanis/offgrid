@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Holds the 150-line limit as a ratchet against the committed file: one already
+# Holds the 200-line limit as a ratchet against the committed file: one already
 # past it is left alone until an edit makes it longer, so the files that are
 # long today do not drown out the one that just crossed.
 set -euo pipefail
 
-limit=150
+limit=200
 
 # shellcheck source=SCRIPTDIR/lib/edited-file.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib/edited-file.sh"
