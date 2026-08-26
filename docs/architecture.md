@@ -139,8 +139,6 @@ agents/            one package per agent
                    what is read back out of them
     compacting.py  what it compacts against, and what is said where
                    it will not
-    leaving.py     what a run of it could send off this machine, which
-                   is the two readings below
     hosted_tools.py  whether WebSearch can still be reached, out of the
                    settings and the argument that loads them
     publishing.py  whether an argument runs the session in the cloud
@@ -154,9 +152,8 @@ agents/            one package per agent
                    it is started with
     cautioning.py  what a run takes away and what it leaves unsized,
                    said before it starts
-    leaving.py     what a run of it could send off this machine, which
-                   is the tool list it was measured with and the reading
-                   below
+    hosted_tools.py  that it offers none, and the tool list that was
+                   measured to say so
     sharing.py     whether an argument or the file could let a transcript
                    leave, the argument read first
 leaderboards/      one module per published list, and the registry

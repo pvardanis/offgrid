@@ -7,7 +7,6 @@ before anything runs.
 
 from dataclasses import dataclass, field
 
-from offgrid.agents.claude_code import leaving
 from offgrid.agents.claude_code.compacting import (
     explain_what_will_not_compact,
     get_compaction_setting,
@@ -19,12 +18,14 @@ from offgrid.agents.claude_code.configuring import (
     SETTINGS,
     SLIM_SETTINGS,
 )
+from offgrid.agents.claude_code.hosted_tools import read_hosted_tools
 from offgrid.agents.claude_code.launching import (
     CONTEXT_FLOOR,
     MAX_OUTPUT_TOKENS,
     TOKEN,
     get_claude_args,
 )
+from offgrid.agents.claude_code.publishing import read_transcript_sharing
 from offgrid.domain.running.agent import Passthrough
 from offgrid.domain.running.config_editing import (
     write_config_where_nothing_is_kept,
@@ -86,17 +87,18 @@ class ClaudeCode:
     def read_what_leaves_this_machine(self) -> tuple[Reading, ...]:
         """Say what this run could send off this machine, one way at a time.
 
-        Where each is read, and why it is read where it is, is in
-        `leaving.py` — WebSearch out of a settings file and the argument
-        deciding whether it is loaded, publishing out of the command line.
+        Each subject is read where it is settled and says so in its own
+        module: WebSearch out of a settings file and the argument deciding
+        whether it is loaded, publishing out of the command line alone.
 
         :return: One reading for each way off this machine.
 
         :raise AgentSettingsError: When the settings are there and cannot be
             read, which says nothing either way about either.
         """
-        return leaving.read_what_leaves_this_machine(
-            self.config.config_dir / SETTINGS, self.passthrough
+        return (
+            read_hosted_tools(self.config.config_dir / SETTINGS, self.passthrough),
+            read_transcript_sharing(self.passthrough),
         )
 
     def plan(self, model: Model) -> Launch:

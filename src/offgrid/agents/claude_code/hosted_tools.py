@@ -1,7 +1,7 @@
 """Whether WebSearch can still be reached from a Claude Code run.
 
 Its own module because it is read in two places at once, neither of which the
-sharing reading beside it touches: the settings file offgrid writes, and the
+sharing reading beside it touches: the settings_path file offgrid writes, and the
 argument deciding whether that file is loaded at all.
 """
 
@@ -20,13 +20,13 @@ from offgrid.domain.running.leaving import Reading, Status, Subject
 SEARCH = "WebSearch"
 
 
-def read_hosted_tools(settings: Path, passthrough: Passthrough) -> Reading:
+def read_hosted_tools(settings_path: Path, passthrough: Passthrough) -> Reading:
     """Say whether WebSearch can still be reached from this run.
 
     Both halves of it, in the order they bite: an argument that stops the
-    settings being loaded leaves them beside the point, however they read.
+    settings_path being loaded leaves them beside the point, however they read.
 
-    :param settings: The settings file offgrid writes for this agent.
+    :param settings_path: The settings file offgrid writes for this agent.
     :param passthrough: What was handed to the agent unchanged.
 
     :return: What it found, and what to change.
@@ -51,28 +51,28 @@ def read_hosted_tools(settings: Path, passthrough: Passthrough) -> Reading:
     # `configure` asks it. Read off what the text parses to, a file holding
     # `null` would be called empty and answered with the remedy for an empty
     # one — and that remedy is to run the command already running.
-    body = read_what_config_is_kept(settings)
+    body = read_what_config_is_kept(settings_path)
 
     if body is None:
         return Reading(
             subject=Subject.HOSTED_TOOLS,
             status=Status.UNWRITTEN,
-            detail=f"{settings} holds nothing, so nothing denies {SEARCH}.",
+            detail=f"{settings_path} holds nothing, so nothing denies {SEARCH}.",
             remedy="`offgrid run` writes it before it starts the agent.",
         )
 
-    if SEARCH in get_denied_tools(read_as_json(body, settings)):
+    if SEARCH in get_denied_tools(read_as_json(body, settings_path)):
         return Reading(
             subject=Subject.HOSTED_TOOLS,
             status=Status.DENIED,
-            detail=f"{settings} denies {SEARCH}.",
+            detail=f"{settings_path} denies {SEARCH}.",
         )
 
     return Reading(
         subject=Subject.HOSTED_TOOLS,
         status=Status.PERMITTED,
         detail=(
-            f"{settings} does not deny {SEARCH}, which runs on Anthropic's "
+            f"{settings_path} does not deny {SEARCH}, which runs on Anthropic's "
             "servers: against a local model there is nothing to run it, so "
             "the model invents a result and the agent returns it as an answer."
         ),

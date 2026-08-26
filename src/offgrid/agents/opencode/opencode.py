@@ -7,10 +7,10 @@ nothing offgrid derives able to go stale.
 
 from dataclasses import dataclass, field
 
-from offgrid.agents.opencode import leaving
 from offgrid.agents.opencode.cautioning import say_what_the_run_costs
 from offgrid.agents.opencode.config import OpenCodeConfig
 from offgrid.agents.opencode.configuring import DURABLE, SETTINGS
+from offgrid.agents.opencode.hosted_tools import read_hosted_tools
 from offgrid.agents.opencode.launching import (
     CONFIG_CONTENT,
     CONFIG_FILE,
@@ -20,6 +20,7 @@ from offgrid.agents.opencode.launching import (
     get_derived_configuration,
     get_opencode_args,
 )
+from offgrid.agents.opencode.sharing import read_transcript_sharing
 from offgrid.domain.running.agent import Passthrough
 from offgrid.domain.running.config_editing import write_settings_where_nothing_is_kept
 from offgrid.domain.running.dialect import Dialect
@@ -81,18 +82,21 @@ class OpenCode:
     def read_what_leaves_this_machine(self) -> tuple[Reading, ...]:
         """Say what this run could send off this machine, one way at a time.
 
-        Where each is read, and what each was measured against, is in
-        `leaving.py` — nothing hosted from a tool list read off a live server,
-        sharing from the command line and then from the key in the file
-        `configure` writes and leaves alone.
+        Each subject is read where it is settled and says so in its own
+        module: nothing hosted from a tool list read off a live server, sharing
+        from the command line and then from the key in the file `configure`
+        writes and leaves alone.
 
         :return: One reading for each way off this machine.
 
         :raise AgentSettingsError: When the file is there and cannot be read,
             which says nothing either way about sharing.
         """
-        return leaving.read_what_leaves_this_machine(
-            self.config.config_dir / SETTINGS, self.passthrough
+        return (
+            read_hosted_tools(),
+            read_transcript_sharing(
+                self.config.config_dir / SETTINGS, self.passthrough
+            ),
         )
 
     def plan(self, model: Model) -> Launch:
