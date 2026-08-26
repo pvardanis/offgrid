@@ -91,12 +91,15 @@ class OpenCodeUnderTest:
     def arrange_a_transcript_that_leaves(self, home: Path) -> Passthrough:
         """Turn sharing back on in the file, the way a person would.
 
-        The whole of it is on disk, so nothing is bound: `share` is a key
-        OpenCode reads out of its own configuration rather than an argument.
+        The file rather than the argument, because the suite's other test
+        about this state asks what `configure` does to what it found — and an
+        argument leaves nothing on disk to have been left alone. That
+        OpenCode also takes `--share` is asked in `tests/test_opencode.py`,
+        where an adapter's own arguments are asked about.
 
         :param home: Where offgrid keeps what it writes for this run.
 
-        :return: Nothing, there being no argument in it.
+        :return: Nothing, this state being on disk.
         """
         self.edit_the_configuration(home)
 

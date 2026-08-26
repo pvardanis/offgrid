@@ -83,15 +83,17 @@ class OpenCode:
 
         Where each is read, and what each was measured against, is in
         `leaving.py` — nothing hosted from a tool list read off a live server,
-        sharing from the key in the file `configure` writes and then leaves
-        alone.
+        sharing from the command line and then from the key in the file
+        `configure` writes and leaves alone.
 
         :return: One reading for each way off this machine.
 
         :raise AgentSettingsError: When the file is there and cannot be read,
             which says nothing either way about sharing.
         """
-        return leaving.read_what_leaves_this_machine(self.config.config_dir / SETTINGS)
+        return leaving.read_what_leaves_this_machine(
+            self.config.config_dir / SETTINGS, self.passthrough
+        )
 
     def plan(self, model: Model) -> Launch:
         """Work out how to start OpenCode against a local runtime.
