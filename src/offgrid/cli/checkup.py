@@ -7,6 +7,7 @@ from offgrid.domain.running import discarded_windows
 from offgrid.domain.running.asking import describe_what_is_asked_for
 from offgrid.domain.running.dialect import Dialect
 from offgrid.domain.running.discarded_windows import DiscardedWindow
+from offgrid.domain.running.keeping import Conversations
 from offgrid.domain.running.leaving import Reading, Status
 from offgrid.domain.running.model import Model, ModelRequest
 from offgrid.shared.wording import describe_what_was_stated
@@ -28,6 +29,8 @@ class Checkup:
         holding nothing still answered.
     :param could_leave: What the agent says about each way this run could
         reach off this machine, one reading each.
+    :param kept: Where the agent keeps a conversation a run starts, and how to
+        open one again — which nothing outside a run finds.
     :param dialect: What the agent speaks.
     :param served: Every dialect the runtime serves, which says whether an
         agent other than this one would pair with it.
@@ -42,6 +45,7 @@ class Checkup:
     profile: Profile
     resident: Model | None
     could_leave: tuple[Reading, ...]
+    kept: Conversations
     dialect: Dialect
     served: frozenset[Dialect]
     context_floor: int
@@ -69,6 +73,7 @@ def describe_what_was_read(checkup: Checkup) -> tuple[str, ...]:
         f"agent     {profile.agent.name.value}, speaking {checkup.dialect.value}",
         f"floor     {checkup.context_floor}",
         *_describe_what_could_leave(checkup.could_leave),
+        *_describe_where_conversations_are_kept(checkup.kept),
     )
 
     return (*said, *_describe_a_discarded_window(checkup))
@@ -100,6 +105,24 @@ def _describe_what_could_leave(readings: tuple[Reading, ...]) -> tuple[str, ...]
             said = (*said, f"          {reading.said}")
 
     return said
+
+
+def _describe_where_conversations_are_kept(kept: Conversations) -> tuple[str, ...]:
+    """Say where a conversation this run starts lands, and the way back into it.
+
+    On every run rather than where an installation is kept apart, because there
+    is no second case: every agent offgrid runs is run out of a directory of
+    offgrid's, so a branch with one arm would claim a kind of agent that does
+    not exist.
+
+    The way back goes under the directory, where a reading about what could
+    leave puts its remedy: a directory on its own is what a person already had.
+
+    :param kept: Where the agent keeps them, and how to open one again.
+
+    :return: The lines to say, in the order they are read.
+    """
+    return (f"kept      {kept.kept_in}", f"          {kept.resumed_by}")
 
 
 def _describe_the_model(model: Model | None, request: ModelRequest) -> tuple[str, ...]:

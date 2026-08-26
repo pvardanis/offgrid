@@ -1,0 +1,55 @@
+"""What `offgrid doctor` says about where a conversation started here is kept.
+
+The finding a person otherwise meets as a missing session: `claude --resume
+<id>` in an ordinary terminal answers "No conversation found with session ID"
+for a run offgrid started minutes earlier, because a run is its own
+installation and the transcript is where offgrid put it. `docs/decisions.md`
+says why that stays, under "A conversation started here is resumed here", and
+this is where a person is told.
+"""
+
+from typer.testing import CliRunner
+
+from offgrid.cli import app
+from tests.opencode_bindings import name_opencode
+
+runner = CliRunner()
+
+
+def test_doctor_says_where_a_conversation_is_kept_and_how_to_open_one(here):
+    # Both halves. A directory is what somebody already had: what they are
+    # missing is that the agent started on its own reads a different one, and
+    # the command that reads this one.
+    runner.invoke(app, ["setup"])
+
+    result = runner.invoke(app, ["doctor"])
+
+    assert result.exit_code == 0
+    assert f"kept      {here / 'claude-code'}\n" in result.stderr
+    assert "offgrid run -- --resume" in result.stderr
+
+
+def test_doctor_says_it_on_a_machine_that_has_never_run_the_agent(here):
+    # It is answered out of what a run would point the agent at rather than
+    # out of anything on disk, so there is no first run to have made before
+    # the report can say it — and nothing is created by asking.
+    runner.invoke(app, ["setup"])
+
+    result = runner.invoke(app, ["doctor"])
+
+    assert "kept      " in result.stderr
+    assert not (here / "claude-code").exists()
+
+
+def test_doctor_says_it_for_the_other_agent_too(here):
+    # No branch: after the OpenCode convergence there is no second case, and
+    # one agent's line missing would be the same silence issue #180 was filed
+    # about. The store rather than the directory beside it, because that is
+    # what `XDG_DATA_HOME` moves.
+    name_opencode(here)
+
+    result = runner.invoke(app, ["doctor"])
+
+    assert result.exit_code == 0
+    assert f"kept      {here / 'opencode' / 'store'}\n" in result.stderr
+    assert "offgrid run -- run --continue" in result.stderr
