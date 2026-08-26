@@ -231,7 +231,7 @@ Shared is what reaches nothing of offgrid's own, which is the test as well as
 the description: every one of these imports only the standard library or a
 dependency, so any layer may reach them without a cycle to think about.
 
-Files stay under 150 lines and are organised by domain rather than by kind, so
+Files stay under 200 lines and are organised by domain rather than by kind, so
 a module that outgrows the limit is usually two ideas rather than one long one.
 
 ## What happens on `offgrid run` — built
