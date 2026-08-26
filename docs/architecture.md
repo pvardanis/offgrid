@@ -146,7 +146,8 @@ agents/            one package per agent
     opencode.py    what an agent is asked, in OpenCode's terms
     config.py      what it is run out of, as a profile says it
     configuring.py what offgrid writes into its directory, which is
-                   only what offgrid never revises
+                   only what offgrid never revises, and the names of
+                   what sits under that directory
     launching.py   the configuration a run derives, and the command
                    it is started with
     cautioning.py  what a run takes away and what it leaves unsized,

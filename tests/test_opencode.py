@@ -18,6 +18,7 @@ from tests.opencode_bindings import (
     HOST,
     RUNTIME_SPELLINGS,
     SETTINGS,
+    STORE,
     WANTED,
     bind,
     plan_for,
@@ -108,6 +109,26 @@ def test_the_file_the_agent_keeps_is_the_one_it_is_pointed_at(launch, tmp_path):
     # named it something else would carry the durable half where OpenCode
     # never looks — and importing the constant would rename both sides at once.
     assert launch.env["OPENCODE_CONFIG"] == str(tmp_path / "opencode" / SETTINGS)
+
+
+def test_the_conversations_a_run_leaves_behind_are_kept_where_offgrid_put_them(
+    launch, tmp_path
+):
+    # The other half of an installation. Pointing OpenCode at a configuration
+    # file settles what it is configured with and nothing about where it writes
+    # what a session leaves behind, so a run answering through a provider that
+    # exists only inside it would otherwise land in a person's own store,
+    # beside the providers they authenticated themselves.
+    #
+    # The variable is written out rather than imported for the same reason the
+    # one above it is: renaming both sides at once would leave the store where
+    # OpenCode never moved it.
+    # Named and then not dropped, because a launch takes what it drops back
+    # out after the two environments are merged: dropping this one would leave
+    # the store where a person's own OpenCode keeps it, which is the whole of
+    # what this is for.
+    assert launch.env["XDG_DATA_HOME"] == str(tmp_path / "opencode" / STORE)
+    assert "XDG_DATA_HOME" not in launch.dropped
 
 
 def test_the_command_line_carries_only_what_a_person_typed(agent):

@@ -1,4 +1,4 @@
-"""What offgrid writes into a fresh OpenCode directory.
+"""What offgrid writes into a fresh OpenCode directory, and where it goes.
 
 Only what offgrid never revises is here. `configure` writes this where the file
 holds no edit and never touches one that does, because it cannot tell offgrid's
@@ -9,9 +9,47 @@ profile changed. Everything offgrid derives travels in the launch instead.
 A file that is there and says none of this keeps its own keys and gets none of
 these added. `domain/running/config_editing.py` says why that is the answer rather
 than merging them in.
+
+The names under that directory are here too, whichever side of the split
+writes them: the file above is offgrid's, and the store below is OpenCode's
+own, reached through a variable the launch carries.
 """
 
 SETTINGS = "opencode.json"
+
+# Where OpenCode writes what a run leaves behind, rather than reads. The file
+# above settles what OpenCode is configured with and nothing about where a
+# session lands, and both halves are an installation: the provider a run
+# answers through is derived inline and exists only inside one, so a
+# conversation kept in a person's own store is one nothing outside a run can
+# resolve the model of. `docs/decisions.md` has why that partition is worth
+# having, under "A conversation started here is resumed here".
+#
+# Measured on opencode 1.18.23. Against three directory levels that did not
+# exist, this variable creates all of them and then `opencode/` inside; a real
+# `offgrid run` left `opencode.db` with `-wal` and `-shm` beside it, `repos/`,
+# `snapshot/` and `log/` under that. The write-ahead log is where a session
+# reaches first, so the database file alone is not the conversation.
+#
+# What moves with the conversations is what a person authenticated: the
+# database's `credential` table, and the `auth.json` that `opencode auth list`
+# names — asked with this variable set, it reports the moved path. Nothing was
+# authenticated to watch a key become unreachable, so what was measured is
+# where the file is looked for.
+#
+# What it does not move is `prompt-history.jsonl`, which records what a person
+# typed and sits under `XDG_STATE_HOME`. The interactive interface is what
+# fills it, so a one-shot run leaves it empty. Issue #184 moves that directory
+# too.
+#
+# Not OpenCode's variable in particular — anything a run spawns sees the moved
+# value, which is the price of one variable moving as much as it does.
+DATA_HOME = "XDG_DATA_HOME"
+
+# Beside the file above rather than in the directory holding it, because
+# OpenCode hangs its own name off this value: pointing it at that directory
+# would put a store called `opencode` inside `opencode/`.
+STORE = "store"
 
 # OpenCode takes any string as a provider identifier, so nothing requires this
 # to be a runtime's name — and making it one would put a fact about runtimes
