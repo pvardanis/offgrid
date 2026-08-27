@@ -52,7 +52,7 @@ def _read_what_can_be_read() -> Checkup:
     resident = find_resident_model(runtime)
     discarded, unreadable = _read_what_was_discarded(profile, resident)
 
-    terms = agent.terms
+    agent_terms = agent.terms
 
     return Checkup(
         profile=profile,
@@ -63,8 +63,8 @@ def _read_what_can_be_read() -> Checkup:
             unreadable=unreadable,
         ),
         agent=WhatTheAgentAnswered(
-            terms=terms,
-            found_at=find_agent_on_path(terms.command),
+            terms=agent_terms,
+            found_at=find_agent_on_path(agent_terms.command),
             could_leave=agent.read_what_leaves_this_machine(),
             kept=agent.conversations,
         ),
