@@ -2105,9 +2105,11 @@ exists not to print.
 
 **Have the adapter measure the model directory.** The mapping does not hold on
 the machine it was checked on: the catalogue says `qwen/qwen3.6-35b-a3b`, the
-disk says `lmstudio-community/Qwen3.6-35B-A3B-MLX-4bit`, the publisher differs
-between the two, and one directory name serves two quantizations. Most rows
-would answer nothing, so the column would be mostly blank.
+disk says `lmstudio-community/Qwen3.6-35B-A3B-MLX-4bit`, and the publisher
+differs between the two. The catalogue is also the coarser of the pair: it
+lists one `qwen/qwen3.6-35b-a3b` where the disk holds both a `-MLX-4bit` and a
+`-MLX-8bit` directory, so one identifier answers for two builds of different
+sizes. Most rows would answer nothing, so the column would be mostly blank.
 
 **Require `lms`**, which prints the figure. That reverses the decision above
 that offgrid does not require it on the `PATH`, and reversing a decision to
@@ -2135,11 +2137,13 @@ surfaces that move.
 
 ## The report is `doctor`'s, with what a keystroke costs said under it
 
-Everything down to `conversations` is the report the command prints, from
-`describe_what_was_read`, composed against a profile the pairing was written
-into rather than against the file. Under it, one block the screen owns: whether
-this pair can talk, whether the agent is here at all, and whether starting it
-costs a load.
+Everything down to `conversations` is the report the command prints, asked for
+part by part from the same place — `describe_the_runtime`, `describe_the_model`,
+`describe_what_is_requested`, `describe_the_agent` and
+`describe_a_discarded_window`, which are the five `describe_what_was_read`
+itself composes — against a profile the pairing was written into rather than
+against the file. Under it, one block the screen owns: whether this pair can
+talk, whether the agent is here at all, and whether starting it costs a load.
 
 Said under rather than woven in, because the two are read by different
 questions — what a run was told, and what a key would do — and because a screen
@@ -2185,18 +2189,24 @@ comes from reads `not installed` on the row and nothing more.
 
 ## What there is to pick from, and what one pick would do, are two modules
 
-`assembling.py` at 505 lines was what prompted the look, but the number is not
-what decided it. There is a seam: the values, the row layouts and the ordering
-are the list of what there is, and the report is what one of them would do —
-two different questions, and `costing.py` reaches for the first while nothing
-goes the other way. Cutting there leaves 251 and 276 lines, each about one
-thing.
+`assembling.py` running past 500 lines was what prompted the look, but the
+number is not what decided it. There is a seam: the values, the row layouts and
+the ordering are the list of what there is, and the report is what one of them
+would do — two different questions, and `costing.py` reaches for the first
+while nothing goes the other way. Cutting there leaves each file at about 280
+lines and about one thing. No exact counts here, because this branch's own
+later commits moved them twice.
 
 The split that was considered and rejected was by length alone, down the middle
 of the report: it would have put the pricing block in one file and the lines it
 sits under in another, so a reader following one report would open two files
 and neither would be about a whole idea.
 
-`tests/test_picker.py` at 609 lines stays whole. It is one seam — the screen —
-and the suite is read by opening the test named after the behaviour, not by
-reading down.
+Three files still run past 200 and stay whole, which the rule asks be said
+rather than fixed by splitting. `tests/test_picker.py`, the longest, is one
+seam — the screen — and a suite is read by opening the test named after the
+behaviour rather than by reading down. `picker.py` is one screen: its
+composition, its three lists and the keys over them are the same idea, and a
+file holding half a screen is a file nobody can read the layout out of.
+`checkup.py` grew by having its parts made reachable, which is what let a
+second surface stop duplicating them.

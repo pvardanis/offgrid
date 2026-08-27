@@ -61,7 +61,7 @@ def describe_what_would_run(
     answered = agent.answered
 
     if isinstance(answered, WouldNotAnswer):
-        return _describe_an_agent_that_would_not_answer(agent.name, answered)
+        return _describe_an_agent_that_would_not_answer(what, agent.name, answered)
 
     checkup = Checkup(
         profile=_as_assembled(what.profile, agent, assembly),
@@ -74,7 +74,7 @@ def describe_what_would_run(
     # asked for the pairing's model rather than for the one the runtime is
     # holding — the two are the same until somebody moves the highlight.
     return (
-        *describe_the_runtime(checkup),
+        *describe_the_runtime(checkup.profile, what.runtime),
         *describe_the_model(
             model,
             checkup.profile.model,
@@ -82,7 +82,7 @@ def describe_what_would_run(
         ),
         *describe_what_is_requested(checkup),
         *describe_the_agent(checkup),
-        *describe_a_discarded_window(checkup),
+        *describe_a_discarded_window(what.runtime),
         *_describe_what_running_would_cost(
             what, assembly, agent, answered.terms.dialect
         ),
@@ -90,22 +90,28 @@ def describe_what_would_run(
 
 
 def _describe_an_agent_that_would_not_answer(
-    name: AgentName, refusal: WouldNotAnswer
+    what: WhatCouldBeRun, name: AgentName, refusal: WouldNotAnswer
 ) -> tuple[str, ...]:
     """Say that an agent's own settings stopped it answering at all.
 
-    The whole report rather than a line of it, because everything below the
-    agent line is read off the agent: a report saying the rest as though it
-    were true would be about a pairing that cannot be assembled.
+    Everything read off the agent goes — the model it would run against, its
+    floor, what could leave, where conversations land — because saying any of
+    it would describe a pairing that cannot be assembled. What the runtime
+    answered stays, because none of it was read off the agent, and a person
+    whose settings file has a stray brace is still owed the finding about the
+    second broken file on their machine.
 
+    :param what: Everything that was read.
     :param name: The agent that would not answer.
     :param refusal: What stopped it.
 
     :return: The lines to say.
     """
     return (
+        *describe_the_runtime(what.profile, what.runtime),
         say_in_columns("agent", f"{name.value}, which did not answer"),
         *say_indented(REMEDY, refusal.why),
+        *describe_a_discarded_window(what.runtime),
     )
 
 
@@ -196,7 +202,19 @@ def _describe_what_running_would_cost(
     if not what.downloaded:
         return _describe_a_runtime_with_nothing_downloaded(what)
 
-    return _price_the_load(what, assembly)
+    identifier = find_what_would_answer(what, assembly)
+
+    if identifier is None:
+        return (
+            say_in_columns(
+                RUNNING, "no model would answer, so there is nothing to run"
+            ),
+        )
+
+    if _find_the_model_that_would_answer(what, assembly) is None:
+        return _refuse_a_model_the_runtime_has_not_got(what, identifier)
+
+    return _price_the_load(what, identifier)
 
 
 def _refuse_a_pair_that_cannot_talk(
@@ -250,7 +268,34 @@ def _describe_a_runtime_with_nothing_downloaded(
     )
 
 
-def _price_the_load(what: WhatCouldBeRun, assembly: Assembly) -> tuple[str, ...]:
+def _refuse_a_model_the_runtime_has_not_got(
+    what: WhatCouldBeRun, identifier: str
+) -> tuple[str, ...]:
+    """Say that the model a run would ask for is not one the runtime has.
+
+    The refusal `run` meets, met here for nothing. A profile can name a model
+    that has since been deleted or renamed, and the list has no row for it —
+    so this is the one thing a screen showing rows could otherwise never say.
+
+    :param what: Everything that was read.
+    :param identifier: The model that would be asked for.
+
+    :return: The lines to say.
+    """
+    return (
+        say_in_columns(
+            RUNNING,
+            f"the runtime at {what.profile.runtime.host} has not got {identifier}",
+        ),
+        *say_indented(
+            REMEDY,
+            "Pick one of the models listed, or name a downloaded one under "
+            "`model:` in the profile.",
+        ),
+    )
+
+
+def _price_the_load(what: WhatCouldBeRun, identifier: str) -> tuple[str, ...]:
     """Say whether starting this pairing would cost a load.
 
     The one thing a person cannot read anywhere else before committing: a model
@@ -258,19 +303,10 @@ def _price_the_load(what: WhatCouldBeRun, assembly: Assembly) -> tuple[str, ...]
     weights moving, with whatever else is held let go of first.
 
     :param what: Everything that was read.
-    :param assembly: What the highlight is on.
+    :param identifier: The model that would answer, which the runtime has.
 
     :return: The line to say.
     """
-    identifier = find_what_would_answer(what, assembly)
-
-    if identifier is None:
-        return (
-            say_in_columns(
-                RUNNING, "no model would answer, so there is nothing to run"
-            ),
-        )
-
     if identifier in what.held:
         return (
             say_in_columns(RUNNING, f"{identifier} is held, so this costs no load"),

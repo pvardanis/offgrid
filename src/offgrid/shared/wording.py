@@ -72,7 +72,9 @@ def describe_what_was_stated(value: int | None) -> str:
     return "unstated" if value is None else str(value)
 
 
-def say_indented(indent: str, sentence: str) -> tuple[str, ...]:
+def say_indented(
+    indent: str, sentence: str, width: int = LINE_WIDTH
+) -> tuple[str, ...]:
     """Break a sentence into lines that all start where the first one does.
 
     A sentence long enough to wrap is one a terminal wraps at the left margin,
@@ -87,6 +89,8 @@ def say_indented(indent: str, sentence: str) -> tuple[str, ...]:
 
     :param indent: Where the sentence starts, and where it carries on.
     :param sentence: What is being said.
+    :param width: How wide it may run before it breaks. The reports are
+        written by hand to the default; a list beside them has its own.
 
     :return: The lines of it, in order.
     """
@@ -95,7 +99,7 @@ def say_indented(indent: str, sentence: str) -> tuple[str, ...]:
     return tuple(
         fill(
             held,
-            LINE_WIDTH,
+            width,
             initial_indent=indent,
             subsequent_indent=indent,
             break_long_words=False,

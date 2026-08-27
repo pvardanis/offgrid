@@ -18,8 +18,11 @@ from offgrid.agents.claude_code.launching import CONTEXT_FLOOR
 from offgrid.cli import app
 from offgrid.cli.binding import read_what_could_be_run
 from offgrid.domain.costing import RUNNING
+from offgrid.domain.running import discarded_windows
 from offgrid.domain.running.dialect import Dialect
+from offgrid.domain.running.discarded_windows import save_discarded_window
 from offgrid.domain.running.model import Model
+from offgrid.domain.running.runtime import RuntimeName
 from offgrid.tui.picker import (
     AGENTS,
     COLUMNS,
@@ -141,6 +144,25 @@ def on_this_machine(monkeypatch, *commands: str) -> None:
     monkeypatch.setattr(
         "offgrid.domain.running.agent_presence.shutil.which",
         lambda command: f"/somewhere/{command}" if command in commands else None,
+    )
+
+
+def record_a_discarded_window(here) -> None:
+    """Keep that the runtime did not grant a window it was asked for.
+
+    Written where the suite's own guard points `DEFAULT_PATH`, which is where
+    the reader looks: the picker reads the record through the same call
+    `doctor` does.
+
+    :param here: Where offgrid keeps its files.
+    """
+    save_discarded_window(
+        runtime=RuntimeName.LMSTUDIO,
+        host="127.0.0.1:1234",
+        identifier=RESIDENT,
+        asked_for=131072,
+        served=SERVED,
+        file_path=discarded_windows.DEFAULT_PATH,
     )
 
 
@@ -361,11 +383,67 @@ def test_an_agent_whose_own_settings_will_not_read_is_a_row_and_not_a_blank_scre
 
     driven = screen(here, "tab", "down")
 
-    assert driven.listed[AGENTS] == ["claude-code", "opencode      did not answer"]
+    marked = next(row for row in driven.listed[AGENTS] if row.startswith("opencode"))
+
+    # What stopped it rides on the row for the same reason the install link
+    # does: the cursor cannot land here, so nothing else would ever show it.
+    assert driven.listed[AGENTS][0] == "claude-code"
+    assert marked.splitlines()[0] == "opencode      did not answer"
+    assert "opencode.json" in marked
     assert not any(row.startswith("opencode") for row in driven.reachable[AGENTS]), (
         "the cursor can reach an agent that would not answer"
     )
     assert f"model       {RESIDENT}" in driven.shown
+
+
+def test_moving_the_agent_highlight_recomputes_the_report(here, monkeypatch):
+    # The other half of "the report follows the highlight", and the half that
+    # nothing held: a report reading the profile's agent rather than the
+    # highlighted one answers every question about the pair a person is on with
+    # a fact about the pair they left.
+    runner.invoke(app, ["setup"])
+    on_this_machine(monkeypatch, "claude", "opencode")
+
+    opened = screen(here)
+    moved = screen(here, "tab", "down")
+
+    assert moved.highlighted[AGENTS] == "opencode"
+    assert "agent       claude-code, speaking anthropic" in opened.shown
+    assert "agent       opencode, speaking openai" in moved.shown
+
+    # Where its conversations land is read off the highlighted agent's own
+    # config, so it says the report was assembled from that agent rather than
+    # from the one the profile names.
+    assert str(here / "claude-code") in opened.shown
+    assert str(here / "opencode") in moved.shown
+
+
+def test_moving_onto_an_agent_the_runtime_cannot_talk_to_is_what_refuses_it(
+    here, monkeypatch
+):
+    # The refusal has to be produced by the move rather than by the profile,
+    # or a report that never reads the highlighted agent passes the same
+    # assertion.
+    runner.invoke(app, ["setup"])
+    answer_as_a_runtime(
+        monkeypatch,
+        StandInRuntime(
+            dialects=frozenset({Dialect.ANTHROPIC}),
+            downloaded=(
+                Model(identifier=RESIDENT, context_ceiling=262144, context_window=None),
+            ),
+        ),
+    )
+    on_this_machine(monkeypatch, "claude", "opencode")
+
+    opened = screen(here)
+    moved = screen(here, "tab", "down")
+
+    assert "refused, and a load would not be reached" not in opened.shown
+    assert "running     refused, and a load would not be reached" in moved.shown
+    assert "the anthropic API and the agent expects openai" in " ".join(
+        moved.shown.split()
+    )
 
 
 def test_an_agent_the_runtime_cannot_talk_to_is_refused_with_every_dialect_named(
@@ -407,9 +485,13 @@ def test_an_agent_this_machine_has_not_got_is_marked_and_the_cursor_steps_over_i
     on_this_machine(monkeypatch, "opencode")
 
     driven = screen(here)
-    marked = [row for row in driven.listed[AGENTS] if row.startswith("claude-code")]
+    marked = next(row for row in driven.listed[AGENTS] if row.startswith("claude-code"))
 
-    assert marked == ["claude-code   not installed"]
+    # The reason rides on the row, because the cursor steps over it and the
+    # report is only ever computed for the row the cursor is on: said anywhere
+    # else, the one sentence that helps is the one nobody can reach.
+    assert marked.splitlines()[0] == "claude-code   not installed"
+    assert "https://docs.claude.com/en/docs/claude-code/setup" in marked
     assert not any(row.startswith("claude-code") for row in driven.reachable[AGENTS]), (
         "the cursor can reach an agent this machine cannot start"
     )
@@ -462,6 +544,101 @@ def test_a_runtime_with_nothing_downloaded_still_reports_the_model_named(
 
     assert "requests    google/gemma-4-e4b" in driven.shown
     assert "name one under `model:` in the profile" not in driven.shown
+
+
+def test_the_agent_a_run_would_try_is_reported_on_even_where_it_would_not_answer(
+    here, monkeypatch
+):
+    # Reached when the profile names the broken agent and nothing else can be
+    # highlighted, which is where the whole-report branch is read. What the
+    # runtime said stays, because none of it was read off the agent.
+    runner.invoke(app, ["setup"])
+    on_this_machine(monkeypatch)
+    (here / "claude-code").mkdir(exist_ok=True)
+    (here / "claude-code" / "settings.json").write_text("{not json")
+
+    driven = screen(here)
+
+    assert "agent       claude-code, which did not answer" in driven.shown
+    assert "settings.json" in driven.shown
+    assert "runtime     lmstudio at 127.0.0.1:1234, reachable" in driven.shown
+    assert "  dialects  anthropic, openai" in driven.shown
+
+
+def test_a_window_offgrid_stopped_asking_for_is_said_on_the_screen(here, monkeypatch):
+    # The remedy is a file to delete, and the screen is where somebody looks
+    # when a run is not the size they asked for.
+    runner.invoke(app, ["setup"])
+    on_this_machine(monkeypatch, "claude")
+    record_a_discarded_window(here)
+
+    driven = screen(here)
+
+    assert "discarded   131072 was asked for on" in driven.shown
+    assert "to ask again" in driven.shown
+
+
+def test_a_profile_asking_for_nothing_says_so_where_the_held_model_is_highlighted(
+    here, monkeypatch
+):
+    # Sitting on the model the runtime is holding is not the same statement as
+    # having written its name down, and the `requests` line is the only place
+    # the difference shows.
+    runner.invoke(app, ["setup"])
+    answer_as_lm_studio(
+        monkeypatch,
+        holding={RESIDENT: SERVED},
+        cold={"google/gemma-4-e4b": 131072},
+    )
+    on_this_machine(monkeypatch, "claude")
+
+    opened = screen(here)
+    moved = screen(here, "tab", "tab", "down")
+
+    asks_for_nothing = "requests    asks for nothing, so a run takes whatever is held"
+
+    assert str(opened.highlighted[MODELS]).startswith(RESIDENT)
+    assert asks_for_nothing in opened.shown
+    assert "requests    google/gemma-4-e4b" in moved.shown
+
+
+def test_a_model_the_runtime_has_not_got_is_named_rather_than_swapped(
+    here, monkeypatch
+):
+    # A profile can name a model that has since been deleted or renamed. The
+    # list has no row for it, and quietly moving the highlight onto another
+    # model would answer with a clean report about a run nobody asked for —
+    # while `run` refuses and `doctor` says the real request.
+    runner.invoke(app, ["setup"])
+    name_a_model(here, "someone/a-model-that-was-deleted")
+    answer_as_lm_studio(
+        monkeypatch,
+        holding={RESIDENT: SERVED},
+        cold={"google/gemma-4-e4b": 131072},
+    )
+    on_this_machine(monkeypatch, "claude")
+
+    driven = screen(here)
+
+    assert driven.highlighted[MODELS] is None
+    assert "requests    someone/a-model-that-was-deleted" in driven.shown
+    assert "has not got someone/a-model-that-was-deleted" in driven.shown
+    assert f"{RESIDENT} is held" not in driven.shown
+
+
+def test_a_window_the_profile_asks_for_is_carried_into_what_would_run(
+    here, monkeypatch
+):
+    # A number somebody wrote down is a request, and a report that dropped it
+    # would price a run at a window nobody asked for.
+    runner.invoke(app, ["setup"])
+    add_to_section(here, "model", context_window=65536)
+    answer_as_lm_studio(monkeypatch, holding={RESIDENT: SERVED})
+    on_this_machine(monkeypatch, "claude")
+
+    driven = screen(here)
+
+    assert "at 65536" in driven.shown
 
 
 def test_moving_the_highlight_writes_nothing(here, monkeypatch):

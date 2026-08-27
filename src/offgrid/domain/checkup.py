@@ -108,28 +108,36 @@ def describe_what_was_read(checkup: Checkup) -> tuple[str, ...]:
     # The model it names is the one the runtime is holding, so it is held by
     # construction: a runtime holding nothing takes the other branch.
     return (
-        *describe_the_runtime(checkup),
+        *describe_the_runtime(checkup.profile, checkup.runtime),
         *describe_the_model(checkup.runtime.resident, checkup.profile.model, held=True),
         *describe_what_is_requested(checkup),
         *describe_the_agent(checkup),
-        *describe_a_discarded_window(checkup),
+        *describe_a_discarded_window(checkup.runtime),
     )
 
 
-def describe_the_runtime(checkup: Checkup) -> tuple[str, ...]:
+def describe_the_runtime(
+    profile: Profile, answered: WhatTheRuntimeAnswered
+) -> tuple[str, ...]:
     """Say which runtime answered, and every shape it serves.
 
-    :param checkup: What the profile, the runtime and the agent answered.
+    It takes the two things it reads rather than the whole reading, because a
+    surface reporting on an agent that would not answer has no `Checkup` to
+    hand and is still owed these lines: what the runtime said is true whatever
+    the agent did.
+
+    :param profile: What was written down.
+    :param answered: What the runtime said.
 
     :return: The lines to say.
     """
-    runtime = checkup.profile.runtime
+    runtime = profile.runtime
 
     return (
         say_in_columns("runtime", f"{runtime.name.value} at {runtime.host}, reachable"),
         say_in_columns(
             "dialects",
-            ", ".join(sorted(d.value for d in checkup.runtime.served)),
+            ", ".join(sorted(d.value for d in answered.served)),
             under=True,
         ),
     )
@@ -320,7 +328,7 @@ def describe_the_model(
     )
 
 
-def describe_a_discarded_window(checkup: Checkup) -> tuple[str, ...]:
+def describe_a_discarded_window(answered: WhatTheRuntimeAnswered) -> tuple[str, ...]:
     """Say that offgrid stopped asking for a window, and how to make it ask.
 
     Deleting the file makes offgrid ask again, so this is where it is named:
@@ -328,15 +336,19 @@ def describe_a_discarded_window(checkup: Checkup) -> tuple[str, ...]:
     The number the runtime served then is said as what it was — what it serves
     now is the `window` line above, and the two are read together.
 
-    :param checkup: What the profile, the runtime and the agent answered.
+    It takes what the runtime said rather than the whole reading, for the
+    reason `describe_the_runtime` gives: a record offgrid keeps about a runtime
+    is worth reading whatever the agent did.
+
+    :param answered: What the runtime said.
 
     :return: A line for each window discarded and the way back under them, and
         nothing where none was.
     """
-    if checkup.runtime.unreadable is not None:
-        return (say_in_columns("discarded", checkup.runtime.unreadable),)
+    if answered.unreadable is not None:
+        return (say_in_columns("discarded", answered.unreadable),)
 
-    if not checkup.runtime.discarded:
+    if not answered.discarded:
         return ()
 
     return (
@@ -346,7 +358,7 @@ def describe_a_discarded_window(checkup: Checkup) -> tuple[str, ...]:
                 f"{record.asked_for} was asked for on {record.dated} and "
                 f"{record.served} served then, so offgrid is not asking again.",
             )
-            for record in checkup.runtime.discarded
+            for record in answered.discarded
         ),
         *say_indented(REMEDY, f"Delete {discarded_windows.DEFAULT_PATH} to ask again."),
     )
