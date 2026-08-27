@@ -1,14 +1,12 @@
-"""What could be run on this machine, and what running one pairing would cost.
+"""What could be run on this machine, and how a person picks their way through it.
 
-Everything is read once, and every report after that is composed out of what
-came back. Moving a highlight reaches no runtime, opens no file and writes
-nothing, which is what makes looking around free.
+Everything is read once, and everything after that is composed out of what came
+back. Moving a highlight reaches no runtime, opens no file and writes nothing,
+which is what makes looking around free.
 
-The report itself is `doctor`'s, recomputed against the pairing rather than
-against the file — the same lines from the same place, so that two surfaces
-cannot word one fact differently — with what running it would cost said under
-them. That last part is the picker's own: `doctor` reports the model the
-runtime is already holding, so it has never had a load to price.
+What one pairing would report and cost is `costing.py`, which reaches for these
+values. Nothing here reaches back: this is the list of what there is, and that
+is what one of them would do.
 
 A pairing names an agent and a model and not a runtime, because there is one
 runtime adapter and its config is the profile's. The list shows it, so that a
@@ -18,34 +16,11 @@ second one lands.
 
 from dataclasses import dataclass
 
-from offgrid.domain.checkup import (
-    Checkup,
-    WhatTheAgentAnswered,
-    WhatTheRuntimeAnswered,
-    describe_a_discarded_window,
-    describe_the_agent,
-    describe_the_model,
-    describe_the_runtime,
-    describe_what_is_requested,
-)
+from offgrid.domain.checkup import WhatTheAgentAnswered, WhatTheRuntimeAnswered
 from offgrid.domain.profile import Profile
 from offgrid.domain.running.agent import AgentConfig, AgentName
-from offgrid.domain.running.dialect import Dialect, require_compatible
-from offgrid.domain.running.model import Model, ModelRequest
-from offgrid.shared.exceptions import DialectMismatchError
-from offgrid.shared.wording import (
-    REMEDY,
-    describe_what_was_stated,
-    say_in_columns,
-    say_indented,
-)
-
-RUNNING = "running"
-"""What the lines about the cost of a pairing are labelled.
-
-Its own heading rather than more lines under `model`, because it is the one
-part of the report that is about a keystroke nobody has pressed yet.
-"""
+from offgrid.domain.running.model import Model
+from offgrid.shared.wording import describe_what_was_stated
 
 AGENT_COLUMN = 14
 """How wide an agent's name is on its row, so that what is said about it lines
@@ -253,48 +228,6 @@ def describe_a_model_row(model: Model, *, held: bool) -> str:
     )
 
 
-def describe_what_would_run(
-    what: WhatCouldBeRun, assembly: Assembly
-) -> tuple[str, ...]:
-    """Put what running a pairing would do into the lines it is read as.
-
-    :param what: Everything that was read.
-    :param assembly: What the highlight is on.
-
-    :return: The lines to say, in the order they are read.
-    """
-    agent = find_agent(what, assembly.agent)
-    answered = agent.answered
-
-    if answered is None:
-        return _describe_an_agent_that_would_not_answer(agent)
-
-    checkup = Checkup(
-        profile=_as_assembled(what.profile, agent, assembly),
-        runtime=what.runtime,
-        agent=answered,
-    )
-    model = _find_the_model_that_would_answer(what, assembly)
-
-    # The same lines `doctor` prints, from the same place, with the model block
-    # asked for the pairing's model rather than for the one the runtime is
-    # holding — the two are the same until somebody moves the highlight.
-    return (
-        *describe_the_runtime(checkup),
-        *describe_the_model(
-            model,
-            checkup.profile.model,
-            held=model is not None and model.identifier in what.held,
-        ),
-        *describe_what_is_requested(checkup),
-        *describe_the_agent(checkup),
-        *describe_a_discarded_window(checkup),
-        *_describe_what_running_would_cost(
-            what, assembly, agent, answered.terms.dialect
-        ),
-    )
-
-
 def find_agent(what: WhatCouldBeRun, name: AgentName) -> AgentOnThisMachine:
     """Find what one agent answered, among everything that was read.
 
@@ -314,192 +247,3 @@ def find_agent(what: WhatCouldBeRun, name: AgentName) -> AgentOnThisMachine:
         f"Nothing was read for {name.value}, so the picker cannot report on it. "
         "Every name in AgentName is asked when the screen opens."
     )
-
-
-def _describe_an_agent_that_would_not_answer(
-    agent: AgentOnThisMachine,
-) -> tuple[str, ...]:
-    """Say that an agent's own settings stopped it answering at all.
-
-    The whole report rather than a line of it, because everything below the
-    agent line is read off the agent: a report saying the rest as though it
-    were true would be about a pairing that cannot be assembled.
-
-    :param agent: The agent that would not answer.
-
-    :return: The lines to say.
-    """
-    return (
-        say_in_columns("agent", f"{agent.name.value}, which did not answer"),
-        *say_indented(REMEDY, str(agent.unreadable)),
-    )
-
-
-def _as_assembled(
-    profile: Profile, agent: AgentOnThisMachine, assembly: Assembly
-) -> Profile:
-    """Write the pairing into a profile, so the report is about that pairing.
-
-    A copy rather than the file, because nothing here is written down: this is
-    what the file would say if somebody pressed the key that saves.
-
-    :param profile: What is written down.
-    :param agent: The agent the highlight is on, and its section.
-    :param assembly: What the highlight is on.
-
-    :return: The profile the report is computed against.
-    """
-    # The window is carried through rather than settled: a pairing that asks
-    # for no number is one the runtime answers with whatever it remembers, and
-    # putting a number there would be a request nobody made.
-    return profile.model_copy(
-        update={
-            "agent": agent.config,
-            "model": ModelRequest(
-                identifier=assembly.model,
-                context_window=profile.model.context_window,
-            ),
-        }
-    )
-
-
-def _find_the_model_that_would_answer(
-    what: WhatCouldBeRun, assembly: Assembly
-) -> Model | None:
-    """Find the model the report's own lines are about.
-
-    The runtime's own answer for it, so that a held model states the window it
-    is served at and a cold one states only its ceiling.
-
-    :param what: Everything that was read.
-    :param assembly: What the highlight is on.
-
-    :return: The model, or ``None`` where the pairing would run against none.
-    """
-    identifier = find_what_would_answer(what, assembly)
-
-    for model in what.downloaded:
-        if model.identifier == identifier:
-            return model
-
-    return None
-
-
-def _describe_what_running_would_cost(
-    what: WhatCouldBeRun,
-    assembly: Assembly,
-    agent: AgentOnThisMachine,
-    speaks: Dialect,
-) -> tuple[str, ...]:
-    """Say what pressing a key against this pairing would do.
-
-    One answer, most disqualifying first: a pairing whose agent is not here
-    cannot be started whatever the runtime serves, and a pair that cannot talk
-    is refused whether or not a load would be paid for. Saying the load beside
-    a refusal would price a run that is not going to happen.
-
-    :param what: Everything that was read.
-    :param assembly: What the highlight is on.
-    :param agent: The agent the highlight is on.
-    :param speaks: The shape that agent expects, read where it was known to
-        have answered at all.
-
-    :return: The lines to say.
-    """
-    if not agent.is_on_this_machine:
-        return (
-            say_in_columns(
-                RUNNING,
-                f"nothing here starts {agent.name.value}, so this pair cannot run",
-            ),
-        )
-
-    refusal = _refuse_a_pair_that_cannot_talk(what, speaks)
-
-    if refusal is not None:
-        return refusal
-
-    if not what.downloaded:
-        return _describe_a_runtime_with_nothing_downloaded(what)
-
-    return _price_the_load(what, assembly)
-
-
-def _refuse_a_pair_that_cannot_talk(
-    what: WhatCouldBeRun, speaks: Dialect
-) -> tuple[str, ...] | None:
-    """Say that the runtime serves nothing this agent speaks, if so.
-
-    The refusal a run would meet, in the words a run meets it in, so that what
-    is read here and what is read after committing are the same sentence — and
-    it names every dialect the runtime serves, which is what says which end to
-    change.
-
-    :param what: Everything that was read.
-    :param speaks: The shape the agent the highlight is on expects.
-
-    :return: The lines to say, or ``None`` where the pair can talk.
-    """
-    try:
-        require_compatible(what.runtime.served, speaks)
-    except DialectMismatchError as refusal:
-        return (
-            say_in_columns(RUNNING, "refused, and a load would not be reached"),
-            *say_indented(REMEDY, str(refusal)),
-        )
-
-    return None
-
-
-def _describe_a_runtime_with_nothing_downloaded(
-    what: WhatCouldBeRun,
-) -> tuple[str, ...]:
-    """Say that the runtime has no models at all, and what to do about it.
-
-    Its own state and its own words: an empty list is otherwise read as offgrid
-    having failed to ask, and the next step is a command rather than a search.
-
-    :param what: Everything that was read.
-
-    :return: The lines to say.
-    """
-    return (
-        say_in_columns(
-            RUNNING,
-            f"the runtime at {what.profile.runtime.host} has nothing downloaded",
-        ),
-        *say_indented(
-            REMEDY,
-            "Run `offgrid recommend` to see what this machine can hold, and how "
-            "to download it.",
-        ),
-    )
-
-
-def _price_the_load(what: WhatCouldBeRun, assembly: Assembly) -> tuple[str, ...]:
-    """Say whether starting this pairing would cost a load.
-
-    The one thing a person cannot read anywhere else before committing: a model
-    already in memory answers at once, and one that is not is minutes of
-    weights moving, with whatever else is held let go of first.
-
-    :param what: Everything that was read.
-    :param assembly: What the highlight is on.
-
-    :return: The line to say.
-    """
-    identifier = find_what_would_answer(what, assembly)
-
-    if identifier is None:
-        return (
-            say_in_columns(
-                RUNNING, "no model would answer, so there is nothing to run"
-            ),
-        )
-
-    if identifier in what.held:
-        return (
-            say_in_columns(RUNNING, f"{identifier} is held, so this costs no load"),
-        )
-
-    return (say_in_columns(RUNNING, f"{identifier} is not held, so this costs a load"),)

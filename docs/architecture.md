@@ -24,7 +24,7 @@ flowchart TD
         lb["leaderboards/"]
     end
     subgraph domain ["domain/"]
-        checkup["checkup.py · assembling.py"]
+        checkup["checkup.py · assembling.py · costing.py"]
         sizing["sizing/<br/>machine · fit · listing · leaderboard · speed ·<br/>quality · shortlist · recommendation"]
         running["running/<br/>model · dialect · capabilities · leaving ·<br/>launch · runtime · agent · config_editing · answering"]
         profile["profile/"]
@@ -194,8 +194,10 @@ domain/
   checkup.py       what a run can be told before it costs a load, and
                    how it reads — the readings about what could leave
                    among them
-  assembling.py    what could be run on this machine, and what running
-                   one pairing of it would cost
+  assembling.py    what could be run on this machine, and how a person
+                   picks their way through it
+  costing.py       what running one pairing would report, and what it
+                   would cost to start
   sizing/          what this machine has room for
     machine.py     what this Mac is, and how to give its GPU more room
     fit.py         how much room it has
@@ -254,12 +256,15 @@ domain rather than beside a command because two surfaces
 show it — the report `doctor` prints and the screen bare `offgrid` opens — and a
 sentence living in one of them is a sentence the other has to word again.
 
-`assembling.py` sits beside it for the same reason and one more: it composes
-that report against a pairing nobody has committed to rather than against the
-file, and prices what committing would cost. Its own module because the two are
-read by different questions — what a run was told, and what a keystroke would
-do — and because a report that had grown a second one inside it would be twice
-the length with no seam between the halves.
+`assembling.py` and `costing.py` sit beside it for the same reason and one
+more: between them they compose that report against a pairing nobody has
+committed to rather than against the file, and price what committing would
+cost. Their own modules because the three are read by different questions —
+what a run was told, what there is to pick from, and what one pick would do.
+
+The two of them are one seam rather than one file cut for length. `costing.py`
+reaches for `assembling.py`'s values and nothing goes the other way: the list
+of what there is knows nothing about what any of it would do.
 
 `leaderboard.py` sits under `sizing/` rather than beside the other two ports
 because what it answers with is a `Table`, and a table is what fits. A port

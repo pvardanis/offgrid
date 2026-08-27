@@ -17,7 +17,7 @@ from typer.testing import CliRunner
 from offgrid.agents.claude_code.launching import CONTEXT_FLOOR
 from offgrid.cli import app
 from offgrid.cli.binding import read_what_could_be_run
-from offgrid.domain.assembling import RUNNING
+from offgrid.domain.costing import RUNNING
 from offgrid.domain.running.dialect import Dialect
 from offgrid.domain.running.model import Model
 from offgrid.tui.picker import AGENTS, MODELS, PANE, REPORT, RUNTIMES, Picker

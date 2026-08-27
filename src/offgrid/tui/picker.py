@@ -26,12 +26,12 @@ from offgrid.domain.assembling import (
     WhatCouldBeRun,
     describe_a_model_row,
     describe_an_agent_row,
-    describe_what_would_run,
     find_what_would_answer,
     open_on_what_the_profile_holds,
     order_models_held_first,
     read_the_highlight,
 )
+from offgrid.domain.costing import describe_what_would_run
 from offgrid.domain.running.runtime import RuntimeName
 from offgrid.shared.exceptions import OffgridError
 
