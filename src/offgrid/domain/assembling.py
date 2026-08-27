@@ -16,17 +16,21 @@ person can see what offgrid drives; the day there are two, this is where the
 second one lands.
 """
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 
 from offgrid.domain.checkup import (
     Checkup,
     WhatTheAgentAnswered,
     WhatTheRuntimeAnswered,
-    describe_what_was_read,
+    describe_a_discarded_window,
+    describe_the_agent,
+    describe_the_model,
+    describe_the_runtime,
+    describe_what_is_requested,
 )
 from offgrid.domain.profile import Profile
 from offgrid.domain.running.agent import AgentConfig, AgentName
-from offgrid.domain.running.dialect import require_compatible
+from offgrid.domain.running.dialect import Dialect, require_compatible
 from offgrid.domain.running.model import Model, ModelRequest
 from offgrid.shared.exceptions import DialectMismatchError
 from offgrid.shared.wording import (
@@ -186,11 +190,11 @@ def read_the_highlight(
     so that a machine with neither agent installed still reports on the one a
     run would try to start.
 
-    Sitting on the model the runtime is already holding is read as the profile's
-    own statement about a model rather than as naming that one — which, for a
-    profile that names none, is naming none. The two describe the same run
-    today, and the difference is only what a save would write down; a person who
-    has moved the highlight nowhere has asked for nothing.
+    A profile that names no model, with the highlight on the model the runtime
+    is already holding, still names none: the two describe the same run today,
+    and the difference is only what a save would write down. A profile that
+    does name one is left alone, because there the highlight and the file are
+    two statements and the highlight is the one a person just made.
 
     :param what: Everything that was read.
     :param agent: What the agent list's highlight is on, or ``None`` for none.
@@ -203,10 +207,11 @@ def read_the_highlight(
 
     resident = what.runtime.resident
     sitting_on_the_resident = resident is not None and model == resident.identifier
+    asks_for_nothing = what.profile.model.identifier is None
 
     return Assembly(
         agent=AgentName(agent),
-        model=what.profile.model.identifier if sitting_on_the_resident else model,
+        model=None if sitting_on_the_resident and asks_for_nothing else model,
     )
 
 
@@ -259,19 +264,34 @@ def describe_what_would_run(
     :return: The lines to say, in the order they are read.
     """
     agent = find_agent(what, assembly.agent)
+    answered = agent.answered
 
-    if agent.answered is None:
+    if answered is None:
         return _describe_an_agent_that_would_not_answer(agent)
 
     checkup = Checkup(
         profile=_as_assembled(what.profile, agent, assembly),
-        runtime=replace(what.runtime, resident=_what_would_answer(what, assembly)),
-        agent=agent.answered,
+        runtime=what.runtime,
+        agent=answered,
     )
+    model = _find_the_model_that_would_answer(what, assembly)
 
+    # The same lines `doctor` prints, from the same place, with the model block
+    # asked for the pairing's model rather than for the one the runtime is
+    # holding — the two are the same until somebody moves the highlight.
     return (
-        *describe_what_was_read(checkup),
-        *_describe_what_running_would_cost(what, assembly, agent),
+        *describe_the_runtime(checkup),
+        *describe_the_model(
+            model,
+            checkup.profile.model,
+            held=model is not None and model.identifier in what.held,
+        ),
+        *describe_what_is_requested(checkup),
+        *describe_the_agent(checkup),
+        *describe_a_discarded_window(checkup),
+        *_describe_what_running_would_cost(
+            what, assembly, agent, answered.terms.dialect
+        ),
     )
 
 
@@ -343,7 +363,9 @@ def _as_assembled(
     )
 
 
-def _what_would_answer(what: WhatCouldBeRun, assembly: Assembly) -> Model | None:
+def _find_the_model_that_would_answer(
+    what: WhatCouldBeRun, assembly: Assembly
+) -> Model | None:
     """Find the model the report's own lines are about.
 
     The runtime's own answer for it, so that a held model states the window it
@@ -364,7 +386,10 @@ def _what_would_answer(what: WhatCouldBeRun, assembly: Assembly) -> Model | None
 
 
 def _describe_what_running_would_cost(
-    what: WhatCouldBeRun, assembly: Assembly, agent: AgentOnThisMachine
+    what: WhatCouldBeRun,
+    assembly: Assembly,
+    agent: AgentOnThisMachine,
+    speaks: Dialect,
 ) -> tuple[str, ...]:
     """Say what pressing a key against this pairing would do.
 
@@ -376,6 +401,8 @@ def _describe_what_running_would_cost(
     :param what: Everything that was read.
     :param assembly: What the highlight is on.
     :param agent: The agent the highlight is on.
+    :param speaks: The shape that agent expects, read where it was known to
+        have answered at all.
 
     :return: The lines to say.
     """
@@ -387,7 +414,7 @@ def _describe_what_running_would_cost(
             ),
         )
 
-    refusal = _refuse_a_pair_that_cannot_talk(what, agent)
+    refusal = _refuse_a_pair_that_cannot_talk(what, speaks)
 
     if refusal is not None:
         return refusal
@@ -399,7 +426,7 @@ def _describe_what_running_would_cost(
 
 
 def _refuse_a_pair_that_cannot_talk(
-    what: WhatCouldBeRun, agent: AgentOnThisMachine
+    what: WhatCouldBeRun, speaks: Dialect
 ) -> tuple[str, ...] | None:
     """Say that the runtime serves nothing this agent speaks, if so.
 
@@ -409,17 +436,12 @@ def _refuse_a_pair_that_cannot_talk(
     change.
 
     :param what: Everything that was read.
-    :param agent: The agent the highlight is on.
+    :param speaks: The shape the agent the highlight is on expects.
 
     :return: The lines to say, or ``None`` where the pair can talk.
     """
-    terms = agent.answered.terms if agent.answered is not None else None
-
-    if terms is None:
-        return None
-
     try:
-        require_compatible(what.runtime.served, terms.dialect)
+        require_compatible(what.runtime.served, speaks)
     except DialectMismatchError as refusal:
         return (
             say_in_columns(RUNNING, "refused, and a load would not be reached"),

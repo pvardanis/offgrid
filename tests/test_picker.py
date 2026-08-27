@@ -134,6 +134,15 @@ def on_this_machine(monkeypatch, *commands: str) -> None:
     )
 
 
+def name_a_model(here, identifier: str) -> None:
+    """Name a model in the profile, the way a person hand-edits one.
+
+    :param here: Where the profile is.
+    :param identifier: The model to name.
+    """
+    add_to_section(here, "model", identifier=identifier)
+
+
 def sit_at_a_terminal(monkeypatch) -> None:
     """Answer as somewhere with a person in front of it.
 
@@ -242,6 +251,86 @@ def test_moving_the_highlight_recomputes_what_a_run_would_cost(here, monkeypatch
     assert "google/gemma-4-e4b is not held, so this costs a load" in moved.shown
     assert "model       google/gemma-4-e4b" in moved.shown
     assert "  ceiling   262144" in moved.shown
+
+
+def test_the_highlight_is_reported_on_even_where_the_profile_names_another_model(
+    here, monkeypatch
+):
+    # A profile naming a model and a runtime holding a different one are two
+    # statements, and moving onto the held one is a third. Reporting the file's
+    # while the cursor sits elsewhere prices a load nobody is about to pay.
+    runner.invoke(app, ["setup"])
+    name_a_model(here, "google/gemma-4-e4b")
+    answer_as_lm_studio(
+        monkeypatch,
+        holding={RESIDENT: SERVED},
+        cold={"google/gemma-4-e4b": 131072},
+    )
+    on_this_machine(monkeypatch, "claude")
+
+    driven = screen(here, "tab", "tab", "up")
+
+    assert str(driven.highlighted[MODELS]).startswith(RESIDENT)
+    assert f"model       {RESIDENT}" in driven.shown
+    assert f"{RESIDENT} is held, so this costs no load" in driven.shown
+
+
+def test_a_model_that_is_not_held_is_served_at_no_window_rather_than_an_unsaid_one(
+    here, monkeypatch
+):
+    # `unstated` is what a held model says when the runtime answers no number
+    # for it. A cold model is not being served at all, so the number does not
+    # exist yet — and reading one as the other is what the context split is for.
+    runner.invoke(app, ["setup"])
+    answer_as_lm_studio(
+        monkeypatch,
+        holding={RESIDENT: SERVED},
+        cold={"google/gemma-4-e4b": 131072},
+    )
+    on_this_machine(monkeypatch, "claude")
+
+    driven = screen(here, "tab", "tab", "down")
+
+    assert "model       google/gemma-4-e4b" in driven.shown
+    assert "  window    unknown" in driven.shown
+
+
+def test_the_cursor_will_not_land_on_an_agent_this_machine_cannot_start(
+    here, monkeypatch
+):
+    # Driven rather than read off the widget: a list that let the cursor step
+    # onto a marked row would answer this the same way an unmarked one does.
+    runner.invoke(app, ["setup"])
+    on_this_machine(monkeypatch, "opencode")
+
+    walked = [
+        screen(here, "tab", *pressed).highlighted[AGENTS]
+        for pressed in ((), ("up",), ("down",), ("home",), ("end",), ("up", "up"))
+    ]
+
+    assert walked == ["opencode"] * len(walked), (
+        f"the cursor reached {sorted(map(str, set(walked)))} walking the agent list"
+    )
+
+
+def test_an_agent_whose_own_settings_will_not_read_is_a_row_and_not_a_blank_screen(
+    here, monkeypatch
+):
+    # Every agent offgrid drives is asked when the screen opens, so one file
+    # nobody has picked can stop all of it being shown. It is a row that says
+    # so instead, and the report for it says what stopped it.
+    runner.invoke(app, ["setup"])
+    on_this_machine(monkeypatch, "claude", "opencode")
+    (here / "opencode").mkdir()
+    (here / "opencode" / "opencode.json").write_text("{not json")
+
+    driven = screen(here, "tab", "down")
+
+    assert driven.listed[AGENTS] == ["claude-code", "opencode      did not answer"]
+    assert not any(row.startswith("opencode") for row in driven.reachable[AGENTS]), (
+        "the cursor can reach an agent that would not answer"
+    )
+    assert f"model       {RESIDENT}" in driven.shown
 
 
 def test_an_agent_the_runtime_cannot_talk_to_is_refused_with_every_dialect_named(

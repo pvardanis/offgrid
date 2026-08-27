@@ -32,7 +32,6 @@ from offgrid.domain.assembling import (
     order_models_held_first,
     read_the_highlight,
 )
-from offgrid.domain.running.agent import AgentName
 from offgrid.domain.running.runtime import RuntimeName
 from offgrid.shared.exceptions import OffgridError
 
@@ -73,7 +72,7 @@ class Picker(App[None]):
 
     CSS = f"""
     #{LISTS} {{
-        width: 34;
+        width: 44;
     }}
 
     #{LISTS} OptionList {{
@@ -281,6 +280,3 @@ class Picker(App[None]):
         :param said: What to show there.
         """
         self.query_one(f"#{REPORT}", Static).update(said)
-
-
-__all__ = ["AGENTS", "MODELS", "PANE", "REPORT", "RUNTIMES", "AgentName", "Picker"]
