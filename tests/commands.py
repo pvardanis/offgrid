@@ -35,6 +35,21 @@ READING_THE_PROFILE = (
 )
 
 
+def unwrapped(said: str) -> str:
+    """Read a report back as the sentences in it, rather than as its lines.
+
+    The report breaks a long sentence itself, so that a terminal does not
+    break it at the left margin and land the rest of it under the labels. A
+    test about what a sentence says is about the sentence rather than about
+    where it was broken.
+
+    :param said: What the command said.
+
+    :return: The same, with every run of whitespace as one space.
+    """
+    return " ".join(said.split())
+
+
 def install_agent(tmp_path: Path, command: str) -> Path:
     """Put a command on the `PATH` the tests own, as an install would.
 

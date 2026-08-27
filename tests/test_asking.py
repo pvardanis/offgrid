@@ -7,9 +7,12 @@ making the run. Read at the `offgrid doctor` seam, because the comparison is
 the report rather than anything the domain returns.
 """
 
+from re import findall
+
 from typer.testing import CliRunner
 
 from offgrid.cli import app
+from offgrid.shared.wording import LINE_WIDTH
 from tests.lmstudio_server import RESIDENT, SERVED, answer_as_lm_studio
 from tests.profiles import add_to_section
 
@@ -129,3 +132,30 @@ def test_doctor_reports_in_one_column(here):
     assert all(
         lines[lines.index(heading) + 1].startswith(" ") for heading in headings
     ), f"{headings} introduces nothing indented under it"
+
+
+def test_doctor_breaks_a_long_sentence_at_the_indent_it_started_on(here):
+    # A sentence wider than the terminal is wrapped by the terminal at the
+    # left margin, which lands the rest of it under the labels rather than
+    # under the line it belongs to. A command inside one is held together,
+    # since a command broken across lines is one somebody pastes and watches
+    # fail.
+    runner.invoke(app, ["setup"])
+
+    result = runner.invoke(app, ["doctor"])
+
+    # A line with nowhere to break is left alone: a path is one word, and one
+    # broken over two lines is a path to nothing.
+    lines = [line for line in result.stderr.splitlines() if line]
+    prose = [line for line in lines if " " in line.strip()]
+    wrapped = [line for line in prose if len(line) > LINE_WIDTH]
+
+    assert not wrapped, f"{wrapped} is wider than a line, so a terminal breaks it"
+    assert any(len(line) > LINE_WIDTH / 2 for line in lines), (
+        "no line in the report is long enough to have been wrapped, so this "
+        "checks nothing"
+    )
+    for command in findall(r"`[^`]*`", result.stderr):
+        assert any(command in line for line in lines), (
+            f"{command} is broken across two lines"
+        )
