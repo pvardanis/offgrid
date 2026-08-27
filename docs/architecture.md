@@ -67,21 +67,23 @@ registry behind them.
 
 ### What checks this — built
 
-`import-linter` states the rule as four contracts in `pyproject.toml`, and the
+`import-linter` states the rule as five contracts in `pyproject.toml`, and the
 hooks run them on every commit, so a broken layer fails rather than waiting to
 be spotted in review. `uv run lint-imports` runs them by hand.
 
 The first contract is the rule above: `offgrid.domain` reaches no adapter. The
-second is that `offgrid.shared` reaches nothing of offgrid's at all, which is
-what makes it the innermost layer rather than a place things are put. The
-third is that the two halves of the domain do not know each other: nothing
-under `sizing/` imports anything under `running/`, or the reverse. The fourth
-is that no adapter reaches for another: `runtimes/`, `agents/` and
-`leaderboards/` do not know each other exists.
+second is that `offgrid.tui` reaches no adapter either, and no `cli/` — the
+screen shows the domain and is handed what it shows. The third is that
+`offgrid.shared` reaches nothing of offgrid's at all, which is what makes it
+the innermost layer rather than a place things are put. The fourth is that the
+two halves of the domain do not know each other: nothing under `sizing/`
+imports anything under `running/`, or the reverse. The fifth is that no adapter
+reaches for another: `runtimes/`, `agents/` and `leaderboards/` do not know
+each other exists.
 
-Three of them are stated over one name per layer, so a module is covered by
-living in the layer rather than by being remembered. The third is the exception
-and is stated inside a layer, over the two halves of the domain.
+Four of them are stated over one name per layer, so a module is covered by
+living in the layer rather than by being remembered. The fourth is the
+exception and is stated inside a layer, over the two halves of the domain.
 
 `domain/profile/` is deliberately in none of them. It depends on `running/`,
 which is what a profile is for — naming the adapters a run uses — so it could
@@ -94,8 +96,10 @@ exemptions now.
 
 ### What a contract cannot check — built
 
-The four contracts say nothing about `cli/`, which is outermost and may
-import anything. The rule that holds over it too is **only a registry may
+No contract says what `cli/` may reach — it is outermost and may import
+anything, and the one naming it names it as somewhere the screen may not
+reach rather than as somewhere with a rule of its own. The rule that holds
+over it too is **only a registry may
 import a concrete adapter**, the command line included, and each adapter
 package has exactly one importer from outside it: the registry in its own
 package's `__init__.py`.
@@ -120,7 +124,8 @@ would be doing.
 **command line**
 
 ```
-cli/               the layer, a module per command and the four attached
+cli/               the layer, a module per command, the four attached, and
+                   the screen opened where none was named
   setup.py         measure this machine, and write the profile
   doctor.py        what can be read before a run costs a load
   recommend.py     what a published list says this machine can hold
@@ -252,7 +257,7 @@ lives with the half of the domain that uses it, and `reading.py` beside it is
 what uses this one.
 
 The tree is the layers, so a module's place says which one it is in and the
-contracts are stated over four names rather than every module by hand. It also
+contracts are stated over five names rather than every module by hand. It also
 puts `domain/running/runtime.py` two folders away from `runtimes/` instead of
 one letter.
 
