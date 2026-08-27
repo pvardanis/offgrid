@@ -337,7 +337,7 @@ def test_a_run_refused_below_the_floor_leaves_what_was_held_where_it_was(
     result = runner.invoke(app, ["doctor"])
 
     assert refused.exit_code == 1
-    assert "window    212224" in result.stderr
+    assert "  window    212224" in result.stderr
 
 
 def test_a_run_is_refused_when_the_runtime_serves_below_the_agents_floor(

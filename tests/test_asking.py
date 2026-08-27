@@ -21,8 +21,9 @@ runner = CliRunner()
 ASKED = 131072
 WANTED = "a/hand-written-7b"
 
-# Where every value in the report starts, counted from the label beside it.
-COLUMN = 10
+# Where every value in the report starts, counted from the start of the line:
+# a label at the left, or an indented one narrowed by as much as it is in.
+COLUMN = 12
 
 
 def test_doctor_says_the_model_and_window_the_profile_asks_for(here):
@@ -31,7 +32,7 @@ def test_doctor_says_the_model_and_window_the_profile_asks_for(here):
 
     result = runner.invoke(app, ["doctor"])
 
-    assert f"requests  {RESIDENT} at {ASKED}" in result.stderr
+    assert f"requests    {RESIDENT} at {ASKED}" in result.stderr
 
 
 def test_doctor_says_a_profile_that_asks_for_nothing_asks_for_nothing(here):
@@ -42,7 +43,7 @@ def test_doctor_says_a_profile_that_asks_for_nothing_asks_for_nothing(here):
 
     result = runner.invoke(app, ["doctor"])
 
-    assert "requests  asks for nothing, so a run takes whatever is held" in (
+    assert "requests    asks for nothing, so a run takes whatever is held" in (
         result.stderr
     )
 
@@ -56,10 +57,10 @@ def test_doctor_says_a_model_named_without_a_window_inherits_one(here):
 
     result = runner.invoke(app, ["doctor"])
 
-    assert f"requests  {WANTED}, at whatever it is served at" in result.stderr
+    assert f"requests    {WANTED}, at whatever it is served at" in result.stderr
     # The issue's own example: a profile naming one model against a runtime
     # holding another. Both names on screen is the whole of what it asked for.
-    assert f"model     {RESIDENT}" in result.stderr
+    assert f"model       {RESIDENT}" in result.stderr
 
 
 def test_doctor_says_a_window_asked_for_without_a_model_lands_on_the_resident_one(
@@ -73,7 +74,7 @@ def test_doctor_says_a_window_asked_for_without_a_model_lands_on_the_resident_on
 
     result = runner.invoke(app, ["doctor"])
 
-    assert f"requests  whatever is held, at {ASKED}" in result.stderr
+    assert f"requests    whatever is held, at {ASKED}" in result.stderr
 
 
 def test_doctor_shows_a_window_the_runtime_is_not_serving_without_loading(
@@ -88,8 +89,8 @@ def test_doctor_shows_a_window_the_runtime_is_not_serving_without_loading(
 
     result = runner.invoke(app, ["doctor"])
 
-    assert f"window    {SERVED}" in result.stderr
-    assert f"requests  {RESIDENT} at {ASKED}" in result.stderr
+    assert f"  window    {SERVED}" in result.stderr
+    assert f"requests    {RESIDENT} at {ASKED}" in result.stderr
     assert asked["order"] == []
 
 

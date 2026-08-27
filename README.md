@@ -180,21 +180,21 @@ one command that reaches the network — see [Commands](#commands).
 
 ```console
 $ offgrid doctor
-runtime   lmstudio at 127.0.0.1:1234, reachable
-          dialects  anthropic, openai
-model     qwen/qwen3.6-35b-a3b
-          ceiling   262144
-          window    262144
-requests  asks for nothing, so a run takes whatever is held
-agent     claude-code, speaking anthropic
-          command   claude, at /opt/homebrew/bin/claude
-          floor     25000
+runtime     lmstudio at 127.0.0.1:1234, reachable
+  dialects  anthropic, openai
+model       qwen/qwen3.6-35b-a3b
+  ceiling   262144
+  window    262144
+requests    asks for nothing, so a run takes whatever is held
+agent       claude-code, speaking anthropic
+  command   claude, at /opt/homebrew/bin/claude
+  floor     25000
 might leave this machine
-          hosted tools: denied
-          transcript sharing: denied
-conversations path
-          /Users/you/.offgrid/claude-code
-              `offgrid run -- --resume` opens a picker over these.
+  hosted tools        denied
+  transcript sharing  denied
+conversations
+  /Users/you/.offgrid/claude-code
+    `offgrid run -- --resume` opens a picker over these.
 ```
 
 Three things answered, and what each of them said reads under it. The

@@ -15,8 +15,8 @@ from tests.profiles import add_to_section
 
 runner = CliRunner()
 
-HELD_NOTHING = "model     nothing held"
-UNKNOWN = ("          ceiling   unknown", "          window    unknown")
+HELD_NOTHING = "model       nothing held"
+UNKNOWN = ("  ceiling   unknown", "  window    unknown")
 
 
 def _model_lines(stderr: str) -> list[str]:
@@ -64,8 +64,7 @@ def test_doctor_says_what_to_do_where_nothing_names_a_model_at_all(here, monkeyp
 
     assert _model_lines(result.stderr) == [
         HELD_NOTHING,
-        "              Load a model in the runtime, or name one under `model:` "
-        "in the profile.",
+        "    Load a model in the runtime, or name one under `model:` in the profile.",
         *UNKNOWN,
     ]
 
@@ -98,7 +97,7 @@ def test_doctor_reports_what_the_profile_asks_for_when_nothing_is_held(
 
     result = runner.invoke(app, ["doctor"])
 
-    assert "requests  a/cold-7b at 32768" in result.stderr
+    assert "requests    a/cold-7b at 32768" in result.stderr
 
 
 def test_doctor_asks_for_a_model_where_a_window_is_asked_for_without_one(
@@ -114,7 +113,7 @@ def test_doctor_asks_for_a_model_where_a_window_is_asked_for_without_one(
     result = runner.invoke(app, ["doctor"])
 
     assert "Load a model in the runtime" in result.stderr
-    assert "requests  whatever is held, at 32768" in result.stderr
+    assert "requests    whatever is held, at 32768" in result.stderr
 
 
 def test_doctor_reports_the_agent_when_nothing_is_held(here, monkeypatch):
@@ -130,4 +129,4 @@ def test_doctor_reports_the_agent_when_nothing_is_held(here, monkeypatch):
     result = runner.invoke(app, ["doctor"])
 
     assert "speaking anthropic" in result.stderr
-    assert "floor     9000" in result.stderr
+    assert "  floor     9000" in result.stderr

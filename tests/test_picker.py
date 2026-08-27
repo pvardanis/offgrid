@@ -119,17 +119,17 @@ def test_the_screen_shows_what_a_run_would_report(here):
     driven = screen(here)
     shown = driven.shown
 
-    assert "runtime   lmstudio at 127.0.0.1:1234, reachable" in shown
-    assert "dialects  anthropic, openai" in shown
-    assert f"model     {RESIDENT}" in shown
-    assert "ceiling   262144" in shown
-    assert "window    212224" in shown
-    assert "requests  asks for nothing, so a run takes whatever is held" in shown
-    assert "agent     claude-code, speaking anthropic" in shown
-    assert "command   claude, not on PATH" in shown
-    assert f"floor     {CONTEXT_FLOOR}" in shown
+    assert "runtime     lmstudio at 127.0.0.1:1234, reachable" in shown
+    assert "  dialects  anthropic, openai" in shown
+    assert f"model       {RESIDENT}" in shown
+    assert "  ceiling   262144" in shown
+    assert "  window    212224" in shown
+    assert "requests    asks for nothing, so a run takes whatever is held" in shown
+    assert "agent       claude-code, speaking anthropic" in shown
+    assert "  command   claude, not on PATH" in shown
+    assert f"  floor     {CONTEXT_FLOOR}" in shown
     assert "might leave this machine" in shown
-    assert "conversations path" in shown
+    assert f"conversations\n  {here / 'claude-code'}" in shown
 
 
 def test_the_screen_and_doctor_word_one_fact_the_same_way(here):
