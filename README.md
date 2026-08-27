@@ -167,8 +167,9 @@ https://onyx.app/best-llm-for-coding, table dated 2026-07-20.
   Qwen3.6-27B                13.5GB  4-bit    262144  Apache 2.0
   Qwen3.6-27B                27.0GB  8-bit    262144  Apache 2.0
 
-To download Qwen3.6-35B-A3B: open LM Studio, press ⌘2 for its Discover
-tab, search that name, and download a build of it.
+To download Qwen3.6-35B-A3B: search that name in LM Studio and download a
+build of it, or where you have its CLI:
+  lms get Qwen3.6-35B-A3B
 Then `offgrid run`.
 ```
 

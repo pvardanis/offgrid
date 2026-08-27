@@ -2019,11 +2019,17 @@ unambiguous and it is runtime-specific, so the `Runtime` port states it:
 
 Free text because the honest answer differs in kind between runtimes. Where a
 command exists it is the answer; where none does, the runtime's own interface
-is. LM Studio has both readings and offgrid takes the second: `lms get` is the
-command, and `lms` is a separate install offgrid deliberately does not require
-on the `PATH`. Printing it at somebody who does not have it names two problems
-where they had one, so what is printed is the Discover tab in the application
-that is already running.
+is. LM Studio has both, and says both, application first: the search is what
+everybody who has LM Studio has, and `lms get` is what somebody who has
+bootstrapped the CLI can paste. offgrid does not require `lms` on the `PATH`,
+so the command is offered under the sentence rather than instructed as the way.
+
+**No window name and no keyboard shortcut.** LM Studio's documentation names a
+Discover tab reached with ⌘2; the application installed on this machine ships
+as Bionic 1.0.4, off the same codebase, where the same search is a modal opened
+from a button and ⌘2 does nothing. A gesture that is right on one version and
+silently wrong on another is worse than the sentence that holds on both, so
+what is named is the application and the model.
 
 **It is said unconditionally, not only for a model the runtime does not have.**
 Answering "do you have this one?" would cost `recommend` the one property that
