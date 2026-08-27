@@ -2047,6 +2047,23 @@ in it is a name on the screen. Nothing is said where nothing was ranked: there
 is no model to name, and an instruction naming none is the generic sentence the
 conformance suite refuses of an adapter.
 
+**It is a registry entry, not a member of the `Runtime` port.** How a model is
+downloaded is a fact about a runtime rather than about a connection to one: it
+takes a name, reaches nothing, and wants no address. On the port it cost
+`recommend` a connection it had no use for, left `LMStudio` with a method that
+never read `self`, and forced an exception into the port's own rule that a
+method reaches the server. So it is `DOWNLOAD_INSTRUCTIONS` in
+`runtimes/__init__.py`, keyed by `RuntimeName` beside the two mappings already
+there, and `tests/test_architecture.py` refuses a name missing from any of the
+three.
+
+What that costs is a third thing a second adapter registers, and a conformance
+row that moved out of the suites over a connection into one over the registry.
+What it buys is that nothing is opened to print a sentence. The alternative
+considered and dropped was hanging it on `RuntimeConfig`, which needs no third
+mapping — but a config is what an adapter is built from, taken from a person's
+file, and prose for a reader is not that.
+
 **Which runtime is asked comes from the profile, and from `setup`'s default
 where there is no profile.** Somebody running `recommend` before anything else
 is exactly who the sentence is for, and refusing them over a file they have not

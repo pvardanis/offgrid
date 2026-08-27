@@ -11,6 +11,7 @@ from offgrid.runtimes.lmstudio.catalogue import (
     parse_models_from_payload,
 )
 from offgrid.runtimes.lmstudio.config import LMStudioConfig
+from offgrid.runtimes.lmstudio.serving import describe_download
 
 FIXTURES = pathlib.Path(__file__).parent / "fixtures"
 FIXTURE = FIXTURES / "lmstudio_models.json"
@@ -146,9 +147,7 @@ def test_downloading_offers_the_command_and_leads_with_the_application():
     # `PATH` until a person has bootstrapped it — which offgrid neither does
     # nor asks for. So the search everybody has comes first and the command is
     # offered after it, each carrying the model's name.
-    said = connect(LMStudioConfig(host="127.0.0.1:1234")).describe_download(
-        "Qwen3.6-35B-A3B"
-    )
+    said = describe_download("Qwen3.6-35B-A3B")
 
     assert said.index("LM Studio") < said.index("lms get")
     assert "lms get Qwen3.6-35B-A3B" in said

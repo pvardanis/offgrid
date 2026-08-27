@@ -3,12 +3,10 @@
 import logging
 import time
 from dataclasses import dataclass, field
-from textwrap import fill
 
 from offgrid.domain.running.capabilities import Capabilities
 from offgrid.domain.running.dialect import Dialect
 from offgrid.domain.running.model import Model, ModelRequest
-from offgrid.domain.running.runtime import LINE_WIDTH
 from offgrid.runtimes.lmstudio.catalogue import (
     get_catalogue_payload,
     get_held_instances,
@@ -40,43 +38,6 @@ class LMStudio:
     config: LMStudioConfig
     dialects: frozenset[Dialect] = field(init=False, default=DIALECTS)
     capabilities: Capabilities = field(init=False, default=CAPABILITIES)
-
-    def describe_download(self, name: str) -> str:
-        """Say how a model is downloaded into LM Studio.
-
-        Both ways, application first. The search is what everybody with LM
-        Studio has, and `lms get` is what somebody who has bootstrapped the
-        CLI can paste — offgrid does not require `lms` on the `PATH`, so the
-        command is offered rather than instructed.
-
-        Neither the name of the window the search sits in nor a shortcut to it
-        is named. What ships as LM Studio has been a tab reached with ⌘2 and,
-        by 1.0, a modal that opens from a button, so a version-specific
-        gesture is one this would state wrongly on somebody's machine.
-        `docs/research/adapter-surfaces.md` records what was read where.
-
-        The application is named rather than the address this connection
-        holds: what a person opens is the copy in front of them, whichever
-        machine is serving.
-
-        :param name: The model it is about, spelt as the published table spells
-            it. Both the search and `lms get` take a name rather than the
-            identifier the runtime answers to afterwards.
-
-        :return: What to do to have that model downloaded.
-        """
-        # The prose is wrapped and the command is not: a line broken through
-        # `lms get` is one that no longer runs where it is pasted.
-        return "\n".join(
-            [
-                fill(
-                    f"To download {name}: search that name in LM Studio and "
-                    "download a build of it, or where you have its CLI:",
-                    LINE_WIDTH,
-                ),
-                f"`lms get {name}`",
-            ]
-        )
 
     def read_catalogue(self) -> list[Model]:
         """List every model LM Studio has, held or not.

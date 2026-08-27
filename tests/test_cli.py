@@ -1142,21 +1142,23 @@ def test_recommend_says_how_to_download_the_model_it_ranks_first(here, monkeypat
     assert "Then `offgrid run`." in result.stderr
 
 
-def test_recommend_says_the_words_of_the_runtime_it_bound(here, monkeypatch):
+def test_recommend_says_the_words_of_the_runtime_the_registry_answers_with(
+    here, monkeypatch
+):
     # What is printed is the runtime's answer rather than a sentence
-    # `recommend` holds: a stand-in runtime says something no adapter in the
+    # `recommend` holds: a stood-in adapter says something no adapter in the
     # tree would, and that is what reaches the screen.
-    from offgrid.domain.running.dialect import Dialect
-    from tests.pairing import StandInRuntime, answer_as_a_runtime
+    from offgrid.domain.running.runtime import RuntimeName
 
     _leaderboard(monkeypatch, models=[_listed("A-Model-35B", "35B")])
-    answer_as_a_runtime(
-        monkeypatch, StandInRuntime(dialects=frozenset({Dialect.ANTHROPIC}))
+    monkeypatch.setattr(
+        "offgrid.runtimes.DOWNLOAD_INSTRUCTIONS",
+        {RuntimeName.LMSTUDIO: lambda model: f"To download {model}: ask elsewhere."},
     )
 
     result = runner.invoke(app, ["recommend"])
 
-    assert "To download A-Model-35B: ask the stand-in runtime." in result.stderr
+    assert "To download A-Model-35B: ask elsewhere." in result.stderr
     assert "LM Studio" not in result.stderr
 
 

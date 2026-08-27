@@ -43,15 +43,6 @@ class StandInRuntime:
     dialects: frozenset[Dialect]
     capabilities: Capabilities = field(init=False, default=CAPABILITIES)
 
-    def describe_download(self, name: str) -> str:
-        """Say how a model is downloaded, naming it as every adapter does.
-
-        :param name: The model it is about.
-
-        :return: What to do to have it downloaded.
-        """
-        return f"To download {name}: ask the stand-in runtime."
-
     def read_catalogue(self) -> list[Model]:
         """Refuse, having no catalogue to answer with.
 

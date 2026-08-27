@@ -1,4 +1,4 @@
-"""The word offgrid uses for a number somebody else did not state.
+"""How offgrid words what it prints, where more than one layer prints it.
 
 A runtime and a published list are both free to answer nothing for a number,
 and nothing is not zero: the types those are read into validate neither, so
@@ -8,8 +8,15 @@ and each place that prints one has its own.
 
 Here rather than beside the output channel, so that the sizing domain, which
 composes lines it does not say, need not reach the module that configures
-logging.
+logging. The width an adapter writes its own lines to is here for the same
+reason: what a runtime says about downloading is written in one layer, printed
+by another, and checked by a third.
 """
+
+# The widest a line may be where offgrid prints what somebody else wrote, so
+# that it reads beside offgrid's own lines rather than wrapping under them. It
+# is the width the reports either side of it are written to by hand.
+LINE_WIDTH = 76
 
 
 def describe_what_was_stated(value: int | None) -> str:

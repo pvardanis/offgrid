@@ -375,8 +375,8 @@ sequenceDiagram
 
     P->>C: offgrid recommend
     C->>M: detect()
-    C->>B: read_profile(path) · connect_runtime(config)
-    Note over C,B: the runtime whose words say how a model is<br/>downloaded — what `setup` would write where<br/>there is no profile, refused where one will not load
+    C->>B: read_profile(path) → RuntimeName
+    Note over C,B: the runtime whose words say how a model is<br/>downloaded — what `setup` would write where<br/>there is no profile, refused where one will not<br/>load. No connection is opened
     C->>G: get_reading(path)
     loop each list, in the order the registry holds them
         G->>O: fetch() · parse(payload)
@@ -519,30 +519,28 @@ class Runtime(Protocol):
     @property
     def capabilities(self) -> Capabilities: ...
 
-    def describe_download(self, name: str) -> str: ...
     def read_catalogue(self) -> list[Model]: ...
     def read_held(self) -> list[Model]: ...
     def ensure_only(self, model_request: ModelRequest) -> Model: ...
     def let_go(self, identifier: str) -> bool: ...
 ```
 
-Seven members. No payload crosses it, and nothing about the order of calls is
+Six members. No payload crosses it, and nothing about the order of calls is
 knowledge the caller has to hold.
 
-**Two are attributes and five are methods, and the split says something.** An
+**Two are attributes and four are actions, and the split says something.** An
 attribute is settled when the connection opens: reading it is free and cannot
-fail. Four of the methods reach the server, so each costs time and can raise. Naming a
+fail. A method reaches the server, so it costs time and can raise. Naming a
 method for what it does — `read_held`, not `held` — is the difference between
 an interface that says which of its members touch the network and one that
 leaves a caller to find out.
 
-`describe_download` is the exception the split has to admit: a method that
-reaches nothing. It takes a model's name and answers in words, because how a
-model is downloaded is a fact about the runtime that differs in kind between
-them — a command where one exists, a pointer to the runtime's own interface
-where none does — and because `recommend` prints it beside names off a
-published table that the runtime has never been asked about. An attribute
-could not carry it, since the answer names the model it is about.
+**What a runtime says about downloading is not on the port**, because it is a
+fact about a runtime rather than about a connection to one: it takes a model's
+name, reaches nothing, and wants no address. It is a third mapping in the
+registry, `DOWNLOAD_INSTRUCTIONS`, keyed by `RuntimeName` alongside the other
+two, so `recommend` asks it from the name a profile holds without opening
+anything. `docs/decisions.md` has why.
 
 The two attributes are declared as properties because that is what makes them
 read-only. Written `dialects: frozenset[Dialect]`, a protocol attribute is one
@@ -551,7 +549,7 @@ the pair with `protocol member capabilities is incompatible — the member does
 not accept writes`. A caller reads `runtime.dialects` either way.
 
 A Protocol rather than typed callables because a connection carries state —
-the host, the capabilities probed when it opened — and because seven related
+the host, the capabilities probed when it opened — and because six related
 members read better named than positional. The leaderboard seam below carries
 neither and is shaped differently for it.
 
@@ -1054,7 +1052,7 @@ which is the half most likely to be wrong.
 `tests/test_runtime_letting_go.py` and `tests/test_runtime_reading.py` state
 what being a runtime means behaviourally — one file per question a runtime is
 asked — and every adapter runs them against payloads captured from that
-runtime, live. An adapter is done when all three pass. They state eighteen
+runtime, live. An adapter is done when all three pass. They state sixteen
 things, each of which a runtime that is not LM Studio still owes:
 
 - `ensure_only` answers with the model as *served* rather than as catalogued,
@@ -1078,13 +1076,12 @@ things, each of which a runtime that is not LM Studio still owes:
   which is what lets `run` check the dialect before paying for a load.
 - A runtime serves at least one dialect. One serving none would pass every
   membership check by never matching, which is not a runtime.
-- How a model is downloaded is answered in words naming that model, with
-  nothing listening: `recommend` prints it beside names off a published table
-  the runtime has never been asked about, and a sentence about downloading in
-  general tells whoever is reading a list of names nothing they do not have.
-- Those words arrive in lines that fit a terminal. Nothing reflows them, since
-  a command in them has to survive being copied, so where the lines fall is
-  the adapter's and their width is what it owes.
+
+Downloading is asked of the registry instead, in
+`tests/test_runtime_downloading.py`: every name a profile may hold has an
+entry, that entry names the model it is asked about, and its lines fit a
+terminal. It sits outside the three suites because no connection is involved —
+there is no server to stand in.
 
 `tests/runtimes_under_test.py` is the parametrization, and a second adapter
 joins by writing one stand-in and adding a line there. A stand-in answers as

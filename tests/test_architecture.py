@@ -287,7 +287,7 @@ def test_every_runtime_offgrid_names_has_an_adapter_bound_to_it():
     # be a domain type importing an adapter. A name with no entry raises a
     # KeyError at somebody's terminal, halfway through a run.
     from offgrid.domain.running.runtime import RuntimeName
-    from offgrid.runtimes import RUNTIME_CONFIGS, RUNTIMES
+    from offgrid.runtimes import DOWNLOAD_INSTRUCTIONS, RUNTIME_CONFIGS, RUNTIMES
 
     assert set(RUNTIMES) == set(RuntimeName), _say_what_to_bind(
         set(RuntimeName),
@@ -301,6 +301,13 @@ def test_every_runtime_offgrid_names_has_an_adapter_bound_to_it():
         set(RUNTIME_CONFIGS),
         enum="RuntimeName",
         registry="RUNTIME_CONFIGS",
+        module="offgrid/runtimes/__init__.py",
+    )
+    assert set(DOWNLOAD_INSTRUCTIONS) == set(RuntimeName), _say_what_to_bind(
+        set(RuntimeName),
+        set(DOWNLOAD_INSTRUCTIONS),
+        enum="RuntimeName",
+        registry="DOWNLOAD_INSTRUCTIONS",
         module="offgrid/runtimes/__init__.py",
     )
 
