@@ -21,6 +21,7 @@ flowchart TD
         lb["leaderboards/"]
     end
     subgraph domain ["domain/"]
+        checkup["checkup.py"]
         sizing["sizing/<br/>machine · fit · listing · leaderboard · speed ·<br/>quality · shortlist · recommendation"]
         running["running/<br/>model · dialect · capabilities · leaving ·<br/>launch · runtime · agent · config_editing · answering"]
         profile["profile/"]
@@ -35,6 +36,8 @@ flowchart TD
     domain --> shared
     adapters --> shared
     profile --> running
+    checkup --> profile
+    checkup --> running
 ```
 
 Dependencies point inwards: adapters know about the domain, the domain knows
@@ -109,9 +112,6 @@ would be doing.
 cli/               the layer, a module per command and the four attached
   setup.py         measure this machine, and write the profile
   doctor.py        what can be read before a run costs a load
-  checkup.py       what a run can be told before it costs a load, and
-                   how it reads — the readings about what could leave
-                   among them
   recommend.py     what a published list says this machine can hold
   run.py           hold a model, start the agent, let the model go
   reporting.py     what offgrid's own errors look like at the terminal
@@ -166,6 +166,9 @@ leaderboards/      one module per published list, and the registry
 
 ```
 domain/
+  checkup.py       what a run can be told before it costs a load, and
+                   how it reads — the readings about what could leave
+                   among them
   sizing/          what this machine has room for
     machine.py     what this Mac is, and how to give its GPU more room
     fit.py         how much room it has
@@ -212,6 +215,13 @@ domain/
     refusing.py    what a section offgrid cannot read reads like
     structure.py   whether it is built the way offgrid reads one
 ```
+
+`checkup.py` sits directly under `domain/` rather than inside one of the three
+because it is made of two of them: it reads a `Profile` and what `running/`
+answered, and putting it under either would point an arrow the other three do
+not have. It is in the domain rather than beside a command because two surfaces
+show it — the report `doctor` prints and the screen bare `offgrid` opens — and a
+sentence living in one of them is a sentence the other has to word again.
 
 `leaderboard.py` sits under `sizing/` rather than beside the other two ports
 because what it answers with is a `Table`, and a table is what fits. A port
