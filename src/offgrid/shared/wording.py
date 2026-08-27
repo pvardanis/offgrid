@@ -21,6 +21,7 @@ out differently.
 from collections.abc import Callable
 from re import sub
 from textwrap import fill
+from unicodedata import east_asian_width
 
 # The widest a line may be where offgrid prints what somebody else wrote, so
 # that it reads beside offgrid's own lines rather than wrapping under them. It
@@ -108,6 +109,32 @@ def say_indented(
         .replace(NBSP, " ")
         .splitlines()
     )
+
+
+def count_cells(text: str) -> int:
+    """Count how much room a piece of text takes on a terminal.
+
+    Not its length: an emoji is one character and two cells wide, so a column
+    padded by counting characters is a column that lines up in the file and
+    not on the screen.
+
+    :param text: What is being measured.
+
+    :return: How many cells it occupies.
+    """
+    return sum(2 if east_asian_width(one) in "WF" else 1 for one in text)
+
+
+def pad_to_cells(text: str, cells: int) -> str:
+    """Fill a piece of text out to a fixed width on a terminal.
+
+    :param text: What goes in the column.
+    :param cells: How wide the column is.
+
+    :return: The text, followed by enough spaces to fill the column, and
+        unpadded where it is already wider.
+    """
+    return text + " " * max(0, cells - count_cells(text))
 
 
 def say_in_columns(label: str, value: str, *, under: bool = False) -> str:
