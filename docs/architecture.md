@@ -15,6 +15,9 @@ flowchart TD
     subgraph cmd [command line]
         cli["cli/"]
     end
+    subgraph screen [the screen]
+        tui["tui/"]
+    end
     subgraph adapters [adapters]
         rt["runtimes/"]
         ag["agents/"]
@@ -32,6 +35,8 @@ flowchart TD
 
     cli --> adapters
     cli --> domain
+    cli --> tui
+    tui --> domain
     adapters --> domain
     domain --> shared
     adapters --> shared
@@ -43,6 +48,12 @@ flowchart TD
 Dependencies point inwards: adapters know about the domain, the domain knows
 nothing about adapters. The command line is outermost and may reach anything;
 `shared` is innermost and reaches nothing of offgrid's.
+
+`tui/` is a second delivery layer rather than part of the first. It shows what
+the domain answered and nothing else: no registry, no adapter, and not `cli/`
+either. What it shows is read by whoever opened the screen and handed in, which
+is why the arrow between the two surfaces points one way — the command line is
+what a person runs, so it is what opens the screen.
 
 Each of these is a folder, so the tree says which layer a module is in and a
 new one lands somewhere on purpose. It is also what lets the contracts be
@@ -115,7 +126,15 @@ cli/               the layer, a module per command and the four attached
   recommend.py     what a published list says this machine can hold
   run.py           hold a model, start the agent, let the model go
   reporting.py     what offgrid's own errors look like at the terminal
-  binding.py       the profile read, and both adapters it names bound
+  binding.py       the profile read, both adapters it names bound, and
+                   what each of them answers
+```
+
+**the screen**
+
+```
+tui/               the layer, and the screen bare `offgrid` opens
+  picker.py        what a run would report, and the key that leaves it
 ```
 
 **adapters**

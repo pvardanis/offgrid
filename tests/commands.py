@@ -20,11 +20,19 @@ MACHINE = Machine(
 BIN = "bin"
 """The one directory on the `PATH` a command under test is given."""
 
-# Which commands read the machine, and which name the profile. Listed rather
-# than found, so a command added without a line here fails a test instead of
-# quietly reaching the developer's own machine.
-MEASURING = ("setup", "recommend")
-READING_THE_PROFILE = ("setup", "doctor", "recommend", "run")
+# Which commands read the machine, and which modules name the profile. Listed
+# rather than found, so a command added without a line here fails a test
+# instead of quietly reaching the developer's own machine. The command line
+# itself names the profile: run with nothing to do, it opens the screen, which
+# reads one like any command.
+MEASURING = ("offgrid.cli.setup", "offgrid.cli.recommend")
+READING_THE_PROFILE = (
+    "offgrid.cli",
+    "offgrid.cli.setup",
+    "offgrid.cli.doctor",
+    "offgrid.cli.recommend",
+    "offgrid.cli.run",
+)
 
 
 def install_agent(tmp_path: Path, command: str) -> Path:
@@ -61,15 +69,13 @@ def answer_as_a_mac(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     (tmp_path / BIN).mkdir(exist_ok=True)
     monkeypatch.setenv("PATH", str(tmp_path / BIN))
 
-    for command in MEASURING:
-        monkeypatch.setattr(f"offgrid.cli.{command}.detect", lambda: MACHINE)
+    for module in MEASURING:
+        monkeypatch.setattr(f"{module}.detect", lambda: MACHINE)
 
     # The agent's config beside the commands, because it derives its own
     # directory rather than being handed one. A test that patched the commands
     # alone would reach the real home through it.
-    for command in READING_THE_PROFILE:
-        monkeypatch.setattr(
-            f"offgrid.cli.{command}.DEFAULT_PATH", tmp_path / "profile.yaml"
-        )
+    for module in READING_THE_PROFILE:
+        monkeypatch.setattr(f"{module}.DEFAULT_PATH", tmp_path / "profile.yaml")
 
     monkeypatch.setattr("offgrid.domain.running.agent.OFFGRID_HOME", tmp_path)

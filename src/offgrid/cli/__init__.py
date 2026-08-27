@@ -15,25 +15,34 @@ import typer
 # inside it, and `offgrid.cli.setup` would stop reaching the module a test
 # patches or a reader opens. Importing the submodule is what puts the module
 # there; only the name this file binds is the alias.
+from offgrid.cli.binding import read_what_can_be_read
 from offgrid.cli.doctor import doctor as doctor_command
 from offgrid.cli.recommend import recommend as recommend_command
 from offgrid.cli.run import run as run_command
 from offgrid.cli.setup import setup as setup_command
+from offgrid.domain.profile import DEFAULT_PATH
 from offgrid.shared.exceptions import OffgridError
 from offgrid.shared.say import say_on_stderr, tell
+from offgrid.tui.picker import Report
 
 __all__ = ["app", "main"]
 
 app = typer.Typer(add_completion=False)
 
 
-@app.callback()
-def offgrid() -> None:
+@app.callback(invoke_without_command=True)
+def offgrid(ctx: typer.Context) -> None:
     """Run a coding agent against a model on this machine."""
     # This docstring is the help a person reads, so the rest is said here:
     # the callback runs before every command, and is where the command line
     # attaches its own logging. The modules below it attach none.
     say_on_stderr()
+
+    # Named with nothing to do, offgrid shows what it knows rather than the
+    # command table, which is the least useful thing a stranger can be shown.
+    # The screen is handed its reading, so that the picker names no registry.
+    if ctx.invoked_subcommand is None:
+        Report(read=lambda: read_what_can_be_read(DEFAULT_PATH)).run()
 
 
 app.command()(setup_command)

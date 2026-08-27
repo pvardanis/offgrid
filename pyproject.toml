@@ -84,6 +84,19 @@ forbidden_modules = [
 ]
 
 [[tool.importlinter.contracts]]
+name = "The screen shows the domain, and is handed what it shows"
+type = "forbidden"
+source_modules = [
+    "offgrid.tui",
+]
+forbidden_modules = [
+    "offgrid.cli",
+    "offgrid.agents",
+    "offgrid.leaderboards",
+    "offgrid.runtimes",
+]
+
+[[tool.importlinter.contracts]]
 name = "What every layer may reach, reaches nothing of offgrid's"
 type = "forbidden"
 source_modules = [
@@ -91,6 +104,7 @@ source_modules = [
 ]
 forbidden_modules = [
     "offgrid.cli",
+    "offgrid.tui",
     "offgrid.domain",
     "offgrid.agents",
     "offgrid.leaderboards",
