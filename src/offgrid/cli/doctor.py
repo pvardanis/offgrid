@@ -12,9 +12,11 @@ from offgrid.shared.say import tell
 def doctor() -> None:
     """Report what the profile, the runtime and the agent each say.
 
-    :raise Exit: With 1 where the runtime is holding no model, which is a
-        finding rather than a fault in reaching it, so it is said in the
-        report as well.
+    :raise Exit: With 1 where anything could not be read at all, and with 1
+        where the runtime is holding no model — which is a finding rather
+        than a fault in reaching it, so it is said in the report as well.
+        A script reads one code either way; what separates them is that the
+        finding is a report and the fault is a sentence.
     """
     with reporting():
         checkup = read_what_can_be_read(DEFAULT_PATH)

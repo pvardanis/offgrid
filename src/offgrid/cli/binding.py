@@ -99,8 +99,11 @@ def read_what_can_be_read(profile_path: Path) -> Checkup:
 
     :return: What each of them answered.
 
-    :raise OffgridError: When the profile is not one, or nothing answered for
-        the runtime it names.
+    :raise OffgridError: When the profile is not one, when nothing answered
+        for the runtime it names, or when the agent's own settings are there
+        and cannot be read. That last one stops the whole report where the
+        record below is only a line of it, and the difference is which of
+        them a run reads before it starts.
     """
     profile, runtime, agent = bind_run(profile_path)
 
