@@ -62,15 +62,16 @@ def describe_model_download(name: str) -> str:
 
     :return: What to do to have that model downloaded.
     """
-    # The prose is wrapped and the command is not: a line broken through `lms
-    # get` is one that no longer runs where it is pasted.
+    # A way each, and the one carrying the command is not wrapped: a line
+    # broken through `lms get` is one that no longer runs where it is pasted.
     return "\n".join(
         [
+            f"To download {name}, either:",
             fill(
-                f"To download {name}: search that name in LM Studio and "
-                "download a build of it, or where you have its CLI:",
+                "- search that name in LM Studio and download a build of it",
                 LINE_WIDTH,
+                subsequent_indent="  ",
             ),
-            f"`lms get {name}`",
+            f"- run `lms get {name}`, where you have its CLI",
         ]
     )
