@@ -2049,5 +2049,11 @@ and will not load is refused the way every other command refuses it: it names a
 runtime, and guessing past what it says would answer about an adapter its owner
 did not choose.
 
+**The lines are the adapter's, and nothing reflows them.** A command is one of
+the answers the port takes, and a command wrapped by whoever prints it stops
+being one that can be copied. So an adapter writes its own line breaks and the
+conformance suite holds each line to a width, rather than the printer reflowing
+prose it cannot tell from a command.
+
 Binding the runtime costs nothing: opening a connection binds an address, and
 this asks it for words. `recommend` still reaches one page.
