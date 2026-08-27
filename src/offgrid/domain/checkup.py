@@ -100,35 +100,72 @@ def describe_what_was_read(checkup: Checkup) -> tuple[str, ...]:
 
     :return: The lines to say, in the order they are read.
     """
-    profile = checkup.profile
-
     # Three things answered, and what each of them said sits under it: the
     # runtime and what it serves, the model and the two numbers about it, the
     # agent and what starting it takes. Read down the left, a person meets one
     # thing at a time rather than eleven facts in a column.
-    said = (
-        say_in_columns(
-            "runtime",
-            f"{profile.runtime.name.value} at {profile.runtime.host}, reachable",
-        ),
+    #
+    # The model it names is the one the runtime is holding, so it is held by
+    # construction: a runtime holding nothing takes the other branch.
+    return (
+        *describe_the_runtime(checkup),
+        *describe_the_model(checkup.runtime.resident, checkup.profile.model, held=True),
+        *describe_what_is_requested(checkup),
+        *describe_the_agent(checkup),
+        *describe_a_discarded_window(checkup),
+    )
+
+
+def describe_the_runtime(checkup: Checkup) -> tuple[str, ...]:
+    """Say which runtime answered, and every shape it serves.
+
+    :param checkup: What the profile, the runtime and the agent answered.
+
+    :return: The lines to say.
+    """
+    runtime = checkup.profile.runtime
+
+    return (
+        say_in_columns("runtime", f"{runtime.name.value} at {runtime.host}, reachable"),
         say_in_columns(
             "dialects",
             ", ".join(sorted(d.value for d in checkup.runtime.served)),
             under=True,
         ),
-        *_describe_the_model(checkup.runtime.resident, profile.model),
-        say_in_columns("requests", describe_what_is_asked_for(profile.model)),
+    )
+
+
+def describe_what_is_requested(checkup: Checkup) -> tuple[str, ...]:
+    """Say what the next run asks the runtime for.
+
+    :param checkup: What the profile, the runtime and the agent answered.
+
+    :return: The line to say.
+    """
+    return (
+        say_in_columns("requests", describe_what_is_asked_for(checkup.profile.model)),
+    )
+
+
+def describe_the_agent(checkup: Checkup) -> tuple[str, ...]:
+    """Say which agent would start, what starting it takes, and what it keeps.
+
+    :param checkup: What the profile, the runtime and the agent answered.
+
+    :return: The lines to say, in the order they are read.
+    """
+    terms = checkup.agent.terms
+
+    return (
         say_in_columns(
             "agent",
-            f"{profile.agent.name.value}, speaking {checkup.agent.terms.dialect.value}",
+            f"{checkup.profile.agent.name.value}, speaking {terms.dialect.value}",
         ),
         *_describe_where_the_agent_is(checkup),
-        say_in_columns("floor", str(checkup.agent.terms.context_floor), under=True),
+        say_in_columns("floor", str(terms.context_floor), under=True),
         *_describe_what_could_leave(checkup.agent.could_leave),
         *_describe_where_conversations_are_kept(checkup.agent.kept),
     )
-
-    return (*said, *_describe_a_discarded_window(checkup))
 
 
 def _describe_where_the_agent_is(checkup: Checkup) -> tuple[str, ...]:
@@ -222,17 +259,24 @@ def _describe_where_conversations_are_kept(kept: Conversations) -> tuple[str, ..
     )
 
 
-def _describe_the_model(model: Model | None, request: ModelRequest) -> tuple[str, ...]:
+def describe_the_model(
+    model: Model | None, request: ModelRequest, *, held: bool
+) -> tuple[str, ...]:
     """Say which model would answer, and at what, or that none would.
 
     A runtime holding nothing keeps its lines in the column, the two numbers
     marked `unknown` rather than left out: a number about a model that is not
     held is unknown, where `unstated` is what a held model states when the
-    runtime says no number for it.
+    runtime says no number for it. The same distinction decides the window of a
+    model that is downloaded and cold — nothing is serving it, so the number
+    does not exist yet rather than having gone unsaid.
 
-    :param model: The model the runtime is holding, or ``None`` for none.
+    :param model: The model that would answer, or ``None`` for none.
     :param request: What the profile asks the next run for, which decides
         whether a runtime holding nothing needs a hand.
+    :param held: Whether the runtime has that model in memory. `doctor` reads
+        its model off what is held, so it says so; a screen reporting on a
+        model somebody is only looking at does not.
 
     :return: The model's lines, and what to do about a runtime holding
         nothing where the profile names none either.
@@ -246,7 +290,9 @@ def _describe_the_model(model: Model | None, request: ModelRequest) -> tuple[str
                 under=True,
             ),
             say_in_columns(
-                "window", describe_what_was_stated(model.context_window), under=True
+                "window",
+                describe_what_was_stated(model.context_window) if held else "unknown",
+                under=True,
             ),
         )
 
@@ -274,7 +320,7 @@ def _describe_the_model(model: Model | None, request: ModelRequest) -> tuple[str
     )
 
 
-def _describe_a_discarded_window(checkup: Checkup) -> tuple[str, ...]:
+def describe_a_discarded_window(checkup: Checkup) -> tuple[str, ...]:
     """Say that offgrid stopped asking for a window, and how to make it ask.
 
     Deleting the file makes offgrid ask again, so this is where it is named:
