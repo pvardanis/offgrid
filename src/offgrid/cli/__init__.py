@@ -19,7 +19,7 @@ import typer
 # inside it, and `offgrid.cli.setup` would stop reaching the module a test
 # patches or a reader opens. Importing the submodule is what puts the module
 # there; only the name this file binds is the alias.
-from offgrid.cli.binding import read_what_can_be_read
+from offgrid.cli.binding import read_what_could_be_run
 from offgrid.cli.doctor import doctor as doctor_command
 from offgrid.cli.recommend import recommend as recommend_command
 from offgrid.cli.run import run as run_command
@@ -61,9 +61,9 @@ def offgrid(ctx: typer.Context) -> None:
     # Imported here rather than above: Textual costs an order of magnitude
     # more to import than the command line's own toolkit, and every command
     # that is not the screen would pay it.
-    from offgrid.tui.picker import Report
+    from offgrid.tui.picker import Picker
 
-    screen = Report(read=lambda: read_what_can_be_read(DEFAULT_PATH))
+    screen = Picker(read=lambda: read_what_could_be_run(DEFAULT_PATH))
     screen.run()
 
     # Textual paints what went wrong on the screen and returns rather than

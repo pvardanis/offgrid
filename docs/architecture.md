@@ -24,7 +24,7 @@ flowchart TD
         lb["leaderboards/"]
     end
     subgraph domain ["domain/"]
-        checkup["checkup.py"]
+        checkup["checkup.py · assembling.py"]
         sizing["sizing/<br/>machine · fit · listing · leaderboard · speed ·<br/>quality · shortlist · recommendation"]
         running["running/<br/>model · dialect · capabilities · leaving ·<br/>launch · runtime · agent · config_editing · answering"]
         profile["profile/"]
@@ -139,7 +139,8 @@ cli/               the layer, a module per command, the four attached, and
 
 ```
 tui/               the layer, and the screen bare `offgrid` opens
-  picker.py        what a run would report, and the key that leaves it
+  picker.py        the three lists, the report beside them, and the key
+                   that leaves it
 ```
 
 **adapters**
@@ -193,6 +194,8 @@ domain/
   checkup.py       what a run can be told before it costs a load, and
                    how it reads — the readings about what could leave
                    among them
+  assembling.py    what could be run on this machine, and what running
+                   one pairing of it would cost
   sizing/          what this machine has room for
     machine.py     what this Mac is, and how to give its GPU more room
     fit.py         how much room it has
@@ -250,6 +253,13 @@ surface wanting a sentence would import the profile to get it. It is in the
 domain rather than beside a command because two surfaces
 show it — the report `doctor` prints and the screen bare `offgrid` opens — and a
 sentence living in one of them is a sentence the other has to word again.
+
+`assembling.py` sits beside it for the same reason and one more: it composes
+that report against a pairing nobody has committed to rather than against the
+file, and prices what committing would cost. Its own module because the two are
+read by different questions — what a run was told, and what a keystroke would
+do — and because a report that had grown a second one inside it would be twice
+the length with no seam between the halves.
 
 `leaderboard.py` sits under `sizing/` rather than beside the other two ports
 because what it answers with is a `Table`, and a table is what fits. A port

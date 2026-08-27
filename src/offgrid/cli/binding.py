@@ -13,7 +13,8 @@ answer start from it.
 
 from pathlib import Path
 
-from offgrid.agents import create_agent_config, prepare_agent
+from offgrid.agents import AGENT_CONFIGS, create_agent_config, prepare_agent
+from offgrid.domain.assembling import AgentOnThisMachine, WhatCouldBeRun
 from offgrid.domain.checkup import (
     Checkup,
     WhatTheAgentAnswered,
@@ -26,14 +27,19 @@ from offgrid.domain.profile import (
     refuse_profile_section,
 )
 from offgrid.domain.running import discarded_windows
-from offgrid.domain.running.agent import Agent, AgentName, Passthrough
+from offgrid.domain.running.agent import (
+    Agent,
+    AgentConfig,
+    AgentName,
+    Passthrough,
+)
 from offgrid.domain.running.agent_presence import find_agent_on_path
 from offgrid.domain.running.answering import find_resident_model
 from offgrid.domain.running.discarded_windows import DiscardedWindow
 from offgrid.domain.running.model import Model
 from offgrid.domain.running.runtime import Runtime, RuntimeName
 from offgrid.runtimes import connect_runtime, create_runtime_config
-from offgrid.shared.exceptions import DiscardedWindowsUnreadableError
+from offgrid.shared.exceptions import DiscardedWindowsUnreadableError, OffgridError
 
 
 def read_profile(path: Path) -> Profile:
@@ -126,6 +132,102 @@ def read_what_can_be_read(profile_path: Path) -> Checkup:
             could_leave=agent.read_what_leaves_this_machine(),
             kept=agent.conversations,
         ),
+    )
+
+
+def read_what_could_be_run(profile_path: Path) -> WhatCouldBeRun:
+    """Ask the machine everything a person could pick from, once.
+
+    Once, because what the picker does afterwards is arithmetic: it recomputes
+    a report as a highlight moves, and a surface that fetched a catalogue per
+    keystroke would make looking around cost what committing costs.
+
+    Every agent offgrid drives is asked, not only the one the profile names,
+    since the list is what offgrid supports rather than what this machine has.
+    One that will not answer is carried as a row that says so: a screen that
+    refused to open over an agent nobody picked would report the machine as
+    unreadable when one file on it is.
+
+    :param profile_path: Where to read the profile from.
+
+    :return: The profile, what the runtime holds and has, and what each agent
+        said about itself here.
+
+    :raise OffgridError: When the profile is not one, or when nothing answered
+        for the runtime it names. Both stop the picker having anything to show.
+    """
+    profile = read_profile(profile_path)
+    runtime = connect_runtime(profile.runtime)
+
+    downloaded = tuple(runtime.read_catalogue())
+
+    # One reading, for both questions: the port promises a stable order, so
+    # the first of them is the model offgrid names as the one that answers.
+    in_memory = runtime.read_held()
+    resident = in_memory[0] if in_memory else None
+
+    discarded, unreadable = _read_what_was_discarded(profile, resident)
+
+    return WhatCouldBeRun(
+        profile=profile,
+        runtime=WhatTheRuntimeAnswered(
+            resident=resident,
+            served=runtime.dialects,
+            discarded=discarded,
+            unreadable=unreadable,
+        ),
+        downloaded=downloaded,
+        held=frozenset(model.identifier for model in in_memory),
+        agents=tuple(_ask_every_agent(profile)),
+    )
+
+
+def _ask_every_agent(profile: Profile) -> list[AgentOnThisMachine]:
+    """Ask each agent offgrid drives what it states about itself here.
+
+    The profile's own section is used for the agent it names, so that an agent
+    a person has settings for is reported with them rather than with defaults.
+    The rest are built from what every agent needs, which is where the runtime
+    listens.
+
+    :param profile: What was written down.
+
+    :return: One reading per agent, in the order the names are declared.
+    """
+    return [
+        _ask_an_agent(
+            profile.agent
+            if name is profile.agent.name
+            else AGENT_CONFIGS[name](runtime_host=profile.runtime.host)
+        )
+        for name in AgentName
+    ]
+
+
+def _ask_an_agent(config: AgentConfig) -> AgentOnThisMachine:
+    """Bind one agent and read what it says, or why it would not say it.
+
+    :param config: What that agent's section of a profile holds.
+
+    :return: What it answered, or the sentence explaining what stopped it.
+    """
+    try:
+        agent = prepare_agent(config)
+        terms = agent.terms
+
+        answered = WhatTheAgentAnswered(
+            terms=terms,
+            found_at=find_agent_on_path(terms.command),
+            could_leave=agent.read_what_leaves_this_machine(),
+            kept=agent.conversations,
+        )
+    except OffgridError as error:
+        return AgentOnThisMachine(
+            name=config.name, config=config, answered=None, unreadable=str(error)
+        )
+
+    return AgentOnThisMachine(
+        name=config.name, config=config, answered=answered, unreadable=None
     )
 
 

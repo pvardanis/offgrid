@@ -38,32 +38,49 @@ class StandInRuntime:
     before a load.
 
     :param dialects: What it serves.
+    :param downloaded: What its catalogue answers, or ``None`` to refuse being
+        asked. A screen reads the catalogue before it reports on any pairing,
+        so a refusal that is settled before a load still needs one; a command
+        that reaches it has gone past a refusal and is told so.
+    :param holding: Which of them it has in memory.
     """
 
     dialects: frozenset[Dialect]
+    downloaded: tuple[Model, ...] | None = None
+    holding: tuple[Model, ...] = ()
     capabilities: Capabilities = field(init=False, default=CAPABILITIES)
 
     def read_catalogue(self) -> list[Model]:
-        """Refuse, having no catalogue to answer with.
+        """Answer with the catalogue a test stated, or refuse having none.
 
-        :raise AssertionError: Always.
+        :return: What it has.
+
+        :raise AssertionError: When the test stated no catalogue.
         """
-        raise AssertionError(
-            "the stand-in runtime was asked to read the catalogue, after the "
-            "pairing check `run` settles before anything is reached. Assert "
-            "on the refusal rather than on what a run would have loaded."
-        )
+        if self.downloaded is None:
+            raise AssertionError(
+                "the stand-in runtime was asked to read the catalogue, after the "
+                "pairing check `run` settles before anything is reached. Assert "
+                "on the refusal rather than on what a run would have loaded."
+            )
+
+        return list(self.downloaded)
 
     def read_held(self) -> list[Model]:
-        """Refuse, holding nothing to answer with.
+        """Answer with what a test said is held, or refuse having stated none.
 
-        :raise AssertionError: Always.
+        :return: What is in memory.
+
+        :raise AssertionError: When the test stated no catalogue.
         """
-        raise AssertionError(
-            "the stand-in runtime was asked to read what it holds, after the "
-            "pairing check `run` settles before anything is reached. Assert "
-            "on the refusal rather than on what a run would have loaded."
-        )
+        if self.downloaded is None:
+            raise AssertionError(
+                "the stand-in runtime was asked to read what it holds, after the "
+                "pairing check `run` settles before anything is reached. Assert "
+                "on the refusal rather than on what a run would have loaded."
+            )
+
+        return list(self.holding)
 
     def ensure_only(self, model_request: ModelRequest) -> Model:
         """Refuse, having nothing to hold a model in.
