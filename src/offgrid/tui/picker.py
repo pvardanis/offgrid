@@ -27,6 +27,7 @@ from offgrid.domain.assembling import (
     describe_a_model_row,
     describe_an_agent_row,
     find_what_would_answer,
+    name_the_model_columns,
     open_on_what_the_profile_holds,
     order_models_held_first,
     read_the_highlight,
@@ -45,6 +46,16 @@ PANE = "pane"
 
 LISTS = "lists"
 """What the three lists are stacked in."""
+
+MODEL_BOX = "model-box"
+"""What the models list and the names of its columns share a border with."""
+
+COLUMNS = "columns"
+"""Where the names of the model list's columns are shown.
+
+Above the list rather than a row in it, so that it stays where it is when a
+machine with a shelf full of models scrolls.
+"""
 
 RUNTIMES = "runtimes"
 AGENTS = "agents"
@@ -75,9 +86,20 @@ class Picker(App[None]):
         width: 44;
     }}
 
-    #{LISTS} OptionList {{
+    #{LISTS} > OptionList, #{MODEL_BOX} {{
         height: 1fr;
         border: round $panel;
+    }}
+
+    /* Inside the box its heading shares, so the border is drawn once. */
+    #{MODEL_BOX} > OptionList {{
+        height: 1fr;
+        border: none;
+    }}
+
+    #{COLUMNS} {{
+        color: $text-muted;
+        padding: 0 1;
     }}
 
     #{PANE} {{
@@ -117,7 +139,14 @@ class Picker(App[None]):
             Vertical(
                 OptionList(id=RUNTIMES),
                 OptionList(id=AGENTS),
-                OptionList(id=MODELS),
+                # The models are the one list whose rows carry a column a
+                # reader cannot name from what is in it, so they are the one
+                # list with its columns named above them.
+                Vertical(
+                    Static(name_the_model_columns(), id=COLUMNS, markup=False),
+                    OptionList(id=MODELS),
+                    id=MODEL_BOX,
+                ),
                 id=LISTS,
             ),
             VerticalScroll(Static(id=REPORT, markup=False), id=PANE),
@@ -131,8 +160,11 @@ class Picker(App[None]):
         so, and a runtime nothing answered for is exactly what somebody opened
         this to find out about.
         """
-        for which in (RUNTIMES, AGENTS, MODELS):
-            self._list(which).border_title = which
+        # The models' border is on the box they share with their column names,
+        # so that the heading sits inside it rather than above it.
+        self._list(RUNTIMES).border_title = RUNTIMES
+        self._list(AGENTS).border_title = AGENTS
+        self.query_one(f"#{MODEL_BOX}", Vertical).border_title = MODELS
 
         try:
             what = self._read()

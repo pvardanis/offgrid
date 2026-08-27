@@ -20,7 +20,15 @@ from offgrid.cli.binding import read_what_could_be_run
 from offgrid.domain.costing import RUNNING
 from offgrid.domain.running.dialect import Dialect
 from offgrid.domain.running.model import Model
-from offgrid.tui.picker import AGENTS, MODELS, PANE, REPORT, RUNTIMES, Picker
+from offgrid.tui.picker import (
+    AGENTS,
+    COLUMNS,
+    MODELS,
+    PANE,
+    REPORT,
+    RUNTIMES,
+    Picker,
+)
 from tests.doubles import serve_get
 from tests.lmstudio_server import RESIDENT, SERVED, answer_as_lm_studio
 from tests.pairing import StandInRuntime, answer_as_a_runtime
@@ -38,6 +46,7 @@ class Driven:
     """What a screen answered after keys were pressed at it."""
 
     shown: str
+    columns: str
     listed: dict[str, list[str]]
     reachable: dict[str, list[str]]
     highlighted: dict[str, str | None]
@@ -92,6 +101,7 @@ def drive(picker: Picker, *keys: str, size: tuple[int, int] = ROOMY) -> Driven:
 
             return Driven(
                 shown=str(picker.query_one(f"#{REPORT}", Static).content),
+                columns=str(picker.query_one(f"#{COLUMNS}", Static).content),
                 listed={which: rows for which, (rows, _, _) in read.items()},
                 reachable={which: free for which, (_, free, _) in read.items()},
                 highlighted={which: on for which, (_, _, on) in read.items()},
@@ -201,6 +211,31 @@ def test_a_model_row_says_whether_it_is_held_and_the_most_it_could_be_served_at(
 
     assert held.split() == [RESIDENT, "held", "262144"]
     assert cold.split() == ["google/gemma-4-e4b", "131072"]
+
+
+def test_the_model_list_names_the_column_its_bare_number_is(here, monkeypatch):
+    # 262144 against 40960 is two numbers about nothing until something says
+    # which of a model's context figures they are — and the ceiling is here
+    # precisely because the other one does not exist until a load.
+    #
+    # Where each name sits is asserted against the row under it, because a
+    # heading over the wrong column is worse than no heading at all.
+    runner.invoke(app, ["setup"])
+    answer_as_lm_studio(
+        monkeypatch,
+        holding={RESIDENT: SERVED},
+        cold={"google/gemma-4-e4b": 131072},
+        ceilings={"google/gemma-4-e4b": 131072},
+    )
+    on_this_machine(monkeypatch, "claude")
+
+    driven = screen(here)
+    held, cold = driven.listed[MODELS]
+
+    assert driven.columns.split() == ["model", "held", "ceiling"]
+    assert driven.columns.index("held") == held.index("held")
+    assert driven.columns.index("ceiling") == held.index("262144")
+    assert driven.columns.index("ceiling") == cold.index("131072")
 
 
 def test_the_models_already_held_are_listed_first(here, monkeypatch):
