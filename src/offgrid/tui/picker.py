@@ -25,8 +25,9 @@ class Report(App[None]):
     """The report `doctor` prints, on a screen a person can sit in front of.
 
     Textual's own bindings are left as they are — `ctrl+q` leaves, `ctrl+c`
-    deliberately does not, `ctrl+p` opens the command palette — so that the
-    only thing to learn here is the one key this adds.
+    does not and says which key does, `ctrl+p` opens the command palette — so
+    that the only thing to learn here is the one key this adds. It is also the
+    only one the `Footer` shows, since the rest declare themselves hidden.
     """
 
     BINDINGS: ClassVar[list[BindingType]] = [Binding("q", "quit", "leave")]
@@ -48,7 +49,11 @@ class Report(App[None]):
 
         :yield: Each widget, in the order they are read down the screen.
         """
-        yield Static(id=REPORT)
+        # Read as plain text, because what it shows is columns and refusals.
+        # A refusal carries the key it refused the way pydantic writes one,
+        # in square brackets, which a screen reading markup takes for markup
+        # and stops on — leaving nowhere to say what was wrong with the file.
+        yield Static(id=REPORT, markup=False)
         yield Footer()
 
     def on_mount(self) -> None:
