@@ -74,7 +74,7 @@ class LMStudio:
                     "download a build of it, or where you have its CLI:",
                     LINE_WIDTH,
                 ),
-                f"  lms get {name}",
+                f"`lms get {name}`",
             ]
         )
 
