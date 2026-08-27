@@ -2148,10 +2148,20 @@ fact differently. `tests/test_picker.py` compares everything above that block
 against what `doctor` prints, line for line.
 
 **Sitting on the model the runtime is already holding is read as asking for
-nothing**, where the profile asks for nothing. The two describe the same run,
-and the difference is only what a save would write down: somebody who has moved
-the highlight nowhere has named no model, and materialising one under them
-would be a request they did not make.
+nothing — and only where the profile asks for nothing.** The two describe the
+same run there, and the difference is only what a save would write down:
+somebody who has moved the highlight nowhere has named no model, and
+materialising one under them would be a request they did not make. Where the
+profile does name a model, the highlight and the file are two statements and
+the highlight is the one somebody just made, so the report follows it.
+
+**The window of a model that is not held reads `unknown`, not `unstated`.** The
+two mean different things and the report has always drawn the line: `unstated`
+is what a held model says when the runtime answers no number for it, and a cold
+model is not being served at all, so the number does not exist yet.
+`describe_the_model` takes whether the model is held for that reason — `doctor`
+reads its model off what is held and passes `True`; the picker reports on a
+model somebody is only looking at.
 
 ## A row the cursor may not reach is the widget's guarantee
 
@@ -2164,3 +2174,20 @@ that matters, since that is the agent a run would try to start.
 Where the profile names an agent this machine has not got and another is here,
 the highlight opens on the one that is here. The report says which pairing it
 is about, and the absent row still says `not installed` beside its name.
+
+**The two acceptance criteria this trades between are in tension**, and the
+trade is recorded rather than hidden: "unreachable by the cursor" and "its
+report says where to get it" cannot both hold for an agent nobody can highlight.
+Unreachable won, because arming an agent that is not here is the exit 127 the
+screen exists to prevent, and the report is reached in the case that matters —
+the agent a run would actually try to start. Someone browsing for where OpenCode
+comes from reads `not installed` on the row and nothing more.
+
+## assembling.py runs long, and is said rather than split
+
+505 lines against a 200-line prompt, with `tests/test_picker.py` at 609 and
+`picker.py` at 282. Said here because the rule is to say it. The candidate seam
+is between what the lists read — the values, the row layouts, the ordering —
+and what the report says, which would be two files sharing every type in the
+first. Cohesion says leave it; the number says look again when the second
+runtime moves the model row.
