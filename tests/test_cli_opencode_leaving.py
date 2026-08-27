@@ -14,6 +14,7 @@ file is kept to.
 from typer.testing import CliRunner
 
 from offgrid.cli import app
+from tests.commands import unwrapped
 from tests.launches import record_launch
 from tests.opencode_bindings import name_opencode, write_configuration
 
@@ -46,7 +47,7 @@ def test_doctor_says_a_configuration_stating_no_sharing_settles_nothing(here):
     result = runner.invoke(app, ["doctor"])
 
     assert "  transcript sharing  unwritten" in result.stderr
-    assert "will not write into it" in result.stderr
+    assert "will not write into it" in unwrapped(result.stderr)
     assert '"share": "disabled"' in result.stderr
 
 

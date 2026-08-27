@@ -2,6 +2,8 @@
 
 from dataclasses import dataclass
 from pathlib import Path
+from re import sub
+from textwrap import fill
 
 from offgrid.domain.profile import Profile
 from offgrid.domain.running import discarded_windows
@@ -13,7 +15,7 @@ from offgrid.domain.running.dialect import Dialect
 from offgrid.domain.running.discarded_windows import DiscardedWindow
 from offgrid.domain.running.leaving import Reading, Status
 from offgrid.domain.running.model import Model, ModelRequest
-from offgrid.shared.wording import describe_what_was_stated
+from offgrid.shared.wording import LINE_WIDTH, describe_what_was_stated
 
 COLUMN = 12
 """How wide a label is, so every value in the report starts at one column.
@@ -28,6 +30,47 @@ UNDER = "  "
 
 REMEDY = "    "
 """Where what to do about the line above it goes, deeper than a fact."""
+
+NBSP = "\u00a0"
+"""What a space inside a command is while a sentence is being broken up.
+
+Written as its escape rather than as the character, which is invisible in a
+file and reads as an ordinary space to whoever opens it next.
+"""
+
+
+def _said_at(indent: str, sentence: str) -> tuple[str, ...]:
+    """Break a sentence into lines that all start where the first one does.
+
+    A sentence long enough to wrap is one a terminal wraps at the left margin,
+    which puts the rest of it under the labels rather than under the line it
+    belongs to. Broken here, every line of it reads as the one thing it is.
+
+    What is inside backticks is held together, because a command broken across
+    two lines is one somebody pastes and watches fail. One too long for the
+    width overflows rather than breaking, for the same reason — and a hyphen
+    is not a place to break either, since the sentences here carry paths and
+    flags, and half of one at the end of a line is a path to nothing.
+
+    :param indent: Where the sentence starts, and where it carries on.
+    :param sentence: What is being said.
+
+    :return: The lines of it, in order.
+    """
+    held = sub(r"`[^`]*`", lambda command: command.group().replace(" ", NBSP), sentence)
+
+    return tuple(
+        fill(
+            held,
+            LINE_WIDTH,
+            initial_indent=indent,
+            subsequent_indent=indent,
+            break_long_words=False,
+            break_on_hyphens=False,
+        )
+        .replace(NBSP, " ")
+        .splitlines()
+    )
 
 
 def _say(label: str, value: str, *, under: bool = False) -> str:
@@ -180,7 +223,7 @@ def _describe_where_the_agent_is(checkup: Checkup) -> tuple[str, ...]:
 
     return (
         _say("command", f"{command}, not on PATH", under=True),
-        f"{REMEDY}{say_where_an_agent_comes_from(checkup.profile.agent.name)}",
+        *_said_at(REMEDY, say_where_an_agent_comes_from(checkup.profile.agent.name)),
     )
 
 
@@ -214,7 +257,7 @@ def _describe_what_could_leave(readings: tuple[Reading, ...]) -> tuple[str, ...]
         said = (*said, f"{UNDER}{reading.subject:<{column}}{reading.status}")
 
         if reading.status is not Status.DENIED:
-            said = (*said, f"{REMEDY}{reading.said}")
+            said = (*said, *_said_at(REMEDY, reading.said))
 
     return said
 
@@ -237,7 +280,11 @@ def _describe_where_conversations_are_kept(kept: Conversations) -> tuple[str, ..
     # Both at the same indent, because they are two halves of one answer
     # rather than a fact and a remedy: the directory is where a conversation
     # lands, and the sentence is how it is opened again.
-    return ("conversations", f"{UNDER}{kept.kept_in}", f"{UNDER}{kept.said}")
+    return (
+        "conversations",
+        f"{UNDER}{kept.kept_in}",
+        *_said_at(UNDER, kept.said),
+    )
 
 
 def _describe_the_model(model: Model | None, request: ModelRequest) -> tuple[str, ...]:
@@ -282,8 +329,10 @@ def _describe_the_model(model: Model | None, request: ModelRequest) -> tuple[str
     # its own.
     return (
         HELD_NOTHING,
-        f"{REMEDY}Load a model in the runtime, or name one under `model:` "
-        "in the profile.",
+        *_said_at(
+            REMEDY,
+            "Load a model in the runtime, or name one under `model:` in the profile.",
+        ),
         *unknown,
     )
 
@@ -316,5 +365,5 @@ def _describe_a_discarded_window(checkup: Checkup) -> tuple[str, ...]:
             )
             for record in checkup.runtime.discarded
         ),
-        f"{REMEDY}Delete {discarded_windows.DEFAULT_PATH} to ask again.",
+        *_said_at(REMEDY, f"Delete {discarded_windows.DEFAULT_PATH} to ask again."),
     )
