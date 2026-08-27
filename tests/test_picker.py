@@ -147,3 +147,19 @@ def test_a_profile_offgrid_cannot_read_is_shown_on_the_screen(here):
 
     assert "theme" in shown
     assert still_open
+
+
+def test_a_screen_that_crashed_is_not_reported_as_a_run_that_worked(here, monkeypatch):
+    # Textual paints a traceback and returns rather than raising, so the code
+    # it set is the only thing saying the screen died. Unread, bare `offgrid`
+    # says the same as a report somebody read: nothing went wrong.
+    runner.invoke(app, ["setup"])
+
+    def crash():
+        raise RuntimeError("something nobody wrapped")
+
+    monkeypatch.setattr("offgrid.cli.read_what_can_be_read", lambda path: crash())
+
+    result = runner.invoke(app, [])
+
+    assert result.exit_code == 1
