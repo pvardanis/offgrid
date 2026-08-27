@@ -10,6 +10,7 @@ import asyncio
 from dataclasses import dataclass
 
 import httpx
+from rich.cells import cell_len
 from textual.containers import VerticalScroll
 from textual.widgets import OptionList, Static
 from typer.testing import CliRunner
@@ -17,6 +18,7 @@ from typer.testing import CliRunner
 from offgrid.agents.claude_code.launching import CONTEXT_FLOOR
 from offgrid.cli import app
 from offgrid.cli.binding import read_what_could_be_run
+from offgrid.domain.assembling import IN_MEMORY
 from offgrid.domain.costing import RUNNING
 from offgrid.domain.running import discarded_windows
 from offgrid.domain.running.dialect import Dialect
@@ -132,6 +134,23 @@ def screen(here, *keys: str, size: tuple[int, int] = ROOMY) -> Driven:
     )
 
 
+def starts_at(row: str, part: str) -> int:
+    """Say which terminal cell a piece of a row starts in.
+
+    Cells rather than characters, and measured by Rich rather than by the code
+    under test: the mark for a held model is one character and two cells wide,
+    so a row counted by characters lines up in the file and not on the screen.
+    Rich is what Textual lays the screen out with, which makes it the answer a
+    person actually sees.
+
+    :param row: The line to look in.
+    :param part: What to find in it.
+
+    :return: How many cells precede it.
+    """
+    return cell_len(row[: row.index(part)])
+
+
 def on_this_machine(monkeypatch, *commands: str) -> None:
     """Answer as a machine with these agents installed and no others.
 
@@ -231,7 +250,7 @@ def test_a_model_row_says_whether_it_is_held_and_the_most_it_could_be_served_at(
     driven = screen(here)
     held, cold = driven.listed[MODELS]
 
-    assert held.split() == [RESIDENT, "held", "262144"]
+    assert held.split() == [RESIDENT, IN_MEMORY, "262144"]
     assert cold.split() == ["google/gemma-4-e4b", "131072"]
 
 
@@ -255,9 +274,9 @@ def test_the_model_list_names_the_column_its_bare_number_is(here, monkeypatch):
     held, cold = driven.listed[MODELS]
 
     assert driven.columns.split() == ["model", "held", "ceiling"]
-    assert driven.columns.index("held") == held.index("held")
-    assert driven.columns.index("ceiling") == held.index("262144")
-    assert driven.columns.index("ceiling") == cold.index("131072")
+    assert starts_at(driven.columns, "held") == starts_at(held, IN_MEMORY)
+    assert starts_at(driven.columns, "ceiling") == starts_at(held, "262144")
+    assert starts_at(driven.columns, "ceiling") == starts_at(cold, "131072")
 
 
 def test_the_models_already_held_are_listed_first(here, monkeypatch):

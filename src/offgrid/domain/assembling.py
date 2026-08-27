@@ -22,7 +22,12 @@ from offgrid.domain.running.agent import AgentConfig, AgentName
 from offgrid.domain.running.agent_presence import say_where_an_agent_comes_from
 from offgrid.domain.running.model import Model
 from offgrid.shared.exceptions import AgentSettingsError
-from offgrid.shared.wording import UNDER, describe_what_was_stated, say_indented
+from offgrid.shared.wording import (
+    UNDER,
+    describe_what_was_stated,
+    pad_to_cells,
+    say_indented,
+)
 
 ROW_WIDTH = 40
 """How wide a row in one of the lists may run before it breaks.
@@ -47,6 +52,18 @@ list has to be able to tell two builds of one model apart.
 
 HELD_COLUMN = 6
 """How wide the column saying a model is in memory is, blank where it is not."""
+
+IN_MEMORY = "🟢"
+"""What marks a model the runtime is already holding.
+
+A mark rather than the word, because the column is called `held` and a column
+whose every filled cell repeats its own heading says nothing twice. Held models
+sort first, so the marks are one block at the top that an eye finds without
+reading.
+
+Two cells wide, like most emoji, which is why the row is padded by what it
+takes on a terminal rather than by how many characters it has.
+"""
 
 
 @dataclass(frozen=True)
@@ -283,7 +300,7 @@ def describe_a_model_row(model: Model, *, held: bool) -> str:
     """
     return _lay_out_a_model_row(
         model.identifier,
-        "held" if held else "",
+        IN_MEMORY if held else "",
         describe_what_was_stated(model.context_ceiling),
     )
 
@@ -307,13 +324,24 @@ def name_the_model_columns() -> str:
 def _lay_out_a_model_row(identifier: str, held: str, ceiling: str) -> str:
     """Put three values in the columns a model is listed in.
 
+    Padded by what each takes on a terminal rather than by how many characters
+    it has, because the mark for a held model is one character and two cells:
+    counted the other way, every held row would sit one place to the left of
+    every cold one.
+
     :param identifier: What the model is called.
-    :param held: Whether it is in memory, or empty where it is not.
+    :param held: What marks it as in memory, or empty where it is not.
     :param ceiling: The most it could ever be served at.
 
     :return: The line, as it is read.
     """
-    return f"{identifier:<{MODEL_COLUMN}}{held:<{HELD_COLUMN}}{ceiling}".rstrip()
+    laid_out = (
+        pad_to_cells(identifier, MODEL_COLUMN),
+        pad_to_cells(held, HELD_COLUMN),
+        ceiling,
+    )
+
+    return "".join(laid_out).rstrip()
 
 
 def find_agent(what: WhatCouldBeRun, name: AgentName) -> AgentOnThisMachine:
