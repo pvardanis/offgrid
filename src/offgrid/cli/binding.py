@@ -14,7 +14,11 @@ answer start from it.
 from pathlib import Path
 
 from offgrid.agents import AGENT_CONFIGS, create_agent_config, prepare_agent
-from offgrid.domain.assembling import AgentOnThisMachine, WhatCouldBeRun
+from offgrid.domain.assembling import (
+    AgentOnThisMachine,
+    WhatCouldBeRun,
+    WouldNotAnswer,
+)
 from offgrid.domain.checkup import (
     Checkup,
     WhatTheAgentAnswered,
@@ -34,7 +38,10 @@ from offgrid.domain.running.agent import (
     Passthrough,
 )
 from offgrid.domain.running.agent_presence import find_agent_on_path
-from offgrid.domain.running.answering import find_resident_model
+from offgrid.domain.running.answering import (
+    find_resident_model,
+    name_what_would_answer,
+)
 from offgrid.domain.running.discarded_windows import DiscardedWindow
 from offgrid.domain.running.model import Model
 from offgrid.domain.running.runtime import Runtime, RuntimeName
@@ -161,10 +168,11 @@ def read_what_could_be_run(profile_path: Path) -> WhatCouldBeRun:
 
     downloaded = tuple(runtime.read_catalogue())
 
-    # One reading, for both questions: the port promises a stable order, so
-    # the first of them is the model offgrid names as the one that answers.
+    # Asked once and read twice, because what is held and which of it answers
+    # are two questions about one moment: asked separately, a model can be let
+    # go of in between and the two would describe different machines.
     in_memory = runtime.read_held()
-    resident = in_memory[0] if in_memory else None
+    resident = name_what_would_answer(in_memory)
 
     discarded, unreadable = _read_what_was_discarded(profile, resident)
 
@@ -222,13 +230,9 @@ def _ask_an_agent(config: AgentConfig) -> AgentOnThisMachine:
             kept=agent.conversations,
         )
     except OffgridError as error:
-        return AgentOnThisMachine(
-            name=config.name, config=config, answered=None, unreadable=str(error)
-        )
+        return AgentOnThisMachine(config=config, answered=WouldNotAnswer(str(error)))
 
-    return AgentOnThisMachine(
-        name=config.name, config=config, answered=answered, unreadable=None
-    )
+    return AgentOnThisMachine(config=config, answered=answered)
 
 
 def _read_what_was_discarded(

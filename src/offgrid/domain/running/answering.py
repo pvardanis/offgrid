@@ -30,8 +30,20 @@ def find_resident_model(runtime: Runtime) -> Model | None:
 
     :raise RuntimeUnreachableError: When the runtime cannot be reached.
     """
-    in_memory = runtime.read_held()
+    return name_what_would_answer(runtime.read_held())
 
+
+def name_what_would_answer(in_memory: list[Model]) -> Model | None:
+    """Say which of the models a runtime is holding would answer a run.
+
+    Beside the call that asks rather than inside it, because a caller that
+    wants what is held *and* which of it answers would otherwise ask twice —
+    and two readings are two moments, in which a model can be let go of.
+
+    :param in_memory: What the runtime said it is holding.
+
+    :return: The model that would answer, or ``None`` where it holds none.
+    """
     # A runtime can hold several, and the port promises a stable order: the
     # first of them is the one offgrid names.
     return in_memory[0] if in_memory else None
