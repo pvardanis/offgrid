@@ -192,8 +192,8 @@ domain/
     launch.py      an environment and an argument list, and running one
     runtime.py     what offgrid asks of a runtime, and which ones there are
     agent.py       what offgrid asks of an agent, and which ones there are
-    presence.py    whether the agent is on this machine, and where it is
-                   published from where it is not
+    agent_presence.py  whether the agent is on this machine, and where it
+                   is published from where it is not
     config_editing.py  whether a configuration file holds an edit to
                    keep, and what is refused rather than guessed about
     answering.py   which model answers, and making it the one that does
@@ -607,11 +607,16 @@ type Passthrough = tuple[str, ...]
 Prepare = Callable[[AgentConfig, Passthrough], Agent]
 
 
+@dataclass(frozen=True)
+class AgentTerms:
+    dialect: Dialect
+    context_floor: int
+    command: str
+
+
 class Agent(Protocol):
     @property
-    def dialect(self) -> Dialect: ...
-    @property
-    def context_floor(self) -> int: ...
+    def terms(self) -> AgentTerms: ...
     @property
     def conversations(self) -> Conversations: ...
 
@@ -624,10 +629,13 @@ Everything but the model is settled before a run starts, so an adapter is bound
 to all of it and `plan` takes only what the run discovers. What is read to
 decide whether a run is safe is then the same thing that gets launched.
 
-`context_floor` is the smallest window the agent can start in — a fact about
-the agent rather than a preference, so it is stated here and nothing outside
-the adapter may set it. An agent whose system prompt and tool definitions do
-not fit fails at startup, which is a load already paid for.
+`AgentTerms` is what the agent states about itself, and one value rather than
+three members because the three share an invariant as well as a lifetime: each
+is a fact about the agent that nothing outside it may set. `context_floor` is
+the smallest window it can start in — an agent whose system prompt and tool
+definitions do not fit fails at startup, which is a load already paid for.
+`command` is what a launch runs, and what `PATH` is searched for before one is
+built.
 
 Its config carries the runtime's address, which its own section never says —
 an agent that learns where to talk from a config file rather than from an

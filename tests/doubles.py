@@ -12,7 +12,12 @@ import httpx
 import pytest
 from pydantic import computed_field
 
-from offgrid.domain.running.agent import AgentConfig, AgentName, Prepare
+from offgrid.domain.running.agent import (
+    AgentConfig,
+    AgentName,
+    AgentTerms,
+    Prepare,
+)
 from offgrid.domain.running.conversations import Conversations
 from offgrid.domain.running.dialect import Dialect
 from offgrid.domain.running.launch import Launch
@@ -74,11 +79,27 @@ class StandInAgent:
     """
 
     dialect: Dialect
-    # Its own number, not the one the written adapter states: a test that
-    # passed on either would be proving nothing about which was asked.
+    # Its own number and its own command, not the ones the written adapters
+    # state: a test that passed on either would be proving nothing about which
+    # was asked.
     context_floor: int = 12_000
     command: str = "some-other-agent"
     refusal: Exception | None = None
+
+    @property
+    def terms(self) -> AgentTerms:
+        """What it states about itself, out of what the test asked for.
+
+        Assembled here rather than taken whole, so a test says only the fact
+        it is about and the rest stay at values no written adapter shares.
+
+        :return: The dialect, the floor and the command.
+        """
+        return AgentTerms(
+            dialect=self.dialect,
+            context_floor=self.context_floor,
+            command=self.command,
+        )
 
     def configure(self) -> None:
         """Write nothing, having nothing to write."""

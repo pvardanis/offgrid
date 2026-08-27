@@ -3,14 +3,19 @@
 import typer
 
 from offgrid.cli.binding import bind_run
-from offgrid.cli.checkup import Checkup, describe_what_was_read
+from offgrid.cli.checkup import (
+    Checkup,
+    WhatTheAgentAnswered,
+    WhatTheRuntimeAnswered,
+    describe_what_was_read,
+)
 from offgrid.cli.reporting import reporting
 from offgrid.domain.profile import DEFAULT_PATH, Profile
 from offgrid.domain.running import discarded_windows
+from offgrid.domain.running.agent_presence import find_agent_on_path
 from offgrid.domain.running.answering import find_resident_model
 from offgrid.domain.running.discarded_windows import DiscardedWindow
 from offgrid.domain.running.model import Model
-from offgrid.domain.running.presence import find_agent_on_path
 from offgrid.shared.exceptions import DiscardedWindowsUnreadableError
 from offgrid.shared.say import tell
 
@@ -32,7 +37,7 @@ def doctor() -> None:
 
     # The same code every other fault gets, so that a script does not read a
     # report with no model in it as a run that would work.
-    if checkup.resident is None:
+    if checkup.runtime.resident is None:
         raise typer.Exit(1)
 
 
@@ -47,18 +52,22 @@ def _read_what_can_be_read() -> Checkup:
     resident = find_resident_model(runtime)
     discarded, unreadable = _read_what_was_discarded(profile, resident)
 
+    terms = agent.terms
+
     return Checkup(
         profile=profile,
-        resident=resident,
-        could_leave=agent.read_what_leaves_this_machine(),
-        kept=agent.conversations,
-        dialect=agent.dialect,
-        served=runtime.dialects,
-        context_floor=agent.context_floor,
-        command=agent.command,
-        found_at=find_agent_on_path(agent.command),
-        discarded=discarded,
-        unreadable=unreadable,
+        runtime=WhatTheRuntimeAnswered(
+            resident=resident,
+            served=runtime.dialects,
+            discarded=discarded,
+            unreadable=unreadable,
+        ),
+        agent=WhatTheAgentAnswered(
+            terms=terms,
+            found_at=find_agent_on_path(terms.command),
+            could_leave=agent.read_what_leaves_this_machine(),
+            kept=agent.conversations,
+        ),
     )
 
 

@@ -9,7 +9,7 @@ stored profile for the length of one check and putting the profile back.
 One record per agent, so a third one is a line here rather than an edit in
 four places. What differs is the command a machine needs on the PATH and the
 spelling that asks one question and exits. Whether that command is there, and
-where a machine without it is sent, come from `presence.py` — the same answers
+where a machine without it is sent, come from `agent_presence.py` — the same answers
 `doctor` reports, so a live check and a report cannot disagree about the same
 machine. The command itself is written down twice, here and in the adapter
 that states it, and `tests/test_agent_conformance.py` holds the two together.
@@ -25,7 +25,7 @@ import yaml
 
 from offgrid.domain.profile import DEFAULT_PATH
 from offgrid.domain.running.agent import AgentName
-from offgrid.domain.running.presence import (
+from offgrid.domain.running.agent_presence import (
     find_agent_on_path,
     say_where_an_agent_comes_from,
 )

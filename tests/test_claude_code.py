@@ -70,7 +70,7 @@ def _settings(config_dir):
 
 
 def test_claude_code_speaks_the_anthropic_dialect(agent):
-    assert agent.dialect is Dialect.ANTHROPIC
+    assert agent.terms.dialect is Dialect.ANTHROPIC
 
 
 def test_claude_code_will_not_start_in_a_window_under_25k(agent):
@@ -78,7 +78,7 @@ def test_claude_code_will_not_start_in_a_window_under_25k(agent):
     # is on the other side is a failure at startup rather than a cramped
     # session. The number is written out here rather than read from the
     # source, so that changing the source is a decision this test asks about.
-    assert agent.context_floor == 25_000
+    assert agent.terms.context_floor == 25_000
 
 
 def test_the_agent_is_pointed_at_the_local_server(launch):

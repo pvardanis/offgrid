@@ -30,7 +30,7 @@ from offgrid.agents.claude_code.launching import (
     get_claude_args,
 )
 from offgrid.agents.claude_code.publishing import read_transcript_sharing
-from offgrid.domain.running.agent import Passthrough
+from offgrid.domain.running.agent import AgentTerms, Passthrough
 from offgrid.domain.running.config_editing import (
     write_config_where_nothing_is_kept,
     write_settings_where_nothing_is_kept,
@@ -41,6 +41,11 @@ from offgrid.domain.running.launch import Launch
 from offgrid.domain.running.leaving import Reading
 from offgrid.domain.running.model import Model
 from offgrid.shared.exceptions import AgentSettingsError
+
+TERMS = AgentTerms(
+    dialect=Dialect.ANTHROPIC, context_floor=CONTEXT_FLOOR, command=COMMAND
+)
+"""What ClaudeCode states about itself, which no binding of it may change."""
 
 
 @dataclass(frozen=True)
@@ -60,9 +65,7 @@ class ClaudeCode:
 
     config: ClaudeCodeConfig
     passthrough: Passthrough = ()
-    dialect: Dialect = field(init=False, default=Dialect.ANTHROPIC)
-    context_floor: int = field(init=False, default=CONTEXT_FLOOR)
-    command: str = field(init=False, default=COMMAND)
+    terms: AgentTerms = field(init=False, default=TERMS)
 
     def configure(self) -> None:
         """Write the settings and the notes that are not there.

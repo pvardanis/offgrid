@@ -26,9 +26,9 @@ from pathlib import Path
 import pytest
 
 from offgrid.domain.running.agent import AgentName
+from offgrid.domain.running.agent_presence import say_where_an_agent_comes_from
 from offgrid.domain.running.dialect import Dialect
 from offgrid.domain.running.launch import Launch
-from offgrid.domain.running.presence import say_where_an_agent_comes_from
 from tests.agent_conformance import (
     EVERY_AGENT,
     WANTED,
@@ -49,7 +49,7 @@ def test_what_an_agent_speaks_is_readable_before_anything_is_written(
     # nothing and touches nothing.
     agent = agent_under_test.prepare(monkeypatch, tmp_path)
 
-    assert isinstance(agent.dialect, Dialect)
+    assert isinstance(agent.terms.dialect, Dialect)
     assert read_everything_under(tmp_path) == {}
 
 
@@ -72,8 +72,8 @@ def test_an_agent_states_the_smallest_window_it_can_start_in(
         monkeypatch, tmp_path, passthrough=("--context-floor", "1")
     )
 
-    assert agent.context_floor > 0
-    assert told.context_floor == agent.context_floor
+    assert agent.terms.context_floor > 0
+    assert told.terms.context_floor == agent.terms.context_floor
     assert read_everything_under(tmp_path) == {}
 
 
@@ -88,13 +88,15 @@ def test_an_agent_names_the_command_that_would_be_run(
     # was written on, and a `PATH` lookup is the only answer about this one.
     agent = agent_under_test.prepare(monkeypatch, tmp_path)
 
-    assert agent.command
-    assert Path(agent.command).name == agent.command, (
-        f"{agent.command} is a path rather than a command to look up"
+    command = agent.terms.command
+
+    assert command
+    assert Path(command).name == command, (
+        f"{command} is a path rather than a command to look up"
     )
     # What is looked up is what runs, so an adapter cannot name one command
     # and start another.
-    assert plan_for_a_model(agent).argv[0] == agent.command
+    assert plan_for_a_model(agent).argv[0] == command
 
 
 def test_planning_a_launch_writes_nothing(
@@ -199,7 +201,7 @@ def test_a_live_check_looks_up_the_command_the_adapter_states(
     # start the agent — which is what it is there to refuse.
     agent = agent_under_test.prepare(monkeypatch, tmp_path)
 
-    assert PAIRS[agent_under_test.name].binary == agent.command
+    assert PAIRS[agent_under_test.name].binary == agent.terms.command
 
 
 def test_an_agent_offgrid_runs_has_somewhere_to_be_got_from(
