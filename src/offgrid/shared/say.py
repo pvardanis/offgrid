@@ -49,6 +49,20 @@ def say_on_stderr() -> None:
     logger.propagate = False
 
 
+def someone_is_at_a_terminal() -> bool:
+    """Whether there is anybody there to press a key.
+
+    A screen takes the terminal and waits, so somewhere with nobody at it —
+    a pipe, a file, a CI step — waits for a keystroke that is never coming.
+    What is read is stdin and stderr: stdin is what a key would arrive on,
+    and stderr is where a screen paints, since stdout is left to whatever
+    the agent has to say.
+
+    :return: Whether both ends are a terminal.
+    """
+    return sys.stdin.isatty() and sys.stderr.isatty()
+
+
 def tell(message: str) -> None:
     """Say something to whoever is running offgrid.
 

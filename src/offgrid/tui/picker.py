@@ -10,6 +10,7 @@ from typing import ClassVar
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding, BindingType
+from textual.containers import VerticalScroll
 from textual.widgets import Footer, Static
 
 from offgrid.domain.checkup import Checkup, describe_what_was_read
@@ -49,11 +50,17 @@ class Report(App[None]):
 
         :yield: Each widget, in the order they are read down the screen.
         """
+        # Inside something that scrolls, because the report is as long as the
+        # machine makes it: a discarded window, a long path to the agent, or a
+        # narrow terminal each push the last lines past the bottom. Those
+        # lines are the remedies, which is what a person opened this to read.
+        # A bare `Static` cannot take focus, so no key would reach them.
+        #
         # Read as plain text, because what it shows is columns and refusals.
         # A refusal carries the key it refused the way pydantic writes one,
         # in square brackets, which a screen reading markup takes for markup
         # and stops on — leaving nowhere to say what was wrong with the file.
-        yield Static(id=REPORT, markup=False)
+        yield VerticalScroll(Static(id=REPORT, markup=False))
         yield Footer()
 
     def on_mount(self) -> None:
