@@ -45,7 +45,7 @@ def launch(agent):
 
 
 def test_opencode_speaks_the_openai_dialect(agent):
-    assert agent.dialect is Dialect.OPENAI
+    assert agent.terms.dialect is Dialect.OPENAI
 
 
 def test_the_floor_opencode_states_is_the_placeholder_it_says_it_is(agent):
@@ -55,7 +55,7 @@ def test_the_floor_opencode_states_is_the_placeholder_it_says_it_is(agent):
     # source says it is a guess, so this asserts the guess rather than a
     # window anybody watched OpenCode refuse. Issue #153 is the measurement,
     # and settling it is meant to change this test.
-    assert agent.context_floor == 25_000
+    assert agent.terms.context_floor == 25_000
 
 
 def test_the_agent_is_pointed_at_the_local_server(launch):

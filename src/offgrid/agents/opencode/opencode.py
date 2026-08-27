@@ -34,7 +34,7 @@ from offgrid.agents.opencode.launching import (
     get_opencode_args,
 )
 from offgrid.agents.opencode.sharing import read_transcript_sharing
-from offgrid.domain.running.agent import Passthrough
+from offgrid.domain.running.agent import AgentTerms, Passthrough
 from offgrid.domain.running.config_editing import write_settings_where_nothing_is_kept
 from offgrid.domain.running.conversations import Conversations
 from offgrid.domain.running.dialect import Dialect
@@ -42,6 +42,9 @@ from offgrid.domain.running.launch import Launch
 from offgrid.domain.running.leaving import Reading
 from offgrid.domain.running.model import Model
 from offgrid.shared.exceptions import AgentSettingsError
+
+TERMS = AgentTerms(dialect=Dialect.OPENAI, context_floor=CONTEXT_FLOOR, command=COMMAND)
+"""What OpenCode states about itself, which no binding of it may change."""
 
 
 @dataclass(frozen=True)
@@ -52,8 +55,8 @@ class OpenCode:
     than passed: what is read to decide whether a run is safe is then the same
     thing that is launched.
 
-    `dialect`, `context_floor` and `command` are facts about OpenCode rather
-    than about one binding, so they are settled here and not passed in.
+    What it states about itself is a fact about OpenCode rather than about one
+    binding, so it is settled here and not passed in.
 
     :param config: What the profile and the run settled for this agent.
     :param passthrough: Arguments handed to the agent unchanged.
@@ -61,9 +64,7 @@ class OpenCode:
 
     config: OpenCodeConfig
     passthrough: Passthrough = ()
-    dialect: Dialect = field(init=False, default=Dialect.OPENAI)
-    context_floor: int = field(init=False, default=CONTEXT_FLOOR)
-    command: str = field(init=False, default=COMMAND)
+    terms: AgentTerms = field(init=False, default=TERMS)
 
     def configure(self) -> None:
         """Write the provider entry that is not there.

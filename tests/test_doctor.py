@@ -167,6 +167,26 @@ def test_doctor_prints_the_command_the_agent_itself_would_be_started_by(
     assert "command   some-other-agent" in result.stderr
 
 
+def test_doctor_looks_up_the_command_the_agent_states_and_not_another(
+    here, monkeypatch
+):
+    # The name reported and the name looked up are read from the same place,
+    # so a report cannot say one agent is here by finding another. Both are on
+    # the PATH, and only one of them is the agent the profile names.
+    from offgrid.domain.running.dialect import Dialect
+
+    answer_as_an_agent(
+        monkeypatch, StandInAgent(dialect=Dialect.ANTHROPIC, command="some-other-agent")
+    )
+    runner.invoke(app, ["setup"])
+    install_agent(here, "claude")
+    installed = install_agent(here, "some-other-agent")
+
+    result = runner.invoke(app, ["doctor"])
+
+    assert f"command   some-other-agent, at {installed}" in result.stderr
+
+
 def test_doctor_reports_where_the_agent_a_run_would_start_was_found(here):
     # A missing agent is otherwise met at exit 127, after a model has been
     # loaded and let go again for a run that was never going to start.

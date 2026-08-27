@@ -5,59 +5,83 @@ from pathlib import Path
 
 from offgrid.domain.profile import Profile
 from offgrid.domain.running import discarded_windows
+from offgrid.domain.running.agent import AgentTerms
+from offgrid.domain.running.agent_presence import say_where_an_agent_comes_from
 from offgrid.domain.running.asking import describe_what_is_asked_for
 from offgrid.domain.running.conversations import Conversations
 from offgrid.domain.running.dialect import Dialect
 from offgrid.domain.running.discarded_windows import DiscardedWindow
 from offgrid.domain.running.leaving import Reading, Status
 from offgrid.domain.running.model import Model, ModelRequest
-from offgrid.domain.running.presence import say_where_an_agent_comes_from
 from offgrid.shared.wording import describe_what_was_stated
 
 HELD_NOTHING = "model     nothing held"
 
 
 @dataclass(frozen=True)
-class Checkup:
-    """Everything `doctor` read, including what it found nothing to read.
+class WhatTheRuntimeAnswered:
+    """What the runtime said, and what offgrid keeps about it.
 
-    Readings rather than the things that answered them: the agent port can
-    write its own settings, and a value the report is built from has no call
-    to carry the means of doing it.
-
-    :param profile: What was written down.
-    :param resident: The model the runtime is holding, or ``None`` where it
-        holds none — which the rest of the report survives, because a runtime
-        holding nothing still answered.
-    :param could_leave: What the agent says about each way this run could
-        reach off this machine, one reading each.
-    :param kept: Where the agent keeps a conversation a run starts, and how to
-        open one again — which nothing outside a run finds.
-    :param dialect: What the agent speaks.
-    :param served: Every dialect the runtime serves, which says whether an
-        agent other than this one would pair with it.
-    :param context_floor: The smallest window the agent can start in.
-    :param command: What starting the agent runs, which is what was looked up.
-    :param found_at: Where the `PATH` a run inherits has that command, and
-        ``None`` where it has not got it at all.
-    :param discarded: Every window this runtime discarded for the model it is
-        holding, and empty where it discarded none and where the records could
-        not be read — which is itself a finding, carried in `unreadable`.
+    :param resident: The model it is holding, or ``None`` where it holds none
+        — which the rest of the report survives, because a runtime holding
+        nothing still answered.
+    :param served: Every dialect it serves, which says whether an agent other
+        than this one would pair with it.
+    :param discarded: Every window it discarded for the model it is holding,
+        and empty where it discarded none and where the records could not be
+        read — which is itself a finding, carried in `unreadable`.
     :param unreadable: Why the records could not be read, where they could not.
         A stale file nobody has heard of is worth a line, not the whole report.
     """
 
-    profile: Profile
     resident: Model | None
-    could_leave: tuple[Reading, ...]
-    kept: Conversations
-    dialect: Dialect
     served: frozenset[Dialect]
-    context_floor: int
-    command: str
-    found_at: Path | None
     discarded: tuple[DiscardedWindow, ...]
     unreadable: str | None
+
+
+@dataclass(frozen=True)
+class WhatTheAgentAnswered:
+    """What the agent said, and what this machine says about it.
+
+    `found_at` is the odd one: it is a fact about the machine rather than
+    about the agent. It is here because it is the answer to a question about
+    the agent, and reading it beside the command it was looked up from is
+    what keeps the two from being about different agents.
+
+    :param terms: What it states about itself — the dialect it speaks, the
+        window it will not start below, and the command that starts it.
+    :param found_at: Where the `PATH` a run inherits has that command, and
+        ``None`` where it has not got it at all.
+    :param could_leave: What it says about each way this run could reach off
+        this machine, one reading each.
+    :param kept: Where it keeps a conversation a run starts, and how to open
+        one again — which nothing outside a run finds.
+    """
+
+    terms: AgentTerms
+    found_at: Path | None
+    could_leave: tuple[Reading, ...]
+    kept: Conversations
+
+
+@dataclass(frozen=True)
+class Checkup:
+    """Everything `doctor` read, including what it found nothing to read.
+
+    One value per thing that answered, which is the sentence `doctor` is: the
+    profile, the runtime and the agent. Readings rather than the things
+    themselves — the agent port can write its own settings, and a value the
+    report is built from has no call to carry the means of doing it.
+
+    :param profile: What was written down.
+    :param runtime: What the runtime answered.
+    :param agent: What the agent answered.
+    """
+
+    profile: Profile
+    runtime: WhatTheRuntimeAnswered
+    agent: WhatTheAgentAnswered
 
 
 def describe_what_was_read(checkup: Checkup) -> tuple[str, ...]:
@@ -74,14 +98,15 @@ def describe_what_was_read(checkup: Checkup) -> tuple[str, ...]:
 
     said = (
         f"runtime   {profile.runtime.name.value} at {profile.runtime.host}, reachable",
-        f"serving   {', '.join(sorted(d.value for d in checkup.served))}",
-        *_describe_the_model(checkup.resident, profile.model),
+        f"serving   {', '.join(sorted(d.value for d in checkup.runtime.served))}",
+        *_describe_the_model(checkup.runtime.resident, profile.model),
         f"profile   {describe_what_is_asked_for(profile.model)}",
-        f"agent     {profile.agent.name.value}, speaking {checkup.dialect.value}",
+        f"agent     {profile.agent.name.value}, "
+        f"speaking {checkup.agent.terms.dialect.value}",
         *_describe_where_the_agent_is(checkup),
-        f"floor     {checkup.context_floor}",
-        *_describe_what_could_leave(checkup.could_leave),
-        *_describe_where_conversations_are_kept(checkup.kept),
+        f"floor     {checkup.agent.terms.context_floor}",
+        *_describe_what_could_leave(checkup.agent.could_leave),
+        *_describe_where_conversations_are_kept(checkup.agent.kept),
     )
 
     return (*said, *_describe_a_discarded_window(checkup))
@@ -95,17 +120,19 @@ def _describe_where_the_agent_is(checkup: Checkup) -> tuple[str, ...]:
 
     Where it comes from goes under the line it is about, where a reading about
     what could leave puts its remedy. A link and not a command to type, for
-    the reason `presence.py` gives.
+    the reason `agent_presence.py` gives.
 
     :param checkup: What was read, the profile it names the agent in included.
 
     :return: The command's line, and where to get it where it is not here.
     """
-    if checkup.found_at is not None:
-        return (f"command   {checkup.command}, at {checkup.found_at}",)
+    command = checkup.agent.terms.command
+
+    if checkup.agent.found_at is not None:
+        return (f"command   {command}, at {checkup.agent.found_at}",)
 
     return (
-        f"command   {checkup.command}, not on PATH",
+        f"command   {command}, not on PATH",
         f"          {say_where_an_agent_comes_from(checkup.profile.agent.name)}",
     )
 
@@ -210,17 +237,17 @@ def _describe_a_discarded_window(checkup: Checkup) -> tuple[str, ...]:
     :return: A line for each window discarded and the way back under them, and
         nothing where none was.
     """
-    if checkup.unreadable is not None:
-        return (f"discarded {checkup.unreadable}",)
+    if checkup.runtime.unreadable is not None:
+        return (f"discarded {checkup.runtime.unreadable}",)
 
-    if not checkup.discarded:
+    if not checkup.runtime.discarded:
         return ()
 
     return (
         *(
             f"discarded {record.asked_for} was asked for on {record.dated} "
             f"and {record.served} served then, so offgrid is not asking again."
-            for record in checkup.discarded
+            for record in checkup.runtime.discarded
         ),
         f"Delete {discarded_windows.DEFAULT_PATH} to ask again.",
     )

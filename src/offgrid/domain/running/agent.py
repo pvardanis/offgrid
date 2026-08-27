@@ -1,8 +1,8 @@
 """What offgrid asks of an agent, and which ones there are.
 
 An adapter binds its own settings once and answers with something satisfying
-``Agent``. Its four attributes are settled when that happens — three facts
-about the agent itself and one about the directory it is bound to, none of them
+``Agent``. Its two attributes are settled when that happens — what the agent
+states about itself, and where the conversations it keeps go, neither of them
 anyone's to choose; its three methods act — two on the configuration, one on
 nothing at all.
 
@@ -11,6 +11,7 @@ Why it is shaped this way is in `docs/architecture.md` under "The agent seam".
 
 from abc import abstractmethod
 from collections.abc import Callable
+from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 from typing import Protocol
@@ -82,41 +83,48 @@ class AgentConfig(BaseModel):
         return OFFGRID_HOME / self.name.value
 
 
+@dataclass(frozen=True)
+class AgentTerms:
+    """What an agent states about itself, settled when its adapter binds.
+
+    One value rather than three members, because the three share an invariant
+    as well as a lifetime: each is a fact about the agent that nothing outside
+    it may set. A profile cannot argue an agent into a window it will not
+    start in, or into speaking a shape it does not speak.
+
+    They are read before anything is loaded, which is the point of stating
+    them at all: a pair that cannot talk and a window that is too small are
+    both refusals worth making while asking still costs nothing.
+
+    :param dialect: The API shape it speaks, which a runtime has to serve for
+        the pair to work.
+    :param context_floor: The smallest window it can start in, in tokens. An
+        agent whose system prompt and tool definitions do not fit fails at
+        startup, and asserting a smaller number only buys that failure after a
+        load has been paid for.
+    :param command: The command a launch runs, as `PATH` is searched for it.
+        A bare name, stated rather than derived: `claude-code` runs `claude`,
+        and reading it off a `Launch` would mean building one, which takes a
+        model a report asking whether the agent is here has not got.
+    """
+
+    dialect: Dialect
+    context_floor: int
+    command: str
+
+
 class Agent(Protocol):
     """An agent offgrid can start against a model on this machine."""
 
     @property
-    def dialect(self) -> Dialect:
-        """The API shape the agent speaks.
+    def terms(self) -> AgentTerms:
+        """What this agent states about itself.
 
-        :return: The dialect a runtime has to serve for the pair to work.
-        """
-        ...
+        One property rather than three, and a frozen value rather than
+        members anything could set: see `AgentTerms`.
 
-    @property
-    def context_floor(self) -> int:
-        """The smallest window this agent can start in.
-
-        A fact about the agent rather than a preference, so nothing outside it
-        may say otherwise: an agent whose system prompt and tool definitions
-        do not fit fails at startup, and asserting a smaller number only buys
-        that failure after a load has been paid for.
-
-        :return: The window below which it will not start, in tokens.
-        """
-        ...
-
-    @property
-    def command(self) -> str:
-        """The command a launch would run, as `PATH` is searched for it.
-
-        A bare name, stated rather than derived: `claude-code` runs `claude`,
-        so the name a profile calls the adapter by does not answer it, and
-        reading it off a `Launch` would mean building one — which takes a model
-        a report asking whether the agent is here at all has not got. Where it
-        sits is this machine's answer, and `find_agent_on_path` is what asks.
-
-        :return: The command to look up, and the one a launch starts.
+        :return: The dialect it speaks, the window it will not start below,
+            and the command that starts it.
         """
         ...
 
