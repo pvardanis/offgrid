@@ -10,7 +10,7 @@ What offgrid supports is listed whether or not this machine has it. A row it
 cannot start is marked and the cursor steps over it, which is the widget's
 guarantee rather than a refusal somebody has to remember to write.
 
-Nothing here can be run or saved yet.
+The screen reads; nothing on it writes.
 """
 
 from collections.abc import Callable
@@ -75,8 +75,9 @@ class Picker(App[None]):
 
     Textual's own bindings are left as they are — `ctrl+q` leaves, `ctrl+c`
     does not and says which key does, `ctrl+p` opens the command palette — so
-    that the only thing to learn here is the one key this adds. It is also the
-    only one the `Footer` shows, since the rest declare themselves hidden.
+    that the only thing to learn here is the one key this adds. It is the only
+    binding of its own the `Footer` shows; `ctrl+p` appears beside it, which
+    Textual puts there itself rather than reading off a binding.
     """
 
     BINDINGS: ClassVar[list[BindingType]] = [Binding("q", "quit", "leave")]
@@ -184,9 +185,13 @@ class Picker(App[None]):
     def on_option_list_option_highlighted(
         self, event: OptionList.OptionHighlighted
     ) -> None:
-        """Report on whatever the highlight has landed on.
+        """Report on whatever the highlights are now on.
 
-        :param event: Which list moved, and onto what.
+        All three are read again rather than the one that moved, because a
+        pairing is what the report is about and one list moving changes it.
+
+        :param event: That a list moved, which is what wakes this. Which list,
+            and onto what, is read off the lists themselves.
         """
         self._say_what_would_run()
 
@@ -242,32 +247,33 @@ class Picker(App[None]):
         ]
 
     def _highlight(self, which: str, value: str | None) -> None:
-        """Put a list's highlight on one row, where the cursor may reach it.
+        """Put a list's highlight on the row the profile points at.
 
-        A row the cursor steps over is left alone, so the highlight stays where
-        the widget put it — the first row a person could pick. The report says
-        which pairing that is, and a profile naming an agent this machine has
-        not got is still reported on, because nothing else is reachable to
-        report on instead.
+        A row that is there and cannot be reached — an agent this machine has
+        not got — hands the highlight to the first row that can, because
+        something has to be reported on and the rest of the list is what there
+        is.
+
+        A value naming no row at all is a different matter and gets no
+        substitute: a profile naming a model the runtime has not got is a thing
+        to say, and moving the highlight quietly onto another model would
+        answer with a report about a run nobody asked for.
 
         :param which: The list to move.
-        :param value: What the row is identified by, or ``None`` for no row.
+        :param value: What the row is identified by, or ``None`` where the
+            profile points at nothing.
         """
         listed = self._list(which)
-        reachable = [
-            index for index, option in enumerate(listed.options) if not option.disabled
-        ]
+        rows = list(enumerate(listed.options))
+        reachable = [index for index, option in rows if not option.disabled]
+        wanted = [index for index, option in rows if option.id == value]
 
-        if not reachable:
+        if not reachable or (value is not None and not wanted):
             return
 
-        wanted = [
-            index
-            for index in reachable
-            if listed.get_option_at_index(index).id == value
-        ]
-
-        listed.highlighted = wanted[0] if wanted else reachable[0]
+        listed.highlighted = next(
+            (index for index in wanted if index in reachable), reachable[0]
+        )
 
     def _highlighted(self, which: str) -> str | None:
         """Say what a list's highlight is on.

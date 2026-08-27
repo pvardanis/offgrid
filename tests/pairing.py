@@ -67,9 +67,13 @@ class StandInRuntime:
         return list(self.downloaded)
 
     def read_held(self) -> list[Model]:
-        """Answer with what a test said is held, or refuse having stated none.
+        """Answer with what is in memory, or refuse where no catalogue was stated.
 
-        :return: What is in memory.
+        Holding nothing is an answer; having stated no catalogue at all is what
+        refuses, because that is a test reaching past a refusal it was written
+        for rather than a runtime with an empty pool.
+
+        :return: What is in memory, which may be nothing.
 
         :raise AssertionError: When the test stated no catalogue.
         """

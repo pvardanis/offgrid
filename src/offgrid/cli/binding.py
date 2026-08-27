@@ -13,7 +13,7 @@ answer start from it.
 
 from pathlib import Path
 
-from offgrid.agents import AGENT_CONFIGS, create_agent_config, prepare_agent
+from offgrid.agents import create_agent_config, prepare_agent
 from offgrid.domain.assembling import (
     AgentOnThisMachine,
     WhatCouldBeRun,
@@ -33,7 +33,6 @@ from offgrid.domain.profile import (
 from offgrid.domain.running import discarded_windows
 from offgrid.domain.running.agent import (
     Agent,
-    AgentConfig,
     AgentName,
     Passthrough,
 )
@@ -46,7 +45,10 @@ from offgrid.domain.running.discarded_windows import DiscardedWindow
 from offgrid.domain.running.model import Model
 from offgrid.domain.running.runtime import Runtime, RuntimeName
 from offgrid.runtimes import connect_runtime, create_runtime_config
-from offgrid.shared.exceptions import DiscardedWindowsUnreadableError, OffgridError
+from offgrid.shared.exceptions import (
+    AgentSettingsError,
+    DiscardedWindowsUnreadableError,
+)
 
 
 def read_profile(path: Path) -> Profile:
@@ -193,33 +195,45 @@ def read_what_could_be_run(profile_path: Path) -> WhatCouldBeRun:
 def _ask_every_agent(profile: Profile) -> list[AgentOnThisMachine]:
     """Ask each agent offgrid drives what it states about itself here.
 
-    The profile's own section is used for the agent it names, so that an agent
-    a person has settings for is reported with them rather than with defaults.
-    The rest are built from what every agent needs, which is where the runtime
-    listens.
-
     :param profile: What was written down.
 
     :return: One reading per agent, in the order the names are declared.
     """
-    return [
-        _ask_an_agent(
-            profile.agent
-            if name is profile.agent.name
-            else AGENT_CONFIGS[name](runtime_host=profile.runtime.host)
-        )
-        for name in AgentName
-    ]
+    return [_ask_an_agent(profile, name) for name in AgentName]
 
 
-def _ask_an_agent(config: AgentConfig) -> AgentOnThisMachine:
+def _ask_an_agent(profile: Profile, name: AgentName) -> AgentOnThisMachine:
     """Bind one agent and read what it says, or why it would not say it.
 
-    :param config: What that agent's section of a profile holds.
+    The config is built in here rather than handed in, so that it is inside the
+    guard: an adapter whose defaults will not build is one agent that cannot
+    answer, and outside it would be a screen that will not open over an agent
+    nobody picked.
+
+    Only `AgentSettingsError` is caught, because that is what this is about —
+    an agent's own settings file being there and unreadable. Anything else the
+    reading grows later is a different fault with a different remedy, and would
+    be reported as "did not answer" beside a greyed-out row: a runtime that is
+    down, or a finding that something can reach off this machine, are both
+    worse than useless said that way.
+
+    :param profile: What was written down.
+    :param name: The agent to ask.
 
     :return: What it answered, or the sentence explaining what stopped it.
     """
     try:
+        # The profile's own section for the agent it names, so that an agent a
+        # person has settings for is reported with them rather than with
+        # defaults; what every agent needs for the rest.
+        config = (
+            profile.agent
+            if name is profile.agent.name
+            else create_agent_config(
+                {"name": name.value}, runtime_host=profile.runtime.host
+            )
+        )
+
         agent = prepare_agent(config)
         terms = agent.terms
 
@@ -229,8 +243,13 @@ def _ask_an_agent(config: AgentConfig) -> AgentOnThisMachine:
             could_leave=agent.read_what_leaves_this_machine(),
             kept=agent.conversations,
         )
-    except OffgridError as error:
-        return AgentOnThisMachine(config=config, answered=WouldNotAnswer(str(error)))
+    except AgentSettingsError as error:
+        return AgentOnThisMachine(
+            config=create_agent_config(
+                {"name": name.value}, runtime_host=profile.runtime.host
+            ),
+            answered=WouldNotAnswer(str(error)),
+        )
 
     return AgentOnThisMachine(config=config, answered=answered)
 

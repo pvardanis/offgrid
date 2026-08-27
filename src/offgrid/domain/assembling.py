@@ -19,8 +19,18 @@ from dataclasses import dataclass
 from offgrid.domain.checkup import WhatTheAgentAnswered, WhatTheRuntimeAnswered
 from offgrid.domain.profile import Profile
 from offgrid.domain.running.agent import AgentConfig, AgentName
+from offgrid.domain.running.agent_presence import say_where_an_agent_comes_from
 from offgrid.domain.running.model import Model
-from offgrid.shared.wording import describe_what_was_stated
+from offgrid.shared.exceptions import AgentSettingsError
+from offgrid.shared.wording import UNDER, describe_what_was_stated, say_indented
+
+ROW_WIDTH = 40
+"""How wide a row in one of the lists may run before it breaks.
+
+The lists are a column beside the report rather than the width of a terminal,
+so a sentence on a row is broken to this rather than to the width the reports
+are written to.
+"""
 
 AGENT_COLUMN = 14
 """How wide an agent's name is on its row, so that what is said about it lines
@@ -103,7 +113,9 @@ class WhatCouldBeRun:
         assembled as.
     :param runtime: What the runtime answered, the model it is holding
         included.
-    :param downloaded: Every model the runtime has, held or not, held first.
+    :param downloaded: Every model the runtime has, held or not, in the order
+        it answered in. `order_models_held_first` is what puts the held ones
+        at the top of a list; the port promises no order here.
     :param held: Which of them are in memory, so that a pairing can be priced
         without asking again.
     :param agents: Every agent offgrid drives, and what each said here.
@@ -222,19 +234,40 @@ def describe_an_agent_row(agent: AgentOnThisMachine) -> str:
 
     An agent this machine has not got is marked on the row rather than left
     out, because the list is also how a person learns what offgrid supports.
-    Where to get it is the report's business, which has the width for a link.
+
+    Why it is marked goes on the row too, under the name, because the cursor
+    steps over such a row and the report is only ever computed for the row the
+    cursor is on: said anywhere else, the one sentence that helps is the one
+    sentence nobody can reach. It is wrapped to the list rather than to the
+    report's own width, since it is read in a narrower column.
 
     :param agent: The agent to lay out.
 
-    :return: The row, as it is read.
+    :return: The row, as it is read, over as many lines as it takes.
     """
     if isinstance(agent.answered, WouldNotAnswer):
-        return f"{agent.name.value:<{AGENT_COLUMN}}did not answer"
+        return _mark_an_agent_row(agent.name, "did not answer", agent.answered.why)
 
     if not agent.is_on_this_machine:
-        return f"{agent.name.value:<{AGENT_COLUMN}}not installed"
+        return _mark_an_agent_row(
+            agent.name, "not installed", say_where_an_agent_comes_from(agent.name)
+        )
 
     return agent.name.value
+
+
+def _mark_an_agent_row(name: AgentName, marked: str, why: str) -> str:
+    """Lay out an agent that cannot be picked, with the reason under it.
+
+    :param name: The agent.
+    :param marked: What is wrong with it, in the column beside its name.
+    :param why: What to do about it, or what stopped it.
+
+    :return: The row, over as many lines as the reason takes.
+    """
+    return "\n".join(
+        (f"{name.value:<{AGENT_COLUMN}}{marked}", *say_indented(UNDER, why, ROW_WIDTH))
+    )
 
 
 def describe_a_model_row(model: Model, *, held: bool) -> str:
@@ -263,8 +296,8 @@ def name_the_model_columns() -> str:
     figures they are reading, and the whole reason the ceiling is here is that
     the other one does not exist until something loads the model.
 
-    Beside the row it heads rather than in the screen, so that a column that
-    moves cannot leave its own name behind.
+    Laid out by the same call the rows are, so that a column that moves cannot
+    leave its own name behind.
 
     :return: The heading, laid out in the columns the rows are.
     """
@@ -291,14 +324,17 @@ def find_agent(what: WhatCouldBeRun, name: AgentName) -> AgentOnThisMachine:
 
     :return: What that agent said about itself here.
 
-    :raise KeyError: When nothing was read for it, which is a reading built
-        from something other than the names offgrid has adapters for.
+    :raise AgentSettingsError: When nothing was read for it, which is a reading
+        built from something other than the names offgrid has adapters for.
+        offgrid's own error rather than a `KeyError`, so that the sentence
+        reaches a person as written instead of quoted and escaped.
     """
     for agent in what.agents:
         if agent.name is name:
             return agent
 
-    raise KeyError(
+    raise AgentSettingsError(
         f"Nothing was read for {name.value}, so the picker cannot report on it. "
-        "Every name in AgentName is asked when the screen opens."
+        "Every name in AgentName is asked when the screen opens, which makes "
+        "this a fault in offgrid rather than in this machine."
     )
