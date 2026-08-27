@@ -1,9 +1,13 @@
-"""The four things offgrid does: describe, check, recommend, and launch.
+"""The five things offgrid does: describe, check, recommend, launch, and show.
 
 One module per command, and this is where each is attached to the command
 line. A command is a plain function in the module named after it, so what a
 command does can be read without the wiring around it, and the wiring can be
 read in one place.
+
+Showing is the one with no command of its own: it is what offgrid named with
+nothing to do does, so it lives in the callback that runs before every
+command rather than beside the four.
 """
 
 import sys
