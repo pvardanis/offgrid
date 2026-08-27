@@ -2,8 +2,6 @@
 
 from dataclasses import dataclass
 from pathlib import Path
-from re import sub
-from textwrap import fill
 
 from offgrid.domain.profile import Profile
 from offgrid.domain.running import discarded_windows
@@ -15,84 +13,15 @@ from offgrid.domain.running.dialect import Dialect
 from offgrid.domain.running.discarded_windows import DiscardedWindow
 from offgrid.domain.running.leaving import Reading, Status
 from offgrid.domain.running.model import Model, ModelRequest
-from offgrid.shared.wording import LINE_WIDTH, describe_what_was_stated
+from offgrid.shared.wording import (
+    REMEDY,
+    UNDER,
+    describe_what_was_stated,
+    say_in_columns,
+    say_indented,
+)
 
-COLUMN = 12
-"""How wide a label is, so every value in the report starts at one column.
-
-Wide enough that the longest label still has a gap after it once the indent an
-indented one carries is taken off. A word too long for it names what is
-indented under it instead, and stands on its own line.
-"""
-
-UNDER = "  "
-"""Where a fact about the line above it goes."""
-
-REMEDY = "    "
-"""Where what to do about the line above it goes, deeper than a fact."""
-
-NBSP = "\u00a0"
-"""What a space inside a command is while a sentence is being broken up.
-
-Written as its escape rather than as the character, which is invisible in a
-file and reads as an ordinary space to whoever opens it next.
-"""
-
-
-def _said_at(indent: str, sentence: str) -> tuple[str, ...]:
-    """Break a sentence into lines that all start where the first one does.
-
-    A sentence long enough to wrap is one a terminal wraps at the left margin,
-    which puts the rest of it under the labels rather than under the line it
-    belongs to. Broken here, every line of it reads as the one thing it is.
-
-    What is inside backticks is held together, because a command broken across
-    two lines is one somebody pastes and watches fail. One too long for the
-    width overflows rather than breaking, for the same reason — and a hyphen
-    is not a place to break either, since the sentences here carry paths and
-    flags, and half of one at the end of a line is a path to nothing.
-
-    :param indent: Where the sentence starts, and where it carries on.
-    :param sentence: What is being said.
-
-    :return: The lines of it, in order.
-    """
-    held = sub(r"`[^`]*`", lambda command: command.group().replace(" ", NBSP), sentence)
-
-    return tuple(
-        fill(
-            held,
-            LINE_WIDTH,
-            initial_indent=indent,
-            subsequent_indent=indent,
-            break_long_words=False,
-            break_on_hyphens=False,
-        )
-        .replace(NBSP, " ")
-        .splitlines()
-    )
-
-
-def _say(label: str, value: str, *, under: bool = False) -> str:
-    """Lay one fact out in the columns the report is read in.
-
-    A fact about the line above is indented and its label narrowed by as much,
-    so that every value in the report still starts at the same column however
-    deep the thing it is about sits.
-
-    :param label: What the fact is about.
-    :param value: What is said about it.
-    :param under: Whether it is a fact about the line above rather than one
-        of the things the report is a list of.
-
-    :return: The line, as it is read.
-    """
-    lead = UNDER if under else ""
-
-    return f"{lead}{label:<{COLUMN - len(lead)}}{value}"
-
-
-HELD_NOTHING = _say("model", "nothing held")
+HELD_NOTHING = say_in_columns("model", "nothing held")
 
 
 @dataclass(frozen=True)
@@ -178,23 +107,23 @@ def describe_what_was_read(checkup: Checkup) -> tuple[str, ...]:
     # agent and what starting it takes. Read down the left, a person meets one
     # thing at a time rather than eleven facts in a column.
     said = (
-        _say(
+        say_in_columns(
             "runtime",
             f"{profile.runtime.name.value} at {profile.runtime.host}, reachable",
         ),
-        _say(
+        say_in_columns(
             "dialects",
             ", ".join(sorted(d.value for d in checkup.runtime.served)),
             under=True,
         ),
         *_describe_the_model(checkup.runtime.resident, profile.model),
-        _say("requests", describe_what_is_asked_for(profile.model)),
-        _say(
+        say_in_columns("requests", describe_what_is_asked_for(profile.model)),
+        say_in_columns(
             "agent",
             f"{profile.agent.name.value}, speaking {checkup.agent.terms.dialect.value}",
         ),
         *_describe_where_the_agent_is(checkup),
-        _say("floor", str(checkup.agent.terms.context_floor), under=True),
+        say_in_columns("floor", str(checkup.agent.terms.context_floor), under=True),
         *_describe_what_could_leave(checkup.agent.could_leave),
         *_describe_where_conversations_are_kept(checkup.agent.kept),
     )
@@ -219,11 +148,17 @@ def _describe_where_the_agent_is(checkup: Checkup) -> tuple[str, ...]:
     command = checkup.agent.terms.command
 
     if checkup.agent.found_at is not None:
-        return (_say("command", f"{command}, at {checkup.agent.found_at}", under=True),)
+        return (
+            say_in_columns(
+                "command", f"{command}, at {checkup.agent.found_at}", under=True
+            ),
+        )
 
     return (
-        _say("command", f"{command}, not on PATH", under=True),
-        *_said_at(REMEDY, say_where_an_agent_comes_from(checkup.profile.agent.name)),
+        say_in_columns("command", f"{command}, not on PATH", under=True),
+        *say_indented(
+            REMEDY, say_where_an_agent_comes_from(checkup.profile.agent.name)
+        ),
     )
 
 
@@ -257,7 +192,7 @@ def _describe_what_could_leave(readings: tuple[Reading, ...]) -> tuple[str, ...]
         said = (*said, f"{UNDER}{reading.subject:<{column}}{reading.status}")
 
         if reading.status is not Status.DENIED:
-            said = (*said, *_said_at(REMEDY, reading.said))
+            said = (*said, *say_indented(REMEDY, reading.said))
 
     return said
 
@@ -283,7 +218,7 @@ def _describe_where_conversations_are_kept(kept: Conversations) -> tuple[str, ..
     return (
         "conversations",
         f"{UNDER}{kept.kept_in}",
-        *_said_at(UNDER, kept.said),
+        *say_indented(UNDER, kept.said),
     )
 
 
@@ -304,18 +239,20 @@ def _describe_the_model(model: Model | None, request: ModelRequest) -> tuple[str
     """
     if model is not None:
         return (
-            _say("model", model.identifier),
-            _say(
+            say_in_columns("model", model.identifier),
+            say_in_columns(
                 "ceiling",
                 describe_what_was_stated(model.context_ceiling),
                 under=True,
             ),
-            _say("window", describe_what_was_stated(model.context_window), under=True),
+            say_in_columns(
+                "window", describe_what_was_stated(model.context_window), under=True
+            ),
         )
 
     unknown = (
-        _say("ceiling", "unknown", under=True),
-        _say("window", "unknown", under=True),
+        say_in_columns("ceiling", "unknown", under=True),
+        say_in_columns("window", "unknown", under=True),
     )
 
     # `settle_what_to_run` folds the profile's identifier in beside `--model`,
@@ -329,7 +266,7 @@ def _describe_the_model(model: Model | None, request: ModelRequest) -> tuple[str
     # its own.
     return (
         HELD_NOTHING,
-        *_said_at(
+        *say_indented(
             REMEDY,
             "Load a model in the runtime, or name one under `model:` in the profile.",
         ),
@@ -351,19 +288,19 @@ def _describe_a_discarded_window(checkup: Checkup) -> tuple[str, ...]:
         nothing where none was.
     """
     if checkup.runtime.unreadable is not None:
-        return (_say("discarded", checkup.runtime.unreadable),)
+        return (say_in_columns("discarded", checkup.runtime.unreadable),)
 
     if not checkup.runtime.discarded:
         return ()
 
     return (
         *(
-            _say(
+            say_in_columns(
                 "discarded",
                 f"{record.asked_for} was asked for on {record.dated} and "
                 f"{record.served} served then, so offgrid is not asking again.",
             )
             for record in checkup.runtime.discarded
         ),
-        *_said_at(REMEDY, f"Delete {discarded_windows.DEFAULT_PATH} to ask again."),
+        *say_indented(REMEDY, f"Delete {discarded_windows.DEFAULT_PATH} to ask again."),
     )
