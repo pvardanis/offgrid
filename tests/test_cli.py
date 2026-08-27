@@ -936,15 +936,19 @@ def _kept(
 def _rows(said: str, named: str) -> list[str]:
     """Read the table rows a model has, off everything the command said.
 
-    A row is a width, so the width is what tells one from the sentence under
-    the table that names a model too.
+    A row is laid out by `COLUMNS`, so the indent it starts with is what tells
+    one from the sentence under the table that names a model too.
 
     :param said: What the command said.
     :param named: The model, or the prefix every model in the test shares.
 
     :return: The rows it has, in the order they were printed.
     """
-    return [line for line in said.splitlines() if named in line and "-bit" in line]
+    return [
+        line
+        for line in said.splitlines()
+        if named in line and line.startswith("  ") and "-bit" in line
+    ]
 
 
 def test_recommend_lists_a_model_once_for_each_width_it_fits_at(here, monkeypatch):
@@ -1138,21 +1142,36 @@ def test_recommend_says_how_to_download_the_model_it_ranks_first(here, monkeypat
     assert "Then `offgrid run`." in result.stderr
 
 
-def test_recommend_says_how_to_download_into_the_runtime_the_profile_names(
-    here, monkeypatch
-):
-    # The instruction is the named runtime's own, and a machine with no
-    # profile yet is a machine somebody is reading this on first: the default
-    # runtime answers rather than a refusal over a file `setup` writes.
+def test_recommend_says_the_words_of_the_runtime_it_bound(here, monkeypatch):
+    # What is printed is the runtime's answer rather than a sentence
+    # `recommend` holds: a stand-in runtime says something no adapter in the
+    # tree would, and that is what reaches the screen.
+    from offgrid.domain.running.dialect import Dialect
+    from tests.pairing import StandInRuntime, answer_as_a_runtime
+
+    _leaderboard(monkeypatch, models=[_listed("A-Model-35B", "35B")])
+    answer_as_a_runtime(
+        monkeypatch, StandInRuntime(dialects=frozenset({Dialect.ANTHROPIC}))
+    )
+
+    result = runner.invoke(app, ["recommend"])
+
+    assert "To download A-Model-35B: ask the stand-in runtime." in result.stderr
+    assert "LM Studio" not in result.stderr
+
+
+def test_recommend_says_how_to_download_before_a_profile_exists(here, monkeypatch):
+    # A machine with no profile is a machine somebody is reading this on
+    # first: the runtime `setup` would write answers, rather than a refusal
+    # over a file they have not been told to write yet. And `recommend` does
+    # not write it for them.
     _leaderboard(monkeypatch, models=[_listed("A-Model-35B", "35B")])
 
-    without_one = runner.invoke(app, ["recommend"])
-    runner.invoke(app, ["setup"])
-    with_one = runner.invoke(app, ["recommend"])
+    result = runner.invoke(app, ["recommend"])
 
-    assert (here / "profile.yaml").exists()
-    assert "To download A-Model-35B" in without_one.stderr
-    assert without_one.stderr == with_one.stderr
+    assert not (here / "profile.yaml").exists()
+    assert "To download A-Model-35B" in result.stderr
+    assert "LM Studio" in result.stderr
 
 
 def test_recommend_refuses_a_profile_that_names_a_runtime_it_cannot_read(
@@ -1168,6 +1187,20 @@ def test_recommend_refuses_a_profile_that_names_a_runtime_it_cannot_read(
 
     assert result.exit_code == 1
     assert "not-a-runtime" in result.stderr
+    assert "A-Model-35B" not in result.stderr
+
+
+def test_recommend_refuses_a_profile_that_is_a_link_to_nothing(here, monkeypatch):
+    # A link is somebody having claimed the path. Reading one whose far end
+    # has moved as a machine that has never been set up would answer about a
+    # runtime nobody chose, in the one case where the mistake is invisible.
+    _leaderboard(monkeypatch, models=[_listed("A-Model-35B", "35B")])
+    (here / "profile.yaml").symlink_to(here / "moved-away.yaml")
+
+    result = runner.invoke(app, ["recommend"])
+
+    assert result.exit_code == 1
+    assert str(here / "profile.yaml") in result.stderr
     assert "A-Model-35B" not in result.stderr
 
 
