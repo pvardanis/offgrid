@@ -31,7 +31,7 @@ def test_doctor_says_the_model_and_window_the_profile_asks_for(here):
 
     result = runner.invoke(app, ["doctor"])
 
-    assert f"profile   {RESIDENT} at {ASKED}" in result.stderr
+    assert f"requests  {RESIDENT} at {ASKED}" in result.stderr
 
 
 def test_doctor_says_a_profile_that_asks_for_nothing_asks_for_nothing(here):
@@ -42,7 +42,7 @@ def test_doctor_says_a_profile_that_asks_for_nothing_asks_for_nothing(here):
 
     result = runner.invoke(app, ["doctor"])
 
-    assert "profile   asks for nothing, so a run takes whatever is held" in (
+    assert "requests  asks for nothing, so a run takes whatever is held" in (
         result.stderr
     )
 
@@ -56,7 +56,7 @@ def test_doctor_says_a_model_named_without_a_window_inherits_one(here):
 
     result = runner.invoke(app, ["doctor"])
 
-    assert f"profile   {WANTED}, at whatever it is served at" in result.stderr
+    assert f"requests  {WANTED}, at whatever it is served at" in result.stderr
     # The issue's own example: a profile naming one model against a runtime
     # holding another. Both names on screen is the whole of what it asked for.
     assert f"model     {RESIDENT}" in result.stderr
@@ -73,7 +73,7 @@ def test_doctor_says_a_window_asked_for_without_a_model_lands_on_the_resident_on
 
     result = runner.invoke(app, ["doctor"])
 
-    assert f"profile   whatever is held, at {ASKED}" in result.stderr
+    assert f"requests  whatever is held, at {ASKED}" in result.stderr
 
 
 def test_doctor_shows_a_window_the_runtime_is_not_serving_without_loading(
@@ -89,7 +89,7 @@ def test_doctor_shows_a_window_the_runtime_is_not_serving_without_loading(
     result = runner.invoke(app, ["doctor"])
 
     assert f"window    {SERVED}" in result.stderr
-    assert f"profile   {RESIDENT} at {ASKED}" in result.stderr
+    assert f"requests  {RESIDENT} at {ASKED}" in result.stderr
     assert asked["order"] == []
 
 
@@ -102,13 +102,16 @@ def test_doctor_reports_in_one_column(here):
     result = runner.invoke(app, ["doctor"])
 
     # A line that carries on from the one above it is indented to the column
-    # rather than labelled, which is what tells the two apart.
-    labelled = [
-        line for line in result.stderr.splitlines() if line and not line.startswith(" ")
-    ]
+    # rather than labelled, which is what tells the two apart. A heading is
+    # the third kind: it labels the lines under it and says nothing itself,
+    # so it has no value at the column and is only a heading if something
+    # indented follows it.
+    lines = [line for line in result.stderr.splitlines() if line]
+    unindented = [line for line in lines if not line.startswith(" ")]
+    labelled = [line for line in unindented if len(line.split("  ")) > 1]
     labels = [line.split(" ")[0] for line in labelled]
 
-    assert "profile" in labels
+    assert "requests" in labels
     # Where each value starts, rather than how each label is padded: a label
     # of exactly the column's width passes the second reading and still puts
     # its value one place further out than every other line.
@@ -117,3 +120,11 @@ def test_doctor_reports_in_one_column(here):
         line[:COLUMN] == label.ljust(COLUMN)
         for line, label in zip(labelled, labels, strict=True)
     )
+    # Every heading introduces something. One that does not is a label whose
+    # value went missing, which reads as a fact the report failed to state.
+    headings = [line for line in unindented if line not in labelled]
+
+    assert headings, "no heading is in the report, so this checks nothing"
+    assert all(
+        lines[lines.index(heading) + 1].startswith(" ") for heading in headings
+    ), f"{headings} introduces nothing indented under it"

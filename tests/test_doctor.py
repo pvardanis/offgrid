@@ -77,7 +77,7 @@ def test_doctor_reports_every_dialect_the_runtime_serves(here):
 
     result = runner.invoke(app, ["doctor"])
 
-    assert "serving   anthropic, openai" in result.stderr
+    assert "          dialects  anthropic, openai" in result.stderr
 
 
 def test_doctor_reports_the_model_that_would_answer(here):

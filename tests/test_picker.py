@@ -13,6 +13,7 @@ from textual.containers import VerticalScroll
 from textual.widgets import Static
 from typer.testing import CliRunner
 
+from offgrid.agents.claude_code.launching import CONTEXT_FLOOR
 from offgrid.cli import app
 from offgrid.cli.binding import read_what_can_be_read
 from offgrid.tui.picker import REPORT, Report
@@ -119,13 +120,16 @@ def test_the_screen_shows_what_a_run_would_report(here):
     shown = driven.shown
 
     assert "runtime   lmstudio at 127.0.0.1:1234, reachable" in shown
+    assert "dialects  anthropic, openai" in shown
     assert f"model     {RESIDENT}" in shown
     assert "ceiling   262144" in shown
     assert "window    212224" in shown
-    assert "profile   " in shown
+    assert "requests  asks for nothing, so a run takes whatever is held" in shown
     assert "agent     claude-code, speaking anthropic" in shown
     assert "command   claude, not on PATH" in shown
-    assert "floor     " in shown
+    assert f"floor     {CONTEXT_FLOOR}" in shown
+    assert "might leave this machine" in shown
+    assert "conversations path" in shown
 
 
 def test_the_screen_and_doctor_word_one_fact_the_same_way(here):
