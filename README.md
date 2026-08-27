@@ -169,7 +169,7 @@ https://onyx.app/best-llm-for-coding, table dated 2026-07-20.
 
 To download Qwen3.6-35B-A3B: search that name in LM Studio and download a
 build of it, or where you have its CLI:
-  lms get Qwen3.6-35B-A3B
+`lms get Qwen3.6-35B-A3B`
 Then `offgrid run`.
 ```
 
