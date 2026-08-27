@@ -60,9 +60,9 @@ def run(
         # this machine and a window the run could not work at are all settled
         # before the load — the first two here, the window inside `hold_model`
         # — because a load is tens of seconds nobody gets back.
-        terms = agent.terms
+        agent_terms = agent.terms
 
-        require_compatible(runtime.dialects, terms.dialect)
+        require_compatible(runtime.dialects, agent_terms.dialect)
         agent.configure()
         require_nothing_leaves(agent.read_what_leaves_this_machine())
 
@@ -74,7 +74,7 @@ def run(
         model = hold_model(
             runtime,
             model_request,
-            context_floor=terms.context_floor,
+            context_floor=agent_terms.context_floor,
             was_window_refused_func=refuse_to_ask_runtime_again(
                 what_the_runtime_discarded
             ),
@@ -88,7 +88,9 @@ def run(
         # spent either way; what this saves is the agent failing on its own
         # terms, about an initial prompt rather than about the window.
         with reporting():
-            refuse_a_served_window_below_the_floor(model, floor=terms.context_floor)
+            refuse_a_served_window_below_the_floor(
+                model, floor=agent_terms.context_floor
+            )
 
         served = describe_what_was_stated(model.context_window)
 
