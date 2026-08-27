@@ -194,7 +194,7 @@ might leave this machine
   transcript sharing  denied
 conversations
   /Users/you/.offgrid/claude-code
-    `offgrid run -- --resume` opens a picker over these.
+  `offgrid run -- --resume` opens a picker over these.
 ```
 
 Three things answered, and what each of them said reads under it. The

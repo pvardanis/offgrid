@@ -234,11 +234,10 @@ def _describe_where_conversations_are_kept(kept: Conversations) -> tuple[str, ..
 
     :return: The lines to say, in the order they are read.
     """
-    return (
-        "conversations",
-        f"{UNDER}{kept.kept_in}",
-        f"{REMEDY}{kept.said}",
-    )
+    # Both at the same indent, because they are two halves of one answer
+    # rather than a fact and a remedy: the directory is where a conversation
+    # lands, and the sentence is how it is opened again.
+    return ("conversations", f"{UNDER}{kept.kept_in}", f"{UNDER}{kept.said}")
 
 
 def _describe_the_model(model: Model | None, request: ModelRequest) -> tuple[str, ...]:
