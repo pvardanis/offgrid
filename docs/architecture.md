@@ -392,7 +392,7 @@ sequenceDiagram
         Note over G: says what stopped each list,<br/>and which day this table was read
     end
     G-->>C: Reading(table, caveats)
-    C->>S: summarize_findings(table, machine, describe_download)
+    C->>S: summarize_findings(table, machine, describe_model_download)
     Note over S: shortlist → listing → quality → speed → fit
     S-->>C: lines to say
 ```
@@ -538,8 +538,8 @@ leaves a caller to find out.
 **What a runtime says about downloading is not on the port**, because it is a
 fact about a runtime rather than about a connection to one: it takes a model's
 name, reaches nothing, and wants no address. It is a third mapping in the
-registry, `DOWNLOAD_INSTRUCTIONS`, keyed by `RuntimeName` alongside the other
-two, so `recommend` asks it from the name a profile holds without opening
+registry, `MODEL_DOWNLOAD_INSTRUCTIONS`, keyed by `RuntimeName` alongside the
+other two, so `recommend` asks it from the name a profile holds without opening
 anything. `docs/decisions.md` has why.
 
 The two attributes are declared as properties because that is what makes them
@@ -953,9 +953,9 @@ There are three deep interfaces here already.
 list and the context sizing behind one call.
 `get_reading(path)` hides fetching, parsing, keeping the payload, falling back
 on a kept one, and the sentence saying how old it is.
-`summarize_findings(table, machine, describe_download)` hides the whole chain
-from listing through fit, speed and quality down to a ranked table, and the
-runtime's own sentence about downloading the first of them.
+`summarize_findings(table, machine, describe_model_download)` hides the whole
+chain from listing through fit, speed and quality down to a ranked table, and
+the runtime's own sentence about downloading the first of them.
 
 The runtime's was the shallow one. `catalogue(host)` answered with the
 runtime's payload, and `parse_models`, `loaded` and `resident` were functions

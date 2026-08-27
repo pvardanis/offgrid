@@ -12,7 +12,7 @@ from offgrid.domain.sizing.machine import detect
 from offgrid.domain.sizing.reading import get_reading
 from offgrid.domain.sizing.recommendation import summarize_findings
 from offgrid.leaderboards import LEADERBOARDS
-from offgrid.runtimes import describe_download
+from offgrid.runtimes import describe_model_download
 from offgrid.shared.say import tell
 
 
@@ -27,7 +27,7 @@ def recommend() -> None:
     for line in reading.caveats:
         tell(line)
 
-    say_how = partial(describe_download, runtime_name)
+    say_how = partial(describe_model_download, runtime_name)
 
     for line in summarize_findings(reading.table, machine, say_how):
         tell(line)

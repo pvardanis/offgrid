@@ -1152,7 +1152,7 @@ def test_recommend_says_the_words_of_the_runtime_the_registry_answers_with(
 
     _leaderboard(monkeypatch, models=[_listed("A-Model-35B", "35B")])
     monkeypatch.setattr(
-        "offgrid.runtimes.DOWNLOAD_INSTRUCTIONS",
+        "offgrid.runtimes.MODEL_DOWNLOAD_INSTRUCTIONS",
         {RuntimeName.LMSTUDIO: lambda model: f"To download {model}: ask elsewhere."},
     )
 
