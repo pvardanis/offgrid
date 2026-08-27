@@ -39,6 +39,28 @@ CAPABILITIES = Capabilities(
 )
 
 
+def say_nothing_answered(host: str) -> str:
+    """Say that nothing answered at an address, and name every way that happens.
+
+    Three causes, because each is checked somewhere else and a sentence naming
+    one sends a person to look again at what was already true: the local server
+    may not be started, LM Studio may not be on this machine at all, or the
+    address may belong to a machine that is not serving. The address is said
+    because it is the one part of it a person did not necessarily type — it
+    comes out of a profile, and this is where a wrong one shows.
+
+    :param host: Where the runtime was expected, as the profile says it.
+
+    :return: What to tell whoever asked something of a runtime that is not
+        answering.
+    """
+    return (
+        f"No model server answered at http://{host}. Start LM Studio's local "
+        "server, install LM Studio where this machine has not got it, or point "
+        "offgrid at the machine that is serving with `offgrid setup --host`."
+    )
+
+
 def describe_model_download(name: str) -> str:
     """Say how a model is downloaded into LM Studio.
 
