@@ -15,7 +15,30 @@ from offgrid.domain.running.leaving import Reading, Status
 from offgrid.domain.running.model import Model, ModelRequest
 from offgrid.shared.wording import describe_what_was_stated
 
-HELD_NOTHING = "model     nothing held"
+COLUMN = 10
+"""How wide a label is, so every value in the report starts at one column."""
+
+UNDER = " " * COLUMN
+"""Where a fact about the line above it goes."""
+
+REMEDY = " " * (COLUMN + 4)
+"""Where what to do about the line above it goes, deeper than a fact."""
+
+
+def _say(label: str, value: str, *, under: bool = False) -> str:
+    """Lay one fact out in the columns the report is read in.
+
+    :param label: What the fact is about.
+    :param value: What is said about it.
+    :param under: Whether it is a fact about the line above rather than one
+        of the things the report is a list of.
+
+    :return: The line, as it is read.
+    """
+    return f"{UNDER if under else ''}{label:<{COLUMN}}{value}"
+
+
+HELD_NOTHING = _say("model", "nothing held")
 
 
 @dataclass(frozen=True)
@@ -96,15 +119,28 @@ def describe_what_was_read(checkup: Checkup) -> tuple[str, ...]:
     """
     profile = checkup.profile
 
+    # Three things answered, and what each of them said sits under it: the
+    # runtime and what it serves, the model and the two numbers about it, the
+    # agent and what starting it takes. Read down the left, a person meets one
+    # thing at a time rather than eleven facts in a column.
     said = (
-        f"runtime   {profile.runtime.name.value} at {profile.runtime.host}, reachable",
-        f"serving   {', '.join(sorted(d.value for d in checkup.runtime.served))}",
+        _say(
+            "runtime",
+            f"{profile.runtime.name.value} at {profile.runtime.host}, reachable",
+        ),
+        _say(
+            "dialects",
+            ", ".join(sorted(d.value for d in checkup.runtime.served)),
+            under=True,
+        ),
         *_describe_the_model(checkup.runtime.resident, profile.model),
-        f"profile   {describe_what_is_asked_for(profile.model)}",
-        f"agent     {profile.agent.name.value}, "
-        f"speaking {checkup.agent.terms.dialect.value}",
+        _say("requests", describe_what_is_asked_for(profile.model)),
+        _say(
+            "agent",
+            f"{profile.agent.name.value}, speaking {checkup.agent.terms.dialect.value}",
+        ),
         *_describe_where_the_agent_is(checkup),
-        f"floor     {checkup.agent.terms.context_floor}",
+        _say("floor", str(checkup.agent.terms.context_floor), under=True),
         *_describe_what_could_leave(checkup.agent.could_leave),
         *_describe_where_conversations_are_kept(checkup.agent.kept),
     )
@@ -129,20 +165,22 @@ def _describe_where_the_agent_is(checkup: Checkup) -> tuple[str, ...]:
     command = checkup.agent.terms.command
 
     if checkup.agent.found_at is not None:
-        return (f"command   {command}, at {checkup.agent.found_at}",)
+        return (_say("command", f"{command}, at {checkup.agent.found_at}", under=True),)
 
     return (
-        f"command   {command}, not on PATH",
-        f"          {say_where_an_agent_comes_from(checkup.profile.agent.name)}",
+        _say("command", f"{command}, not on PATH", under=True),
+        f"{REMEDY}{say_where_an_agent_comes_from(checkup.profile.agent.name)}",
     )
 
 
 def _describe_what_could_leave(readings: tuple[Reading, ...]) -> tuple[str, ...]:
     """Say what each way off this machine is in, and how to close an open one.
 
-    One line per reading, so the report says which of them it is telling
-    somebody about, with what a run would refuse with under the line it is
-    about — said here instead of after the load the command was run to save.
+    One line per reading under one heading, so the report says which of them
+    it is telling somebody about and a person reads the pair as one question
+    rather than as two facts that happen to share a word. What a run would
+    refuse with goes under the line it is about — said here instead of after
+    the load the command was run to save.
 
     `DENIED` alone says no more than the state, because that is the one answer
     with nothing behind it to check and nothing to act on: the lines beside it
@@ -154,13 +192,13 @@ def _describe_what_could_leave(readings: tuple[Reading, ...]) -> tuple[str, ...]
 
     :return: The lines to say, in the order the agent answered them.
     """
-    said: tuple[str, ...] = ()
+    said: tuple[str, ...] = ("might leave this machine",)
 
     for reading in readings:
-        said = (*said, f"leaves    {reading.subject}: {reading.status}")
+        said = (*said, f"{UNDER}{reading.subject}: {reading.status}")
 
         if reading.status is not Status.DENIED:
-            said = (*said, f"          {reading.said}")
+            said = (*said, f"{REMEDY}{reading.said}")
 
     return said
 
@@ -180,7 +218,11 @@ def _describe_where_conversations_are_kept(kept: Conversations) -> tuple[str, ..
 
     :return: The lines to say, in the order they are read.
     """
-    return (f"kept      {kept.kept_in}", f"          {kept.said}")
+    return (
+        "conversations path",
+        f"{UNDER}{kept.kept_in}",
+        f"{REMEDY}{kept.said}",
+    )
 
 
 def _describe_the_model(model: Model | None, request: ModelRequest) -> tuple[str, ...]:
@@ -200,12 +242,19 @@ def _describe_the_model(model: Model | None, request: ModelRequest) -> tuple[str
     """
     if model is not None:
         return (
-            f"model     {model.identifier}",
-            f"ceiling   {describe_what_was_stated(model.context_ceiling)}",
-            f"window    {describe_what_was_stated(model.context_window)}",
+            _say("model", model.identifier),
+            _say(
+                "ceiling",
+                describe_what_was_stated(model.context_ceiling),
+                under=True,
+            ),
+            _say("window", describe_what_was_stated(model.context_window), under=True),
         )
 
-    unknown = ("ceiling   unknown", "window    unknown")
+    unknown = (
+        _say("ceiling", "unknown", under=True),
+        _say("window", "unknown", under=True),
+    )
 
     # `settle_what_to_run` folds the profile's identifier in beside `--model`,
     # and `hold_model` reaches for the resident model only where the pair of
@@ -218,7 +267,7 @@ def _describe_the_model(model: Model | None, request: ModelRequest) -> tuple[str
     # its own.
     return (
         HELD_NOTHING,
-        "          Load a model in the runtime, or name one under `model:` "
+        f"{REMEDY}Load a model in the runtime, or name one under `model:` "
         "in the profile.",
         *unknown,
     )
@@ -238,16 +287,19 @@ def _describe_a_discarded_window(checkup: Checkup) -> tuple[str, ...]:
         nothing where none was.
     """
     if checkup.runtime.unreadable is not None:
-        return (f"discarded {checkup.runtime.unreadable}",)
+        return (_say("discarded", checkup.runtime.unreadable),)
 
     if not checkup.runtime.discarded:
         return ()
 
     return (
         *(
-            f"discarded {record.asked_for} was asked for on {record.dated} "
-            f"and {record.served} served then, so offgrid is not asking again."
+            _say(
+                "discarded",
+                f"{record.asked_for} was asked for on {record.dated} and "
+                f"{record.served} served then, so offgrid is not asking again.",
+            )
             for record in checkup.runtime.discarded
         ),
-        f"Delete {discarded_windows.DEFAULT_PATH} to ask again.",
+        f"{REMEDY}Delete {discarded_windows.DEFAULT_PATH} to ask again.",
     )

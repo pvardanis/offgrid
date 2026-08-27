@@ -30,7 +30,7 @@ def test_doctor_says_a_hand_edited_configuration_could_share_a_transcript(here):
     result = runner.invoke(app, ["doctor"])
 
     assert result.exit_code == 0
-    assert "leaves    transcript sharing: permitted" in result.stderr
+    assert "          transcript sharing: permitted" in result.stderr
     assert "opencode.json" in result.stderr
     assert "disabled" in result.stderr
 
@@ -45,7 +45,7 @@ def test_doctor_says_a_configuration_stating_no_sharing_settles_nothing(here):
 
     result = runner.invoke(app, ["doctor"])
 
-    assert "leaves    transcript sharing: unwritten" in result.stderr
+    assert "          transcript sharing: unwritten" in result.stderr
     assert "will not write into it" in result.stderr
     assert '"share": "disabled"' in result.stderr
 
@@ -60,7 +60,7 @@ def test_doctor_says_a_value_back_the_way_the_file_spells_it(here):
 
     result = runner.invoke(app, ["doctor"])
 
-    assert "leaves    transcript sharing: permitted" in result.stderr
+    assert "          transcript sharing: permitted" in result.stderr
     assert "to false," in result.stderr
     assert "False" not in result.stderr
 

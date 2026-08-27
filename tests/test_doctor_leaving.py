@@ -64,7 +64,7 @@ def test_doctor_says_no_more_than_the_state_when_nothing_can_be_reached(here):
 
     result = runner.invoke(app, ["doctor"])
 
-    assert "leaves    hosted tools: denied\n" in result.stderr
+    assert "          hosted tools: denied\n" in result.stderr
     assert "settings.json" not in result.stderr
 
 
@@ -94,7 +94,7 @@ def test_doctor_says_an_argument_would_send_the_session_elsewhere(here):
     result = runner.invoke(app, ["doctor"])
 
     assert result.exit_code == 0
-    assert "leaves    transcript sharing: denied\n" in result.stderr
+    assert "          transcript sharing: denied\n" in result.stderr
 
 
 def test_doctor_writes_no_configuration(here):

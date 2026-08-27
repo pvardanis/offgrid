@@ -26,7 +26,7 @@ def test_doctor_says_where_a_conversation_is_kept_and_how_to_open_one(here):
     result = runner.invoke(app, ["doctor"])
 
     assert result.exit_code == 0
-    assert f"kept      {here / 'claude-code'}\n" in result.stderr
+    assert f"          {here / 'claude-code'}\n" in result.stderr
     assert "offgrid run -- --resume" in result.stderr
     # The finding, not only the remedy. It is the domain's sentence rather than
     # the adapter's, so a report that said the adapter's half alone would leave
@@ -42,7 +42,7 @@ def test_doctor_says_it_on_a_machine_that_has_never_run_the_agent(here):
 
     result = runner.invoke(app, ["doctor"])
 
-    assert "kept      " in result.stderr
+    assert "conversations path" in result.stderr
     assert not (here / "claude-code").exists()
 
 
@@ -56,5 +56,5 @@ def test_doctor_says_it_for_the_other_agent_too(here):
     result = runner.invoke(app, ["doctor"])
 
     assert result.exit_code == 0
-    assert f"kept      {here / 'opencode' / 'store'}\n" in result.stderr
+    assert f"          {here / 'opencode' / 'store'}\n" in result.stderr
     assert "offgrid run -- run --continue" in result.stderr
