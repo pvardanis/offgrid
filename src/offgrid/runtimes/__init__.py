@@ -8,17 +8,40 @@ would be indistinguishable from the import the command line legitimately makes
 — and the rule that only a registry may import a concrete adapter would stop
 being checkable.
 
-The two mappings are keyed alike and go together: one says what a name is
-built from, the other what it is reached with.
+The three mappings are keyed alike and go together: one says what a name is
+built from, one what it is reached with, and one what it says about having a
+model downloaded into it. A name missing from any of them is an adapter half
+registered, which `tests/test_architecture.py` refuses.
+
+The third takes no connection, because how a model is downloaded is a fact
+about a runtime rather than about a connection to one: `recommend` names
+models off a published list without asking anything on this machine, and
+opening a connection to answer would be ceremony. Why it sits here rather than
+on the `Runtime` port is in `docs/decisions.md`.
 """
+
+from collections.abc import Callable
 
 from offgrid.domain.running.runtime import Connect, Runtime, RuntimeConfig, RuntimeName
 from offgrid.runtimes import lmstudio
+
+DescribeDownload = Callable[[str], str]
+"""How a runtime says one of its models is downloaded, given the model's name.
+
+The answer names that model, and arrives in lines no wider than
+`shared.wording.LINE_WIDTH` — nothing reflows it, since a command in it has to
+survive being copied. `tests/test_runtime_downloading.py` holds every adapter
+to both.
+"""
 
 RUNTIMES: dict[RuntimeName, Connect] = {RuntimeName.LMSTUDIO: lmstudio.connect}
 
 RUNTIME_CONFIGS: dict[RuntimeName, type[RuntimeConfig]] = {
     RuntimeName.LMSTUDIO: lmstudio.LMStudioConfig
+}
+
+DOWNLOAD_INSTRUCTIONS: dict[RuntimeName, DescribeDownload] = {
+    RuntimeName.LMSTUDIO: lmstudio.describe_download
 }
 
 
@@ -54,3 +77,17 @@ def connect_runtime(config: RuntimeConfig) -> Runtime:
     :return: A connection to it.
     """
     return RUNTIMES[config.name](config)
+
+
+def describe_download(runtime_name: RuntimeName, model: str) -> str:
+    """Say how a model is downloaded into the runtime a profile names.
+
+    Nothing is reached and no connection is opened: what comes back is the
+    adapter's own words about its application.
+
+    :param runtime_name: The runtime it would be downloaded into.
+    :param model: The model it is about, spelt as a published list spells it.
+
+    :return: What to do to have that model downloaded.
+    """
+    return DOWNLOAD_INSTRUCTIONS[runtime_name](model)
