@@ -917,3 +917,25 @@ These could not be settled from primary sources, with what was tried.
     bug reports name 0.4.19 and 0.4.20. Everything asserted here about LM
     Studio describes documented 0.4.1 behaviour, and three open regressions on
     the `/v1/messages` path (2164, 2204, 2236) say the surface has moved since.
+
+## 9. How a model is downloaded into each runtime
+
+**LM Studio, read 2026-08-27.** Two ways, and offgrid names the second.
+
+`lms get` is the command: `lms get --help` on this machine answers "Search and
+download local models or presets", taking a name such as `openai/gpt-oss-20b`,
+a `@quantization` suffix, or a full Hugging Face URL, with `--mlx` and `--gguf`
+narrowing the format. The binary is at `~/.lmstudio/bin/lms`, inside the
+application's own directory rather than on the `PATH` — it is `lms bootstrap`
+that puts it there, and offgrid neither runs it nor requires it, so what
+offgrid prints cannot assume it.
+
+The application's own way is the **Discover** tab. LM Studio's documentation at
+`https://lmstudio.ai/docs/app/basics/download-model` calls it "a built-in model
+downloader", names the tab Discover, and states the shortcut: "you can jump to
+the Discover tab from anywhere by pressing `⌘` + `2` on Mac, or `ctrl` + `2`".
+It searches by keyword, by `user/model`, or by a pasted Hugging Face URL, which
+is why a published table's spelling of a name is a search that finds something
+and an identifier is not needed.
+
+The other runtimes' answers are unread: no adapter needs one yet.
