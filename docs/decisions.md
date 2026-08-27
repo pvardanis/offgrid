@@ -2183,11 +2183,20 @@ screen exists to prevent, and the report is reached in the case that matters —
 the agent a run would actually try to start. Someone browsing for where OpenCode
 comes from reads `not installed` on the row and nothing more.
 
-## assembling.py runs long, and is said rather than split
+## What there is to pick from, and what one pick would do, are two modules
 
-505 lines against a 200-line prompt, with `tests/test_picker.py` at 609 and
-`picker.py` at 282. Said here because the rule is to say it. The candidate seam
-is between what the lists read — the values, the row layouts, the ordering —
-and what the report says, which would be two files sharing every type in the
-first. Cohesion says leave it; the number says look again when the second
-runtime moves the model row.
+`assembling.py` at 505 lines was what prompted the look, but the number is not
+what decided it. There is a seam: the values, the row layouts and the ordering
+are the list of what there is, and the report is what one of them would do —
+two different questions, and `costing.py` reaches for the first while nothing
+goes the other way. Cutting there leaves 251 and 276 lines, each about one
+thing.
+
+The split that was considered and rejected was by length alone, down the middle
+of the report: it would have put the pricing block in one file and the lines it
+sits under in another, so a reader following one report would open two files
+and neither would be about a whole idea.
+
+`tests/test_picker.py` at 609 lines stays whole. It is one seam — the screen —
+and the suite is read by opening the test named after the behaviour, not by
+reading down.
