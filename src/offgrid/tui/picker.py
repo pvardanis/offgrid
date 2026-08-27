@@ -94,6 +94,18 @@ class Picker(App[None]):
            and the rows under it are one surface: a heading left transparent
            paints the screen behind it and reads as a second box. */
         background: $surface;
+        /* A title drawn in the border colour is as faint as the border, and
+           these three are what say which list a person is looking at. */
+        border-title-color: $text;
+        border-title-style: bold;
+        border-title-align: left;
+    }}
+
+    /* Which list has the keys is worth seeing, with three of them on screen
+       and every one of them answering to the same arrows. */
+    #{LISTS} > OptionList:focus, #{MODEL_BOX}:focus-within {{
+        border: round $accent;
+        border-title-color: $accent;
     }}
 
     /* Inside the box its heading shares, so the border is drawn once. */
