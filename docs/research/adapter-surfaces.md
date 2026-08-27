@@ -930,12 +930,23 @@ application's own directory rather than on the `PATH` — it is `lms bootstrap`
 that puts it there, and offgrid neither runs it nor requires it, so what
 offgrid prints cannot assume it.
 
-The application's own way is the **Discover** tab. LM Studio's documentation at
+The application's own way is a search, and **what that search is called moves
+between versions.** LM Studio's documentation at
 `https://lmstudio.ai/docs/app/basics/download-model` calls it "a built-in model
-downloader", names the tab Discover, and states the shortcut: "you can jump to
+downloader", names a **Discover** tab, and states a shortcut: "you can jump to
 the Discover tab from anywhere by pressing `⌘` + `2` on Mac, or `ctrl` + `2`".
-It searches by keyword, by `user/model`, or by a pasted Hugging Face URL, which
-is why a published table's spelling of a name is a search that finds something
-and an identifier is not needed.
+The application installed on this machine is a later build of the same
+codebase: `/Applications/Bionic.app/Contents/Resources/app/package.json` reads
+`"name": "lm-studio"`, `"productName": "Bionic"`, `"version": "1.0.4+9"`, with
+`author` `LM Studio <team@lmstudio.ai>`. On it, ⌘2 opens nothing, and the
+search is a modal rather than a tab — its renderer bundle carries
+`DiscoverModal`, `DiscoverSearchHeader` and a button reading "Discover Models
+to Download". That last is read off a compiled bundle and is a lead rather than
+a measurement.
+
+So offgrid names neither the window nor a shortcut. What holds across both
+builds is that the search takes a name — by keyword, by `user/model`, or by a
+pasted Hugging Face URL — which is why a published table's spelling finds
+something and the identifier the runtime answers to is not needed.
 
 The other runtimes' answers are unread: no adapter needs one yet.
