@@ -2009,3 +2009,45 @@ The library is named in `domain/profile/keeping.py` alone, errors included.
 Everything else asks for a mapping or a piece of text, so it is one module's
 business — including the tests, which read and write the profile through the
 same two calls.
+
+## How a model is downloaded is the runtime's own sentence
+
+`recommend` names models off a published table and stops there, so a person
+reading it is left with a name and nowhere to type it. The next step is
+unambiguous and it is runtime-specific, so the `Runtime` port states it:
+`describe_download(name)`, free text, naming the model it is about.
+
+Free text because the honest answer differs in kind between runtimes. Where a
+command exists it is the answer; where none does, the runtime's own interface
+is. LM Studio has both readings and offgrid takes the second: `lms get` is the
+command, and `lms` is a separate install offgrid deliberately does not require
+on the `PATH`. Printing it at somebody who does not have it names two problems
+where they had one, so what is printed is the Discover tab in the application
+that is already running.
+
+**It is said unconditionally, not only for a model the runtime does not have.**
+Answering "do you have this one?" would cost `recommend` the one property that
+makes it safe to run — it reaches one page and nothing else — and it would put
+a leaderboard's `Qwen3.6-35B-A3B` against a catalogue's `qwen/qwen3.6-35b-a3b`
+and call the match. Fuzzy matching a vendor's naming is a sub-problem with no
+good failure: hide the instruction for a model somebody does not have, or print
+it for one they do. Whether a model is held belongs to the picker, which is
+connected to the runtime and shows it per row.
+
+**One instruction rather than one per row.** The sentence is the same with a
+different name in it, and a table carrying it under every row is a table nobody
+reads. The model worked through is the one the ranking put first, so the name
+in it is a name on the screen. Nothing is said where nothing was ranked: there
+is no model to name, and an instruction naming none is the generic sentence the
+conformance suite refuses of an adapter.
+
+**Which runtime is asked comes from the profile, and from `setup`'s default
+where there is no profile.** Somebody running `recommend` before anything else
+is exactly who the sentence is for, and refusing them over a file they have not
+been told to write yet would answer the wrong question. A profile that is there
+and will not load is refused the way every other command refuses it: it names a
+runtime, and guessing past what it says would answer about an adapter its owner
+did not choose.
+
+Binding the runtime costs nothing: opening a connection binds an address, and
+this asks it for words. `recommend` still reaches one page.
