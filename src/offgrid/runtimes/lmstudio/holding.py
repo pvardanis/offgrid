@@ -7,6 +7,7 @@ here needs a program on this machine's PATH.
 import httpx
 
 from offgrid.domain.running.model import ModelRequest
+from offgrid.runtimes.lmstudio.serving import say_nothing_answered
 from offgrid.shared.exceptions import RuntimeUnreachableError
 
 LOAD = "/api/v1/models/load"
@@ -173,10 +174,7 @@ def _explain_why_the_load_did_not_arrive(
             f"{identifier} did not finish loading within {timeout:.0f}s. "
             "Load it in the runtime directly, or allow longer."
         ),
-        httpx.TransportError: (
-            f"No model server answered at http://{host}. "
-            "Start LM Studio, or point offgrid elsewhere with --host."
-        ),
+        httpx.TransportError: say_nothing_answered(host),
         httpx.RequestError: (
             f"The answer to loading {identifier} could not be read: {error}. "
             f"Check what is listening at http://{host}."

@@ -13,6 +13,7 @@ import re
 import httpx
 
 from offgrid.domain.running.model import Model
+from offgrid.runtimes.lmstudio.serving import say_nothing_answered
 from offgrid.shared.exceptions import RuntimeUnreachableError
 
 CATALOGUE = "/api/v0/models"
@@ -168,10 +169,7 @@ def _explain_why_the_catalogue_did_not_arrive(
             f"http://{host} did not answer within {TIMEOUT_SECONDS}s. "
             "It may be loading a model; try again once it settles."
         ),
-        httpx.TransportError: (
-            f"No model server answered at http://{host}. "
-            "Start LM Studio, or point offgrid elsewhere with --host."
-        ),
+        httpx.TransportError: say_nothing_answered(host),
         httpx.RequestError: (
             f"The answer from {url} could not be read: {error}. Something is "
             f"listening at http://{host}; check it is LM Studio's local server."

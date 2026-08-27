@@ -36,14 +36,24 @@ def test_the_catalogue_is_asked_for_at_the_address_given(
     assert asked["timeout"] == TIMEOUT_SECONDS
 
 
-def test_nothing_listening_says_to_start_the_server(monkeypatch: pytest.MonkeyPatch):
+def test_nothing_listening_names_every_way_that_happens(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    # Three causes, checked in three different places. Naming one sends a
+    # person to look again at the thing that was already true — and the
+    # address is the part of it they did not necessarily type.
     def refuse(request: httpx.Request) -> httpx.Response:
         raise httpx.ConnectError("connection refused", request=request)
 
     serve_get(monkeypatch, refuse)
     with pytest.raises(RuntimeUnreachableError, match="Start LM Studio") as raised:
         get_catalogue_payload(HOST)
-    assert HOST in str(raised.value)
+
+    said = str(raised.value)
+
+    assert HOST in said
+    assert "install LM Studio" in said
+    assert "offgrid setup --host" in said
 
 
 def test_a_timeout_is_not_reported_as_a_dead_server(monkeypatch: pytest.MonkeyPatch):
