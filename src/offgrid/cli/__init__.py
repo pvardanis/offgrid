@@ -23,7 +23,6 @@ from offgrid.cli.setup import setup as setup_command
 from offgrid.domain.profile import DEFAULT_PATH
 from offgrid.shared.exceptions import OffgridError
 from offgrid.shared.say import say_on_stderr, tell
-from offgrid.tui.picker import Report
 
 __all__ = ["app", "main"]
 
@@ -42,6 +41,10 @@ def offgrid(ctx: typer.Context) -> None:
     # command table, which is the least useful thing a stranger can be shown.
     # The screen is handed its reading, so that the picker names no registry.
     if ctx.invoked_subcommand is None:
+        # Imported here rather than above: Textual costs a tenth of a second
+        # to import, and every command that is not the screen would pay it.
+        from offgrid.tui.picker import Report
+
         Report(read=lambda: read_what_can_be_read(DEFAULT_PATH)).run()
 
 
