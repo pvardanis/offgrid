@@ -42,18 +42,26 @@ class LMStudio:
     def describe_download(self, name: str) -> str:
         """Say how a model is downloaded into LM Studio.
 
-        Its own window rather than a command, because the command is `lms get`
-        and `lms` is a separate install offgrid does not require on the `PATH`
-        — printing it at somebody who does not have it names two problems
-        where they had one.
+        The application rather than a command, because the command is `lms
+        get` and `lms` is not on the `PATH` until a person has bootstrapped
+        it, which offgrid does not require of them — printing it at somebody
+        who has not names two problems where they had one. The Discover tab
+        and its shortcut are LM Studio's own, and
+        `docs/research/adapter-surfaces.md` records where they were read.
 
-        :param name: The model it is about.
+        The application is named rather than the address this connection
+        holds: what a person opens is the copy in front of them, whichever
+        machine is serving.
+
+        :param name: The model it is about, spelt as the published table spells
+            it. LM Studio's search takes a name rather than the identifier it
+            answers to afterwards.
 
         :return: What to do to have that model downloaded.
         """
         return (
-            f"To download {name}: open LM Studio, search its Discover tab for "
-            "the name, and download a build of it."
+            f"To download {name}: open LM Studio, press ⌘2 for its Discover\n"
+            "tab, search that name, and download a build of it."
         )
 
     def read_catalogue(self) -> list[Model]:

@@ -139,3 +139,17 @@ def test_lm_studio_serves_both_dialects():
     assert connect(LMStudioConfig(host="127.0.0.1:1234")).dialects == frozenset(
         {Dialect.ANTHROPIC, Dialect.OPENAI}
     )
+
+
+def test_downloading_is_the_application_rather_than_a_tool_on_the_path():
+    # `lms get` is LM Studio's download command and `lms` is not on the `PATH`
+    # until a person has bootstrapped it, which offgrid neither does nor asks
+    # for. Printing the command at somebody who has not names two problems
+    # where they had one, so what is printed is the application they already
+    # have running.
+    said = connect(LMStudioConfig(host="127.0.0.1:1234")).describe_download(
+        "Qwen3.6-35B-A3B"
+    )
+
+    assert "lms" not in said
+    assert "Discover" in said

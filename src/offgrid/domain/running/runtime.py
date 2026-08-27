@@ -2,9 +2,9 @@
 
 An adapter binds its own settings once and answers with something satisfying
 ``Runtime``. Two of its members are attributes, settled when the connection
-opens; four are methods, which reach the server. ``describe_download`` is the
-one method that reaches nothing: it takes a model's name and answers in words,
-so the answer says which model it is about.
+opens; five are methods. Four of those reach the server; ``describe_download``
+reaches nothing — it takes a model's name and answers in words, so the answer
+says which model it is about.
 
 Why it is shaped this way, and why the attributes are properties, is in
 `docs/architecture.md` under "The runtime seam".
@@ -20,6 +20,11 @@ from pydantic import BaseModel, ConfigDict, computed_field
 from offgrid.domain.running.capabilities import Capabilities
 from offgrid.domain.running.dialect import Dialect
 from offgrid.domain.running.model import Model, ModelRequest
+
+# The widest a line an adapter writes may be, so that what a runtime says
+# reads beside what offgrid says rather than wrapping under it. It is the
+# width the reports either side of it are written to by hand.
+LINE_WIDTH = 76
 
 
 class RuntimeName(Enum):
@@ -92,12 +97,18 @@ class Runtime(Protocol):
         runtime's own interface. It reaches nothing, so a list of models can
         carry it beside names the runtime has never been asked about.
 
-        :param name: The model it is about, which the answer names. A sentence
+        :param name: The model it is about, which the answer names. It is the
+            name a published table gave the model rather than an identifier
+            the runtime answers to, since it is read by a person. A sentence
             about downloading in general tells whoever is reading a list of
             names nothing they do not have, and the conformance suite refuses
             one.
 
-        :return: What to do to have that model downloaded.
+        :return: What to do to have that model downloaded, in lines short
+            enough for a terminal — where they fall is the adapter's, because
+            a command that has to survive being copied cannot be reflowed by
+            whoever prints it. The conformance suite holds every line to
+            ``LINE_WIDTH``.
         """
         ...
 
