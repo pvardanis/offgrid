@@ -21,7 +21,7 @@ def recommend() -> None:
     machine = detect()
 
     with reporting():
-        runtime_name = _get_runtime_to_download_into()
+        runtime_name = _get_runtime_name()
         reading = get_reading(LEADERBOARDS, _cache())
 
     for line in reading.caveats:
@@ -33,8 +33,8 @@ def recommend() -> None:
         tell(line)
 
 
-def _get_runtime_to_download_into() -> RuntimeName:
-    """Name the runtime whose words say how a model is downloaded.
+def _get_runtime_name() -> RuntimeName:
+    """Name the runtime a model would be downloaded into.
 
     A name rather than a connection: how a model is downloaded is a fact about
     a runtime, and nothing here is asked of the machine. So a runtime that is
