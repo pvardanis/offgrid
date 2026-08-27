@@ -2015,7 +2015,7 @@ same two calls.
 `recommend` names models off a published table and stops there, so a person
 reading it is left with a name and nowhere to type it. The next step is
 unambiguous and it is runtime-specific, so the `Runtime` port states it:
-`describe_download(name)`, free text, naming the model it is about.
+`describe_model_download(name)`, free text, naming the model it is about.
 
 Free text because the honest answer differs in kind between runtimes. Where a
 command exists it is the answer; where none does, the runtime's own interface
@@ -2052,7 +2052,7 @@ downloaded is a fact about a runtime rather than about a connection to one: it
 takes a name, reaches nothing, and wants no address. On the port it cost
 `recommend` a connection it had no use for, left `LMStudio` with a method that
 never read `self`, and forced an exception into the port's own rule that a
-method reaches the server. So it is `DOWNLOAD_INSTRUCTIONS` in
+method reaches the server. So it is `MODEL_DOWNLOAD_INSTRUCTIONS` in
 `runtimes/__init__.py`, keyed by `RuntimeName` beside the two mappings already
 there, and `tests/test_architecture.py` refuses a name missing from any of the
 three.

@@ -39,7 +39,7 @@ CAPABILITIES = Capabilities(
 )
 
 
-def describe_download(name: str) -> str:
+def describe_model_download(name: str) -> str:
     """Say how a model is downloaded into LM Studio.
 
     Both ways, application first. The search is what everybody with LM Studio

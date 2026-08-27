@@ -13,10 +13,25 @@ reason: what a runtime says about downloading is written in one layer, printed
 by another, and checked by a third.
 """
 
+from collections.abc import Callable
+
 # The widest a line may be where offgrid prints what somebody else wrote, so
 # that it reads beside offgrid's own lines rather than wrapping under them. It
 # is the width the reports either side of it are written to by hand.
 LINE_WIDTH = 76
+
+
+DescribeModelDownload = Callable[[str], str]
+"""How a runtime says one of its models is downloaded, given the model's name.
+
+The answer names that model, and arrives in lines no wider than `LINE_WIDTH` —
+nothing reflows it, since a command in it has to survive being copied.
+`tests/test_runtime_downloading.py` holds every adapter to both.
+
+Here because the registry that holds one per runtime and the report that
+prints it are in layers that may not import each other, and both need to say
+what it is.
+"""
 
 
 def describe_what_was_stated(value: int | None) -> str:

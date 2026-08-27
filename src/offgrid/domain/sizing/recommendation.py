@@ -9,8 +9,6 @@ Nothing here says anything; it returns the lines and the command line says
 them.
 """
 
-from collections.abc import Callable
-
 from offgrid.domain.sizing.fit import (
     BYTES_PER_GB,
     QUANTIZATION_WIDTHS,
@@ -27,15 +25,7 @@ from offgrid.domain.sizing.shortlist import (
     shortlist,
 )
 from offgrid.domain.sizing.speed import tokens_per_second
-from offgrid.shared.wording import describe_what_was_stated
-
-DescribeDownload = Callable[[str], str]
-"""How a runtime says one of its models is downloaded, given the model's name.
-
-The runtime's own words, taken as a function rather than as its port: what
-fits and what runs do not know each other, and this is the whole of what a
-recommendation needs of a runtime.
-"""
+from offgrid.shared.wording import DescribeModelDownload, describe_what_was_stated
 
 # One layout, so the heading and the models under it cannot drift apart.
 COLUMNS = (
@@ -67,14 +57,14 @@ WHY_DROPPED = {
 
 
 def summarize_findings(
-    table: Table, machine: Machine, describe_download: DescribeDownload
+    table: Table, machine: Machine, describe_model_download: DescribeModelDownload
 ) -> list[str]:
     """Say what this machine can hold off a published list, best first.
 
     :param table: The published list, as it was read.
     :param machine: The host the models would run on.
-    :param describe_download: How the runtime says one of its models is
-        downloaded, asked for the model ranked first. Nothing is said about
+    :param describe_model_download: How the runtime says one of its models
+        is downloaded, asked for the model ranked first. Nothing is said about
         downloading where nothing was ranked: there is no model to name.
 
     :return: Every line to say, in order.
@@ -99,11 +89,13 @@ def summarize_findings(
         + [_lay_out(fit, worth, machine) for worth, fit in ranked]
         + _set_off(dropped)
         + _set_off(_credit_the_figures(table.dated))
-        + _set_off(_say_how_to_download(ranked[0][1], describe_download))
+        + _set_off(_say_how_to_download(ranked[0][1], describe_model_download))
     )
 
 
-def _say_how_to_download(fit: Fit, describe_download: DescribeDownload) -> list[str]:
+def _say_how_to_download(
+    fit: Fit, describe_model_download: DescribeModelDownload
+) -> list[str]:
     """Say how to have the model ranked first, in the runtime's own words.
 
     One model rather than every row: the instruction is the same sentence with
@@ -117,12 +109,12 @@ def _say_how_to_download(fit: Fit, describe_download: DescribeDownload) -> list[
     the adapter's to decide, and the conformance suite holds it to a width.
 
     :param fit: The model ranked first, at the width it was ranked at.
-    :param describe_download: How the runtime says one of its models is
-        downloaded.
+    :param describe_model_download: How the runtime says one of its models
+        is downloaded.
 
     :return: The lines to say.
     """
-    said = describe_download(fit.listing.name).splitlines()
+    said = describe_model_download(fit.listing.name).splitlines()
 
     return [*said, "Then `offgrid run`."]
 

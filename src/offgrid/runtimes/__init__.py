@@ -20,19 +20,9 @@ opening a connection to answer would be ceremony. Why it sits here rather than
 on the `Runtime` port is in `docs/decisions.md`.
 """
 
-from collections.abc import Callable
-
 from offgrid.domain.running.runtime import Connect, Runtime, RuntimeConfig, RuntimeName
 from offgrid.runtimes import lmstudio
-
-DescribeDownload = Callable[[str], str]
-"""How a runtime says one of its models is downloaded, given the model's name.
-
-The answer names that model, and arrives in lines no wider than
-`shared.wording.LINE_WIDTH` — nothing reflows it, since a command in it has to
-survive being copied. `tests/test_runtime_downloading.py` holds every adapter
-to both.
-"""
+from offgrid.shared.wording import DescribeModelDownload
 
 RUNTIMES: dict[RuntimeName, Connect] = {RuntimeName.LMSTUDIO: lmstudio.connect}
 
@@ -40,8 +30,8 @@ RUNTIME_CONFIGS: dict[RuntimeName, type[RuntimeConfig]] = {
     RuntimeName.LMSTUDIO: lmstudio.LMStudioConfig
 }
 
-DOWNLOAD_INSTRUCTIONS: dict[RuntimeName, DescribeDownload] = {
-    RuntimeName.LMSTUDIO: lmstudio.describe_download
+MODEL_DOWNLOAD_INSTRUCTIONS: dict[RuntimeName, DescribeModelDownload] = {
+    RuntimeName.LMSTUDIO: lmstudio.describe_model_download
 }
 
 
@@ -79,7 +69,7 @@ def connect_runtime(config: RuntimeConfig) -> Runtime:
     return RUNTIMES[config.name](config)
 
 
-def describe_download(runtime_name: RuntimeName, model: str) -> str:
+def describe_model_download(runtime_name: RuntimeName, model: str) -> str:
     """Say how a model is downloaded into the runtime a profile names.
 
     Nothing is reached and no connection is opened: what comes back is the
@@ -90,4 +80,4 @@ def describe_download(runtime_name: RuntimeName, model: str) -> str:
 
     :return: What to do to have that model downloaded.
     """
-    return DOWNLOAD_INSTRUCTIONS[runtime_name](model)
+    return MODEL_DOWNLOAD_INSTRUCTIONS[runtime_name](model)
