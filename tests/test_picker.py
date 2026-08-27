@@ -16,6 +16,7 @@ from offgrid.cli.binding import read_what_can_be_read
 from offgrid.tui.picker import REPORT, Report
 from tests.doubles import serve_get
 from tests.lmstudio_server import RESIDENT
+from tests.profiles import add_to_section
 
 runner = CliRunner()
 
@@ -133,3 +134,16 @@ def test_the_screen_writes_nothing(here):
 
     assert profile.read_text() == before
     assert sorted(path.name for path in here.iterdir()) == beside
+
+
+def test_a_profile_offgrid_cannot_read_is_shown_on_the_screen(here):
+    # A hand-edited profile is a named seam, and what a refusal says carries
+    # the key that was refused — in brackets, which is markup to a screen that
+    # is reading markup. The report is columns of plain text and wants none.
+    runner.invoke(app, ["setup"])
+    add_to_section(here, "agent", theme="dark")
+
+    shown, still_open = screen(here)
+
+    assert "theme" in shown
+    assert still_open
