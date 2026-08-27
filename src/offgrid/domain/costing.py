@@ -20,6 +20,7 @@ from offgrid.domain.assembling import (
     AgentOnThisMachine,
     Assembly,
     WhatCouldBeRun,
+    WouldNotAnswer,
     find_agent,
     find_what_would_answer,
 )
@@ -32,6 +33,7 @@ from offgrid.domain.checkup import (
     describe_what_is_requested,
 )
 from offgrid.domain.profile import Profile
+from offgrid.domain.running.agent import AgentName
 from offgrid.domain.running.dialect import Dialect, require_compatible
 from offgrid.domain.running.model import Model, ModelRequest
 from offgrid.shared.exceptions import DialectMismatchError
@@ -58,8 +60,8 @@ def describe_what_would_run(
     agent = find_agent(what, assembly.agent)
     answered = agent.answered
 
-    if answered is None:
-        return _describe_an_agent_that_would_not_answer(agent)
+    if isinstance(answered, WouldNotAnswer):
+        return _describe_an_agent_that_would_not_answer(agent.name, answered)
 
     checkup = Checkup(
         profile=_as_assembled(what.profile, agent, assembly),
@@ -88,7 +90,7 @@ def describe_what_would_run(
 
 
 def _describe_an_agent_that_would_not_answer(
-    agent: AgentOnThisMachine,
+    name: AgentName, refusal: WouldNotAnswer
 ) -> tuple[str, ...]:
     """Say that an agent's own settings stopped it answering at all.
 
@@ -96,13 +98,14 @@ def _describe_an_agent_that_would_not_answer(
     agent line is read off the agent: a report saying the rest as though it
     were true would be about a pairing that cannot be assembled.
 
-    :param agent: The agent that would not answer.
+    :param name: The agent that would not answer.
+    :param refusal: What stopped it.
 
     :return: The lines to say.
     """
     return (
-        say_in_columns("agent", f"{agent.name.value}, which did not answer"),
-        *say_indented(REMEDY, str(agent.unreadable)),
+        say_in_columns("agent", f"{name.value}, which did not answer"),
+        *say_indented(REMEDY, refusal.why),
     )
 
 

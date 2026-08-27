@@ -40,6 +40,16 @@ HELD_COLUMN = 6
 
 
 @dataclass(frozen=True)
+class WouldNotAnswer:
+    """Why an agent's own settings stopped it saying anything about itself.
+
+    :param why: What stopped it, as the person reading the screen is told.
+    """
+
+    why: str
+
+
+@dataclass(frozen=True)
 class AgentOnThisMachine:
     """One agent offgrid has an adapter for, and what it answered here.
 
@@ -47,20 +57,31 @@ class AgentOnThisMachine:
     that the list is what offgrid supports rather than what happens to be
     installed. What is absent is marked rather than left out.
 
-    :param name: The agent, as a profile names it.
+    An agent either answered or said why it could not, which is one field of
+    two types rather than two fields that must disagree: a pair of them can be
+    built both set and both empty, and the row and the report each have to
+    decide what those mean.
+
     :param config: What its section of a profile would hold, which is the
         profile's own where the profile names this agent.
-    :param answered: What it said about itself, and ``None`` where asking it
-        failed.
-    :param unreadable: Why asking it failed, where it did. An agent whose own
-        settings will not read is a row a person can see and not pick, rather
-        than a screen that will not open.
+    :param answered: What it said about itself, or what stopped it. An agent
+        whose own settings will not read is a row a person can see and not
+        pick, rather than a screen that will not open.
     """
 
-    name: AgentName
     config: AgentConfig
-    answered: WhatTheAgentAnswered | None
-    unreadable: str | None
+    answered: WhatTheAgentAnswered | WouldNotAnswer
+
+    @property
+    def name(self) -> AgentName:
+        """Which agent this is, as a profile names it.
+
+        Read off the config rather than stored beside it, so that a reading
+        cannot be built claiming to be about an agent it did not ask.
+
+        :return: The name.
+        """
+        return self.config.name
 
     @property
     def is_on_this_machine(self) -> bool:
@@ -68,7 +89,10 @@ class AgentOnThisMachine:
 
         :return: Whether it answered, and whether the `PATH` has its command.
         """
-        return self.answered is not None and self.answered.found_at is not None
+        return (
+            isinstance(self.answered, WhatTheAgentAnswered)
+            and self.answered.found_at is not None
+        )
 
 
 @dataclass(frozen=True)
@@ -161,9 +185,11 @@ def read_the_highlight(
 ) -> Assembly:
     """Read what the highlights are sitting on as a pairing.
 
-    A list with no reachable row at all falls back on what the profile names,
-    so that a machine with neither agent installed still reports on the one a
-    run would try to start.
+    Either list can have no reachable row — every agent absent, or nothing
+    downloaded — and nowhere to sit is not a statement about what to run. Both
+    fall back on what the profile names, so that a machine with no agent
+    installed still reports on the one a run would try to start, and a runtime
+    with an empty catalogue still reports the model the file asks for.
 
     A profile that names no model, with the highlight on the model the runtime
     is already holding, still names none: the two describe the same run today,
@@ -172,21 +198,22 @@ def read_the_highlight(
     two statements and the highlight is the one a person just made.
 
     :param what: Everything that was read.
-    :param agent: What the agent list's highlight is on, or ``None`` for none.
-    :param model: What the model list's highlight is on, or ``None`` for none.
+    :param agent: What the agent list's highlight is on, or ``None`` where the
+        list has no row a cursor can reach.
+    :param model: What the model list's highlight is on, or ``None`` where the
+        list has no row a cursor can reach.
 
     :return: The pairing to report on.
     """
-    if agent is None:
-        return open_on_what_the_profile_holds(what)
+    named = open_on_what_the_profile_holds(what)
 
     resident = what.runtime.resident
     sitting_on_the_resident = resident is not None and model == resident.identifier
-    asks_for_nothing = what.profile.model.identifier is None
+    takes_what_is_held = sitting_on_the_resident and named.model is None
 
     return Assembly(
-        agent=AgentName(agent),
-        model=None if sitting_on_the_resident and asks_for_nothing else model,
+        agent=named.agent if agent is None else AgentName(agent),
+        model=named.model if model is None or takes_what_is_held else model,
     )
 
 
@@ -201,7 +228,7 @@ def describe_an_agent_row(agent: AgentOnThisMachine) -> str:
 
     :return: The row, as it is read.
     """
-    if agent.unreadable is not None:
+    if isinstance(agent.answered, WouldNotAnswer):
         return f"{agent.name.value:<{AGENT_COLUMN}}did not answer"
 
     if not agent.is_on_this_machine:

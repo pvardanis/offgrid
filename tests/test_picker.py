@@ -447,6 +447,23 @@ def test_a_runtime_with_nothing_downloaded_says_so_and_where_to_go_next(
     assert "Run `offgrid recommend`" in driven.shown
 
 
+def test_a_runtime_with_nothing_downloaded_still_reports_the_model_named(
+    here, monkeypatch
+):
+    # An empty list gives the highlight nowhere to sit, and nowhere to sit is
+    # not the same statement as asking for nothing: a profile naming a model
+    # asks for it whether or not the runtime has anything to show.
+    runner.invoke(app, ["setup"])
+    name_a_model(here, "google/gemma-4-e4b")
+    answer_as_lm_studio(monkeypatch)
+    on_this_machine(monkeypatch, "claude")
+
+    driven = screen(here)
+
+    assert "requests    google/gemma-4-e4b" in driven.shown
+    assert "name one under `model:` in the profile" not in driven.shown
+
+
 def test_moving_the_highlight_writes_nothing(here, monkeypatch):
     # Looking around is free: the profile a person hand-edited is exactly as
     # they left it, and nothing else has appeared beside it.
