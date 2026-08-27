@@ -46,7 +46,15 @@ def offgrid(ctx: typer.Context) -> None:
         # every command that is not the screen would pay it.
         from offgrid.tui.picker import Report
 
-        Report(read=lambda: read_what_can_be_read(DEFAULT_PATH)).run()
+        screen = Report(read=lambda: read_what_can_be_read(DEFAULT_PATH))
+        screen.run()
+
+        # Textual paints what went wrong on the screen and returns rather than
+        # raising it, so the code it set is the only thing that says the screen
+        # died. Unread, a crash under a traceback exits like a report somebody
+        # sat and read.
+        if screen.return_code:
+            raise typer.Exit(screen.return_code)
 
 
 app.command()(setup_command)
