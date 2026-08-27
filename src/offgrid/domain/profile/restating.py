@@ -13,7 +13,7 @@ read, restated, or a fresh one; nothing in between goes to disk.
 from offgrid.domain.profile.keeping import YAMLError, dump_yaml, read_yaml
 
 
-def keep_hand_edits(already: str, said: dict) -> str:
+def keep_hand_edits(existing_text: str, new_content: dict) -> str:
     """State what a mapping says over the file that is already there.
 
     A key the file names is answered where it stands, and a key it never named
@@ -30,43 +30,47 @@ def keep_hand_edits(already: str, said: dict) -> str:
     and the comment that introduce whatever is next — which is the same
     comment, over something else it does not describe.
 
-    :param already: What the file holds, or ``""`` where there is no file.
-    :param said: What it should now say.
+    :param existing_text: What the file holds, or ``""`` where there is no
+        file.
+    :param new_content: What it should now say.
 
     :return: The text to write, carrying whatever was there around the values.
     """
-    document = _read_mapping(already)
+    existing_content = _read_mapping(existing_text)
 
-    if document is None or not _holds_only(document, said):
-        return dump_yaml(said)
+    if existing_content is None or not _holds_only(existing_content, new_content):
+        return dump_yaml(new_content)
 
-    _restate(document, said)
-    written = dump_yaml(document)
+    _restate(existing_content, new_content)
+    new_text = dump_yaml(existing_content)
 
-    return written if _stands_where_it_stood(already, written) else dump_yaml(said)
+    if not _stands_where_it_stood(existing_text, new_text):
+        return dump_yaml(new_content)
+
+    return new_text
 
 
-def _read_mapping(text: str) -> dict | None:
+def _read_mapping(existing_text: str) -> dict | None:
     """Read a piece of text as the mapping to write over.
 
-    :param text: What the file holds.
+    :param existing_text: What the file holds.
 
     :return: The mapping, or ``None`` where there is nothing to keep — the
         file is absent, unparseable, or holds something that is not a mapping.
     """
     try:
-        body = read_yaml(text)
+        body = read_yaml(existing_text)
     except YAMLError:
         return None
 
     return body if isinstance(body, dict) else None
 
 
-def _holds_only(document: dict, said: dict) -> bool:
-    """Say whether a document names nothing the mapping does not.
+def _holds_only(existing_content: dict, new_content: dict) -> bool:
+    """Say whether what the file holds names nothing the mapping does not.
 
-    :param document: The mapping as the file holds it.
-    :param said: What it should now say.
+    :param existing_content: The mapping as the file holds it.
+    :param new_content: What it should now say.
 
     :return: ``True`` where every key the file names is one the mapping has,
         section by section. A key the file leaves out is not a disagreement:
@@ -75,7 +79,8 @@ def _holds_only(document: dict, said: dict) -> bool:
         the section held, comments and all.
     """
     return all(
-        key in said and _agrees(held, said[key]) for key, held in document.items()
+        key in new_content and _agrees(held, new_content[key])
+        for key, held in existing_content.items()
     )
 
 
@@ -98,7 +103,7 @@ def _agrees(held: object, value: object) -> bool:
     return True
 
 
-def _stands_where_it_stood(already: str, written: str) -> bool:
+def _stands_where_it_stood(existing_text: str, new_text: str) -> bool:
     """Say whether a file came back as itself, with anything new at the end.
 
     Line for line, because that is what a person sees: a comment two lines
@@ -107,13 +112,13 @@ def _stands_where_it_stood(already: str, written: str) -> bool:
     now says — and a line after the end of what was there is a key the file
     never named.
 
-    :param already: What the file held.
-    :param written: What it would now hold.
+    :param existing_text: What the file held.
+    :param new_text: What it would now hold.
 
     :return: ``True`` where nothing moved.
     """
-    stood = already.splitlines()
-    stands = written.splitlines()
+    stood = existing_text.splitlines()
+    stands = new_text.splitlines()
 
     if len(stands) < len(stood):
         return False
@@ -139,16 +144,16 @@ def _says_the_same_key(was: str, now: str) -> bool:
     return ":" in was and ":" in now and was.split(":")[0] == now.split(":")[0]
 
 
-def _restate(document: dict, said: dict) -> None:
-    """Say what a mapping says in a document, key by key and in place.
+def _restate(existing_content: dict, new_content: dict) -> None:
+    """Say what a mapping says in what the file holds, key by key and in place.
 
-    :param document: The mapping as the file holds it.
-    :param said: What it should now say.
+    :param existing_content: The mapping as the file holds it.
+    :param new_content: What it should now say.
     """
-    for key, value in said.items():
-        held = document.get(key)
+    for key, value in new_content.items():
+        held = existing_content.get(key)
 
         if isinstance(value, dict) and isinstance(held, dict):
             _restate(held, value)
         else:
-            document[key] = value
+            existing_content[key] = value
