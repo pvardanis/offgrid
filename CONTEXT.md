@@ -120,6 +120,14 @@ assembled from the same three things the file holds — a runtime, an agent and 
 model — whether they came from the file, from the command line, or from
 somewhere they were picked.
 
+**picker** — the screen bare `offgrid` opens: three lists of what offgrid can
+drive, and what a run against the highlighted pairing would report. It assembles
+a profile and exits before an agent starts, so it never holds a model itself.
+
+**pairing** — one agent and one model, as the picker's highlights sit on them.
+Not a fourth thing to remember: it is what a profile holds, before anybody has
+decided to keep it.
+
 **bind** — to turn what a profile names into the runtime and agent a run talks
 to. A section of the file is a name and whatever that adapter reads; it becomes
 a config, and then an adapter, only once something knows which adapters there
