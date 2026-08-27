@@ -10,6 +10,7 @@ import pytest
 from offgrid.domain.running.capabilities import Capabilities
 from offgrid.domain.running.dialect import Dialect
 from offgrid.domain.running.model import ModelRequest
+from offgrid.domain.running.runtime import LINE_WIDTH
 from offgrid.shared.exceptions import RuntimeUnreachableError
 from tests.runtimes_under_test import RuntimeUnderTest
 
@@ -85,3 +86,19 @@ def test_how_a_model_is_downloaded_names_the_model_and_reaches_nothing(
     said = runtime.connect().describe_download("Qwen3.6-35B-A3B")
 
     assert "Qwen3.6-35B-A3B" in said
+
+
+def test_how_a_model_is_downloaded_is_said_in_lines_that_fit_a_terminal(
+    runtime: RuntimeUnderTest, monkeypatch: pytest.MonkeyPatch
+):
+    # Nothing reflows it — a command in it has to survive being copied — so
+    # where the lines fall is the adapter's, and this is what it owes for
+    # them: a line that wraps under the table it sits below is one an adapter
+    # wrote too long.
+    runtime.arrange_unreachable(monkeypatch)
+
+    said = runtime.connect().describe_download("Qwen3.6-35B-A3B")
+
+    assert said.splitlines()
+    for line in said.splitlines():
+        assert len(line) <= LINE_WIDTH, line

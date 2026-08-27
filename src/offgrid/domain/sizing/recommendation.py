@@ -10,7 +10,6 @@ them.
 """
 
 from collections.abc import Callable
-from textwrap import fill
 
 from offgrid.domain.sizing.fit import (
     BYTES_PER_GB,
@@ -37,10 +36,6 @@ The runtime's own words, taken as a function rather than as its port: what
 fits and what runs do not know each other, and this is the whole of what a
 recommendation needs of a runtime.
 """
-
-# How wide the runtime's own sentence is laid out at, matching the width the
-# lines around it are written to by hand.
-PROSE_WIDTH = 76
 
 # One layout, so the heading and the models under it cannot drift apart.
 COLUMNS = (
@@ -116,13 +111,18 @@ def _say_how_to_download(fit: Fit, describe_download: DescribeDownload) -> list[
     nobody reads. Which model is worked through is the one the ranking put at
     the top, so the name in it is a name on the screen.
 
+    What the runtime said is laid out as the runtime wrote it, line for line.
+    Reflowing it would break a line that has to survive being copied — a
+    command is one of the answers the port takes — so where the lines fall is
+    the adapter's to decide, and the conformance suite holds it to a width.
+
     :param fit: The model ranked first, at the width it was ranked at.
     :param describe_download: How the runtime says one of its models is
         downloaded.
 
     :return: The lines to say.
     """
-    said = fill(describe_download(fit.listing.name), PROSE_WIDTH).splitlines()
+    said = describe_download(fit.listing.name).splitlines()
 
     return [*said, "Then `offgrid run`."]
 

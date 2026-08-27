@@ -371,9 +371,12 @@ sequenceDiagram
     participant O as a list in LEADERBOARDS
     participant K as sizing/cache.py
     participant S as recommendation.py
+    participant B as cli/binding.py · runtimes/
 
     P->>C: offgrid recommend
     C->>M: detect()
+    C->>B: read_profile(path) · connect_runtime(config)
+    Note over C,B: the runtime whose words say how a model is<br/>downloaded — what `setup` would write where<br/>there is no profile, refused where one will not load
     C->>G: get_reading(path)
     loop each list, in the order the registry holds them
         G->>O: fetch() · parse(payload)
@@ -389,7 +392,7 @@ sequenceDiagram
         Note over G: says what stopped each list,<br/>and which day this table was read
     end
     G-->>C: Reading(table, caveats)
-    C->>S: summarize_findings(table, machine)
+    C->>S: summarize_findings(table, machine, describe_download)
     Note over S: shortlist → listing → quality → speed → fit
     S-->>C: lines to say
 ```
@@ -526,9 +529,9 @@ class Runtime(Protocol):
 Seven members. No payload crosses it, and nothing about the order of calls is
 knowledge the caller has to hold.
 
-**Two are attributes and four are actions, and the split says something.** An
+**Two are attributes and five are methods, and the split says something.** An
 attribute is settled when the connection opens: reading it is free and cannot
-fail. A method reaches the server, so it costs time and can raise. Naming a
+fail. Four of the methods reach the server, so each costs time and can raise. Naming a
 method for what it does — `read_held`, not `held` — is the difference between
 an interface that says which of its members touch the network and one that
 leaves a caller to find out.
@@ -548,7 +551,7 @@ the pair with `protocol member capabilities is incompatible — the member does
 not accept writes`. A caller reads `runtime.dialects` either way.
 
 A Protocol rather than typed callables because a connection carries state —
-the host, the capabilities probed when it opened — and because six related
+the host, the capabilities probed when it opened — and because seven related
 members read better named than positional. The leaderboard seam below carries
 neither and is shaped differently for it.
 
@@ -952,8 +955,9 @@ There are three deep interfaces here already.
 list and the context sizing behind one call.
 `get_reading(path)` hides fetching, parsing, keeping the payload, falling back
 on a kept one, and the sentence saying how old it is.
-`summarize_findings(table, machine)` hides the whole chain from listing through
-fit, speed and quality down to a ranked table.
+`summarize_findings(table, machine, describe_download)` hides the whole chain
+from listing through fit, speed and quality down to a ranked table, and the
+runtime's own sentence about downloading the first of them.
 
 The runtime's was the shallow one. `catalogue(host)` answered with the
 runtime's payload, and `parse_models`, `loaded` and `resident` were functions
@@ -1050,7 +1054,7 @@ which is the half most likely to be wrong.
 `tests/test_runtime_letting_go.py` and `tests/test_runtime_reading.py` state
 what being a runtime means behaviourally — one file per question a runtime is
 asked — and every adapter runs them against payloads captured from that
-runtime, live. An adapter is done when all three pass. They state sixteen
+runtime, live. An adapter is done when all three pass. They state eighteen
 things, each of which a runtime that is not LM Studio still owes:
 
 - `ensure_only` answers with the model as *served* rather than as catalogued,
@@ -1074,6 +1078,13 @@ things, each of which a runtime that is not LM Studio still owes:
   which is what lets `run` check the dialect before paying for a load.
 - A runtime serves at least one dialect. One serving none would pass every
   membership check by never matching, which is not a runtime.
+- How a model is downloaded is answered in words naming that model, with
+  nothing listening: `recommend` prints it beside names off a published table
+  the runtime has never been asked about, and a sentence about downloading in
+  general tells whoever is reading a list of names nothing they do not have.
+- Those words arrive in lines that fit a terminal. Nothing reflows them, since
+  a command in them has to survive being copied, so where the lines fall is
+  the adapter's and their width is what it owes.
 
 `tests/runtimes_under_test.py` is the parametrization, and a second adapter
 joins by writing one stand-in and adding a line there. A stand-in answers as
