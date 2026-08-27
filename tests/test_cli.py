@@ -933,6 +933,20 @@ def _kept(
     )
 
 
+def _rows(said: str, named: str) -> list[str]:
+    """Read the table rows a model has, off everything the command said.
+
+    A row is a width, so the width is what tells one from the sentence under
+    the table that names a model too.
+
+    :param said: What the command said.
+    :param named: The model, or the prefix every model in the test shares.
+
+    :return: The rows it has, in the order they were printed.
+    """
+    return [line for line in said.splitlines() if named in line and "-bit" in line]
+
+
 def test_recommend_lists_a_model_once_for_each_width_it_fits_at(here, monkeypatch):
     _leaderboard(
         monkeypatch,
@@ -940,7 +954,7 @@ def test_recommend_lists_a_model_once_for_each_width_it_fits_at(here, monkeypatc
     )
 
     result = runner.invoke(app, ["recommend"])
-    rows = [line for line in result.stderr.splitlines() if "A-Model-35B" in line]
+    rows = _rows(result.stderr, "A-Model-35B")
 
     assert result.exit_code == 0
     assert len(rows) == 2
@@ -995,7 +1009,7 @@ def test_recommend_caps_nothing(here, monkeypatch):
     )
 
     result = runner.invoke(app, ["recommend"])
-    rows = [line for line in result.stderr.splitlines() if "A-Model-" in line]
+    rows = _rows(result.stderr, "A-Model-")
 
     # Twelve models, each fitting at all three widths.
     assert len(rows) == 36
@@ -1105,6 +1119,66 @@ def test_recommend_counts_no_rule_that_dropped_nothing(here, monkeypatch):
     assert result.exit_code == 0
     assert "A-Model-35B" in result.stderr
     assert "Left out" not in result.stderr
+
+
+def test_recommend_says_how_to_download_the_model_it_ranks_first(here, monkeypatch):
+    # A list of names is only actionable where the next step is on the screen
+    # beside it, and that step belongs to the runtime rather than to offgrid.
+    _leaderboard(
+        monkeypatch,
+        models=[_listed("A-Model-35B", "35B"), _listed("A-Model-27B", "27B")],
+    )
+
+    result = runner.invoke(app, ["recommend"])
+    first = _rows(result.stderr, "A-Model-")[0].split()[0]
+
+    assert result.exit_code == 0
+    assert f"To download {first}" in result.stderr
+    assert "LM Studio" in result.stderr
+    assert "Then `offgrid run`." in result.stderr
+
+
+def test_recommend_says_how_to_download_into_the_runtime_the_profile_names(
+    here, monkeypatch
+):
+    # The instruction is the named runtime's own, and a machine with no
+    # profile yet is a machine somebody is reading this on first: the default
+    # runtime answers rather than a refusal over a file `setup` writes.
+    _leaderboard(monkeypatch, models=[_listed("A-Model-35B", "35B")])
+
+    without_one = runner.invoke(app, ["recommend"])
+    runner.invoke(app, ["setup"])
+    with_one = runner.invoke(app, ["recommend"])
+
+    assert (here / "profile.yaml").exists()
+    assert "To download A-Model-35B" in without_one.stderr
+    assert without_one.stderr == with_one.stderr
+
+
+def test_recommend_refuses_a_profile_that_names_a_runtime_it_cannot_read(
+    here, monkeypatch
+):
+    # A file that is there and will not load names a runtime, and answering
+    # about the default one instead would say how to download into an adapter
+    # its owner did not choose.
+    _leaderboard(monkeypatch, models=[_listed("A-Model-35B", "35B")])
+    (here / "profile.yaml").write_text("runtime:\n  name: not-a-runtime\n")
+
+    result = runner.invoke(app, ["recommend"])
+
+    assert result.exit_code == 1
+    assert "not-a-runtime" in result.stderr
+    assert "A-Model-35B" not in result.stderr
+
+
+def test_recommend_says_how_to_download_nothing_where_nothing_fits(here, monkeypatch):
+    # There is no model to name, and an instruction that names none is the
+    # generic sentence the conformance suite refuses of an adapter.
+    _leaderboard(monkeypatch, models=[_listed("A-Model-400B", "400B")])
+
+    result = runner.invoke(app, ["recommend"])
+
+    assert "To download" not in result.stderr
 
 
 def test_recommend_says_a_machine_nothing_fits_is_not_the_problem(here, monkeypatch):

@@ -167,7 +167,9 @@ https://onyx.app/best-llm-for-coding, table dated 2026-07-20.
   Qwen3.6-27B                13.5GB  4-bit    262144  Apache 2.0
   Qwen3.6-27B                27.0GB  8-bit    262144  Apache 2.0
 
-Download one in your runtime, then `offgrid run`.
+To download Qwen3.6-35B-A3B: open LM Studio, search its Discover tab for the
+name, and download a build of it.
+Then `offgrid run`.
 ```
 
 Downloading one, and choosing between what is left, stay yours. This is the
@@ -211,7 +213,7 @@ $ offgrid run -- -p "explain what this module does"
 | Command | What it does |
 |---|---|
 | `offgrid setup [--host HOST]` | Measures this Mac, says what fits, writes the profile. Keeps whatever you edited into it by hand — unless the file no longer loads, which is set aside as `profile.yaml.rejected` and replaced. |
-| `offgrid recommend` | Fetches a published coding table, keeps the models this machine can hold, and prints them at each width they fit at. |
+| `offgrid recommend` | Fetches a published coding table, keeps the models this machine can hold, prints them at each width they fit at, and says how the runtime the profile names has one downloaded into it. |
 | `offgrid doctor` | Reports the runtime, the model it is holding, the most that model could be served at, what it is being served at, what the profile asks the next run for, whether the agent it names is on the `PATH`, the smallest window the agent starts in, the dialects the runtime serves, and the agent's own dialect. A runtime holding nothing is reported in the model's lines and exits `1`; every other line is read without one. |
 | `offgrid run [-m MODEL] [--context-window N] [-- ARGS]` | Starts the agent. Loads `MODEL` when it is not already held, otherwise uses what is. Holds it at `N` where one is asked for. |
 

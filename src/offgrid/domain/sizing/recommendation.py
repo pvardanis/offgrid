@@ -9,6 +9,9 @@ Nothing here says anything; it returns the lines and the command line says
 them.
 """
 
+from collections.abc import Callable
+from textwrap import fill
+
 from offgrid.domain.sizing.fit import (
     BYTES_PER_GB,
     QUANTIZATION_WIDTHS,
@@ -26,6 +29,18 @@ from offgrid.domain.sizing.shortlist import (
 )
 from offgrid.domain.sizing.speed import tokens_per_second
 from offgrid.shared.wording import describe_what_was_stated
+
+DescribeDownload = Callable[[str], str]
+"""How a runtime says one of its models is downloaded, given the model's name.
+
+The runtime's own words, taken as a function rather than as its port: what
+fits and what runs do not know each other, and this is the whole of what a
+recommendation needs of a runtime.
+"""
+
+# How wide the runtime's own sentence is laid out at, matching the width the
+# lines around it are written to by hand.
+PROSE_WIDTH = 76
 
 # One layout, so the heading and the models under it cannot drift apart.
 COLUMNS = (
@@ -56,11 +71,16 @@ WHY_DROPPED = {
 }
 
 
-def summarize_findings(table: Table, machine: Machine) -> list[str]:
+def summarize_findings(
+    table: Table, machine: Machine, describe_download: DescribeDownload
+) -> list[str]:
     """Say what this machine can hold off a published list, best first.
 
     :param table: The published list, as it was read.
     :param machine: The host the models would run on.
+    :param describe_download: How the runtime says one of its models is
+        downloaded, asked for the model ranked first. Nothing is said about
+        downloading where nothing was ranked: there is no model to name.
 
     :return: Every line to say, in order.
     """
@@ -84,8 +104,27 @@ def summarize_findings(table: Table, machine: Machine) -> list[str]:
         + [_lay_out(fit, worth, machine) for worth, fit in ranked]
         + _set_off(dropped)
         + _set_off(_credit_the_figures(table.dated))
-        + ["", "Download one in your runtime, then `offgrid run`."]
+        + _set_off(_say_how_to_download(ranked[0][1], describe_download))
     )
+
+
+def _say_how_to_download(fit: Fit, describe_download: DescribeDownload) -> list[str]:
+    """Say how to have the model ranked first, in the runtime's own words.
+
+    One model rather than every row: the instruction is the same sentence with
+    a different name in it, and a table with one under each row is a table
+    nobody reads. Which model is worked through is the one the ranking put at
+    the top, so the name in it is a name on the screen.
+
+    :param fit: The model ranked first, at the width it was ranked at.
+    :param describe_download: How the runtime says one of its models is
+        downloaded.
+
+    :return: The lines to say.
+    """
+    said = fill(describe_download(fit.listing.name), PROSE_WIDTH).splitlines()
+
+    return [*said, "Then `offgrid run`."]
 
 
 def _introduce_findings(rows: int, table: Table) -> list[str]:
