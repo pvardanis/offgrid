@@ -36,10 +36,6 @@ DOC = ROOT / "docs" / "architecture.md"
 PYPROJECT = ROOT / "pyproject.toml"
 SOURCE = ROOT / "src" / "offgrid"
 
-# One name per layer, as the tree says it. A module belongs to the layer of the
-# package above it, so these stay this length however many modules there are.
-DOMAIN_CONTRACT = "The domain knows nothing about adapters"
-
 # Held here rather than derived, so that calling a package shared is a decision
 # someone makes rather than something a heuristic infers. Anything shared is
 # reachable from every layer, which is a thing to be sure about.
@@ -200,14 +196,19 @@ def _say_what_to_bind[Name](
     )
 
 
-def _domain_in_the_contract() -> set[str]:
-    """The modules the layer rule is stated over."""
+def _stated_in_a_contract() -> set[str]:
+    """Every module a `forbidden` contract is stated over.
+
+    Read from all of them rather than one by name, so that a layer added with
+    a contract of its own is covered by having one rather than by somebody
+    remembering this file. An `independence` contract states no source, and
+    covers its modules from both directions instead.
+    """
     contracts = tomllib.loads(PYPROJECT.read_text())["tool"]["importlinter"][
         "contracts"
     ]
-    stated = next(one for one in contracts if one["name"] == DOMAIN_CONTRACT)
 
-    return set(stated["source_modules"])
+    return {module for one in contracts for module in one.get("source_modules", ())}
 
 
 def _is_covered(module: str, named: set[str]) -> bool:
@@ -249,7 +250,7 @@ def test_the_doc_names_every_module_there_is():
 
 
 def test_every_module_is_covered_by_the_layer_rule():
-    named = _domain_in_the_contract() | ADAPTERS | COMMAND_LINE | SHARED
+    named = _stated_in_a_contract() | ADAPTERS | COMMAND_LINE | SHARED
 
     unclassified = sorted(
         module for module in _modules() | _packages() if not _is_covered(module, named)
@@ -416,7 +417,7 @@ def test_a_config_built_for_one_runtime_cannot_reach_another_s_factory():
 
 
 def test_the_layer_rule_names_no_module_that_is_gone():
-    stale = sorted(_domain_in_the_contract() - (_modules() | _packages()))
+    stale = sorted(_stated_in_a_contract() - (_modules() | _packages()))
 
     assert not stale, (
         f"`source_modules` in pyproject.toml names {stale}, which is not in "

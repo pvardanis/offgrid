@@ -19,6 +19,7 @@ it is. These seams are agreed, and anything else needs a new agreement:
 | Seam | What is tested there |
 |---|---|
 | `offgrid setup`, `doctor`, `recommend`, `run` | what a person sees and what gets launched |
+| the picker | what the screen shows, and what each key does — driven through Textual's `Pilot`, never a frame snapshot |
 | the profile file | that a hand-edited profile loads, which ones are refused, and that a hand edit survives being written back |
 | the discarded-windows file | that a hand-edited record loads, and which ones are refused |
 | a runtime adapter's parsing | a payload captured from a live server |
@@ -89,8 +90,8 @@ imperative, 50 characters where it fits and never past 72, no trailing period.
 
 Types: `feat`, `fix`, `refactor`, `perf`, `docs`, `test`, `chore`, `build`,
 `ci`, `style`, `revert`. Scopes are the modules — `machine`, `fit`, `model`,
-`dialect`, `profile`, `binding`, `lmstudio`, `claude-code`, `opencode`, `cli` — plus `ci`
-and `deps`.
+`dialect`, `profile`, `binding`, `lmstudio`, `claude-code`, `opencode`, `cli`, `tui` —
+plus `ci` and `deps`.
 
 One change per commit: if the subject needs an "and", it is two. Each leaves
 the suite green on its own, so a bisect lands somewhere that runs and a revert

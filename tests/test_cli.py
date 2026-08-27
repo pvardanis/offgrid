@@ -77,8 +77,8 @@ def _a_16gb_mac(monkeypatch) -> None:
     """Answer with a 16GB Mac whose GPU limit is still at its default."""
     small = Machine(chip="Apple M1", memory_bytes=16 * GIB, wired_limit_bytes=None)
 
-    for command in MEASURING:
-        monkeypatch.setattr(f"offgrid.cli.{command}.detect", lambda: small)
+    for module in MEASURING:
+        monkeypatch.setattr(f"{module}.detect", lambda: small)
 
 
 def test_setup_reports_the_machine(here):

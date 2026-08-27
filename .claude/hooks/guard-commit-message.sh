@@ -5,7 +5,7 @@
 set -euo pipefail
 
 types='feat|fix|refactor|perf|docs|test|chore|build|ci|style|revert'
-scopes='machine|fit|model|dialect|profile|binding|lmstudio|claude-code|opencode|cli|ci|deps'
+scopes='machine|fit|model|dialect|profile|binding|lmstudio|claude-code|opencode|cli|tui|ci|deps'
 limit=72
 
 payload=$(cat)

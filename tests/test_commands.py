@@ -42,24 +42,35 @@ def _commands() -> set[str]:
     return named
 
 
-def _written_in(command: str) -> ModuleType:
-    """The module a command is written in.
+def _modules() -> set[str]:
+    """Every module the command line runs out of: the commands, and itself.
 
-    :param command: Which command.
+    Bare `offgrid` is registered as no command and reads the profile all the
+    same — it opens the screen — so the package is one of them.
 
-    :return: Its module, for reading what names it holds.
+    :return: Each module, as an import statement names it.
     """
-    return importlib.import_module(f"offgrid.cli.{command}")
+    return {"offgrid.cli", *(f"offgrid.cli.{command}" for command in _commands())}
+
+
+def _written_in(module: str) -> ModuleType:
+    """A module the command line runs out of.
+
+    :param module: Which one.
+
+    :return: It, for reading what names it holds.
+    """
+    return importlib.import_module(module)
 
 
 def _holding(name: str) -> set[str]:
-    """Every command whose module holds a name of its own.
+    """Every module the command line runs out of that holds a name of its own.
 
     :param name: The name to look for, as the module binds it.
 
-    :return: The commands that would need standing in for.
+    :return: The modules that would need standing in for.
     """
-    return {command for command in _commands() if hasattr(_written_in(command), name)}
+    return {module for module in _modules() if hasattr(_written_in(module), name)}
 
 
 def test_every_command_that_measures_the_machine_is_stood_in_for():
