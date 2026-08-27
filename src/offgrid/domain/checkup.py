@@ -15,18 +15,27 @@ from offgrid.domain.running.leaving import Reading, Status
 from offgrid.domain.running.model import Model, ModelRequest
 from offgrid.shared.wording import describe_what_was_stated
 
-COLUMN = 10
-"""How wide a label is, so every value in the report starts at one column."""
+COLUMN = 12
+"""How wide a label is, so every value in the report starts at one column.
 
-UNDER = " " * COLUMN
+Wide enough that the longest label still has a gap after it once the indent an
+indented one carries is taken off. A word too long for it names what is
+indented under it instead, and stands on its own line.
+"""
+
+UNDER = "  "
 """Where a fact about the line above it goes."""
 
-REMEDY = " " * (COLUMN + 4)
+REMEDY = "    "
 """Where what to do about the line above it goes, deeper than a fact."""
 
 
 def _say(label: str, value: str, *, under: bool = False) -> str:
     """Lay one fact out in the columns the report is read in.
+
+    A fact about the line above is indented and its label narrowed by as much,
+    so that every value in the report still starts at the same column however
+    deep the thing it is about sits.
 
     :param label: What the fact is about.
     :param value: What is said about it.
@@ -35,7 +44,9 @@ def _say(label: str, value: str, *, under: bool = False) -> str:
 
     :return: The line, as it is read.
     """
-    return f"{UNDER if under else ''}{label:<{COLUMN}}{value}"
+    lead = UNDER if under else ""
+
+    return f"{lead}{label:<{COLUMN - len(lead)}}{value}"
 
 
 HELD_NOTHING = _say("model", "nothing held")
@@ -194,8 +205,13 @@ def _describe_what_could_leave(readings: tuple[Reading, ...]) -> tuple[str, ...]
     """
     said: tuple[str, ...] = ("might leave this machine",)
 
+    # A column of their own, because what a subject is called is one agent's
+    # business and the longest of them is longer than any label in the report.
+    # Read against each other is how a person tells one state from the other.
+    column = max(len(reading.subject) for reading in readings) + 2
+
     for reading in readings:
-        said = (*said, f"{UNDER}{reading.subject}: {reading.status}")
+        said = (*said, f"{UNDER}{reading.subject:<{column}}{reading.status}")
 
         if reading.status is not Status.DENIED:
             said = (*said, f"{REMEDY}{reading.said}")
@@ -219,7 +235,7 @@ def _describe_where_conversations_are_kept(kept: Conversations) -> tuple[str, ..
     :return: The lines to say, in the order they are read.
     """
     return (
-        "conversations path",
+        "conversations",
         f"{UNDER}{kept.kept_in}",
         f"{REMEDY}{kept.said}",
     )
