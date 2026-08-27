@@ -29,6 +29,11 @@ dev = [
     "interrogate>=1.7",
     "prek>=0.4.12",
     "pytest>=8.4",
+    # What Textual lays a screen out with, which makes it the independent
+    # answer to how wide a row is on a terminal. Named here rather than taken
+    # off Textual's own tree, so a test cannot lose it to somebody else's
+    # dependency change.
+    "rich>=14",
     "pytest-cov>=7.1.0",
     "ruff>=0.14",
     "ty>=0.0.1a20",

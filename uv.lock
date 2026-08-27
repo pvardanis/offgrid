@@ -377,6 +377,7 @@ dev = [
     { name = "prek" },
     { name = "pytest" },
     { name = "pytest-cov" },
+    { name = "rich" },
     { name = "ruff" },
     { name = "ty" },
 ]
@@ -398,6 +399,7 @@ dev = [
     { name = "prek", specifier = ">=0.4.12" },
     { name = "pytest", specifier = ">=8.4" },
     { name = "pytest-cov", specifier = ">=7.1.0" },
+    { name = "rich", specifier = ">=14" },
     { name = "ruff", specifier = ">=0.14" },
     { name = "ty", specifier = ">=0.0.1a20" },
 ]
