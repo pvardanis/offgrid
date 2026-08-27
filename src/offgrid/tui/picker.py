@@ -89,6 +89,10 @@ class Picker(App[None]):
     #{LISTS} > OptionList, #{MODEL_BOX} {{
         height: 1fr;
         border: round $panel;
+        /* On the box rather than on the list inside it, so that the heading
+           and the rows under it are one surface: a heading left transparent
+           paints the screen behind it and reads as a second box. */
+        background: $surface;
     }}
 
     /* Inside the box its heading shares, so the border is drawn once. */
