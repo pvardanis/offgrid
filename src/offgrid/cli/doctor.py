@@ -3,13 +3,13 @@
 import typer
 
 from offgrid.cli.binding import bind_run
-from offgrid.cli.checkup import (
+from offgrid.cli.reporting import reporting
+from offgrid.domain.checkup import (
     Checkup,
     WhatTheAgentAnswered,
     WhatTheRuntimeAnswered,
     describe_what_was_read,
 )
-from offgrid.cli.reporting import reporting
 from offgrid.domain.profile import DEFAULT_PATH, Profile
 from offgrid.domain.running import discarded_windows
 from offgrid.domain.running.agent_presence import find_agent_on_path
