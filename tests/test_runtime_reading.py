@@ -71,3 +71,17 @@ def test_a_runtime_serves_at_least_one_dialect(
     runtime.arrange_unreachable(monkeypatch)
 
     assert runtime.connect().dialects
+
+
+def test_how_a_model_is_downloaded_names_the_model_and_reaches_nothing(
+    runtime: RuntimeUnderTest, monkeypatch: pytest.MonkeyPatch
+):
+    # `recommend` prints this beside a model it has never asked the runtime
+    # about, so it has to answer with nothing listening. Naming the model is
+    # what keeps an adapter from shipping one sentence about downloading in
+    # general, which is what a person reading a list of names already knows.
+    runtime.arrange_unreachable(monkeypatch)
+
+    said = runtime.connect().describe_download("Qwen3.6-35B-A3B")
+
+    assert "Qwen3.6-35B-A3B" in said
