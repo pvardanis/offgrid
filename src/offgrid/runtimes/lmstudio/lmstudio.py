@@ -39,6 +39,23 @@ class LMStudio:
     dialects: frozenset[Dialect] = field(init=False, default=DIALECTS)
     capabilities: Capabilities = field(init=False, default=CAPABILITIES)
 
+    def describe_download(self, name: str) -> str:
+        """Say how a model is downloaded into LM Studio.
+
+        Its own window rather than a command, because the command is `lms get`
+        and `lms` is a separate install offgrid does not require on the `PATH`
+        — printing it at somebody who does not have it names two problems
+        where they had one.
+
+        :param name: The model it is about.
+
+        :return: What to do to have that model downloaded.
+        """
+        return (
+            f"To download {name}: open LM Studio, search its Discover tab for "
+            "the name, and download a build of it."
+        )
+
     def read_catalogue(self) -> list[Model]:
         """List every model LM Studio has, held or not.
 

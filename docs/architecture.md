@@ -516,13 +516,14 @@ class Runtime(Protocol):
     @property
     def capabilities(self) -> Capabilities: ...
 
+    def describe_download(self, name: str) -> str: ...
     def read_catalogue(self) -> list[Model]: ...
     def read_held(self) -> list[Model]: ...
     def ensure_only(self, model_request: ModelRequest) -> Model: ...
     def let_go(self, identifier: str) -> bool: ...
 ```
 
-Six members. No payload crosses it, and nothing about the order of calls is
+Seven members. No payload crosses it, and nothing about the order of calls is
 knowledge the caller has to hold.
 
 **Two are attributes and four are actions, and the split says something.** An
@@ -531,6 +532,14 @@ fail. A method reaches the server, so it costs time and can raise. Naming a
 method for what it does — `read_held`, not `held` — is the difference between
 an interface that says which of its members touch the network and one that
 leaves a caller to find out.
+
+`describe_download` is the exception the split has to admit: a method that
+reaches nothing. It takes a model's name and answers in words, because how a
+model is downloaded is a fact about the runtime that differs in kind between
+them — a command where one exists, a pointer to the runtime's own interface
+where none does — and because `recommend` prints it beside names off a
+published table that the runtime has never been asked about. An attribute
+could not carry it, since the answer names the model it is about.
 
 The two attributes are declared as properties because that is what makes them
 read-only. Written `dialects: frozenset[Dialect]`, a protocol attribute is one

@@ -2,7 +2,9 @@
 
 An adapter binds its own settings once and answers with something satisfying
 ``Runtime``. Two of its members are attributes, settled when the connection
-opens; four are methods, which reach the server.
+opens; four are methods, which reach the server. ``describe_download`` is the
+one method that reaches nothing: it takes a model's name and answers in words,
+so the answer says which model it is about.
 
 Why it is shaped this way, and why the attributes are properties, is in
 `docs/architecture.md` under "The runtime seam".
@@ -79,6 +81,23 @@ class Runtime(Protocol):
         """What this connection can be asked to do.
 
         :return: What was settled when it opened.
+        """
+        ...
+
+    def describe_download(self, name: str) -> str:
+        """Say how a model is downloaded into this runtime.
+
+        Free text, because the honest answer differs in kind between runtimes:
+        a command where one exists, and where none does, a pointer to the
+        runtime's own interface. It reaches nothing, so a list of models can
+        carry it beside names the runtime has never been asked about.
+
+        :param name: The model it is about, which the answer names. A sentence
+            about downloading in general tells whoever is reading a list of
+            names nothing they do not have, and the conformance suite refuses
+            one.
+
+        :return: What to do to have that model downloaded.
         """
         ...
 
