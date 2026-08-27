@@ -237,8 +237,12 @@ domain/
 
 `checkup.py` sits directly under `domain/` rather than inside one of the three
 because it is made of two of them: it reads a `Profile` and what `running/`
-answered, and putting it under either would point an arrow the other three do
-not have. It is in the domain rather than beside a command because two surfaces
+answered. Under `running/` it would point an arrow nothing else does, since
+`profile/` is what depends on `running/` and not the reverse. Under `profile/`
+the arrow would be a legal one and the placement still wrong: the report's
+wording would sit in the package that only reads and writes the file, and a
+surface wanting a sentence would import the profile to get it. It is in the
+domain rather than beside a command because two surfaces
 show it — the report `doctor` prints and the screen bare `offgrid` opens — and a
 sentence living in one of them is a sentence the other has to word again.
 
