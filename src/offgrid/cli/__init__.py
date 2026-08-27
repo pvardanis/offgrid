@@ -22,7 +22,7 @@ from offgrid.cli.run import run as run_command
 from offgrid.cli.setup import setup as setup_command
 from offgrid.domain.profile import DEFAULT_PATH
 from offgrid.shared.exceptions import OffgridError
-from offgrid.shared.say import say_on_stderr, tell
+from offgrid.shared.say import say_on_stderr, someone_is_at_a_terminal, tell
 
 __all__ = ["app", "main"]
 
@@ -37,24 +37,37 @@ def offgrid(ctx: typer.Context) -> None:
     # attaches its own logging. The modules below it attach none.
     say_on_stderr()
 
+    if ctx.invoked_subcommand is not None:
+        return
+
+    # Somewhere with nobody at it, the command table is what there is to say:
+    # a screen would take the terminal and wait for a key that never arrives,
+    # which is a script that never returns and a log full of escape codes.
+    if not someone_is_at_a_terminal():
+        # Typer renders the help through a console of its own and answers with
+        # nothing, so asking for it is what prints it.
+        ctx.get_help()
+
+        return
+
     # Named with nothing to do, offgrid shows what it knows rather than the
     # command table, which is the least useful thing a stranger can be shown.
     # The screen is handed its reading, so that the picker names no registry.
-    if ctx.invoked_subcommand is None:
-        # Imported here rather than above: Textual costs an order of
-        # magnitude more to import than the command line's own toolkit, and
-        # every command that is not the screen would pay it.
-        from offgrid.tui.picker import Report
+    #
+    # Imported here rather than above: Textual costs an order of magnitude
+    # more to import than the command line's own toolkit, and every command
+    # that is not the screen would pay it.
+    from offgrid.tui.picker import Report
 
-        screen = Report(read=lambda: read_what_can_be_read(DEFAULT_PATH))
-        screen.run()
+    screen = Report(read=lambda: read_what_can_be_read(DEFAULT_PATH))
+    screen.run()
 
-        # Textual paints what went wrong on the screen and returns rather than
-        # raising it, so the code it set is the only thing that says the screen
-        # died. Unread, a crash under a traceback exits like a report somebody
-        # sat and read.
-        if screen.return_code:
-            raise typer.Exit(screen.return_code)
+    # Textual paints what went wrong on the screen and returns rather than
+    # raising it, so the code it set is the only thing that says the screen
+    # died. Unread, a crash under a traceback exits like a report somebody
+    # sat and read.
+    if screen.return_code:
+        raise typer.Exit(screen.return_code)
 
 
 app.command()(setup_command)
