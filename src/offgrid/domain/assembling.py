@@ -221,11 +221,39 @@ def describe_a_model_row(model: Model, *, held: bool) -> str:
 
     :return: The row, as it is read.
     """
-    return (
-        f"{model.identifier:<{MODEL_COLUMN}}"
-        f"{'held' if held else '':<{HELD_COLUMN}}"
-        f"{describe_what_was_stated(model.context_ceiling)}"
+    return _lay_out_a_model_row(
+        model.identifier,
+        "held" if held else "",
+        describe_what_was_stated(model.context_ceiling),
     )
+
+
+def name_the_model_columns() -> str:
+    """Name what each column of a model row holds.
+
+    A bare number in a list is a number about nothing: a person scanning
+    262144 against 40960 has to already know which of a model's two context
+    figures they are reading, and the whole reason the ceiling is here is that
+    the other one does not exist until something loads the model.
+
+    Beside the row it heads rather than in the screen, so that a column that
+    moves cannot leave its own name behind.
+
+    :return: The heading, laid out in the columns the rows are.
+    """
+    return _lay_out_a_model_row("model", "held", "ceiling")
+
+
+def _lay_out_a_model_row(identifier: str, held: str, ceiling: str) -> str:
+    """Put three values in the columns a model is listed in.
+
+    :param identifier: What the model is called.
+    :param held: Whether it is in memory, or empty where it is not.
+    :param ceiling: The most it could ever be served at.
+
+    :return: The line, as it is read.
+    """
+    return f"{identifier:<{MODEL_COLUMN}}{held:<{HELD_COLUMN}}{ceiling}".rstrip()
 
 
 def find_agent(what: WhatCouldBeRun, name: AgentName) -> AgentOnThisMachine:
