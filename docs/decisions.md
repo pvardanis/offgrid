@@ -2080,3 +2080,87 @@ prose it cannot tell from a command.
 
 Binding the runtime costs nothing: opening a connection binds an address, and
 this asks it for words. `recommend` still reaches one page.
+
+## The picker lists what is downloaded, and cannot say what it weighs
+
+The model row was specified as identifier, held, size on disk, ceiling and
+whether it fits this machine. Two of those five have no source, measured
+against the LM Studio running here — 1.0.4, on `127.0.0.1:1234`:
+
+| Asked | What came back |
+|---|---|
+| `/api/v0/models` | `id`, `type`, `publisher`, `arch`, `compatibility_type`, `quantization`, `state`, `max_context_length`, `capabilities` |
+| `/api/v0/models/{id}` | the same fields, for one model |
+| `/v1/models` | `id`, `object`, `owned_by` |
+| `GET /system` | `Unexpected endpoint or method` — the SDK's namespace is not served here |
+
+No byte count anywhere, and `fits` is a comparison against one, so both columns
+go. Three ways to have them were weighed and dropped:
+
+**Parse a parameter count out of the identifier**, and weigh it at the
+`quantization` the catalogue does state. Cheap, needs no new port member, and
+wrong in a way that is presentable: `gemma-4-e4b` is an effective 4B rather
+than 4B of weights, and a number nobody published is exactly what this project
+exists not to print.
+
+**Have the adapter measure the model directory.** The mapping does not hold on
+the machine it was checked on: the catalogue says `qwen/qwen3.6-35b-a3b`, the
+disk says `lmstudio-community/Qwen3.6-35B-A3B-MLX-4bit`, the publisher differs
+between the two, and one directory name serves two quantizations. Most rows
+would answer nothing, so the column would be mostly blank.
+
+**Require `lms`**, which prints the figure. That reverses the decision above
+that offgrid does not require it on the `PATH`, and reversing a decision to
+gain a column is not a trade this feature is worth.
+
+So the row is identifier, held and ceiling, and the two that are missing are
+tracked with the measurement above beside them. `recommend` is unaffected: it
+sizes what a published list names, from parameter counts that list publishes,
+and never asks the runtime what a file weighs.
+
+**Nothing-that-fits goes with them.** It was specified as its own state beside
+nothing-downloaded, and it cannot be computed without the fit it is named for.
+Nothing-downloaded stays, and is what the picker says today.
+
+## A pairing is an agent and a model, and the runtime is listed rather than picked
+
+`Assembly` names the two the picker can move between. The runtimes list shows
+every name offgrid has an adapter for, which is one, and the profile's is the
+only one there is a config to assemble from — so a third field would be a
+number that could never be anything but its own default.
+
+The day there is a second runtime, this is where it lands, beside the model
+row's columns and the dialect-refusal pane that were already named as the two
+surfaces that move.
+
+## The report is `doctor`'s, with what a keystroke costs said under it
+
+Everything down to `conversations` is the report the command prints, from
+`describe_what_was_read`, composed against a profile the pairing was written
+into rather than against the file. Under it, one block the screen owns: whether
+this pair can talk, whether the agent is here at all, and whether starting it
+costs a load.
+
+Said under rather than woven in, because the two are read by different
+questions — what a run was told, and what a key would do — and because a screen
+that edited the middle of `doctor`'s report is a screen that comes to word one
+fact differently. `tests/test_picker.py` compares everything above that block
+against what `doctor` prints, line for line.
+
+**Sitting on the model the runtime is already holding is read as asking for
+nothing**, where the profile asks for nothing. The two describe the same run,
+and the difference is only what a save would write down: somebody who has moved
+the highlight nowhere has named no model, and materialising one under them
+would be a request they did not make.
+
+## A row the cursor may not reach is the widget's guarantee
+
+Absent agents are `OptionList` options with `disabled` set, so stepping over
+them is what the widget does rather than a refusal on select that somebody can
+forget to write. What it costs is that such a row cannot be highlighted, so its
+report is reached only where the profile names that agent — which is the case
+that matters, since that is the agent a run would try to start.
+
+Where the profile names an agent this machine has not got and another is here,
+the highlight opens on the one that is here. The report says which pairing it
+is about, and the absent row still says `not installed` beside its name.
