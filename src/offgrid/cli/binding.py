@@ -186,7 +186,7 @@ def read_what_could_be_run(profile_path: Path) -> WhatCouldBeRun:
             discarded=discarded,
             unreadable=unreadable,
         ),
-        downloaded=downloaded,
+        downloaded_models=downloaded,
         held=frozenset(model.identifier for model in in_memory),
         agents=tuple(_ask_every_agent(profile)),
     )
