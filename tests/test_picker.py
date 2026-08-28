@@ -151,6 +151,20 @@ def starts_at(row: str, part: str) -> int:
     return cell_len(row[: row.index(part)])
 
 
+def centre_of(row: str, part: str) -> int:
+    """Say which terminal cell the middle of a piece of a row falls in.
+
+    Cells rather than characters, and doubled so that a mark centred with an
+    odd cell of slack still compares equal to the heading centred over it.
+
+    :param row: The line to look in.
+    :param part: What to find in it.
+
+    :return: Twice the cell its centre sits at, so a half-cell is exact.
+    """
+    return 2 * starts_at(row, part) + cell_len(part)
+
+
 def on_this_machine(monkeypatch, *commands: str) -> None:
     """Answer as a machine with these agents installed and no others.
 
@@ -273,10 +287,13 @@ def test_the_model_list_names_the_column_its_bare_number_is(here, monkeypatch):
     driven = screen(here)
     held, cold = driven.listed[MODELS]
 
-    assert driven.columns.split() == ["model", "held", "ceiling"]
-    assert starts_at(driven.columns, "held") == starts_at(held, IN_MEMORY)
-    assert starts_at(driven.columns, "ceiling") == starts_at(held, "262144")
-    assert starts_at(driven.columns, "ceiling") == starts_at(cold, "131072")
+    assert driven.columns.split() == ["model", "held", "context"]
+    # The mark and the `held` heading are centred in one column, so they share a
+    # centre rather than a left edge — a narrower mark starts a cell in from a
+    # wider heading and reads as being under it all the same.
+    assert centre_of(driven.columns, "held") == centre_of(held, IN_MEMORY)
+    assert starts_at(driven.columns, "context") == starts_at(held, "262144")
+    assert starts_at(driven.columns, "context") == starts_at(cold, "131072")
 
 
 def test_the_models_already_held_are_listed_first(here, monkeypatch):

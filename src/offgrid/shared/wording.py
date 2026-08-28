@@ -137,6 +137,24 @@ def pad_to_cells(text: str, cells: int) -> str:
     return text + " " * max(0, cells - count_cells(text))
 
 
+def center_in_cells(text: str, cells: int) -> str:
+    """Centre a piece of text in a fixed width on a terminal.
+
+    So that a column and the mark filling it share a centre rather than a left
+    edge: a two-cell mark and its wider heading start in different cells but
+    read as one column when both sit in the middle of it.
+
+    :param text: What goes in the column.
+    :param cells: How wide the column is.
+
+    :return: The text with spaces either side, split as evenly as an odd
+        remainder allows, and unpadded where it is already wider.
+    """
+    room = max(0, cells - count_cells(text))
+
+    return " " * (room // 2) + text + " " * (room - room // 2)
+
+
 def say_in_columns(label: str, value: str, *, under: bool = False) -> str:
     """Lay one fact out in the columns a report is read in.
 

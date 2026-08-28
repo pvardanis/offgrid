@@ -24,6 +24,7 @@ from offgrid.domain.running.model import Model
 from offgrid.shared.exceptions import AgentSettingsError
 from offgrid.shared.wording import (
     UNDER,
+    center_in_cells,
     describe_what_was_stated,
     pad_to_cells,
     say_indented,
@@ -53,7 +54,7 @@ list has to be able to tell two builds of one model apart.
 HELD_COLUMN = 6
 """How wide the column saying a model is in memory is, blank where it is not."""
 
-IN_MEMORY = "🟢"
+IN_MEMORY = "✅"
 """What marks a model the runtime is already holding.
 
 A mark rather than the word, because the column is called `held` and a column
@@ -318,7 +319,7 @@ def name_the_model_columns() -> str:
 
     :return: The heading, laid out in the columns the rows are.
     """
-    return _lay_out_a_model_row("model", "held", "ceiling")
+    return _lay_out_a_model_row("model", "held", "context")
 
 
 def _lay_out_a_model_row(identifier: str, held: str, ceiling: str) -> str:
@@ -327,7 +328,8 @@ def _lay_out_a_model_row(identifier: str, held: str, ceiling: str) -> str:
     Padded by what each takes on a terminal rather than by how many characters
     it has, because the mark for a held model is one character and two cells:
     counted the other way, every held row would sit one place to the left of
-    every cold one.
+    every cold one. The mark is centred in its column so that it and the `held`
+    heading over it share a centre rather than a left edge.
 
     :param identifier: What the model is called.
     :param held: What marks it as in memory, or empty where it is not.
@@ -337,7 +339,7 @@ def _lay_out_a_model_row(identifier: str, held: str, ceiling: str) -> str:
     """
     laid_out = (
         pad_to_cells(identifier, MODEL_COLUMN),
-        pad_to_cells(held, HELD_COLUMN),
+        center_in_cells(held, HELD_COLUMN),
         ceiling,
     )
 
