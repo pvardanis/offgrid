@@ -67,7 +67,7 @@ def run(
         require_nothing_leaves(agent.read_what_leaves_this_machine())
 
         what_the_runtime_discarded = discarded_windows.read_discarded_windows(
-            profile.runtime.name,
+            profile.runtime_name,
             profile.runtime.host,
             discarded_windows.DEFAULT_PATH,
         )
@@ -104,7 +104,7 @@ def run(
             complaint = save_discarded_window_if_new(
                 what_became_of_the_window,
                 model,
-                runtime=profile.runtime.name,
+                runtime=profile.runtime_name,
                 host=profile.runtime.host,
                 file_path=discarded_windows.DEFAULT_PATH,
             )

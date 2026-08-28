@@ -228,7 +228,7 @@ def _ask_an_agent(profile: Profile, name: AgentName) -> AgentOnThisMachine:
         # defaults; what every agent needs for the rest.
         config = (
             profile.agent
-            if name is profile.agent.name
+            if name is profile.agent_name
             else create_agent_config(
                 {"name": name.value}, runtime_host=profile.runtime.host
             )
@@ -276,7 +276,7 @@ def _read_what_was_discarded(
 
     try:
         records = discarded_windows.read_discarded_windows(
-            profile.runtime.name, profile.runtime.host, discarded_windows.DEFAULT_PATH
+            profile.runtime_name, profile.runtime.host, discarded_windows.DEFAULT_PATH
         )
     except DiscardedWindowsUnreadableError as error:
         return (), str(error)

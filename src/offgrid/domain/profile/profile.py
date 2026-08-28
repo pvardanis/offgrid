@@ -18,9 +18,9 @@ from offgrid.domain.profile.structure import (
     refuse_a_flat_profile,
     refuse_a_model_without_a_section,
 )
-from offgrid.domain.running.agent import AgentConfig
+from offgrid.domain.running.agent import AgentConfig, AgentName
 from offgrid.domain.running.model import ModelRequest
-from offgrid.domain.running.runtime import RuntimeConfig
+from offgrid.domain.running.runtime import RuntimeConfig, RuntimeName
 from offgrid.shared.exceptions import ProfileError
 from offgrid.shared.home import OFFGRID_HOME
 
@@ -62,22 +62,22 @@ class Profile(BaseModel):
     model: ModelRequest = Field(default_factory=ModelRequest)
 
     @property
-    def runtime_name(self) -> str:
-        """The runtime this profile names, as a person reads it.
+    def runtime_name(self) -> RuntimeName:
+        """The runtime this profile names.
 
         :return: The runtime's name, read off its config rather than down the
-            chain that reaches it.
+            chain that reaches it. Its ``.value`` is the string a person reads.
         """
-        return self.runtime.name.value
+        return self.runtime.name
 
     @property
-    def agent_name(self) -> str:
-        """The agent this profile names, as a person reads it.
+    def agent_name(self) -> AgentName:
+        """The agent this profile names.
 
         :return: The agent's name, read off its config rather than down the
-            chain that reaches it.
+            chain that reaches it. Its ``.value`` is the string a person reads.
         """
-        return self.agent.name.value
+        return self.agent.name
 
 
 def load_yaml(path: Path = DEFAULT_PATH) -> dict:
