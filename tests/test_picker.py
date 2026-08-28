@@ -482,6 +482,24 @@ def test_moving_the_agent_highlight_recomputes_the_report(here, monkeypatch):
     assert str(here / "opencode") in moved.shown
 
 
+def test_moving_inside_the_open_agent_dropdown_leaves_the_report_alone(
+    here, monkeypatch
+):
+    # The report follows the committed pick, not the open popup. Opening the
+    # agent dropdown and moving onto opencode without pressing enter to choose
+    # it reports nothing new — a person reads the pair they are on, not the one
+    # they are hovering. A regression guard: wiring the report to the overlay's
+    # own highlight, to match the always-open models list, would break it.
+    runner.invoke(app, ["setup"])
+    on_this_machine(monkeypatch, "claude", "opencode")
+
+    hovered = screen(here, "tab", "enter", "down")
+
+    assert hovered.highlighted[AGENTS] == "claude-code"
+    assert "agent              claude-code, speaking anthropic" in hovered.shown
+    assert "opencode, speaking openai" not in hovered.shown
+
+
 def test_moving_onto_an_agent_the_runtime_cannot_talk_to_is_what_refuses_it(
     here, monkeypatch
 ):
