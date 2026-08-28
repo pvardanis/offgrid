@@ -230,7 +230,7 @@ def _ask_an_agent(profile: Profile, name: AgentName) -> AgentOnThisMachine:
             profile.agent
             if name is profile.agent_name
             else create_agent_config(
-                {"name": name.value}, runtime_host=profile.runtime.host
+                {"name": name.value}, runtime_host=profile.runtime_host
             )
         )
 
@@ -246,7 +246,7 @@ def _ask_an_agent(profile: Profile, name: AgentName) -> AgentOnThisMachine:
     except AgentSettingsError as error:
         return AgentOnThisMachine(
             config=create_agent_config(
-                {"name": name.value}, runtime_host=profile.runtime.host
+                {"name": name.value}, runtime_host=profile.runtime_host
             ),
             answered=WouldNotAnswer(str(error)),
         )
@@ -276,7 +276,7 @@ def _read_what_was_discarded(
 
     try:
         records = discarded_windows.read_discarded_windows(
-            profile.runtime_name, profile.runtime.host, discarded_windows.DEFAULT_PATH
+            profile.runtime_name, profile.runtime_host, discarded_windows.DEFAULT_PATH
         )
     except DiscardedWindowsUnreadableError as error:
         return (), str(error)

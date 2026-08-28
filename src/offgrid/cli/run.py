@@ -68,7 +68,7 @@ def run(
 
         what_the_runtime_discarded = discarded_windows.read_discarded_windows(
             profile.runtime_name,
-            profile.runtime.host,
+            profile.runtime_host,
             discarded_windows.DEFAULT_PATH,
         )
         model = hold_model(
@@ -105,7 +105,7 @@ def run(
                 what_became_of_the_window,
                 model,
                 runtime=profile.runtime_name,
-                host=profile.runtime.host,
+                host=profile.runtime_host,
                 file_path=discarded_windows.DEFAULT_PATH,
             )
             if complaint is not None:
