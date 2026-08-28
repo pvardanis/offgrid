@@ -61,6 +61,24 @@ class Profile(BaseModel):
     agent: SerializeAsAny[AgentConfig]
     model: ModelRequest = Field(default_factory=ModelRequest)
 
+    @property
+    def runtime_name(self) -> str:
+        """The runtime this profile names, as a person reads it.
+
+        :return: The runtime's name, read off its config rather than down the
+            chain that reaches it.
+        """
+        return self.runtime.name.value
+
+    @property
+    def agent_name(self) -> str:
+        """The agent this profile names, as a person reads it.
+
+        :return: The agent's name, read off its config rather than down the
+            chain that reaches it.
+        """
+        return self.agent.name.value
+
 
 def load_yaml(path: Path = DEFAULT_PATH) -> dict:
     """Read the stored profile as the mapping it holds.
