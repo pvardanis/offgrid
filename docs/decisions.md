@@ -2241,7 +2241,8 @@ ordinary, selectable row, which is the hole the guard closes. Building the
 popup by hand was not considered — the override is six lines and rides on the
 overlay already being an `OptionList`.
 
-`picker.py` runs to about 450 lines holding this: the two dropdowns, the models
-list, the widget that greys a choice, and the keys over all of them. It is one
-screen and stays whole, for the reason the file above it gives — a file holding
-half a screen is one nobody can read the layout out of.
+The widget that greys a choice is its own file, `dropdown.py`: it is a `Select`
+subclass with no knowledge of runtimes or agents, reusable by anything that
+offers a choice some of which cannot be taken, and it is what the screen's own
+tests reach for by name. What is left in `picker.py` is one screen — its
+composition, the keys over it, and how it reads a pick — at about 390 lines.

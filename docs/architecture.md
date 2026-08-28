@@ -139,8 +139,9 @@ cli/               the layer, a module per command, the four attached, and
 
 ```
 tui/               the layer, and the screen bare `offgrid` opens
-  picker.py        the three lists, the report beside them, and the key
-                   that leaves it
+  picker.py        the two dropdowns, the models list, the report beside
+                   them, and the key that leaves it
+  dropdown.py      a Select that greys the choices a run cannot start
 ```
 
 **adapters**
