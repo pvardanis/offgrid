@@ -130,7 +130,7 @@ def test_doctor_names_the_file_to_delete_to_ask_for_the_window_again(here):
     result = runner.invoke(app, ["doctor"])
 
     assert (
-        f"discarded   {ASKED_FOR} was asked for on 2026-08-21 and 212224 "
+        f"discarded          {ASKED_FOR} was asked for on 2026-08-21 and 212224 "
         "served then, so offgrid is not asking again." in result.stderr
     )
     assert "discarded-windows.json" in result.stderr

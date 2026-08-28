@@ -170,7 +170,7 @@ def describe_the_agent(checkup: Checkup) -> tuple[str, ...]:
             f"{checkup.profile.agent.name.value}, speaking {terms.dialect.value}",
         ),
         *_describe_where_the_agent_is(checkup),
-        say_in_columns("floor", str(terms.context_floor), under=True),
+        say_in_columns("context_minimum", str(terms.context_floor), under=True),
         *_describe_what_could_leave(checkup.agent.could_leave),
         *_describe_where_conversations_are_kept(checkup.agent.kept),
     )
@@ -293,20 +293,20 @@ def describe_the_model(
         return (
             say_in_columns("model", model.identifier),
             say_in_columns(
-                "ceiling",
+                "context_ceiling",
                 describe_what_was_stated(model.context_ceiling),
                 under=True,
             ),
             say_in_columns(
-                "window",
+                "context_window",
                 describe_what_was_stated(model.context_window) if held else "unknown",
                 under=True,
             ),
         )
 
     unknown = (
-        say_in_columns("ceiling", "unknown", under=True),
-        say_in_columns("window", "unknown", under=True),
+        say_in_columns("context_ceiling", "unknown", under=True),
+        say_in_columns("context_window", "unknown", under=True),
     )
 
     # `settle_what_to_run` folds the profile's identifier in beside `--model`,
@@ -334,7 +334,7 @@ def describe_a_discarded_window(answered: WhatTheRuntimeAnswered) -> tuple[str, 
     Deleting the file makes offgrid ask again, so this is where it is named:
     `doctor` is what a person runs when something is not what they asked for.
     The number the runtime served then is said as what it was — what it serves
-    now is the `window` line above, and the two are read together.
+    now is the `context_window` line above, and the two are read together.
 
     It takes what the runtime said rather than the whole reading, for the
     reason `describe_the_runtime` gives: a record offgrid keeps about a runtime
