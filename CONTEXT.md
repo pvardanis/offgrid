@@ -94,7 +94,9 @@ document quoting either one alone says which it means.
 
 **context_floor** — the smallest window an agent can start in. What the agent
 needs rather than what anyone prefers: below it the agent's own prompt does not
-fit and it fails at startup, so the agent states it and nobody sets it.
+fit and it fails at startup, so the agent states it and nobody sets it. The
+report shows it as `context_minimum`, which reads as what it is — the least a
+window may be — where the field's own name reads as a place in a stack of them.
 
 **discarded window** — a window a run asked for that the runtime did not grant,
 serving the model at another instead. Named for what happened rather than for

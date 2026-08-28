@@ -2206,7 +2206,42 @@ Three files still run past 200 and stay whole, which the rule asks be said
 rather than fixed by splitting. `tests/test_picker.py`, the longest, is one
 seam — the screen — and a suite is read by opening the test named after the
 behaviour rather than by reading down. `picker.py` is one screen: its
-composition, its three lists and the keys over them are the same idea, and a
-file holding half a screen is a file nobody can read the layout out of.
+composition, its two dropdowns and models list, and the keys over them are the
+same idea, and a file holding half a screen is a file nobody can read the
+layout out of.
 `checkup.py` grew by having its parts made reachable, which is what let a
 second surface stop duplicating them.
+
+## The runtime and agent are dropdowns, the models a list
+
+The runtime and the agent are dropdowns rather than full-height lists: each has
+two or three choices, and a box sized for a list of them is mostly empty air
+the models list could use. A dropdown holds one line closed and opens to a
+foreground popup, which is what a person expects of a choice with few options.
+The models stay a full list — it is the one a person shops in, it runs long,
+and it wants its columns and its held marks on screen at once.
+
+**The popup greys what a run cannot start.** Textual's `Select` cannot mark an
+option, so its cursor would land on an agent this machine has not got — the
+exit 127 the screen exists to prevent. `Dropdown` overrides the one method
+`Select` leaves between its options and the overlay they are shown in,
+`_setup_options_renderables`, to disable those rows; a disabled row is what the
+cursor steps over, the same guarantee the models list has. It is a private
+method, so a test drives the whole gesture — open, walk, commit — and would go
+red if a Textual upgrade moved it.
+
+**The report follows the committed pick, not the open popup.** `Select` says a
+value changed on commit rather than as the highlight moves inside the overlay,
+which is what a popup does: a person opens it, chooses, and reads the report
+for what they chose. The models list, always open, still recomputes as its
+highlight moves.
+
+**Native `Select` was measured and rejected**: it shows an absent agent as an
+ordinary, selectable row, which is the hole the guard closes. Building the
+popup by hand was not considered — the override is six lines and rides on the
+overlay already being an `OptionList`.
+
+`picker.py` runs to about 450 lines holding this: the two dropdowns, the models
+list, the widget that greys a choice, and the keys over all of them. It is one
+screen and stays whole, for the reason the file above it gives — a file holding
+half a screen is one nobody can read the layout out of.
