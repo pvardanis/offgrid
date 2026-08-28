@@ -1,9 +1,10 @@
-"""A dropdown that greys the choices a machine cannot use.
+"""A dropdown that greys the choices it is told are out.
 
-Textual's `Select` cannot mark an option, so its cursor would land on one a run
-could not start. This is the one screen widget offgrid adds to it: a `Select`
-whose overlay disables the choices it is told are out, which is what makes the
-cursor step over them the way a list of models does.
+Textual's `Select` cannot mark an option, so its cursor would land on any of
+them. This is the one screen widget offgrid adds to it: a `Select` whose overlay
+disables the choices named unavailable, which is what makes the cursor step over
+them. Why a given choice is out — an agent this machine has not got, a runtime
+with no config — is the caller's to say.
 """
 
 from rich.console import RenderableType
@@ -13,12 +14,12 @@ from textual.widgets.option_list import Option
 
 
 class Dropdown(Select[str]):
-    """A dropdown whose overlay greys the choices this machine cannot start.
+    """A dropdown whose overlay greys the choices named unavailable.
 
-    Textual's `Select` cannot mark an option, so its cursor would land on one
-    a run could not use — the exit 127 the screen exists to prevent. This
-    disables those rows in the overlay, which is what makes the cursor step
-    over them, and keeps the value on one it can reach.
+    Textual's `Select` cannot mark an option, so its cursor would land on any
+    of them. This disables those rows in the overlay, which is what makes the
+    cursor step over them: interactively, the value cannot move onto one. The
+    value it opens on is the caller's to choose from the ones left.
     """
 
     def __init__(self, *, id: str | None = None) -> None:
