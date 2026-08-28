@@ -1,13 +1,13 @@
 """What a run would report, on a screen that leaves everything as it is.
 
-Three lists — the runtimes offgrid drives, the agents it drives, and the models
-the runtime has downloaded — and beside them the report `doctor` prints, taken
-from the same place, so that two surfaces cannot word one fact differently. It
-is recomputed as the highlight moves, out of what was read when the screen
-opened: moving reaches nothing and writes nothing.
+Two dropdowns — the runtimes offgrid drives and the agents it drives — and a
+list of the models the runtime has downloaded, with the report `doctor` prints
+beside them, taken from the same place so that two surfaces cannot word one
+fact differently. It is recomputed as the pick changes, out of what was read
+when the screen opened: moving reaches nothing and writes nothing.
 
-What offgrid supports is listed whether or not this machine has it. A row it
-cannot start is marked and the cursor steps over it, which is the widget's
+What offgrid supports is offered whether or not this machine has it. A choice
+it cannot start is greyed and the cursor steps over it, which is the widget's
 guarantee rather than a refusal somebody has to remember to write.
 
 The screen reads; nothing on it writes.
@@ -16,10 +16,12 @@ The screen reads; nothing on it writes.
 from collections.abc import Callable
 from typing import ClassVar
 
+from rich.console import RenderableType
 from textual.app import App, ComposeResult
 from textual.binding import Binding, BindingType
 from textual.containers import Horizontal, Vertical, VerticalScroll
-from textual.widgets import Footer, OptionList, Static
+from textual.widgets import Footer, OptionList, Select, Static
+from textual.widgets._select import SelectOverlay
 from textual.widgets.option_list import Option
 
 from offgrid.domain.assembling import (
@@ -45,7 +47,13 @@ PANE = "pane"
 """What the report scrolls inside, since it is as long as the machine makes it."""
 
 LISTS = "lists"
-"""What the three lists are stacked in."""
+"""What the two dropdowns and the models list are stacked in."""
+
+RUNTIME_BOX = "runtime-box"
+"""The titled box the runtime dropdown sits in."""
+
+AGENT_BOX = "agent-box"
+"""The titled box the agent dropdown sits in."""
 
 MODEL_BOX = "model-box"
 """What the models list and the names of its columns share a border with."""
@@ -70,8 +78,63 @@ than something to pick.
 """
 
 
+class Dropdown(Select[str]):
+    """A dropdown whose overlay greys the choices this machine cannot start.
+
+    Textual's `Select` cannot mark an option, so its cursor would land on one
+    a run could not use — the exit 127 the screen exists to prevent. This
+    disables those rows in the overlay, which is what makes the cursor step
+    over them, and keeps the value on one it can reach.
+    """
+
+    def __init__(self, *, id: str | None = None) -> None:
+        """Start empty, since what there is to pick is read once the screen is up.
+
+        Blank is allowed so that the agents can hold no value on a machine that
+        has none of them installed, and so that either dropdown is valid while
+        it stands empty before what there is to pick has been read.
+
+        :param id: What the screen reaches this dropdown by.
+        """
+        self._unavailable: frozenset[str] = frozenset()
+
+        super().__init__([], allow_blank=True, compact=True, id=id)
+
+    def offer(
+        self, options: list[tuple[RenderableType, str]], *, unavailable: frozenset[str]
+    ) -> None:
+        """Put what there is to pick into the dropdown, greying what is out.
+
+        :param options: Each choice, as it reads and the value it stands for.
+        :param unavailable: The values a run cannot start, greyed and stepped
+            over.
+        """
+        self._unavailable = unavailable
+
+        self.set_options(options)
+
+    def _setup_options_renderables(self) -> None:
+        """Lay the overlay out, greying the values this machine cannot start.
+
+        The one method `Select` leaves between its options and the list they are
+        shown in, so that a disabled row is what the cursor steps over.
+        """
+        overlay = self.query_one(SelectOverlay)
+
+        overlay.clear_options()
+        overlay.add_options(
+            [
+                Option(
+                    prompt,
+                    disabled=value is Select.NULL or value in self._unavailable,
+                )
+                for prompt, value in self._options
+            ]
+        )
+
+
 class Picker(App[None]):
-    """Three lists and the report for whatever the highlight is on.
+    """Two dropdowns and a models list, and the report for what is picked.
 
     Textual's own bindings are left as they are — `ctrl+q` leaves, `ctrl+c`
     does not and says which key does, `ctrl+p` opens the command palette — so
@@ -87,31 +150,45 @@ class Picker(App[None]):
         width: 44;
     }}
 
-    #{LISTS} > OptionList, #{MODEL_BOX} {{
-        height: 1fr;
+    .box {{
         border: round $panel;
-        /* On the box rather than on the list inside it, so that the heading
-           and the rows under it are one surface: a heading left transparent
-           paints the screen behind it and reads as a second box. */
+        /* On the box rather than on the widget inside it, so that a heading and
+           what it is over are one surface: a heading left transparent paints
+           the screen behind it and reads as a second box. */
         background: $surface;
         /* A title drawn in the border colour is as faint as the border, and
-           these three are what say which list a person is looking at. */
+           these three are what say which box a person is looking at. */
         border-title-color: $text;
         border-title-style: bold;
         border-title-align: left;
     }}
 
-    /* Which list has the keys is worth seeing, with three of them on screen
-       and every one of them answering to the same arrows. */
-    #{LISTS} > OptionList:focus, #{MODEL_BOX}:focus-within {{
+    /* Which box has the keys is worth seeing, with three of them on screen and
+       every one of them answering to the same arrows. */
+    .box:focus-within {{
         border: round $accent;
         border-title-color: $accent;
     }}
 
-    /* Inside the box its heading shares, so the border is drawn once. */
+    /* The dropdowns are as tall as their one line; the models list takes the
+       rest. */
+    .box.pick {{
+        height: auto;
+    }}
+
+    .box.pick > Select {{
+        border: none;
+        background: $surface;
+    }}
+
+    #{MODEL_BOX} {{
+        height: 1fr;
+    }}
+
     #{MODEL_BOX} > OptionList {{
         height: 1fr;
         border: none;
+        background: $surface;
     }}
 
     #{COLUMNS} {{
@@ -138,7 +215,7 @@ class Picker(App[None]):
         self._what: WhatCouldBeRun | None = None
 
     def compose(self) -> ComposeResult:
-        """Build the screen: the lists, the report beside them, the keys under.
+        """Build the screen: the dropdowns, the models list, the report beside.
 
         :yield: Each widget, in the order they are read across the screen.
         """
@@ -146,7 +223,6 @@ class Picker(App[None]):
         # the machine makes it: a discarded window, a long path to the agent, or
         # a narrow terminal each push the last lines past the bottom. Those
         # lines are the remedies, which is what a person opened this to read.
-        # A bare `Static` cannot take focus, so no key would reach them.
         #
         # Read as plain text, because what it shows is columns and refusals.
         # A refusal carries the key it refused the way pydantic writes one,
@@ -154,15 +230,16 @@ class Picker(App[None]):
         # and stops on — leaving nowhere to say what was wrong with the file.
         yield Horizontal(
             Vertical(
-                OptionList(id=RUNTIMES),
-                OptionList(id=AGENTS),
-                # The models are the one list whose rows carry a column a
-                # reader cannot name from what is in it, so they are the one
-                # list with its columns named above them.
+                Vertical(Dropdown(id=RUNTIMES), id=RUNTIME_BOX, classes="box pick"),
+                Vertical(Dropdown(id=AGENTS), id=AGENT_BOX, classes="box pick"),
+                # The models are the one list whose rows carry a column a reader
+                # cannot name from what is in it, so they are the one list with
+                # its columns named above them.
                 Vertical(
                     Static(name_the_model_columns(), id=COLUMNS, markup=False),
                     OptionList(id=MODELS),
                     id=MODEL_BOX,
+                    classes="box",
                 ),
                 id=LISTS,
             ),
@@ -177,10 +254,8 @@ class Picker(App[None]):
         so, and a runtime nothing answered for is exactly what somebody opened
         this to find out about.
         """
-        # The models' border is on the box they share with their column names,
-        # so that the heading sits inside it rather than above it.
-        self._list(RUNTIMES).border_title = RUNTIMES
-        self._list(AGENTS).border_title = AGENTS
+        self.query_one(f"#{RUNTIME_BOX}", Vertical).border_title = "runtime"
+        self.query_one(f"#{AGENT_BOX}", Vertical).border_title = "agent"
         self.query_one(f"#{MODEL_BOX}", Vertical).border_title = MODELS
 
         try:
@@ -190,55 +265,85 @@ class Picker(App[None]):
 
             return
 
-        self._fill_the_lists(what)
         self._what = what
+        self._fill_the_lists(what)
+        self._say_what_would_run()
+
+    def on_select_changed(self, event: Select.Changed) -> None:
+        """Report on whatever is now picked.
+
+        :param event: That a dropdown's value changed. Which one, and to what,
+            is read off the dropdowns themselves.
+        """
         self._say_what_would_run()
 
     def on_option_list_option_highlighted(
         self, event: OptionList.OptionHighlighted
     ) -> None:
-        """Report on whatever the highlights are now on.
+        """Report on whatever the model highlight is now on.
 
-        All three are read again rather than the one that moved, because a
-        pairing is what the report is about and one list moving changes it.
-
-        :param event: That a list moved, which is what wakes this. Which list,
-            and onto what, is read off the lists themselves.
+        :param event: That the models list moved, which is what wakes this.
         """
         self._say_what_would_run()
 
     def _fill_the_lists(self, what: WhatCouldBeRun) -> None:
-        """Put what offgrid drives, and what this machine has, into the lists.
+        """Put what offgrid drives, and what this machine has, into the screen.
 
-        The highlight is left where the profile points: the first thing shown
-        is what a run would do today, rather than whatever happens to sort
-        first.
+        The models highlight is left where the profile points, and each dropdown
+        opens on what a run would do today rather than on whatever sorts first.
 
         :param what: Everything that was read.
         """
-        # Every runtime offgrid has an adapter for. Only the profile's has a
-        # config to be assembled from, and there is one, so nothing else can be
-        # highlighted for as long as that stays true.
-        self._list(RUNTIMES).add_options(
-            [Option(name.value, id=name.value) for name in RuntimeName]
-        )
-        self._list(AGENTS).add_options(
-            [
-                Option(
-                    describe_an_agent_row(agent),
-                    id=agent.name.value,
-                    disabled=not agent.is_on_this_machine,
-                )
-                for agent in what.agents
-            ]
-        )
-        self._list(MODELS).add_options(self._model_options(what))
+        self._list().add_options(self._model_options(what))
+        self._highlight_model(what)
 
-        self._highlight(RUNTIMES, what.profile.runtime.name.value)
-        self._highlight(AGENTS, what.profile.agent.name.value)
-        self._highlight(
-            MODELS, find_what_would_answer(what, open_on_what_the_profile_holds(what))
+        # Only the profile's runtime has a config to be assembled from, so every
+        # other one offgrid drives is greyed until that stops being true.
+        self._dropdown(RUNTIMES).offer(
+            [(name.value, name.value) for name in RuntimeName],
+            unavailable=frozenset(
+                name.value for name in RuntimeName if name != what.profile.runtime.name
+            ),
         )
+        self._dropdown(RUNTIMES).value = what.profile.runtime.name.value
+
+        self._dropdown(AGENTS).offer(
+            [(describe_an_agent_row(agent), agent.name.value) for agent in what.agents],
+            unavailable=frozenset(
+                agent.name.value
+                for agent in what.agents
+                if not agent.is_on_this_machine
+            ),
+        )
+
+        opens_on = self._agent_to_open_on(what)
+
+        if opens_on is not None:
+            self._dropdown(AGENTS).value = opens_on
+
+    def _agent_to_open_on(self, what: WhatCouldBeRun) -> str | None:
+        """Say which agent a dropdown opens on, which the profile's may not be.
+
+        An agent this machine has not got is greyed and cannot be the value, so
+        the dropdown opens on the first one it can reach — something has to be
+        reported on, and the rest of the list is what there is. Where none can
+        be reached there is nothing to open on, and the report falls back on the
+        agent the profile names.
+
+        :param what: Everything that was read.
+
+        :return: The agent to open on, or ``None`` where none can be reached.
+        """
+        reachable = [
+            agent.name.value for agent in what.agents if agent.is_on_this_machine
+        ]
+
+        if not reachable:
+            return None
+
+        wanted = what.profile.agent.name.value
+
+        return wanted if wanted in reachable else reachable[0]
 
     def _model_options(self, what: WhatCouldBeRun) -> list[Option]:
         """Lay out a row per model downloaded, held ones first.
@@ -258,45 +363,36 @@ class Picker(App[None]):
             for model in order_models_held_first(what)
         ]
 
-    def _highlight(self, which: str, value: str | None) -> None:
-        """Put a list's highlight on the row the profile points at.
+    def _highlight_model(self, what: WhatCouldBeRun) -> None:
+        """Put the models highlight on the row the profile points at.
 
-        A row that is there and cannot be reached — an agent this machine has
-        not got — hands the highlight to the first row that can, because
-        something has to be reported on and the rest of the list is what there
-        is.
+        A value naming no row gets no substitute: a profile naming a model the
+        runtime has not got is a thing to say, and moving the highlight quietly
+        onto another model would answer with a report about a run nobody asked
+        for.
 
-        A value naming no row at all is a different matter and gets no
-        substitute: a profile naming a model the runtime has not got is a thing
-        to say, and moving the highlight quietly onto another model would
-        answer with a report about a run nobody asked for.
-
-        :param which: The list to move.
-        :param value: What the row is identified by, or ``None`` where the
-            profile points at nothing.
+        :param what: Everything that was read.
         """
-        listed = self._list(which)
+        listed = self._list()
+        wanted = find_what_would_answer(what, open_on_what_the_profile_holds(what))
         rows = list(enumerate(listed.options))
         reachable = [index for index, option in rows if not option.disabled]
-        wanted = [index for index, option in rows if option.id == value]
+        found = [index for index, option in rows if option.id == wanted]
 
-        if not reachable or (value is not None and not wanted):
+        if not reachable or (wanted is not None and not found):
             return
 
         listed.highlighted = next(
-            (index for index in wanted if index in reachable), reachable[0]
+            (index for index in found if index in reachable), reachable[0]
         )
 
-    def _highlighted(self, which: str) -> str | None:
-        """Say what a list's highlight is on.
-
-        :param which: The list to read.
+    def _highlighted_model(self) -> str | None:
+        """Say what the models highlight is on.
 
         :return: What that row is identified by, or ``None`` where the list has
-            no reachable row at all — every agent absent, or nothing
-            downloaded.
+            no reachable row at all — nothing downloaded.
         """
-        listed = self._list(which)
+        listed = self._list()
         index = listed.highlighted
 
         if index is None:
@@ -304,17 +400,33 @@ class Picker(App[None]):
 
         return listed.get_option_at_index(index).id
 
-    def _list(self, which: str) -> OptionList:
-        """Reach one of the three lists.
+    def _picked_agent(self) -> str | None:
+        """Say which agent is picked, which may be none where all are greyed.
+
+        :return: The agent's name, or ``None`` where none can be reached.
+        """
+        value = self._dropdown(AGENTS).value
+
+        return None if value is Select.NULL else str(value)
+
+    def _dropdown(self, which: str) -> Dropdown:
+        """Reach one of the two dropdowns.
 
         :param which: Which one.
 
         :return: The widget.
         """
-        return self.query_one(f"#{which}", OptionList)
+        return self.query_one(f"#{which}", Dropdown)
+
+    def _list(self) -> OptionList:
+        """Reach the models list, the one list left on the screen.
+
+        :return: The widget.
+        """
+        return self.query_one(f"#{MODELS}", OptionList)
 
     def _say_what_would_run(self) -> None:
-        """Show the report for whatever the highlight is on."""
+        """Show the report for whatever is picked."""
         what = self._what
 
         if what is None:
@@ -322,8 +434,8 @@ class Picker(App[None]):
 
         assembly = read_the_highlight(
             what,
-            agent=self._highlighted(AGENTS),
-            model=self._highlighted(MODELS),
+            agent=self._picked_agent(),
+            model=self._highlighted_model(),
         )
 
         self._say("\n".join(describe_what_would_run(what, assembly)))
