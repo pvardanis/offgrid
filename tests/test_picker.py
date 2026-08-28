@@ -12,7 +12,8 @@ from dataclasses import dataclass
 import httpx
 from rich.cells import cell_len
 from textual.containers import VerticalScroll
-from textual.widgets import OptionList, Static
+from textual.widgets import OptionList, Select, Static
+from textual.widgets._select import SelectOverlay
 from typer.testing import CliRunner
 
 from offgrid.agents.claude_code.launching import CONTEXT_FLOOR
@@ -32,6 +33,7 @@ from offgrid.tui.picker import (
     PANE,
     REPORT,
     RUNTIMES,
+    Dropdown,
     Picker,
 )
 from tests.doubles import serve_get
@@ -76,6 +78,28 @@ def _read_a_list(listed: OptionList) -> tuple[list[str], list[str], str | None]:
     return rows, reachable, on
 
 
+def _read_a_dropdown(dropdown: Dropdown) -> tuple[list[str], list[str], str | None]:
+    """Read back one dropdown: every choice, the reachable ones, and the pick.
+
+    The choices are read off the overlay, where they carry the disabled flag
+    the cursor steps over; the pick is the value, which greying keeps off the
+    ones a run cannot start.
+
+    :param dropdown: The dropdown to read.
+
+    :return: What the choices say, which of them can be picked, and which is.
+    """
+    overlay = dropdown.query_one(SelectOverlay)
+    # A dropdown that may hold no value carries a blank row for clearing it,
+    # which is not one of the choices offgrid offers.
+    choices = [option for option in overlay.options if str(option.prompt)]
+    rows = [str(option.prompt) for option in choices]
+    reachable = [str(option.prompt) for option in choices if not option.disabled]
+    on = None if dropdown.value is Select.NULL else str(dropdown.value)
+
+    return rows, reachable, on
+
+
 def drive(picker: Picker, *keys: str, size: tuple[int, int] = ROOMY) -> Driven:
     """Open a screen, press keys at it, and read what it is showing.
 
@@ -99,8 +123,9 @@ def drive(picker: Picker, *keys: str, size: tuple[int, int] = ROOMY) -> Driven:
             await pilot.pause()
 
             read = {
-                which: _read_a_list(picker.query_one(f"#{which}", OptionList))
-                for which in (RUNTIMES, AGENTS, MODELS)
+                RUNTIMES: _read_a_dropdown(picker.query_one(f"#{RUNTIMES}", Dropdown)),
+                AGENTS: _read_a_dropdown(picker.query_one(f"#{AGENTS}", Dropdown)),
+                MODELS: _read_a_list(picker.query_one(f"#{MODELS}", OptionList)),
             }
             scroller = picker.query_one(f"#{PANE}", VerticalScroll)
 
@@ -391,18 +416,21 @@ def test_a_model_that_is_not_held_is_served_at_no_window_rather_than_an_unsaid_o
 def test_the_cursor_will_not_land_on_an_agent_this_machine_cannot_start(
     here, monkeypatch
 ):
-    # Driven rather than read off the widget: a list that let the cursor step
-    # onto a marked row would answer this the same way an unmarked one does.
+    # Driven rather than read off the widget: a dropdown that let the cursor
+    # commit a marked row would answer this the same way an unmarked one does.
+    # Each gesture opens the dropdown, walks it, and presses enter to pick
+    # wherever it landed — claude-code among the choices and greyed, opencode
+    # the one a run could start.
     runner.invoke(app, ["setup"])
     on_this_machine(monkeypatch, "opencode")
 
     walked = [
-        screen(here, "tab", *pressed).highlighted[AGENTS]
+        screen(here, "tab", "enter", *pressed, "enter").highlighted[AGENTS]
         for pressed in ((), ("up",), ("down",), ("home",), ("end",), ("up", "up"))
     ]
 
     assert walked == ["opencode"] * len(walked), (
-        f"the cursor reached {sorted(map(str, set(walked)))} walking the agent list"
+        f"the cursor committed {sorted(map(str, set(walked)))} walking the agent list"
     )
 
 
@@ -441,7 +469,7 @@ def test_moving_the_agent_highlight_recomputes_the_report(here, monkeypatch):
     on_this_machine(monkeypatch, "claude", "opencode")
 
     opened = screen(here)
-    moved = screen(here, "tab", "down")
+    moved = screen(here, "tab", "enter", "down", "enter")
 
     assert moved.highlighted[AGENTS] == "opencode"
     assert "agent              claude-code, speaking anthropic" in opened.shown
@@ -473,7 +501,7 @@ def test_moving_onto_an_agent_the_runtime_cannot_talk_to_is_what_refuses_it(
     on_this_machine(monkeypatch, "claude", "opencode")
 
     opened = screen(here)
-    moved = screen(here, "tab", "down")
+    moved = screen(here, "tab", "enter", "down", "enter")
 
     assert "refused, and a load would not be reached" not in opened.shown
     assert "running            refused, and a load would not be reached" in moved.shown
