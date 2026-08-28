@@ -243,7 +243,7 @@ class Picker(App[None]):
 
         # Only the profile's runtime has a config to be assembled from, so every
         # other one offgrid drives is greyed until that stops being true.
-        runtime = report.profile.runtime.name
+        runtime = report.profile.runtime_name
 
         self._get_dropdown(RUNTIMES).offer(
             [(name.value, name.value) for name in RuntimeName],
@@ -251,7 +251,7 @@ class Picker(App[None]):
                 name.value for name in RuntimeName if name != runtime
             ),
         )
-        self._get_dropdown(RUNTIMES).value = report.profile.runtime_name
+        self._get_dropdown(RUNTIMES).value = report.profile.runtime_name.value
 
         self._get_dropdown(AGENTS).offer(
             [
@@ -290,7 +290,7 @@ class Picker(App[None]):
         if not reachable:
             return None
 
-        wanted = report.profile.agent_name
+        wanted = report.profile.agent_name.value
 
         return wanted if wanted in reachable else reachable[0]
 

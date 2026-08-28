@@ -167,7 +167,7 @@ def describe_the_agent(checkup: Checkup) -> tuple[str, ...]:
     return (
         say_in_columns(
             "agent",
-            f"{checkup.profile.agent.name.value}, speaking {terms.dialect.value}",
+            f"{checkup.profile.agent_name.value}, speaking {terms.dialect.value}",
         ),
         *_describe_where_the_agent_is(checkup),
         say_in_columns("context_minimum", str(terms.context_floor), under=True),
@@ -202,7 +202,7 @@ def _describe_where_the_agent_is(checkup: Checkup) -> tuple[str, ...]:
     return (
         say_in_columns("command", f"{command}, not on PATH", under=True),
         *say_indented(
-            REMEDY, say_where_an_agent_comes_from(checkup.profile.agent.name)
+            REMEDY, say_where_an_agent_comes_from(checkup.profile.agent_name)
         ),
     )
 

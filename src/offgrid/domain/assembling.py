@@ -191,7 +191,7 @@ def open_on_what_the_profile_holds(report: WhatCouldBeRun) -> Pairing:
     :return: The pairing the file holds.
     """
     return Pairing(
-        agent=report.profile.agent.name,
+        agent=report.profile.agent_name,
         model=report.profile.model.identifier,
     )
 
