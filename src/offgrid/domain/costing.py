@@ -258,7 +258,7 @@ def _describe_a_runtime_with_nothing_downloaded(
     return (
         say_in_columns(
             RUNNING,
-            f"the runtime at {report.profile.runtime.host} has nothing downloaded",
+            f"the runtime at {report.profile.runtime_host} has nothing downloaded",
         ),
         *say_indented(
             REMEDY,
@@ -285,7 +285,7 @@ def _refuse_a_model_the_runtime_has_not_got(
     return (
         say_in_columns(
             RUNNING,
-            f"the runtime at {report.profile.runtime.host} has not got {identifier}",
+            f"the runtime at {report.profile.runtime_host} has not got {identifier}",
         ),
         *say_indented(
             REMEDY,

@@ -29,7 +29,7 @@ def setup(
     """Measure this machine and record how to reach the runtime."""
     machine = detect()
     stored = _get_stored_profile()
-    listening_at = host or (stored.runtime.host if stored else DEFAULT_HOST)
+    listening_at = host or (stored.runtime_host if stored else DEFAULT_HOST)
 
     runtime_config, agent_config = _get_runtime_and_agent_configs(
         stored, listening_at=listening_at

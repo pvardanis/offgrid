@@ -79,6 +79,15 @@ class Profile(BaseModel):
         """
         return self.agent.name
 
+    @property
+    def runtime_host(self) -> str:
+        """Where the runtime this profile names listens.
+
+        :return: The address, read off the runtime's config rather than down
+            the chain that reaches it.
+        """
+        return self.runtime.host
+
 
 def load_yaml(path: Path = DEFAULT_PATH) -> dict:
     """Read the stored profile as the mapping it holds.
