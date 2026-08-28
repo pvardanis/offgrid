@@ -381,13 +381,13 @@ class Picker(App[None]):
         if report is None:
             return
 
-        assembly = read_the_highlight(
+        pairing = read_the_highlight(
             report,
             agent=self._get_picked_agent(),
             model=self._get_highlighted_model(),
         )
 
-        self._say("\n".join(describe_what_would_run(report, assembly)))
+        self._say("\n".join(describe_what_would_run(report, pairing)))
 
     def _say(self, said: str) -> None:
         """Put text in the report pane.
