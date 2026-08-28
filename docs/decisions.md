@@ -2246,3 +2246,18 @@ subclass with no knowledge of runtimes or agents, reusable by anything that
 offers a choice some of which cannot be taken, and it is what the screen's own
 tests reach for by name. What is left in `picker.py` is one screen — its
 composition, the keys over it, and how it reads a pick — at about 390 lines.
+
+## The runtime dropdown is not yet a real choice
+
+The agent dropdown greys what this machine has not got, checked per agent. The
+runtime dropdown does not: it lists every runtime offgrid drives and greys all
+but the profile's, because only the profile's is connected and read, and the
+whole report is about that one runtime. Selecting another would change nothing,
+so the others are greyed.
+
+Making the runtime a real choice — a presence check per runtime, and a report
+that re-reads the selected runtime's catalogue, held models and dialects — is
+deferred to #205. What "a runtime is installed" means is a contract that
+belongs to the runtime adapter, and it is only got right against two runtimes;
+built against LM Studio alone it is a guess the second may not fit. So it rides
+with the second runtime rather than being designed blind now.
