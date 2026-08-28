@@ -168,7 +168,7 @@ def read_what_could_be_run(profile_path: Path) -> WhatCouldBeRun:
     profile = read_profile(profile_path)
     runtime = connect_runtime(profile.runtime)
 
-    downloaded = tuple(runtime.read_catalogue())
+    downloaded_models = tuple(runtime.read_catalogue())
 
     # Asked once and read twice, because what is held and which of it answers
     # are two questions about one moment: asked separately, a model can be let
@@ -186,7 +186,7 @@ def read_what_could_be_run(profile_path: Path) -> WhatCouldBeRun:
             discarded=discarded,
             unreadable=unreadable,
         ),
-        downloaded_models=downloaded,
+        downloaded_models=downloaded_models,
         held=frozenset(model.identifier for model in in_memory),
         agents=tuple(_ask_every_agent(profile)),
     )
