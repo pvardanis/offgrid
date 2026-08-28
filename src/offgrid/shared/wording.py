@@ -28,7 +28,7 @@ from unicodedata import east_asian_width
 # is the width the reports either side of it are written to by hand.
 LINE_WIDTH = 76
 
-COLUMN = 12
+COLUMN = 19
 """How wide a label is, so every value in a report starts at one column.
 
 Wide enough that the longest label still has a gap after it once the indent an

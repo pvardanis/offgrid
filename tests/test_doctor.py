@@ -77,7 +77,7 @@ def test_doctor_reports_every_dialect_the_runtime_serves(here):
 
     result = runner.invoke(app, ["doctor"])
 
-    assert "  dialects  anthropic, openai" in result.stderr
+    assert "  dialects         anthropic, openai" in result.stderr
 
 
 def test_doctor_reports_the_model_that_would_answer(here):
@@ -95,8 +95,8 @@ def test_doctor_prints_what_the_model_could_serve_and_what_it_is_served_at(here)
 
     result = runner.invoke(app, ["doctor"])
 
-    assert "  ceiling   262144" in result.stderr
-    assert "  window    212224" in result.stderr
+    assert "  context_ceiling  262144" in result.stderr
+    assert "  context_window   212224" in result.stderr
 
 
 def test_doctor_prints_the_window_the_agent_needs_to_start(here, monkeypatch):
@@ -112,7 +112,7 @@ def test_doctor_prints_the_window_the_agent_needs_to_start(here, monkeypatch):
 
     result = runner.invoke(app, ["doctor"])
 
-    assert "  floor     9000" in result.stderr
+    assert "  context_minimum  9000" in result.stderr
 
 
 def test_doctor_refuses_a_runtime_that_will_not_answer_rather_than_reporting_one(
@@ -145,8 +145,8 @@ def test_doctor_prints_a_ceiling_of_zero_as_zero(here, monkeypatch):
 
     result = runner.invoke(app, ["doctor"])
 
-    assert "  ceiling   0" in result.stderr
-    assert "  window    0" in result.stderr
+    assert "  context_ceiling  0" in result.stderr
+    assert "  context_window   0" in result.stderr
 
 
 def test_doctor_prints_the_command_the_agent_itself_would_be_started_by(
@@ -164,7 +164,7 @@ def test_doctor_prints_the_command_the_agent_itself_would_be_started_by(
 
     result = runner.invoke(app, ["doctor"])
 
-    assert "  command   some-other-agent" in result.stderr
+    assert "  command          some-other-agent" in result.stderr
 
 
 def test_doctor_looks_up_the_command_the_agent_states_and_not_another(
@@ -184,7 +184,7 @@ def test_doctor_looks_up_the_command_the_agent_states_and_not_another(
 
     result = runner.invoke(app, ["doctor"])
 
-    assert f"  command   some-other-agent, at {installed}" in result.stderr
+    assert f"  command          some-other-agent, at {installed}" in result.stderr
 
 
 def test_doctor_reports_where_the_agent_a_run_would_start_was_found(here):
@@ -195,7 +195,7 @@ def test_doctor_reports_where_the_agent_a_run_would_start_was_found(here):
 
     result = runner.invoke(app, ["doctor"])
 
-    assert f"  command   claude, at {installed}" in result.stderr
+    assert f"  command          claude, at {installed}" in result.stderr
 
 
 def test_doctor_says_where_an_agent_that_is_not_installed_comes_from(here):
@@ -210,7 +210,7 @@ def test_doctor_says_where_an_agent_that_is_not_installed_comes_from(here):
 
     result = runner.invoke(app, ["doctor"])
 
-    assert "  command   claude, not on PATH" in result.stderr
+    assert "  command          claude, not on PATH" in result.stderr
     assert "https://docs.claude.com/en/docs/claude-code/setup" in result.stderr
     assert "brew" not in result.stderr
     assert "npm" not in result.stderr

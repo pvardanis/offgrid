@@ -342,8 +342,8 @@ def test_moving_the_highlight_recomputes_what_a_run_would_cost(here, monkeypatch
 
     assert f"{RESIDENT} is held, so this costs no load" in opened.shown
     assert "google/gemma-4-e4b is not held, so this costs a load" in moved.shown
-    assert "model       google/gemma-4-e4b" in moved.shown
-    assert "  ceiling   262144" in moved.shown
+    assert "model              google/gemma-4-e4b" in moved.shown
+    assert "  context_ceiling  262144" in moved.shown
 
 
 def test_the_highlight_is_reported_on_even_where_the_profile_names_another_model(
@@ -364,7 +364,7 @@ def test_the_highlight_is_reported_on_even_where_the_profile_names_another_model
     driven = screen(here, "tab", "tab", "up")
 
     assert str(driven.highlighted[MODELS]).startswith(RESIDENT)
-    assert f"model       {RESIDENT}" in driven.shown
+    assert f"model              {RESIDENT}" in driven.shown
     assert f"{RESIDENT} is held, so this costs no load" in driven.shown
 
 
@@ -384,8 +384,8 @@ def test_a_model_that_is_not_held_is_served_at_no_window_rather_than_an_unsaid_o
 
     driven = screen(here, "tab", "tab", "down")
 
-    assert "model       google/gemma-4-e4b" in driven.shown
-    assert "  window    unknown" in driven.shown
+    assert "model              google/gemma-4-e4b" in driven.shown
+    assert "  context_window   unknown" in driven.shown
 
 
 def test_the_cursor_will_not_land_on_an_agent_this_machine_cannot_start(
@@ -429,7 +429,7 @@ def test_an_agent_whose_own_settings_will_not_read_is_a_row_and_not_a_blank_scre
     assert not any(row.startswith("opencode") for row in driven.reachable[AGENTS]), (
         "the cursor can reach an agent that would not answer"
     )
-    assert f"model       {RESIDENT}" in driven.shown
+    assert f"model              {RESIDENT}" in driven.shown
 
 
 def test_moving_the_agent_highlight_recomputes_the_report(here, monkeypatch):
@@ -444,8 +444,8 @@ def test_moving_the_agent_highlight_recomputes_the_report(here, monkeypatch):
     moved = screen(here, "tab", "down")
 
     assert moved.highlighted[AGENTS] == "opencode"
-    assert "agent       claude-code, speaking anthropic" in opened.shown
-    assert "agent       opencode, speaking openai" in moved.shown
+    assert "agent              claude-code, speaking anthropic" in opened.shown
+    assert "agent              opencode, speaking openai" in moved.shown
 
     # Where its conversations land is read off the highlighted agent's own
     # config, so it says the report was assembled from that agent rather than
@@ -476,7 +476,7 @@ def test_moving_onto_an_agent_the_runtime_cannot_talk_to_is_what_refuses_it(
     moved = screen(here, "tab", "down")
 
     assert "refused, and a load would not be reached" not in opened.shown
-    assert "running     refused, and a load would not be reached" in moved.shown
+    assert "running            refused, and a load would not be reached" in moved.shown
     assert "the anthropic API and the agent expects openai" in " ".join(
         moved.shown.split()
     )
@@ -506,7 +506,7 @@ def test_an_agent_the_runtime_cannot_talk_to_is_refused_with_every_dialect_named
     # lines is the terminal's business rather than what it says.
     flowed = " ".join(driven.shown.split())
 
-    assert "running     refused, and a load would not be reached" in driven.shown
+    assert "running            refused, and a load would not be reached" in driven.shown
     assert "The runtime serves the openai API and the agent expects anthropic" in flowed
     assert "pick a runtime that serves anthropic" in flowed
 
@@ -543,7 +543,7 @@ def test_the_report_for_an_absent_agent_says_where_to_get_it(here, monkeypatch):
 
     driven = screen(here)
 
-    assert "  command   claude, not on PATH" in driven.shown
+    assert "  command          claude, not on PATH" in driven.shown
     assert "https://docs.claude.com/en/docs/claude-code/setup" in driven.shown
     assert "nothing here starts claude-code, so this pair cannot run" in driven.shown
 
@@ -578,7 +578,7 @@ def test_a_runtime_with_nothing_downloaded_still_reports_the_model_named(
 
     driven = screen(here)
 
-    assert "requests    google/gemma-4-e4b" in driven.shown
+    assert "requests           google/gemma-4-e4b" in driven.shown
     assert "name one under `model:` in the profile" not in driven.shown
 
 
@@ -595,10 +595,10 @@ def test_the_agent_a_run_would_try_is_reported_on_even_where_it_would_not_answer
 
     driven = screen(here)
 
-    assert "agent       claude-code, which did not answer" in driven.shown
+    assert "agent              claude-code, which did not answer" in driven.shown
     assert "settings.json" in driven.shown
-    assert "runtime     lmstudio at 127.0.0.1:1234, reachable" in driven.shown
-    assert "  dialects  anthropic, openai" in driven.shown
+    assert "runtime            lmstudio at 127.0.0.1:1234, reachable" in driven.shown
+    assert "  dialects         anthropic, openai" in driven.shown
 
 
 def test_a_window_offgrid_stopped_asking_for_is_said_on_the_screen(here, monkeypatch):
@@ -610,7 +610,7 @@ def test_a_window_offgrid_stopped_asking_for_is_said_on_the_screen(here, monkeyp
 
     driven = screen(here)
 
-    assert "discarded   131072 was asked for on" in driven.shown
+    assert "discarded          131072 was asked for on" in driven.shown
     assert "to ask again" in driven.shown
 
 
@@ -631,11 +631,13 @@ def test_a_profile_asking_for_nothing_says_so_where_the_held_model_is_highlighte
     opened = screen(here)
     moved = screen(here, "tab", "tab", "down")
 
-    asks_for_nothing = "requests    asks for nothing, so a run takes whatever is held"
+    asks_for_nothing = (
+        "requests           asks for nothing, so a run takes whatever is held"
+    )
 
     assert str(opened.highlighted[MODELS]).startswith(RESIDENT)
     assert asks_for_nothing in opened.shown
-    assert "requests    google/gemma-4-e4b" in moved.shown
+    assert "requests           google/gemma-4-e4b" in moved.shown
 
 
 def test_a_model_the_runtime_has_not_got_is_named_rather_than_swapped(
@@ -657,7 +659,7 @@ def test_a_model_the_runtime_has_not_got_is_named_rather_than_swapped(
     driven = screen(here)
 
     assert driven.highlighted[MODELS] is None
-    assert "requests    someone/a-model-that-was-deleted" in driven.shown
+    assert "requests           someone/a-model-that-was-deleted" in driven.shown
     assert "has not got someone/a-model-that-was-deleted" in driven.shown
     assert f"{RESIDENT} is held" not in driven.shown
 
@@ -720,15 +722,17 @@ def test_the_screen_shows_what_a_run_would_report(here):
     driven = screen(here)
     shown = driven.shown
 
-    assert "runtime     lmstudio at 127.0.0.1:1234, reachable" in shown
-    assert "  dialects  anthropic, openai" in shown
-    assert f"model       {RESIDENT}" in shown
-    assert "  ceiling   262144" in shown
-    assert "  window    212224" in shown
-    assert "requests    asks for nothing, so a run takes whatever is held" in shown
-    assert "agent       claude-code, speaking anthropic" in shown
-    assert "  command   claude, not on PATH" in shown
-    assert f"  floor     {CONTEXT_FLOOR}" in shown
+    assert "runtime            lmstudio at 127.0.0.1:1234, reachable" in shown
+    assert "  dialects         anthropic, openai" in shown
+    assert f"model              {RESIDENT}" in shown
+    assert "  context_ceiling  262144" in shown
+    assert "  context_window   212224" in shown
+    assert (
+        "requests           asks for nothing, so a run takes whatever is held" in shown
+    )
+    assert "agent              claude-code, speaking anthropic" in shown
+    assert "  command          claude, not on PATH" in shown
+    assert f"  context_minimum  {CONTEXT_FLOOR}" in shown
     assert "might leave this machine" in shown
     assert f"conversations\n  {here / 'claude-code'}" in shown
 
