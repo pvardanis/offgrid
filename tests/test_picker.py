@@ -153,7 +153,7 @@ def screen(here, *keys: str, size: tuple[int, int] = ROOMY) -> Driven:
     :return: What the screen answered.
     """
     return drive(
-        Picker(read=lambda: read_what_could_be_run(here / "profile.yaml")),
+        Picker(read_report_func=lambda: read_what_could_be_run(here / "profile.yaml")),
         *keys,
         size=size,
     )

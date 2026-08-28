@@ -131,7 +131,7 @@ class WhatCouldBeRun:
         assembled as.
     :param runtime: What the runtime answered, the model it is holding
         included.
-    :param downloaded: Every model the runtime has, held or not, in the order
+    :param downloaded_models: Every model the runtime has, held or not, in the order
         it answered in. `order_models_held_first` is what puts the held ones
         at the top of a list; the port promises no order here.
     :param held: Which of them are in memory, so that a pairing can be priced
@@ -141,7 +141,7 @@ class WhatCouldBeRun:
 
     profile: Profile
     runtime: WhatTheRuntimeAnswered
-    downloaded: tuple[Model, ...]
+    downloaded_models: tuple[Model, ...]
     held: frozenset[str]
     agents: tuple[AgentOnThisMachine, ...]
 
@@ -171,7 +171,10 @@ def order_models_held_first(what: WhatCouldBeRun) -> tuple[Model, ...]:
     :return: Every model downloaded, the held ones first.
     """
     return tuple(
-        sorted(what.downloaded, key=lambda model: model.identifier not in what.held)
+        sorted(
+            what.downloaded_models,
+            key=lambda model: model.identifier not in what.held,
+        )
     )
 
 

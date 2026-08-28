@@ -158,7 +158,7 @@ def _find_the_model_that_would_answer(
     """
     identifier = find_what_would_answer(what, assembly)
 
-    for model in what.downloaded:
+    for model in what.downloaded_models:
         if model.identifier == identifier:
             return model
 
@@ -199,7 +199,7 @@ def _describe_what_running_would_cost(
     if refusal is not None:
         return refusal
 
-    if not what.downloaded:
+    if not what.downloaded_models:
         return _describe_a_runtime_with_nothing_downloaded(what)
 
     identifier = find_what_would_answer(what, assembly)

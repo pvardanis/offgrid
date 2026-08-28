@@ -63,7 +63,7 @@ def offgrid(ctx: typer.Context) -> None:
     # that is not the screen would pay it.
     from offgrid.tui.picker import Picker
 
-    screen = Picker(read=lambda: read_what_could_be_run(DEFAULT_PATH))
+    screen = Picker(read_report_func=lambda: read_what_could_be_run(DEFAULT_PATH))
     screen.run()
 
     # Textual paints what went wrong on the screen and returns rather than

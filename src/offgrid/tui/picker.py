@@ -145,18 +145,18 @@ class Picker(App[None]):
     }}
     """
 
-    def __init__(self, read: ReadWhatCouldBeRun) -> None:
+    def __init__(self, read_report_func: ReadWhatCouldBeRun) -> None:
         """Take what the screen will show, rather than reaching for it.
 
         The profile, the runtime and the agents are read by whoever opened the
         screen, which is what keeps the picker clear of every registry.
 
-        :param read: What the profile, the runtime and the agents answer.
+        :param read_report_func: What the profile, the runtime and the agents answer.
         """
         super().__init__()
 
-        self._read = read
-        self._what: WhatCouldBeRun | None = None
+        self._read_report_func = read_report_func
+        self._report: WhatCouldBeRun | None = None
 
     def compose(self) -> ComposeResult:
         """Build the screen: the dropdowns, the models list, the report beside.
@@ -203,14 +203,14 @@ class Picker(App[None]):
         self.query_one(f"#{MODEL_BOX}", Vertical).border_title = MODELS
 
         try:
-            what = self._read()
+            report = self._read_report_func()
         except OffgridError as error:
             self._say(str(error))
 
             return
 
-        self._what = what
-        self._fill_the_lists(what)
+        self._report = report
+        self._fill_the_lists(report)
         self._say_what_would_run()
 
     def on_select_changed(self, event: Select.Changed) -> None:
@@ -230,42 +230,47 @@ class Picker(App[None]):
         """
         self._say_what_would_run()
 
-    def _fill_the_lists(self, what: WhatCouldBeRun) -> None:
+    def _fill_the_lists(self, report: WhatCouldBeRun) -> None:
         """Put what offgrid drives, and what this machine has, into the screen.
 
         The models highlight is left where the profile points, and each dropdown
         opens on what a run would do today rather than on whatever sorts first.
 
-        :param what: Everything that was read.
+        :param report: Everything that was read.
         """
-        self._list().add_options(self._model_options(what))
-        self._highlight_model(what)
+        self._get_list().add_options(self._get_model_options(report))
+        self._highlight_model(report)
 
         # Only the profile's runtime has a config to be assembled from, so every
         # other one offgrid drives is greyed until that stops being true.
-        self._dropdown(RUNTIMES).offer(
+        runtime = report.profile.runtime.name
+
+        self._get_dropdown(RUNTIMES).offer(
             [(name.value, name.value) for name in RuntimeName],
             unavailable=frozenset(
-                name.value for name in RuntimeName if name != what.profile.runtime.name
+                name.value for name in RuntimeName if name != runtime
             ),
         )
-        self._dropdown(RUNTIMES).value = what.profile.runtime.name.value
+        self._get_dropdown(RUNTIMES).value = report.profile.runtime_name
 
-        self._dropdown(AGENTS).offer(
-            [(describe_an_agent_row(agent), agent.name.value) for agent in what.agents],
+        self._get_dropdown(AGENTS).offer(
+            [
+                (describe_an_agent_row(agent), agent.name.value)
+                for agent in report.agents
+            ],
             unavailable=frozenset(
                 agent.name.value
-                for agent in what.agents
+                for agent in report.agents
                 if not agent.is_on_this_machine
             ),
         )
 
-        opens_on = self._agent_to_open_on(what)
+        opens_on = self._agent_to_open_on(report)
 
         if opens_on is not None:
-            self._dropdown(AGENTS).value = opens_on
+            self._get_dropdown(AGENTS).value = opens_on
 
-    def _agent_to_open_on(self, what: WhatCouldBeRun) -> str | None:
+    def _agent_to_open_on(self, report: WhatCouldBeRun) -> str | None:
         """Say which agent a dropdown opens on, which the profile's may not be.
 
         An agent this machine has not got is greyed and cannot be the value, so
@@ -274,40 +279,40 @@ class Picker(App[None]):
         be reached there is nothing to open on, and the report falls back on the
         agent the profile names.
 
-        :param what: Everything that was read.
+        :param report: Everything that was read.
 
         :return: The agent to open on, or ``None`` where none can be reached.
         """
         reachable = [
-            agent.name.value for agent in what.agents if agent.is_on_this_machine
+            agent.name.value for agent in report.agents if agent.is_on_this_machine
         ]
 
         if not reachable:
             return None
 
-        wanted = what.profile.agent.name.value
+        wanted = report.profile.agent_name
 
         return wanted if wanted in reachable else reachable[0]
 
-    def _model_options(self, what: WhatCouldBeRun) -> list[Option]:
+    def _get_model_options(self, report: WhatCouldBeRun) -> list[Option]:
         """Lay out a row per model downloaded, held ones first.
 
-        :param what: Everything that was read.
+        :param report: Everything that was read.
 
         :return: The rows, or the one saying there are none.
         """
-        if not what.downloaded:
+        if not report.downloaded_models:
             return [Option(NOTHING_DOWNLOADED, disabled=True)]
 
         return [
             Option(
-                describe_a_model_row(model, held=model.identifier in what.held),
+                describe_a_model_row(model, held=model.identifier in report.held),
                 id=model.identifier,
             )
-            for model in order_models_held_first(what)
+            for model in order_models_held_first(report)
         ]
 
-    def _highlight_model(self, what: WhatCouldBeRun) -> None:
+    def _highlight_model(self, report: WhatCouldBeRun) -> None:
         """Put the models highlight on the row the profile points at.
 
         A value naming no row gets no substitute: a profile naming a model the
@@ -315,10 +320,10 @@ class Picker(App[None]):
         onto another model would answer with a report about a run nobody asked
         for.
 
-        :param what: Everything that was read.
+        :param report: Everything that was read.
         """
-        listed = self._list()
-        wanted = find_what_would_answer(what, open_on_what_the_profile_holds(what))
+        listed = self._get_list()
+        wanted = find_what_would_answer(report, open_on_what_the_profile_holds(report))
         rows = list(enumerate(listed.options))
         reachable = [index for index, option in rows if not option.disabled]
         found = [index for index, option in rows if option.id == wanted]
@@ -330,13 +335,13 @@ class Picker(App[None]):
             (index for index in found if index in reachable), reachable[0]
         )
 
-    def _highlighted_model(self) -> str | None:
+    def _get_highlighted_model(self) -> str | None:
         """Say what the models highlight is on.
 
         :return: What that row is identified by, or ``None`` where the list has
             no reachable row at all — nothing downloaded.
         """
-        listed = self._list()
+        listed = self._get_list()
         index = listed.highlighted
 
         if index is None:
@@ -344,16 +349,16 @@ class Picker(App[None]):
 
         return listed.get_option_at_index(index).id
 
-    def _picked_agent(self) -> str | None:
+    def _get_picked_agent(self) -> str | None:
         """Say which agent is picked, which may be none where all are greyed.
 
         :return: The agent's name, or ``None`` where none can be reached.
         """
-        value = self._dropdown(AGENTS).value
+        value = self._get_dropdown(AGENTS).value
 
         return None if value is Select.NULL else str(value)
 
-    def _dropdown(self, which: str) -> Dropdown:
+    def _get_dropdown(self, which: str) -> Dropdown:
         """Reach one of the two dropdowns.
 
         :param which: Which one.
@@ -362,7 +367,7 @@ class Picker(App[None]):
         """
         return self.query_one(f"#{which}", Dropdown)
 
-    def _list(self) -> OptionList:
+    def _get_list(self) -> OptionList:
         """Reach the models list, the one list left on the screen.
 
         :return: The widget.
@@ -371,18 +376,18 @@ class Picker(App[None]):
 
     def _say_what_would_run(self) -> None:
         """Show the report for whatever is picked."""
-        what = self._what
+        report = self._report
 
-        if what is None:
+        if report is None:
             return
 
         assembly = read_the_highlight(
-            what,
-            agent=self._picked_agent(),
-            model=self._highlighted_model(),
+            report,
+            agent=self._get_picked_agent(),
+            model=self._get_highlighted_model(),
         )
 
-        self._say("\n".join(describe_what_would_run(what, assembly)))
+        self._say("\n".join(describe_what_would_run(report, assembly)))
 
     def _say(self, said: str) -> None:
         """Put text in the report pane.
