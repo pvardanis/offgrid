@@ -147,7 +147,7 @@ class WhatCouldBeRun:
 
 
 @dataclass(frozen=True)
-class Assembly:
+class Pairing:
     """The agent and model a highlight is sitting on.
 
     :param agent: The agent that would be started.
@@ -160,25 +160,25 @@ class Assembly:
     model: str | None
 
 
-def order_models_held_first(what: WhatCouldBeRun) -> tuple[Model, ...]:
+def order_models_held_first(report: WhatCouldBeRun) -> tuple[Model, ...]:
     """Put the models that cost nothing to start at the top of the list.
 
     Held first and each group in the order the runtime answered in, so that
     two readings of an unchanged machine list them alike.
 
-    :param what: Everything that was read.
+    :param report: Everything that was read.
 
     :return: Every model downloaded, the held ones first.
     """
     return tuple(
         sorted(
-            what.downloaded_models,
-            key=lambda model: model.identifier not in what.held,
+            report.downloaded_models,
+            key=lambda model: model.identifier not in report.held,
         )
     )
 
 
-def open_on_what_the_profile_holds(what: WhatCouldBeRun) -> Assembly:
+def open_on_what_the_profile_holds(report: WhatCouldBeRun) -> Pairing:
     """Say what the picker is assembled as before anybody presses a key.
 
     The file itself, so that the first thing shown is what a run would do
@@ -186,36 +186,39 @@ def open_on_what_the_profile_holds(what: WhatCouldBeRun) -> Assembly:
     the model that would answer, and sitting on a row is not the same statement
     as having written its name down.
 
-    :param what: Everything that was read.
+    :param report: Everything that was read.
 
     :return: The pairing the file holds.
     """
-    return Assembly(agent=what.profile.agent.name, model=what.profile.model.identifier)
+    return Pairing(
+        agent=report.profile.agent.name,
+        model=report.profile.model.identifier,
+    )
 
 
-def find_what_would_answer(what: WhatCouldBeRun, assembly: Assembly) -> str | None:
+def find_what_would_answer(report: WhatCouldBeRun, pairing: Pairing) -> str | None:
     """Name the model a pairing would run against, which may be none.
 
     A pairing naming no model takes whatever the runtime is holding, so the row
     to sit on is the resident one. Where nothing is held either, there is no
     row to sit on.
 
-    :param what: Everything that was read.
-    :param assembly: What the highlight is on.
+    :param report: Everything that was read.
+    :param pairing: What the highlight is on.
 
     :return: The model's identifier, or ``None`` where none would answer.
     """
-    if assembly.model is not None:
-        return assembly.model
+    if pairing.model is not None:
+        return pairing.model
 
-    resident = what.runtime.resident
+    resident = report.runtime.resident
 
     return resident.identifier if resident is not None else None
 
 
 def read_the_highlight(
-    what: WhatCouldBeRun, *, agent: str | None, model: str | None
-) -> Assembly:
+    report: WhatCouldBeRun, *, agent: str | None, model: str | None
+) -> Pairing:
     """Read what the highlights are sitting on as a pairing.
 
     Either list can have no reachable row — every agent absent, or nothing
@@ -230,7 +233,7 @@ def read_the_highlight(
     does name one is left alone, because there the highlight and the file are
     two statements and the highlight is the one a person just made.
 
-    :param what: Everything that was read.
+    :param report: Everything that was read.
     :param agent: What the agent list's highlight is on, or ``None`` where the
         list has no row a cursor can reach.
     :param model: What the model list's highlight is on, or ``None`` where the
@@ -238,13 +241,13 @@ def read_the_highlight(
 
     :return: The pairing to report on.
     """
-    named = open_on_what_the_profile_holds(what)
+    named = open_on_what_the_profile_holds(report)
 
-    resident = what.runtime.resident
+    resident = report.runtime.resident
     sitting_on_the_resident = resident is not None and model == resident.identifier
     takes_what_is_held = sitting_on_the_resident and named.model is None
 
-    return Assembly(
+    return Pairing(
         agent=named.agent if agent is None else AgentName(agent),
         model=named.model if model is None or takes_what_is_held else model,
     )
@@ -350,10 +353,10 @@ def _lay_out_a_model_row(identifier: str, held: str, ceiling: str) -> str:
     return "".join(laid_out).rstrip()
 
 
-def find_agent(what: WhatCouldBeRun, name: AgentName) -> AgentOnThisMachine:
+def find_agent(report: WhatCouldBeRun, name: AgentName) -> AgentOnThisMachine:
     """Find what one agent answered, among everything that was read.
 
-    :param what: Everything that was read.
+    :param report: Everything that was read.
     :param name: The agent to find.
 
     :return: What that agent said about itself here.
@@ -363,7 +366,7 @@ def find_agent(what: WhatCouldBeRun, name: AgentName) -> AgentOnThisMachine:
         offgrid's own error rather than a `KeyError`, so that the sentence
         reaches a person as written instead of quoted and escaped.
     """
-    for agent in what.agents:
+    for agent in report.agents:
         if agent.name is name:
             return agent
 
