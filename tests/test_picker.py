@@ -26,6 +26,7 @@ from offgrid.domain.running.dialect import Dialect
 from offgrid.domain.running.discarded_windows import save_discarded_window
 from offgrid.domain.running.model import Model
 from offgrid.domain.running.runtime import RuntimeName
+from offgrid.tui.dropdown import Dropdown
 from offgrid.tui.picker import (
     AGENTS,
     COLUMNS,
@@ -33,7 +34,6 @@ from offgrid.tui.picker import (
     PANE,
     REPORT,
     RUNTIMES,
-    Dropdown,
     Picker,
 )
 from tests.doubles import serve_get
