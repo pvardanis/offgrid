@@ -311,8 +311,9 @@ def name_the_model_columns() -> str:
 
     A bare number in a list is a number about nothing: a person scanning
     262144 against 40960 has to already know which of a model's two context
-    figures they are reading, and the whole reason the ceiling is here is that
-    the other one does not exist until something loads the model.
+    figures they are reading. The `context` column is its ceiling — the figure
+    that exists whether or not anything has loaded the model, where the other
+    one does not exist until it is served.
 
     Laid out by the same call the rows are, so that a column that moves cannot
     leave its own name behind.
