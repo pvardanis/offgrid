@@ -51,6 +51,23 @@ from offgrid.shared.exceptions import (
 )
 
 
+def there_is_no_profile(path: Path) -> bool:
+    """Say whether a fresh machine has no profile to read.
+
+    Absence is a stranger who has not run `setup`. A symlink is somebody having
+    claimed the path, so it counts as a profile whether or not the far end is
+    there: deciding on what resolves would read a link to a file that has moved
+    as a machine that was never set up, and answer about a runtime nobody chose.
+    Written once because three surfaces ask it — the screen, `setup` and
+    `recommend` — and the symlink subtlety is a rule to keep in one place.
+
+    :param path: Where the profile would be kept.
+
+    :return: Whether there is no profile there to read.
+    """
+    return not path.exists() and not path.is_symlink()
+
+
 def read_profile(path: Path) -> Profile:
     """Read a profile, asking each registry to read the section that is its own.
 
@@ -213,13 +230,11 @@ def read_what_could_be_run(profile_path: Path) -> WhatCouldBeRun:
 def _read_profile_or_default(profile_path: Path) -> Profile:
     """Read the profile, or default it where a fresh machine has none.
 
-    A missing file is a stranger who has not run `setup`, and the screen sizes
-    the machine for them rather than refusing: it assembles onto what `setup`
-    would have written. A file that is there and will not load is refused as
-    everywhere else — it names a runtime, and guessing past it would answer
-    about an adapter its owner did not choose. A symlink is somebody having
-    claimed the path, so it is read whether or not the far end is there, the
-    same road `recommend` takes.
+    Where `there_is_no_profile`, the screen sizes the machine for a stranger
+    rather than refusing: it assembles onto what `setup` would have written. A
+    file that is there and will not load is refused as everywhere else — it
+    names a runtime, and guessing past it would answer about an adapter its
+    owner did not choose.
 
     :param profile_path: Where the profile is kept.
 
@@ -227,7 +242,7 @@ def _read_profile_or_default(profile_path: Path) -> Profile:
 
     :raise ProfileError: When a profile is there and is not one.
     """
-    if not profile_path.exists() and not profile_path.is_symlink():
+    if there_is_no_profile(profile_path):
         # Deferred so setup, which imports this module for `read_profile`, is
         # not imported back at module load: the default is asked for at the one
         # moment a fresh machine opens the screen.

@@ -3,7 +3,7 @@
 from functools import partial
 from pathlib import Path
 
-from offgrid.cli.binding import read_profile
+from offgrid.cli.binding import read_profile, there_is_no_profile
 from offgrid.cli.reporting import reporting
 from offgrid.cli.setup import DEFAULT_RUNTIME
 from offgrid.domain.profile import DEFAULT_PATH
@@ -46,17 +46,12 @@ def _get_runtime_name() -> RuntimeName:
     guessing past what it says would answer about an adapter its owner did not
     choose.
 
-    A link the profile's name points at is somebody having claimed the path,
-    whether or not the far end is there, so it takes that road too. Deciding
-    on what resolves would read a link to a file that has moved as a machine
-    that has never been set up, and answer about a runtime nobody chose.
-
     :return: The runtime the profile names, or the one `setup` would write
         where there is no profile.
 
     :raise ProfileError: When there is a profile and it is not one.
     """
-    if not DEFAULT_PATH.exists() and not DEFAULT_PATH.is_symlink():
+    if there_is_no_profile(DEFAULT_PATH):
         return DEFAULT_RUNTIME
 
     return read_profile(DEFAULT_PATH).runtime.name

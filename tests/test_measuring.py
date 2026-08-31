@@ -8,7 +8,7 @@ differently from the other.
 from offgrid.domain.sizing.machine import Machine
 from offgrid.domain.sizing.measuring import (
     describe_the_machine,
-    describe_this_machine,
+    describe_the_machine_and_how_to_fit_more,
 )
 
 GIB = 1024**3
@@ -47,21 +47,21 @@ def test_it_points_at_recommend_and_names_no_command_a_stranger_must_run_first()
     assert "offgrid setup" not in shown
 
 
-def test_describe_this_machine_says_how_to_raise_a_gpu_limit_still_at_its_default():
+def test_it_says_how_to_raise_a_gpu_limit_still_at_its_default():
     # The one thing offgrid can suggest that changes what fits, which is why the
     # screen shows it beside the budget.
     machine = Machine(chip="Apple M1", memory_bytes=16 * GIB, wired_limit_bytes=None)
 
-    shown = "\n".join(describe_this_machine(machine))
+    shown = "\n".join(describe_the_machine_and_how_to_fit_more(machine))
 
     assert "sudo sysctl iogpu.wired_limit_mb=14336" in shown
 
 
-def test_describe_this_machine_suggests_nothing_where_the_limit_is_raised():
+def test_it_suggests_nothing_where_the_gpu_limit_is_already_raised():
     machine = Machine(
         chip="Apple M1 Max", memory_bytes=64 * GIB, wired_limit_bytes=56 * GIB
     )
 
-    shown = "\n".join(describe_this_machine(machine))
+    shown = "\n".join(describe_the_machine_and_how_to_fit_more(machine))
 
     assert "iogpu.wired_limit_mb" not in shown

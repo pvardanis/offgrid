@@ -45,12 +45,13 @@ def describe_the_machine(machine: Machine) -> tuple[str, ...]:
     )
 
 
-def describe_this_machine(machine: Machine) -> tuple[str, ...]:
+def describe_the_machine_and_how_to_fit_more(machine: Machine) -> tuple[str, ...]:
     """Say what the machine is and what fits, then how to make more fit.
 
     What the screen shows a stranger on a fresh machine: the measurement, and
-    the one thing offgrid can suggest that changes it. It names no command a
-    person must run first, since somebody meeting the screen has run none.
+    the one thing offgrid can suggest that changes it — raising the GPU limit,
+    where there is room to. It names no command a person must run first, since
+    somebody meeting the screen has run none.
 
     :param machine: What was measured.
 

@@ -31,7 +31,7 @@ from offgrid.domain.running.dialect import Dialect
 from offgrid.domain.running.discarded_windows import save_discarded_window
 from offgrid.domain.running.model import Model
 from offgrid.domain.running.runtime import RuntimeName
-from offgrid.domain.sizing.measuring import describe_this_machine
+from offgrid.domain.sizing.measuring import describe_the_machine_and_how_to_fit_more
 from offgrid.shared.exceptions import ProfileError
 from offgrid.tui.dropdown import Dropdown
 from offgrid.tui.picker import (
@@ -199,7 +199,7 @@ def fresh_screen(here, *keys: str, size: tuple[int, int] = ROOMY) -> Driven:
         Picker(
             read_report_func=lambda: read_what_could_be_run(here / "profile.yaml"),
             save_func=lambda profile: save_profile(profile, here / "profile.yaml"),
-            measure_func=lambda: describe_this_machine(MACHINE),
+            measure_func=lambda: describe_the_machine_and_how_to_fit_more(MACHINE),
         ),
         *keys,
         size=size,
