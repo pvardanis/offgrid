@@ -58,8 +58,10 @@ def there_is_no_profile(path: Path) -> bool:
     claimed the path, so it counts as a profile whether or not the far end is
     there: deciding on what resolves would read a link to a file that has moved
     as a machine that was never set up, and answer about a runtime nobody chose.
-    Written once because three surfaces ask it — the screen, `setup` and
-    `recommend` — and the symlink subtlety is a rule to keep in one place.
+    Written once because three surfaces ask it — the screen's report, the
+    command line's choice whether to measure, and `recommend` — and the symlink
+    subtlety is a rule to keep in one place. `setup` is not one: it does its own
+    existence check while writing a fresh profile, and refuses nothing.
 
     :param path: Where the profile would be kept.
 
