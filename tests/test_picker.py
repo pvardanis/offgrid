@@ -1250,6 +1250,11 @@ def test_where_there_is_no_profile_the_screen_measures_rather_than_refusing(
     # and the report work rather than standing empty behind the measurement:
     # the runtime the default names answers, and the model it holds is shown.
     assert f"model              {RESIDENT}" in driven.shown
+    # The measurement stands above the report, not below it: a stranger reads
+    # what fits before the run it is assembled into.
+    assert driven.shown.index("Apple M1 Max") < driven.shown.index(
+        f"model              {RESIDENT}"
+    )
 
 
 def test_where_there_is_no_profile_the_screen_says_what_fits_at_each_width(
@@ -1278,6 +1283,10 @@ def test_the_measurement_survives_a_runtime_that_did_not_answer(here, monkeypatc
     driven = fresh_screen(here)
 
     assert "Apple M1 Max" in driven.shown
+    # Not the chip alone: what fits at each width is the payload someone without
+    # a runtime came for, and it survives the runtime not answering in full.
+    assert "4-bit" in driven.shown
+    assert "parameters" in driven.shown
     assert "http://127.0.0.1:1234" in driven.shown
     assert driven.still_open
 
