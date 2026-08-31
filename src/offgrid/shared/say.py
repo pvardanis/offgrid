@@ -63,6 +63,20 @@ def someone_is_at_a_terminal() -> bool:
     return sys.stdin.isatty() and sys.stderr.isatty()
 
 
+def every_stream_is_a_terminal() -> bool:
+    """Whether stdin, stderr and stdout are all a terminal.
+
+    `someone_is_at_a_terminal` reads stdin and stderr: whether a person is
+    there to press a key and see a screen. This adds stdout, which a screen a
+    run opens at a dead end also lets go to that run's output. A redirected
+    output is somebody capturing the run rather than watching it, and opening
+    a screen over it would take a terminal they had already pointed elsewhere.
+
+    :return: Whether stdin, stderr and stdout are all a terminal.
+    """
+    return someone_is_at_a_terminal() and sys.stdout.isatty()
+
+
 def tell(message: str) -> None:
     """Say something to whoever is running offgrid.
 

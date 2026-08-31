@@ -18,6 +18,7 @@ from offgrid.shared.exceptions import (
     LeaderboardUnreachableError,
     LeaderboardUnreadableError,
 )
+from offgrid.tui.picker import Departure, Picker
 from tests.commands import MEASURING, answer_as_a_mac
 from tests.doubles import StandInAgent, answer_as_an_agent
 from tests.launches import record_launch
@@ -510,12 +511,162 @@ def test_run_passes_the_rest_of_the_line_to_the_agent(here, monkeypatch):
 
 
 def test_run_refuses_when_nothing_is_loaded(here, monkeypatch):
+    # A dead end where nobody is there to answer: a pipe rather than a terminal,
+    # which is what `CliRunner` is. Deletes the interactive condition.
     runner.invoke(app, ["setup"])
     answer_as_lm_studio(monkeypatch, cold={"a/cold-7b": 8192})
 
     result = runner.invoke(app, ["run"])
     assert result.exit_code == 1
     assert "load a model" in result.stderr.lower()
+
+
+def _at_a_terminal(monkeypatch) -> list[Picker]:
+    """Answer as a person at a terminal and record any screen that opens.
+
+    What a test drives is a pipe, so the terminal is what offgrid would not
+    find here. `Picker.run` stands in rather than opening a real screen, which
+    a pipe has no terminal for.
+
+    :param monkeypatch: The test's patcher.
+
+    :return: The screens that were opened, empty until one is.
+    """
+    opened: list[Picker] = []
+
+    monkeypatch.setattr("offgrid.cli.run.every_stream_is_a_terminal", lambda: True)
+    monkeypatch.setattr(Picker, "run", lambda self: opened.append(self))
+
+    return opened
+
+
+def test_run_opens_the_picker_at_a_dead_end_a_person_can_answer(here, monkeypatch):
+    # All four conditions: a terminal, nothing on the command line, nothing in
+    # the profile, and the runtime holding nothing. The refusal a person meets
+    # here becomes the screen that shows what could be run instead.
+    runner.invoke(app, ["setup"])
+    answer_as_lm_studio(monkeypatch, cold={"a/cold-7b": 8192})
+    opened = _at_a_terminal(monkeypatch)
+
+    result = runner.invoke(app, ["run"])
+
+    assert result.exit_code == 0
+    assert opened, "the dead end did not open the picker"
+
+
+def test_run_refuses_at_a_terminal_when_no_input_is_asked(here, monkeypatch):
+    # `--no-input` forces today's refusal even where a person could answer.
+    # Deletes the interactive condition from the other side.
+    runner.invoke(app, ["setup"])
+    answer_as_lm_studio(monkeypatch, cold={"a/cold-7b": 8192})
+    opened = _at_a_terminal(monkeypatch)
+
+    result = runner.invoke(app, ["run", "--no-input"])
+
+    assert result.exit_code == 1
+    assert "load a model" in result.stderr.lower()
+    assert not opened
+
+
+def test_run_that_named_a_model_refuses_rather_than_opening_the_picker(
+    here, monkeypatch
+):
+    # A name on the command line is something to do, so the dead end is not one:
+    # the run refuses the absent model as it always has. Deletes the
+    # nothing-named-on-the-command-line condition.
+    runner.invoke(app, ["setup"])
+    answer_as_lm_studio(monkeypatch, cold={"a/cold-7b": 8192})
+    opened = _at_a_terminal(monkeypatch)
+
+    result = runner.invoke(app, ["run", "-m", "a/absent-7b"])
+
+    assert result.exit_code == 1
+    assert not opened
+
+
+def test_run_whose_profile_names_a_model_refuses_rather_than_opening_the_picker(
+    here, monkeypatch
+):
+    # A model written down is a run with something to do, so a runtime that has
+    # not got it refuses rather than opening a screen. Deletes the
+    # nothing-named-in-the-profile condition.
+    runner.invoke(app, ["setup"])
+    add_to_section(here, "model", identifier="a/named-by-hand-7b")
+    answer_as_lm_studio(monkeypatch, cold={"a/cold-7b": 8192})
+    opened = _at_a_terminal(monkeypatch)
+
+    result = runner.invoke(app, ["run"])
+
+    assert result.exit_code == 1
+    assert not opened
+
+
+def test_run_with_a_resident_model_starts_it_rather_than_the_picker(here, monkeypatch):
+    # A runtime holding a model is no dead end: the run takes it, as it always
+    # has. Deletes the runtime-holding-nothing condition.
+    runner.invoke(app, ["setup"])
+    answer_as_lm_studio(monkeypatch, holding={RESIDENT: 212224})
+    started = record_launch(monkeypatch)
+    opened = _at_a_terminal(monkeypatch)
+
+    result = runner.invoke(app, ["run"])
+
+    assert result.exit_code == 0
+    assert not opened
+    assert started["argv"][0] == "claude"
+
+
+def test_run_with_passthrough_never_opens_the_picker(here, monkeypatch):
+    # `--` arguments and `-p` are the agent's own, and a run carrying them is
+    # one a person meant for the agent rather than the screen.
+    runner.invoke(app, ["setup"])
+    answer_as_lm_studio(monkeypatch, cold={"a/cold-7b": 8192})
+    opened = _at_a_terminal(monkeypatch)
+
+    result = runner.invoke(app, ["run", "--", "-p", "hello"])
+
+    assert result.exit_code == 1
+    assert not opened
+
+
+def test_run_does_not_open_the_picker_when_the_output_is_redirected(here, monkeypatch):
+    # Redirected output is somebody capturing the run rather than watching it,
+    # so a screen would take a terminal they had pointed elsewhere. A person is
+    # at stdin and stderr, but stdout is `CliRunner`'s pipe. Deleting the stdout
+    # leg of the interactive check is what this makes fail.
+    runner.invoke(app, ["setup"])
+    answer_as_lm_studio(monkeypatch, cold={"a/cold-7b": 8192})
+    opened: list[Picker] = []
+    monkeypatch.setattr(Picker, "run", lambda self: opened.append(self))
+    monkeypatch.setattr("offgrid.shared.say.someone_is_at_a_terminal", lambda: True)
+
+    result = runner.invoke(app, ["run"])
+
+    assert result.exit_code == 1
+    assert "load a model" in result.stderr.lower()
+    assert not opened
+
+
+def test_run_carries_out_what_the_picker_hands_back(here, monkeypatch):
+    # The glue from the dead end to a run: the screen hands back what to run,
+    # and `run` carries it out in plain text after the screen is gone.
+    runner.invoke(app, ["setup"])
+    answer_as_lm_studio(monkeypatch, cold={RESIDENT: 32768})
+    started = record_launch(monkeypatch)
+    monkeypatch.setattr("offgrid.cli.run.every_stream_is_a_terminal", lambda: True)
+    # The screen names the model to run, which the profile on disk does not:
+    # the dead end is a runtime holding nothing, and the pick fills it.
+    assembled = read_profile(here / "profile.yaml").model_copy(
+        update={"model": ModelRequest(identifier=RESIDENT)}
+    )
+    monkeypatch.setattr(
+        Picker, "run", lambda self: Departure(profile=assembled, saved=False)
+    )
+
+    result = runner.invoke(app, ["run"])
+
+    assert result.exit_code == 0
+    assert started["argv"][0] == "claude"
 
 
 def test_run_loads_a_named_model_that_is_not_resident(here, monkeypatch):

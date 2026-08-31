@@ -19,13 +19,11 @@ import typer
 # inside it, and `offgrid.cli.setup` would stop reaching the module a test
 # patches or a reader opens. Importing the submodule is what puts the module
 # there; only the name this file binds is the alias.
-from offgrid.cli.binding import read_what_could_be_run
 from offgrid.cli.doctor import doctor as doctor_command
 from offgrid.cli.recommend import recommend as recommend_command
-from offgrid.cli.run import launch_the_assembled_profile
+from offgrid.cli.run import open_the_picker
 from offgrid.cli.run import run as run_command
 from offgrid.cli.setup import setup as setup_command
-from offgrid.domain.profile import DEFAULT_PATH, save_profile
 from offgrid.shared.exceptions import OffgridError
 from offgrid.shared.say import say_on_stderr, someone_is_at_a_terminal, tell
 
@@ -57,31 +55,10 @@ def offgrid(ctx: typer.Context) -> None:
 
     # Named with nothing to do, offgrid shows what it knows rather than the
     # command table, which is the least useful thing a stranger can be shown.
-    # The screen is handed its reading, so that the picker names no registry.
-    #
-    # Imported here rather than above: Textual costs an order of magnitude
-    # more to import than the command line's own toolkit, and every command
-    # that is not the screen would pay it.
-    from offgrid.tui.picker import Picker
-
-    screen = Picker(
-        read_report_func=lambda: read_what_could_be_run(DEFAULT_PATH),
-        save_func=lambda profile: save_profile(profile, DEFAULT_PATH),
-    )
-    departure = screen.run()
-
-    # Textual paints what went wrong on the screen and returns rather than
-    # raising it, so the code it set is the only thing that says the screen
-    # died. Unread, a crash under a traceback exits like a report somebody
-    # sat and read.
-    if screen.return_code:
-        raise typer.Exit(screen.return_code)
-
-    # A key that ends the session hands back what to run; `q` hands back
-    # nothing. The run is carried out here, in the plain lines a run is read
-    # in, rather than on the screen, which is gone by now.
-    if departure is not None:
-        launch_the_assembled_profile(departure.profile, saved=departure.saved)
+    # The same screen a `run` opens over a dead end, reached here instead from
+    # bare offgrid: opening it and carrying out what it hands back is one thing
+    # said in one place.
+    open_the_picker()
 
 
 app.command()(setup_command)

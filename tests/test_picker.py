@@ -893,7 +893,7 @@ def test_a_screen_that_crashed_is_not_reported_as_a_run_that_worked(here, monkey
     def crash():
         raise RuntimeError("something nobody wrapped")
 
-    monkeypatch.setattr("offgrid.cli.read_what_could_be_run", lambda path: crash())
+    monkeypatch.setattr("offgrid.cli.run.read_what_could_be_run", lambda path: crash())
 
     result = runner.invoke(app, [])
 

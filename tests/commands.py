@@ -27,7 +27,6 @@ BIN = "bin"
 # reads one like any command.
 MEASURING = ("offgrid.cli.setup", "offgrid.cli.recommend")
 READING_THE_PROFILE = (
-    "offgrid.cli",
     "offgrid.cli.setup",
     "offgrid.cli.doctor",
     "offgrid.cli.recommend",
