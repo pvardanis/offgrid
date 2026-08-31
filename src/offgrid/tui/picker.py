@@ -1,4 +1,4 @@
-"""What a run would report, on a screen that leaves everything as it is.
+"""What a run would report, and the two keys that end the session.
 
 Two dropdowns — the runtimes offgrid drives and the agents it drives — and a
 list of the models the runtime has downloaded, with the report `doctor` prints
@@ -10,10 +10,13 @@ What offgrid supports is offered whether or not this machine has it. A choice
 it cannot start is greyed and the cursor steps over it, which is the widget's
 guarantee rather than a refusal somebody has to remember to write.
 
-The screen reads; nothing on it writes.
+Browsing writes nothing. Only the key that ends the session writes, and only
+the one that saves: it hands the assembled profile to the writer it was given,
+and exits with what to run. The screen never holds a model itself.
 """
 
 from collections.abc import Callable
+from dataclasses import dataclass
 from typing import ClassVar
 
 from textual.app import App, ComposeResult
@@ -23,7 +26,9 @@ from textual.widgets import Footer, OptionList, Select, Static
 from textual.widgets.option_list import Option
 
 from offgrid.domain.assembling import (
+    Pairing,
     WhatCouldBeRun,
+    assemble_a_profile,
     describe_a_model_row,
     describe_an_agent_row,
     find_what_would_answer,
@@ -33,11 +38,34 @@ from offgrid.domain.assembling import (
     read_the_highlight,
 )
 from offgrid.domain.costing import describe_what_would_run
+from offgrid.domain.profile import Profile
 from offgrid.domain.running.runtime import RuntimeName
 from offgrid.shared.exceptions import OffgridError
 from offgrid.tui.dropdown import Dropdown
 
 type ReadWhatCouldBeRun = Callable[[], WhatCouldBeRun]
+type SaveWhatWasAssembled = Callable[[Profile], None]
+
+
+@dataclass(frozen=True)
+class Departure:
+    """What a person assembled, and how they chose to leave the screen with it.
+
+    Handed back to whoever opened the screen, which carries out the run in the
+    plain lines a run is read in. The screen never holds a model itself; this
+    is the wish it exits with.
+
+    :param profile: What was assembled — runtime, agent and model — as a run is
+        made from it.
+    :param saved: Whether the key that writes was the one pressed, which is what
+        the report of the save is about. A past fact rather than a request: the
+        file is already written by the time this is handed back, and this says
+        whether to say so.
+    """
+
+    profile: Profile
+    saved: bool
+
 
 REPORT = "report"
 """Where the report is shown, which is what a test reads it back from."""
@@ -64,9 +92,37 @@ Above the list rather than a row in it, so that it stays where it is when a
 machine with a shelf full of models scrolls.
 """
 
+STATUS = "status"
+"""Where it is said which key writes, and whether a run would change anything.
+
+A line of its own above the footer's key hints. `enter` runs both a `Select`
+and an `OptionList` themselves before the app is reached, so Textual's `Footer`
+never shows its hint while either has the focus — which is always here. Which
+key writes is said here instead, beside the one fact the footer could not carry
+anyway: whether what is assembled is still what the file holds, which is
+rewritten as the highlight moves.
+"""
+
 RUNTIMES = "runtimes"
 AGENTS = "agents"
 MODELS = "models"
+
+WRITES = "enter runs and saves · s runs once"
+"""What the status says about which key writes, before either is pressed.
+
+So that a person coming from Claude Code, where the same keys mean the same
+things, sees the consequence on screen rather than trusting the reflex.
+"""
+
+CHANGED = "changed from your saved profile"
+"""What the status says when what is assembled is not what the file holds.
+
+So that a person about to press the key that writes can see the write would
+change something, rather than remember whether they moved anything.
+"""
+
+UNCHANGED = "this is your saved profile"
+"""What the status says when what is assembled is exactly what the file holds."""
 
 NOTHING_DOWNLOADED = "the runtime has nothing downloaded"
 """What stands in the models list where a runtime has no models at all.
@@ -77,17 +133,29 @@ than something to pick.
 """
 
 
-class Picker(App[None]):
+class Picker(App[Departure | None]):
     """Two dropdowns and a models list, and the report for what is picked.
 
-    Textual's own bindings are left as they are — `ctrl+q` leaves, `ctrl+c`
-    does not and says which key does, `ctrl+p` opens the command palette — so
-    that the only thing to learn here is the one key this adds. It is the only
-    binding of its own the `Footer` shows; `ctrl+p` appears beside it, which
-    Textual puts there itself rather than reading off a binding.
+    Three keys end a session, keyed to match Claude Code's model picker: `enter`
+    runs with what is assembled and saves it, `s` runs with it once, `q` leaves
+    having changed nothing. Textual's own bindings are left as they are —
+    `ctrl+q` leaves, `ctrl+c` does not and says which key does, `ctrl+p` opens
+    the command palette — so that the only things to learn are the three this
+    adds.
+
+    `enter` is answered on the models list rather than reached at the app,
+    because a `Select` or an `OptionList` with the focus consumes `enter` itself
+    before the app is: selecting a model is what runs when the list has the keys.
+    `s` reaches the app from either. Which key writes is said on the status line
+    rather than in the `Footer`, since the `Footer` never carries a hint for a
+    key the focused widget has taken — `s` and `q` are what it shows.
     """
 
-    BINDINGS: ClassVar[list[BindingType]] = [Binding("q", "quit", "leave")]
+    BINDINGS: ClassVar[list[BindingType]] = [
+        Binding("enter", "run_and_save", "run and save"),
+        Binding("s", "run_once", "run once"),
+        Binding("q", "quit", "leave"),
+    ]
 
     CSS = f"""
     #{LISTS} {{
@@ -143,19 +211,34 @@ class Picker(App[None]):
     #{PANE} {{
         width: 1fr;
     }}
+
+    #{STATUS} {{
+        color: $text-muted;
+        padding: 0 1;
+        height: 1;
+    }}
     """
 
-    def __init__(self, read_report_func: ReadWhatCouldBeRun) -> None:
-        """Take what the screen will show, rather than reaching for it.
+    def __init__(
+        self,
+        read_report_func: ReadWhatCouldBeRun,
+        save_func: SaveWhatWasAssembled,
+    ) -> None:
+        """Take what the screen will show and how it saves, rather than reaching.
 
         The profile, the runtime and the agents are read by whoever opened the
-        screen, which is what keeps the picker clear of every registry.
+        screen, and writing the assembled profile back is theirs too, which is
+        what keeps the picker clear of every registry and of where the file is
+        kept.
 
         :param read_report_func: What the profile, the runtime and the agents answer.
+        :param save_func: What writes an assembled profile where a later run
+            finds it.
         """
         super().__init__()
 
         self._read_report_func = read_report_func
+        self._save_func = save_func
         self._report: WhatCouldBeRun | None = None
 
     def compose(self) -> ComposeResult:
@@ -189,6 +272,7 @@ class Picker(App[None]):
             ),
             VerticalScroll(Static(id=REPORT, markup=False), id=PANE),
         )
+        yield Static(id=STATUS, markup=False)
         yield Footer()
 
     def on_mount(self) -> None:
@@ -229,6 +313,60 @@ class Picker(App[None]):
         :param event: That the models list moved, which is what wakes this.
         """
         self._say_what_would_run()
+
+    def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
+        """Run and save when a model row is chosen, which `enter` on it is.
+
+        The models list has the focus and consumes `enter` before the app is
+        reached, so selecting a row is where `enter` runs. A disabled row emits
+        nothing, so the row that says nothing is downloaded cannot arm a run.
+
+        :param event: That a model row was chosen, which wakes this.
+        """
+        self.action_run_and_save()
+
+    def action_run_and_save(self) -> None:
+        """Leave to run with what is assembled, having saved it as remembered."""
+        assembled = self._assemble()
+
+        if assembled is None:
+            return
+
+        try:
+            self._save_func(assembled)
+        except OffgridError as error:
+            # Mirrors the read path in `on_mount`: a write that failed — no room,
+            # no permission, a path that is a file — is painted where it happened
+            # and the screen stays open, rather than escaping into the event loop
+            # as a traceback nothing here would turn into a sentence.
+            self._say(str(error))
+
+            return
+
+        self.exit(Departure(profile=assembled, saved=True))
+
+    def action_run_once(self) -> None:
+        """Leave to run with what is assembled, writing nothing."""
+        assembled = self._assemble()
+
+        if assembled is None:
+            return
+
+        self.exit(Departure(profile=assembled, saved=False))
+
+    def _assemble(self) -> Profile | None:
+        """Write what the highlights are on into the profile a run is made from.
+
+        :return: The assembled profile, or ``None`` where nothing was read for
+            the screen to assemble — a runtime that did not answer, or a profile
+            that would not load.
+        """
+        report = self._report
+
+        if report is None:
+            return None
+
+        return assemble_a_profile(report, self._read_the_highlights(report))
 
     def _fill_the_lists(self, report: WhatCouldBeRun) -> None:
         """Put what offgrid drives, and what this machine has, into the screen.
@@ -375,19 +513,45 @@ class Picker(App[None]):
         return self.query_one(f"#{MODELS}", OptionList)
 
     def _say_what_would_run(self) -> None:
-        """Show the report for whatever is picked."""
+        """Show the report for whatever is picked, and whether it differs."""
         report = self._report
 
         if report is None:
             return
 
-        pairing = read_the_highlight(
+        pairing = self._read_the_highlights(report)
+
+        self._say("\n".join(describe_what_would_run(report, pairing)))
+        self._say_whether_it_differs(report, pairing)
+
+    def _read_the_highlights(self, report: WhatCouldBeRun) -> Pairing:
+        """Read what the two highlights are sitting on as one pairing.
+
+        :param report: Everything that was read.
+
+        :return: The agent and model a run would be assembled from.
+        """
+        return read_the_highlight(
             report,
             agent=self._get_picked_agent(),
             model=self._get_highlighted_model(),
         )
 
-        self._say("\n".join(describe_what_would_run(report, pairing)))
+    def _say_whether_it_differs(self, report: WhatCouldBeRun, pairing: Pairing) -> None:
+        """Say whether what is assembled is what the file already holds.
+
+        So that a person can see whether the key that writes would change
+        anything, rather than remember what they moved.
+
+        :param report: Everything that was read.
+        :param pairing: What the highlights are on.
+        """
+        assembled = assemble_a_profile(report, pairing)
+        differs = assembled != report.profile
+
+        self.query_one(f"#{STATUS}", Static).update(
+            f"{WRITES} · {CHANGED if differs else UNCHANGED}"
+        )
 
     def _say(self, said: str) -> None:
         """Put text in the report pane.

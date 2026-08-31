@@ -10,33 +10,45 @@ import asyncio
 from dataclasses import dataclass
 
 import httpx
+import pytest
+import typer
 from rich.cells import cell_len
 from textual.containers import VerticalScroll
 from textual.widgets import OptionList, Select, Static
+from textual.widgets._footer import FooterKey
 from textual.widgets._select import SelectOverlay
 from typer.testing import CliRunner
 
 from offgrid.agents.claude_code.launching import CONTEXT_FLOOR
 from offgrid.cli import app
-from offgrid.cli.binding import read_what_could_be_run
+from offgrid.cli.binding import read_profile, read_what_could_be_run
+from offgrid.cli.run import launch_the_assembled_profile
 from offgrid.domain.assembling import IN_MEMORY
 from offgrid.domain.costing import RUNNING
+from offgrid.domain.profile import save_profile
 from offgrid.domain.running import discarded_windows
 from offgrid.domain.running.dialect import Dialect
 from offgrid.domain.running.discarded_windows import save_discarded_window
 from offgrid.domain.running.model import Model
 from offgrid.domain.running.runtime import RuntimeName
+from offgrid.shared.exceptions import ProfileError
 from offgrid.tui.dropdown import Dropdown
 from offgrid.tui.picker import (
     AGENTS,
+    CHANGED,
     COLUMNS,
     MODELS,
     PANE,
     REPORT,
     RUNTIMES,
+    STATUS,
+    UNCHANGED,
+    WRITES,
+    Departure,
     Picker,
 )
 from tests.doubles import serve_get
+from tests.launches import record_launch
 from tests.lmstudio_server import RESIDENT, SERVED, answer_as_lm_studio
 from tests.pairing import StandInRuntime, answer_as_a_runtime
 from tests.profiles import add_to_section
@@ -54,9 +66,12 @@ class Driven:
 
     shown: str
     columns: str
+    status: str
+    footer: list[str]
     listed: dict[str, list[str]]
     reachable: dict[str, list[str]]
     highlighted: dict[str, str | None]
+    left_with: Departure | None
     still_open: bool
     scrolled_to: int
     could_scroll_to: int
@@ -132,9 +147,12 @@ def drive(picker: Picker, *keys: str, size: tuple[int, int] = ROOMY) -> Driven:
             return Driven(
                 shown=str(picker.query_one(f"#{REPORT}", Static).content),
                 columns=str(picker.query_one(f"#{COLUMNS}", Static).content),
+                status=str(picker.query_one(f"#{STATUS}", Static).content),
+                footer=[key.description for key in picker.query(FooterKey)],
                 listed={which: rows for which, (rows, _, _) in read.items()},
                 reachable={which: free for which, (_, free, _) in read.items()},
                 highlighted={which: on for which, (_, _, on) in read.items()},
+                left_with=picker.return_value,
                 still_open=picker.is_running,
                 scrolled_to=scroller.scroll_offset.y,
                 could_scroll_to=scroller.max_scroll_y,
@@ -153,7 +171,10 @@ def screen(here, *keys: str, size: tuple[int, int] = ROOMY) -> Driven:
     :return: What the screen answered.
     """
     return drive(
-        Picker(read_report_func=lambda: read_what_could_be_run(here / "profile.yaml")),
+        Picker(
+            read_report_func=lambda: read_what_could_be_run(here / "profile.yaml"),
+            save_func=lambda profile: save_profile(profile, here / "profile.yaml"),
+        ),
         *keys,
         size=size,
     )
@@ -922,3 +943,265 @@ def test_the_screen_bare_offgrid_opens_reads_the_profile_offgrid_keeps(
     runner.invoke(app, [])
 
     assert RESIDENT in drive(opened[0]).shown
+
+
+def test_s_runs_with_what_is_assembled_and_writes_nothing(here, monkeypatch):
+    # `s` runs for this run only: what it leaves with is what a run is made
+    # from, and the file a person hand-edited is exactly as they left it.
+    runner.invoke(app, ["setup"])
+    answer_as_lm_studio(monkeypatch, holding={RESIDENT: SERVED})
+    on_this_machine(monkeypatch, "claude")
+    profile = here / "profile.yaml"
+    before = profile.read_text()
+
+    driven = screen(here, "s")
+
+    assert isinstance(driven.left_with, Departure)
+    assert driven.left_with.saved is False
+    assert not driven.still_open
+    assert profile.read_text() == before
+
+
+def test_enter_runs_with_what_is_assembled_and_saves_it(here, monkeypatch):
+    # `enter` runs and saves: it leaves with the model the highlight is on, and
+    # the file a later run reads now names it. Moving onto the cold model and
+    # choosing it is the gesture, and the profile named nothing before.
+    runner.invoke(app, ["setup"])
+    answer_as_lm_studio(
+        monkeypatch,
+        holding={RESIDENT: SERVED},
+        cold={"google/gemma-4-e4b": 131072},
+    )
+    on_this_machine(monkeypatch, "claude")
+
+    driven = screen(here, "tab", "tab", "down", "enter")
+
+    assert isinstance(driven.left_with, Departure)
+    assert driven.left_with.saved is True
+    saved = read_profile(here / "profile.yaml").model
+
+    assert driven.left_with.profile.model.identifier == "google/gemma-4-e4b"
+    assert saved.identifier == "google/gemma-4-e4b"
+    # The window nobody chose stays unwritten: the picker offers no way to pick
+    # one, so materialising the runtime's served window into a saved number
+    # would be a request nobody made and a behaviour change disguised as a save.
+    assert saved.context_window is None
+    assert driven.left_with.profile.model.context_window is None
+
+
+def test_enter_saves_the_agent_that_was_picked_and_not_only_the_model(
+    here, monkeypatch
+):
+    # A save here writes runtime and agent as well as the model, so trying the
+    # other agent once and pressing the key that writes rewrites the agent. The
+    # file names it afterwards, which is what says the write was wider than one
+    # field.
+    runner.invoke(app, ["setup"])
+    answer_as_lm_studio(monkeypatch, holding={RESIDENT: SERVED})
+    on_this_machine(monkeypatch, "claude", "opencode")
+
+    driven = screen(here, "tab", "enter", "down", "enter", "tab", "enter")
+
+    assert driven.left_with is not None
+    assert driven.left_with.profile.agent_name.value == "opencode"
+    assert read_profile(here / "profile.yaml").agent_name.value == "opencode"
+
+
+def test_a_save_keeps_a_comment_a_person_wrote_by_hand(here, monkeypatch):
+    # The file is advertised as hand-editable, so the key that writes must not
+    # take a comment with it. Choosing the cold model is what makes the save
+    # change the file, so a comment left standing is one a round-tripping write
+    # kept rather than one nothing touched.
+    runner.invoke(app, ["setup"])
+    answer_as_lm_studio(
+        monkeypatch,
+        holding={RESIDENT: SERVED},
+        cold={"google/gemma-4-e4b": 131072},
+    )
+    on_this_machine(monkeypatch, "claude")
+    profile = here / "profile.yaml"
+    profile.write_text("# a note I wrote\n" + profile.read_text())
+
+    screen(here, "tab", "tab", "down", "enter")
+
+    assert read_profile(profile).model.identifier == "google/gemma-4-e4b"
+    assert "# a note I wrote" in profile.read_text()
+
+
+def test_the_status_says_which_key_writes_before_either_is_pressed(here, monkeypatch):
+    # The consequence is on screen rather than remembered: `enter` writes, `s`
+    # runs once. Said above the footer, because Textual's own footer will not
+    # carry the `enter` hint while a list or a dropdown has the keys — which is
+    # always. `s` and `q` are keys the footer does show.
+    runner.invoke(app, ["setup"])
+    answer_as_lm_studio(monkeypatch, holding={RESIDENT: SERVED})
+    on_this_machine(monkeypatch, "claude")
+
+    driven = screen(here)
+
+    assert WRITES in driven.status
+    assert "enter" in driven.status
+    assert "saves" in driven.status
+    assert "run once" in driven.footer
+    assert "leave" in driven.footer
+    # The whole reason it is said on the status line: the footer cannot carry a
+    # hint for `enter` while a list or a dropdown has the keys.
+    assert "run and save" not in driven.footer
+
+
+def test_the_status_says_when_what_is_assembled_differs_from_the_file(
+    here, monkeypatch
+):
+    # A person about to press the key that writes can see whether the write
+    # would change anything. Opened, the screen holds the file; moving onto the
+    # cold model is a change the file does not hold.
+    runner.invoke(app, ["setup"])
+    answer_as_lm_studio(
+        monkeypatch,
+        holding={RESIDENT: SERVED},
+        cold={"google/gemma-4-e4b": 131072},
+    )
+    on_this_machine(monkeypatch, "claude")
+
+    opened = screen(here)
+    moved = screen(here, "tab", "tab", "down")
+
+    assert UNCHANGED in opened.status
+    assert CHANGED not in opened.status
+    assert CHANGED in moved.status
+
+
+def test_the_status_changes_when_the_agent_alone_is_moved(here, monkeypatch):
+    # `differs` is over the whole assembled profile, not the model alone:
+    # switching to the other agent and leaving the model where it is still
+    # differs from the file, because a save would write the agent too.
+    runner.invoke(app, ["setup"])
+    answer_as_lm_studio(monkeypatch, holding={RESIDENT: SERVED})
+    on_this_machine(monkeypatch, "claude", "opencode")
+
+    moved = screen(here, "tab", "enter", "down", "enter")
+
+    assert moved.highlighted[AGENTS] == "opencode"
+    assert CHANGED in moved.status
+
+
+def test_the_picker_launches_the_run_and_reports_a_save(here, monkeypatch, capsys):
+    # `enter` saves and then runs, and the save says what it wrote — runtime,
+    # agent and model, not the model alone — in the plain lines a run is read in
+    # after the screen is gone. This profile names no model, so the model clause
+    # is the "whatever is held" one; the named-model clause is below.
+    runner.invoke(app, ["setup"])
+    asked = answer_as_lm_studio(monkeypatch, holding={RESIDENT: SERVED})
+    started = record_launch(monkeypatch)
+    profile = read_profile(here / "profile.yaml")
+
+    with pytest.raises(typer.Exit) as left:
+        launch_the_assembled_profile(profile, saved=True)
+
+    said = capsys.readouterr().err
+
+    assert left.value.exit_code == 0
+    assert started["argv"][0] == "claude"
+    assert "Saved to your profile" in said
+    assert "runtime lmstudio" in said
+    assert "agent claude-code" in said
+    assert "model no model, so a run takes whatever is held" in said
+    # The picker path lets go of the model afterwards exactly as `run` does.
+    assert asked["let_go"] == [RESIDENT]
+
+
+def test_the_save_report_names_the_model_where_the_profile_names_one(
+    here, monkeypatch, capsys
+):
+    # The other model clause: a profile that names a model reports that name,
+    # so a save is never reported as wider or narrower than it was.
+    runner.invoke(app, ["setup"])
+    name_a_model(here, RESIDENT)
+    answer_as_lm_studio(monkeypatch, holding={RESIDENT: SERVED})
+    record_launch(monkeypatch)
+    profile = read_profile(here / "profile.yaml")
+
+    with pytest.raises(typer.Exit):
+        launch_the_assembled_profile(profile, saved=True)
+
+    assert f"model {RESIDENT}" in capsys.readouterr().err
+
+
+def test_running_once_launches_the_run_and_reports_no_save(here, monkeypatch, capsys):
+    # `s` runs the same sequence and writes nothing, so nothing is reported as
+    # written: a save it did not make is not one a person is told about.
+    runner.invoke(app, ["setup"])
+    asked = answer_as_lm_studio(monkeypatch, holding={RESIDENT: SERVED})
+    started = record_launch(monkeypatch)
+    profile = read_profile(here / "profile.yaml")
+
+    with pytest.raises(typer.Exit) as left:
+        launch_the_assembled_profile(profile, saved=False)
+
+    said = capsys.readouterr().err
+
+    assert left.value.exit_code == 0
+    assert started["argv"][0] == "claude"
+    assert "Saved to your profile" not in said
+    assert asked["let_go"] == [RESIDENT]
+
+
+def test_bare_offgrid_launches_what_the_screen_hands_back(here, monkeypatch):
+    # The glue between the screen and the run: bare offgrid opens the picker,
+    # and when a key ends it with something to run, the callback carries it out
+    # after the screen is gone. `Picker.run` stands in to hand back a Departure
+    # without a real keypress, since driving a real one needs a terminal a pipe
+    # is not. Delete the launch in the callback and this is what fails.
+    runner.invoke(app, ["setup"])
+    sit_at_a_terminal(monkeypatch)
+    answer_as_lm_studio(monkeypatch, holding={RESIDENT: SERVED})
+    started = record_launch(monkeypatch)
+    profile = read_profile(here / "profile.yaml")
+    monkeypatch.setattr(
+        Picker, "run", lambda self: Departure(profile=profile, saved=False)
+    )
+
+    result = runner.invoke(app, [])
+
+    assert result.exit_code == 0
+    assert started["argv"][0] == "claude"
+
+
+def test_a_run_key_does_nothing_where_the_runtime_did_not_answer(here, monkeypatch):
+    # Nothing was read, so there is nothing to assemble: pressing a run key on
+    # the error screen leaves it open and hands nothing back, rather than arming
+    # a run against a machine that did not answer.
+    runner.invoke(app, ["setup"])
+
+    def refuse(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("connection refused", request=request)
+
+    serve_get(monkeypatch, refuse)
+
+    driven = screen(here, "s")
+
+    assert driven.still_open
+    assert driven.left_with is None
+
+
+def test_a_save_that_cannot_be_written_is_shown_and_the_screen_stays(here, monkeypatch):
+    # A write that failed — no room, no permission — is painted where it
+    # happened and the screen stays open, mirroring the read path, rather than
+    # escaping into the event loop as a traceback. Nothing leaves the screen,
+    # so no run is launched against a profile that was not saved.
+    runner.invoke(app, ["setup"])
+    answer_as_lm_studio(monkeypatch, holding={RESIDENT: SERVED})
+    on_this_machine(monkeypatch, "claude")
+
+    def refuse_to_save(profile) -> None:
+        raise ProfileError("Could not write the profile to /nope: it is read-only.")
+
+    picker = Picker(
+        read_report_func=lambda: read_what_could_be_run(here / "profile.yaml"),
+        save_func=refuse_to_save,
+    )
+    driven = drive(picker, "tab", "tab", "enter")
+
+    assert driven.still_open
+    assert driven.left_with is None
+    assert "Could not write the profile" in driven.shown

@@ -20,7 +20,7 @@ from offgrid.domain.checkup import WhatTheAgentAnswered, WhatTheRuntimeAnswered
 from offgrid.domain.profile import Profile
 from offgrid.domain.running.agent import AgentConfig, AgentName
 from offgrid.domain.running.agent_presence import say_where_an_agent_comes_from
-from offgrid.domain.running.model import Model
+from offgrid.domain.running.model import Model, ModelRequest
 from offgrid.shared.exceptions import AgentSettingsError
 from offgrid.shared.wording import (
     UNDER,
@@ -250,6 +250,59 @@ def read_the_highlight(
     return Pairing(
         agent=named.agent if agent is None else AgentName(agent),
         model=named.model if model is None or takes_what_is_held else model,
+    )
+
+
+def assemble_a_profile(report: WhatCouldBeRun, pairing: Pairing) -> Profile:
+    """Write what a highlight is on into the profile it would be saved as.
+
+    A copy of the file with the pairing's agent and model in it: what the file
+    would say if the key that writes were pressed, and what a run reached from
+    the screen is made from whether or not it is written.
+
+    The window is carried through rather than settled. A pairing that asks for
+    no number is one the runtime answers with whatever it remembers, and
+    materialising it into a number is a request nobody made — the one thing a
+    save must not quietly write.
+
+    :param report: Everything that was read.
+    :param pairing: What the highlights are on.
+
+    :return: The profile the pairing assembles to.
+
+    :raise AgentSettingsError: When nothing was read for the pairing's agent,
+        which is offgrid's own fault rather than this machine's — every name in
+        `AgentName` is asked when the screen opens.
+    """
+    return report.profile.model_copy(
+        update={
+            "agent": find_agent(report, pairing.agent).config,
+            "model": ModelRequest(
+                identifier=pairing.model,
+                context_window=report.profile.model.context_window,
+            ),
+        }
+    )
+
+
+def describe_what_a_save_wrote(profile: Profile) -> str:
+    """Say what a save put in the file, which is wider than the model alone.
+
+    Claude Code's picker writes one field; a save here writes runtime, agent
+    and model, so a person trying an agent once has rewritten three keys. The
+    sentence names all of them rather than only the model, so a wider write is
+    never a silent one.
+
+    :param profile: What was saved.
+
+    :return: The line a person reads after a save.
+    """
+    named = profile.model.identifier
+    model = named if named is not None else "no model, so a run takes whatever is held"
+
+    return (
+        f"Saved to your profile: runtime {profile.runtime_name.value}, "
+        f"agent {profile.agent_name.value}, model {model}."
     )
 
 

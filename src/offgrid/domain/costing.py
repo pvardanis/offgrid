@@ -21,6 +21,7 @@ from offgrid.domain.assembling import (
     Pairing,
     WhatCouldBeRun,
     WouldNotAnswer,
+    assemble_a_profile,
     find_agent,
     find_what_would_answer,
 )
@@ -32,10 +33,9 @@ from offgrid.domain.checkup import (
     describe_the_runtime,
     describe_what_is_requested,
 )
-from offgrid.domain.profile import Profile
 from offgrid.domain.running.agent import AgentName
 from offgrid.domain.running.dialect import Dialect, require_compatible
-from offgrid.domain.running.model import Model, ModelRequest
+from offgrid.domain.running.model import Model
 from offgrid.shared.exceptions import DialectMismatchError
 from offgrid.shared.wording import REMEDY, say_in_columns, say_indented
 
@@ -64,7 +64,7 @@ def describe_what_would_run(
         return _describe_an_agent_that_would_not_answer(report, agent.name, answered)
 
     checkup = Checkup(
-        profile=_as_assembled(report.profile, agent, pairing),
+        profile=assemble_a_profile(report, pairing),
         runtime=report.runtime,
         agent=answered,
     )
@@ -112,34 +112,6 @@ def _describe_an_agent_that_would_not_answer(
         say_in_columns("agent", f"{name.value}, which did not answer"),
         *say_indented(REMEDY, refusal.why),
         *describe_a_discarded_window(report.runtime),
-    )
-
-
-def _as_assembled(
-    profile: Profile, agent: AgentOnThisMachine, pairing: Pairing
-) -> Profile:
-    """Write the pairing into a profile, so the report is about that pairing.
-
-    A copy rather than the file, because nothing here is written down: this is
-    what the file would say if somebody pressed the key that saves.
-
-    :param profile: What is written down.
-    :param agent: The agent the highlight is on, and its section.
-    :param pairing: What the highlight is on.
-
-    :return: The profile the report is computed against.
-    """
-    # The window is carried through rather than settled: a pairing that asks
-    # for no number is one the runtime answers with whatever it remembers, and
-    # putting a number there would be a request nobody made.
-    return profile.model_copy(
-        update={
-            "agent": agent.config,
-            "model": ModelRequest(
-                identifier=pairing.model,
-                context_window=profile.model.context_window,
-            ),
-        }
     )
 
 
