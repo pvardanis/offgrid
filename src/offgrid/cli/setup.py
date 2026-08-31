@@ -21,6 +21,26 @@ DEFAULT_RUNTIME = RuntimeName.LMSTUDIO
 DEFAULT_AGENT = AgentName.CLAUDE_CODE
 
 
+def default_profile() -> Profile:
+    """Build the profile a fresh machine gets, without reading a file.
+
+    What `setup` would write where there is none: the runtime and agent offgrid
+    defaults to, listening where it defaults to, and no model named. The screen
+    assembles onto this when a stranger opens it before running `setup`, so that
+    nobody is sent away to another command before seeing anything.
+
+    :return: The default profile.
+    """
+    return Profile(
+        runtime=create_runtime_config(
+            {"name": DEFAULT_RUNTIME.value, "host": DEFAULT_HOST}
+        ),
+        agent=create_agent_config(
+            {"name": DEFAULT_AGENT.value}, runtime_host=DEFAULT_HOST
+        ),
+    )
+
+
 def setup(
     host: str = typer.Option(None, help="Where the runtime listens."),
 ) -> None:

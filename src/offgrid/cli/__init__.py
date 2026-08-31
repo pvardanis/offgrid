@@ -26,6 +26,8 @@ from offgrid.cli.run import launch_the_assembled_profile
 from offgrid.cli.run import run as run_command
 from offgrid.cli.setup import setup as setup_command
 from offgrid.domain.profile import DEFAULT_PATH, save_profile
+from offgrid.domain.sizing.machine import detect
+from offgrid.domain.sizing.measuring import describe_this_machine
 from offgrid.shared.exceptions import OffgridError
 from offgrid.shared.say import say_on_stderr, someone_is_at_a_terminal, tell
 
@@ -64,9 +66,16 @@ def offgrid(ctx: typer.Context) -> None:
     # that is not the screen would pay it.
     from offgrid.tui.picker import Picker
 
+    # A stranger following the README has written no profile, and the screen
+    # measures the machine for them rather than sending them to `setup` first.
+    # A file that is there is a run already assembled, and its budget is not
+    # what its owner opened the screen to read — so nothing is measured for it.
+    no_profile = not DEFAULT_PATH.exists() and not DEFAULT_PATH.is_symlink()
+
     screen = Picker(
         read_report_func=lambda: read_what_could_be_run(DEFAULT_PATH),
         save_func=lambda profile: save_profile(profile, DEFAULT_PATH),
+        measure_func=(lambda: describe_this_machine(detect())) if no_profile else None,
     )
     departure = screen.run()
 

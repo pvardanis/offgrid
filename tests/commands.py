@@ -23,9 +23,9 @@ BIN = "bin"
 # Which commands read the machine, and which modules name the profile. Listed
 # rather than found, so a command added without a line here fails a test
 # instead of quietly reaching the developer's own machine. The command line
-# itself names the profile: run with nothing to do, it opens the screen, which
-# reads one like any command.
-MEASURING = ("offgrid.cli.setup", "offgrid.cli.recommend")
+# itself names the profile and measures the machine: run with nothing to do and
+# no profile written, it opens the screen showing what fits.
+MEASURING = ("offgrid.cli", "offgrid.cli.setup", "offgrid.cli.recommend")
 READING_THE_PROFILE = (
     "offgrid.cli",
     "offgrid.cli.setup",

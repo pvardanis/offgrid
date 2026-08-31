@@ -41,6 +41,7 @@ from offgrid.tui.dropdown import Dropdown
 
 type ReadWhatCouldBeRun = Callable[[], WhatCouldBeRun]
 type SaveWhatWasAssembled = Callable[[Profile], None]
+type MeasureThisMachine = Callable[[], tuple[str, ...]]
 
 
 @dataclass(frozen=True)
@@ -211,6 +212,7 @@ class Picker(App[Departure | None]):
         self,
         read_report_func: ReadWhatCouldBeRun,
         save_func: SaveWhatWasAssembled,
+        measure_func: MeasureThisMachine | None = None,
     ) -> None:
         """Take what the screen will show and how it saves, rather than reaching.
 
@@ -222,12 +224,19 @@ class Picker(App[Departure | None]):
         :param read_report_func: What the profile, the runtime and the agents answer.
         :param save_func: What writes an assembled profile where a later run
             finds it.
+        :param measure_func: What this machine and what fits it read as, handed
+            in where there is no profile so that a stranger meets the machine
+            measured rather than an error naming another command. ``None`` where
+            a profile is there, since the machine's budget is not what somebody
+            with a run already assembled came to read.
         """
         super().__init__()
 
         self._read_report_func = read_report_func
         self._save_func = save_func
+        self._measure_func = measure_func
         self._report: WhatCouldBeRun | None = None
+        self._measurement: tuple[str, ...] = ()
 
     def compose(self) -> ComposeResult:
         """Build the screen: the dropdowns, the models list, the report beside.
@@ -273,6 +282,11 @@ class Picker(App[Departure | None]):
         self.query_one(f"#{RUNTIME_BOX}", Vertical).border_title = "runtime"
         self.query_one(f"#{AGENT_BOX}", Vertical).border_title = "agent"
         self.query_one(f"#{MODEL_BOX}", Vertical).border_title = MODELS
+
+        # Measured first and kept, so it is shown above whatever the report turns
+        # out to be — the machine's budget survives a runtime that did not
+        # answer, which is exactly the machine a stranger opened this to size.
+        self._measurement = self._measure()
 
         try:
             report = self._read_report_func()
@@ -488,9 +502,27 @@ class Picker(App[Departure | None]):
             f"{WRITES} · {CHANGED if differs else UNCHANGED}"
         )
 
+    def _measure(self) -> tuple[str, ...]:
+        """Read this machine, where a fresh one was handed a way to.
+
+        :return: The measurement's lines, or none where a profile was there and
+            no measurement was handed in. A machine offgrid cannot size — not an
+            Apple Silicon Mac — is the one line saying so rather than a blank
+            pane, since that too is worth reading above the report.
+        """
+        if self._measure_func is None:
+            return ()
+
+        try:
+            return self._measure_func()
+        except OffgridError as error:
+            return (str(error),)
+
     def _say(self, said: str) -> None:
-        """Put text in the report pane.
+        """Put text in the report pane, under the measurement where there is one.
 
         :param said: What to show there.
         """
-        self.query_one(f"#{REPORT}", Static).update(said)
+        shown = "\n".join((*self._measurement, "", said)) if self._measurement else said
+
+        self.query_one(f"#{REPORT}", Static).update(shown)
