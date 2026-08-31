@@ -31,6 +31,7 @@ from offgrid.domain.running.dialect import Dialect
 from offgrid.domain.running.discarded_windows import save_discarded_window
 from offgrid.domain.running.model import Model
 from offgrid.domain.running.runtime import RuntimeName
+from offgrid.domain.sizing.measuring import describe_this_machine
 from offgrid.shared.exceptions import ProfileError
 from offgrid.tui.dropdown import Dropdown
 from offgrid.tui.picker import (
@@ -47,6 +48,7 @@ from offgrid.tui.picker import (
     Departure,
     Picker,
 )
+from tests.commands import MACHINE
 from tests.doubles import serve_get
 from tests.launches import record_launch
 from tests.lmstudio_server import RESIDENT, SERVED, answer_as_lm_studio
@@ -174,6 +176,30 @@ def screen(here, *keys: str, size: tuple[int, int] = ROOMY) -> Driven:
         Picker(
             read_report_func=lambda: read_what_could_be_run(here / "profile.yaml"),
             save_func=lambda profile: save_profile(profile, here / "profile.yaml"),
+        ),
+        *keys,
+        size=size,
+    )
+
+
+def fresh_screen(here, *keys: str, size: tuple[int, int] = ROOMY) -> Driven:
+    """Open the screen the way bare `offgrid` does where there is no profile.
+
+    The measurement is handed in, as the command line hands it in when the file
+    is absent: a stranger following the README meets the machine measured
+    rather than an error naming another command.
+
+    :param here: Where the profile would be, which no test wrote here.
+    :param keys: What to press, in order.
+    :param size: How much terminal to give it.
+
+    :return: What the screen answered.
+    """
+    return drive(
+        Picker(
+            read_report_func=lambda: read_what_could_be_run(here / "profile.yaml"),
+            save_func=lambda profile: save_profile(profile, here / "profile.yaml"),
+            measure_func=lambda: describe_this_machine(MACHINE),
         ),
         *keys,
         size=size,
@@ -1205,3 +1231,90 @@ def test_a_save_that_cannot_be_written_is_shown_and_the_screen_stays(here, monke
     assert driven.still_open
     assert driven.left_with is None
     assert "Could not write the profile" in driven.shown
+
+
+def test_where_there_is_no_profile_the_screen_measures_rather_than_refusing(
+    here, monkeypatch
+):
+    # A stranger following the README has run no `setup`, so there is no
+    # profile. What they meet is the machine measured, not an error sending them
+    # to another command before they have seen anything.
+    on_this_machine(monkeypatch, "claude")
+
+    driven = fresh_screen(here)
+
+    assert "Apple M1 Max" in driven.shown
+    assert "No profile at" not in driven.shown
+    assert "offgrid setup" not in driven.shown
+    # The report is assembled onto what `setup` would have written, so the lists
+    # and the report work rather than standing empty behind the measurement:
+    # the runtime the default names answers, and the model it holds is shown.
+    assert f"model              {RESIDENT}" in driven.shown
+
+
+def test_where_there_is_no_profile_the_screen_says_what_fits_at_each_width(
+    here, monkeypatch
+):
+    # The point of measuring for a stranger: what to go and download. Each width
+    # a model is published at, and the budget at it.
+    on_this_machine(monkeypatch, "claude")
+
+    driven = fresh_screen(here)
+    widths = [line for line in driven.shown.splitlines() if "bit" in line]
+
+    assert [line.split("-", 1)[0].strip() for line in widths] == ["4", "8", "16"]
+    assert all("parameters" in line for line in widths)
+
+
+def test_the_measurement_survives_a_runtime_that_did_not_answer(here, monkeypatch):
+    # Someone who has not started their runtime is exactly who wants to know
+    # what fits before downloading. The budget is read off this machine, not the
+    # runtime, so it stands beside the causes rather than being lost with them.
+    def refuse(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("connection refused", request=request)
+
+    serve_get(monkeypatch, refuse)
+
+    driven = fresh_screen(here)
+
+    assert "Apple M1 Max" in driven.shown
+    assert "http://127.0.0.1:1234" in driven.shown
+    assert driven.still_open
+
+
+def test_measuring_the_machine_writes_no_profile(here, monkeypatch):
+    # Nothing measured is kept: opening the screen on a fresh machine and
+    # leaving writes no profile, so the measurement never quietly becomes a
+    # file. Only the key that saves writes, as everywhere else.
+    on_this_machine(monkeypatch, "claude")
+
+    fresh_screen(here, "q")
+
+    assert not (here / "profile.yaml").exists()
+
+
+def test_bare_offgrid_with_no_profile_hands_the_screen_a_measurement(here, monkeypatch):
+    # The wiring: the command line measures the machine and hands it in only
+    # where no profile is there, so the screen a stranger opens sizes their Mac.
+    sit_at_a_terminal(monkeypatch)
+    on_this_machine(monkeypatch, "claude")
+    opened = []
+    monkeypatch.setattr(Picker, "run", lambda self: opened.append(self))
+
+    runner.invoke(app, [])
+
+    assert "Apple M1 Max" in drive(opened[0]).shown
+
+
+def test_bare_offgrid_with_a_profile_hands_the_screen_no_measurement(here, monkeypatch):
+    # The other side of the wiring: a file that is there is a run already
+    # assembled, and its owner did not open the screen to read the machine's
+    # budget — so nothing is measured, and the report is what it has always been.
+    runner.invoke(app, ["setup"])
+    sit_at_a_terminal(monkeypatch)
+    opened = []
+    monkeypatch.setattr(Picker, "run", lambda self: opened.append(self))
+
+    runner.invoke(app, [])
+
+    assert "unified memory" not in drive(opened[0]).shown

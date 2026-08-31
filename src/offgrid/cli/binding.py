@@ -177,10 +177,13 @@ def read_what_could_be_run(profile_path: Path) -> WhatCouldBeRun:
     :return: The profile, what the runtime holds and has, and what each agent
         said about itself here.
 
-    :raise OffgridError: When the profile is not one, or when nothing answered
-        for the runtime it names. Both stop the picker having anything to show.
+    :raise OffgridError: When there is a profile and it is not one, or when
+        nothing answered for the runtime named. Both stop the picker having
+        anything to show. A missing profile is not one of them: a stranger
+        following the README has written none, and the screen measures for them
+        rather than refusing.
     """
-    profile = read_profile(profile_path)
+    profile = _read_profile_or_default(profile_path)
     runtime = connect_runtime(profile.runtime)
 
     downloaded_models = tuple(runtime.read_catalogue())
@@ -205,6 +208,34 @@ def read_what_could_be_run(profile_path: Path) -> WhatCouldBeRun:
         held=frozenset(model.identifier for model in in_memory),
         agents=tuple(_ask_every_agent(profile)),
     )
+
+
+def _read_profile_or_default(profile_path: Path) -> Profile:
+    """Read the profile, or default it where a fresh machine has none.
+
+    A missing file is a stranger who has not run `setup`, and the screen sizes
+    the machine for them rather than refusing: it assembles onto what `setup`
+    would have written. A file that is there and will not load is refused as
+    everywhere else — it names a runtime, and guessing past it would answer
+    about an adapter its owner did not choose. A symlink is somebody having
+    claimed the path, so it is read whether or not the far end is there, the
+    same road `recommend` takes.
+
+    :param profile_path: Where the profile is kept.
+
+    :return: What was written down, or the default where nothing was.
+
+    :raise ProfileError: When a profile is there and is not one.
+    """
+    if not profile_path.exists() and not profile_path.is_symlink():
+        # Deferred so setup, which imports this module for `read_profile`, is
+        # not imported back at module load: the default is asked for at the one
+        # moment a fresh machine opens the screen.
+        from offgrid.cli.setup import default_profile
+
+        return default_profile()
+
+    return read_profile(profile_path)
 
 
 def _ask_every_agent(profile: Profile) -> list[AgentOnThisMachine]:
