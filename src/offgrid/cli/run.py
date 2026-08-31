@@ -2,10 +2,12 @@
 
 import typer
 
-from offgrid.cli.binding import bind_run
+from offgrid.cli.binding import bind_profile, bind_run
 from offgrid.cli.reporting import reporting
-from offgrid.domain.profile import DEFAULT_PATH
+from offgrid.domain.assembling import describe_what_a_save_wrote
+from offgrid.domain.profile import DEFAULT_PATH, Profile
 from offgrid.domain.running import discarded_windows
+from offgrid.domain.running.agent import Agent
 from offgrid.domain.running.answering import hold_model
 from offgrid.domain.running.context_window import (
     refuse_a_served_window_below_the_floor,
@@ -19,9 +21,11 @@ from offgrid.domain.running.discarding import (
 from offgrid.domain.running.launch import explain_why_it_would_not_start, start
 from offgrid.domain.running.leaving import require_nothing_leaves
 from offgrid.domain.running.model import (
+    ModelRequest,
     read_what_was_typed,
     settle_what_to_run,
 )
+from offgrid.domain.running.runtime import Runtime
 from offgrid.shared.say import tell
 from offgrid.shared.wording import describe_what_was_stated
 
@@ -44,11 +48,6 @@ def run(
     """Start the agent against a model the runtime is holding."""
     passthrough = tuple(context.args)
 
-    # Said in blocks rather than behind `@reporting()`, which is how the other
-    # commands read what they read: the second one below wraps a single
-    # statement inside the `try` that owes the release, and a decorator can
-    # only mean a whole function. One command spelling it both ways is worse
-    # than one command spelling it differently.
     with reporting():
         profile, runtime, agent = bind_run(DEFAULT_PATH, passthrough)
         model_request = settle_what_to_run(
@@ -56,6 +55,60 @@ def run(
             stored=profile.model,
         )
 
+    raise typer.Exit(launch_a_run(profile, runtime, agent, model_request))
+
+
+def launch_the_assembled_profile(profile: Profile, *, saved: bool) -> None:
+    """Run what the picker handed back, in the plain lines a run is read in.
+
+    The screen has settled runtime, agent and model into a profile and, where
+    the key that writes was pressed, already saved it. What is left is the run
+    itself, said the same way whether it was reached from here or a command
+    line, and the sentence that says what a save wrote — printed here rather
+    than on the screen, which is gone by the time this runs.
+
+    :param profile: What the picker assembled.
+    :param saved: Whether the profile was saved, which is what the report of it
+        is about.
+
+    :raise Exit: With the code the run finished on, as `run` raises it.
+    """
+    if saved:
+        tell(describe_what_a_save_wrote(profile))
+
+    with reporting():
+        profile, runtime, agent = bind_profile(profile)
+        model_request = settle_what_to_run(
+            read_what_was_typed(identifier=None, context_window=None),
+            stored=profile.model,
+        )
+
+    raise typer.Exit(launch_a_run(profile, runtime, agent, model_request))
+
+
+def launch_a_run(
+    profile: Profile, runtime: Runtime, agent: Agent, model_request: ModelRequest
+) -> int:
+    """Hold the model, start the agent against it, and let it go afterwards.
+
+    The run sequence, from the checks that cost nothing through to the release
+    that is owed once a load has been paid for. It is one function so that a run
+    reached from the picker and a run reached from a command line are the same
+    eight steps, worded the same way and exiting the same way.
+
+    :param profile: What the run is made from.
+    :param runtime: The runtime holding the model.
+    :param agent: The agent to start.
+    :param model_request: The model to hold, and the window to hold it at.
+
+    :return: The code the run finished on.
+    """
+    # Said in blocks rather than behind `@reporting()`, which is how the other
+    # commands read what they read: the second one below wraps a single
+    # statement inside the `try` that owes the release, and a decorator can
+    # only mean a whole function. One command spelling it both ways is worse
+    # than one command spelling it differently.
+    with reporting():
         # A dialect that cannot be paired, a run that could send something off
         # this machine and a window the run could not work at are all settled
         # before the load — the first two here, the window inside `hold_model`
@@ -128,4 +181,4 @@ def run(
     finally:
         runtime.let_go(model.identifier)
 
-    raise typer.Exit(code)
+    return code

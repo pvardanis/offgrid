@@ -9,6 +9,7 @@ from pathlib import Path
 
 from offgrid.domain.profile.profile import DEFAULT_PATH, Profile
 from offgrid.domain.profile.restating import keep_hand_edits
+from offgrid.shared.exceptions import ProfileError
 
 
 def save_profile(profile: Profile, path: Path = DEFAULT_PATH) -> None:
@@ -25,17 +26,27 @@ def save_profile(profile: Profile, path: Path = DEFAULT_PATH) -> None:
 
     :param profile: The profile to store.
     :param path: Where to write it.
-    """
-    path.parent.mkdir(parents=True, exist_ok=True)
 
+    :raise ProfileError: When the file cannot be written — no folder, no
+        permission, no room. Said in offgrid's own words rather than a raw
+        `OSError`, so that a save reached from the picker's key fails as a
+        sentence a person can act on rather than a traceback on the screen.
+    """
     # Dumped as what YAML can carry: a plain dump answers with the enum member
     # itself, which the writer refuses with `cannot represent an object`.
     written = profile.model_dump(mode="json")
 
     while_writing = path.with_suffix(".yaml.writing")
-    while_writing.write_text(keep_hand_edits(_read_what_is_there(path), written))
 
-    while_writing.replace(path)
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        while_writing.write_text(keep_hand_edits(_read_what_is_there(path), written))
+        while_writing.replace(path)
+    except OSError as error:
+        raise ProfileError(
+            f"Could not write the profile to {path}: {error}. Check the folder "
+            "exists and is writable, and that there is room on the disk."
+        ) from error
 
 
 def _read_what_is_there(path: Path) -> str:

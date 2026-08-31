@@ -184,3 +184,18 @@ def test_a_profile_written_where_there_is_none_is_written_whole(tmp_path):
         "agent:\n  name: claude-code\n"
         f"model:\n  identifier: {NAMED_MODEL}\n  context_window: 32768\n"
     )
+
+
+def test_a_profile_that_cannot_be_written_fails_in_offgrids_own_words(tmp_path):
+    # A save reached from the picker's key must fail as a sentence a person can
+    # act on rather than a raw OSError. The parent here is a file, so making the
+    # folder to write into cannot succeed, and the failure names the path.
+    blocker = tmp_path / "blocker"
+    blocker.write_text("a file where a folder would need to be")
+
+    with pytest.raises(ProfileError) as refused:
+        save_profile(build_profile(), blocker / "profile.yaml")
+
+    said = str(refused.value)
+    assert "Could not write the profile" in said
+    assert str(blocker / "profile.yaml") in said

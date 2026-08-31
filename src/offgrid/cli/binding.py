@@ -94,8 +94,23 @@ def bind_run(
     :raise ProfileError: When the profile is not one, or a section is not one
         its adapter can read.
     """
-    profile = read_profile(profile_path)
+    return bind_profile(read_profile(profile_path), passthrough)
 
+
+def bind_profile(
+    profile: Profile, passthrough: Passthrough = ()
+) -> tuple[Profile, Runtime, Agent]:
+    """Bind both adapters a profile already in memory names.
+
+    What the picker hands back is a profile assembled in memory rather than one
+    read from a file, so a run reached from the screen binds this rather than
+    reading the profile again — and binds exactly what was on screen.
+
+    :param profile: What a run is made from.
+    :param passthrough: Arguments handed to the agent unchanged.
+
+    :return: The profile, the runtime, and the agent.
+    """
     runtime = connect_runtime(profile.runtime)
     agent = prepare_agent(profile.agent, passthrough)
 
