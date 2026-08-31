@@ -2278,3 +2278,35 @@ put a second entrance on the same screen, which needed a `--no-input` flag to
 turn back off, and left `offgrid` and `run` doing the same thing at a dead end
 — the question "why not just open `offgrid`?" had no answer. One door in, one
 signpost to it.
+
+## No profile means measure, not send away
+
+A stranger following the README meets the screen before they meet `setup`. The
+screen used to refuse — the profile read raised "No profile at … Run `offgrid
+setup`", and that sentence was shown in the report pane, sending somebody to
+another command before anything had been shown to them.
+
+Now a missing file is read as a fresh machine rather than a fault. The screen
+assembles onto the profile `setup` would have written — the same default
+runtime, agent and host — so the lists and the report stand up behind the
+measurement rather than empty. `_read_profile_or_default` in `binding.py` makes
+the distinction the same way `recommend` already does: absent (and not a
+symlink) is defaulted, there-but-unreadable is refused as everywhere else, since
+a file that names a runtime is not one to guess past. Nothing measured is
+written: the default is held in memory, and only the key that saves writes it.
+
+**The measurement is read off this machine, not the runtime, so it is handed to
+the screen separately from the report.** Someone who has not started their
+runtime is exactly who wants to know what fits before downloading, and threading
+the budget through the report — which raises when the runtime does not answer —
+would lose it at the one moment it is most wanted. So the command line hands the
+screen a `measure_func` where there is no profile, the screen shows its lines
+above whatever the report turns out to be, and an unreachable runtime leaves the
+budget standing beside the causes. A file that is there is a run already
+assembled, and its owner did not open the screen to read the machine's budget,
+so nothing is measured for it.
+
+**The sentences are `setup`'s own.** The chip, the memory and what fits at each
+width moved to `sizing/measuring.py`, which both surfaces take them from, so the
+screen and `setup` cannot word the machine differently. `setup`'s output is
+unchanged: it prints the same lines, now from one place.
