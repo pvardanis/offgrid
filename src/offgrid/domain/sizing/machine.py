@@ -110,8 +110,9 @@ def parse(brand: str, memsize: str, wired_limit_mb: str | None) -> Machine:
     :return: The described machine.
 
     :raise UnsupportedMachineError: When the memory size is unreadable or not
-        a positive number of bytes. There is no sensible default for how much
-        memory a machine has, and a wrong one silently refuses every model.
+        a positive number of bytes, or the wired limit is present but not a
+        number. There is no sensible default for how much memory a machine has,
+        and a wrong one silently refuses every model.
     """
     try:
         memory = int(memsize)
@@ -127,13 +128,40 @@ def parse(brand: str, memsize: str, wired_limit_mb: str | None) -> Machine:
             "offgrid cannot size a model for a machine it cannot measure."
         )
 
-    wired = int(wired_limit_mb) if wired_limit_mb else 0
+    wired = _read_wired_limit(wired_limit_mb)
 
     return Machine(
         chip=brand.strip(),
         memory_bytes=memory,
         wired_limit_bytes=wired * BYTES_PER_MB if wired else None,
     )
+
+
+def _read_wired_limit(wired_limit_mb: str | None) -> int:
+    """Read the wired limit in megabytes, refusing an unreadable one.
+
+    macOS reports ``0`` while the limit is at its default, and the key is
+    absent on older systems, so both an absent and a zero value mean "not
+    raised". A present value that is not a number is a fault, not a default:
+    guessing past it would size a model against a limit nobody set.
+
+    :param wired_limit_mb: ``iogpu.wired_limit_mb``, or ``None`` when absent.
+
+    :return: The limit in megabytes, or ``0`` when it is not raised.
+
+    :raise UnsupportedMachineError: When the value is present but not a number.
+    """
+    if not wired_limit_mb:
+        return 0
+
+    try:
+        return int(wired_limit_mb)
+    except ValueError as error:
+        raise UnsupportedMachineError(
+            f"sysctl reported iogpu.wired_limit_mb as {wired_limit_mb!r}, which "
+            "is not a number. Run `sysctl -n iogpu.wired_limit_mb` to see what "
+            "your shell reports."
+        ) from error
 
 
 def _sysctl(key: str) -> str | None:

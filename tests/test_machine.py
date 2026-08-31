@@ -52,6 +52,11 @@ def test_unreadable_memory_is_refused_rather_than_guessed():
         parse(BRAND, "not-a-number", None)
 
 
+def test_an_unreadable_wired_limit_is_refused_rather_than_crashing():
+    with pytest.raises(UnsupportedMachineError, match=r"iogpu\.wired_limit_mb"):
+        parse(BRAND, MEMSIZE, "not-a-number")
+
+
 def test_intel_macs_are_refused():
     with pytest.raises(UnsupportedMachineError, match="Apple Silicon"):
         require_apple_silicon("Darwin", "x86_64")
