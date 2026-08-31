@@ -23,24 +23,20 @@ from textual.app import App, ComposeResult
 from textual.binding import Binding, BindingType
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.widgets import Footer, OptionList, Select, Static
-from textual.widgets.option_list import Option
 
 from offgrid.domain.assembling import (
     Pairing,
     WhatCouldBeRun,
     assemble_a_profile,
-    describe_a_model_row,
-    describe_an_agent_row,
     find_what_would_answer,
     name_the_model_columns,
     open_on_what_the_profile_holds,
-    order_models_held_first,
     read_the_highlight,
 )
 from offgrid.domain.costing import describe_what_would_run
 from offgrid.domain.profile import Profile
-from offgrid.domain.running.runtime import RuntimeName
 from offgrid.shared.exceptions import OffgridError
+from offgrid.tui.choices import Choices, agent_choices, model_options, runtime_choices
 from offgrid.tui.dropdown import Dropdown
 
 type ReadWhatCouldBeRun = Callable[[], WhatCouldBeRun]
@@ -123,14 +119,6 @@ change something, rather than remember whether they moved anything.
 
 UNCHANGED = "this is your saved profile"
 """What the status says when what is assembled is exactly what the file holds."""
-
-NOTHING_DOWNLOADED = "the runtime has nothing downloaded"
-"""What stands in the models list where a runtime has no models at all.
-
-A list with a row in it saying so, rather than an empty box: an empty box is
-read as offgrid having failed to ask. Disabled, because it is a sentence rather
-than something to pick.
-"""
 
 
 class Picker(App[Departure | None]):
@@ -371,84 +359,31 @@ class Picker(App[Departure | None]):
     def _fill_the_lists(self, report: WhatCouldBeRun) -> None:
         """Put what offgrid drives, and what this machine has, into the screen.
 
-        The models highlight is left where the profile points, and each dropdown
-        opens on what a run would do today rather than on whatever sorts first.
+        What each list offers is worked out in `choices`; this puts it on the
+        widgets. The models highlight is left where the profile points, and each
+        dropdown opens on what a run would do today rather than on whatever sorts
+        first.
 
         :param report: Everything that was read.
         """
-        self._get_list().add_options(self._get_model_options(report))
+        self._get_list().add_options(model_options(report))
         self._highlight_model(report)
 
-        # Only the profile's runtime has a config to be assembled from, so every
-        # other one offgrid drives is greyed until that stops being true.
-        runtime = report.profile.runtime_name
+        self._offer(RUNTIMES, runtime_choices(report))
+        self._offer(AGENTS, agent_choices(report))
 
-        self._get_dropdown(RUNTIMES).offer(
-            [(name.value, name.value) for name in RuntimeName],
-            unavailable=frozenset(
-                name.value for name in RuntimeName if name != runtime
-            ),
-        )
-        self._get_dropdown(RUNTIMES).value = report.profile.runtime_name.value
+    def _offer(self, which: str, choices: Choices) -> None:
+        """Put what a dropdown offers onto it, and open it on the right value.
 
-        self._get_dropdown(AGENTS).offer(
-            [
-                (describe_an_agent_row(agent), agent.name.value)
-                for agent in report.agents
-            ],
-            unavailable=frozenset(
-                agent.name.value
-                for agent in report.agents
-                if not agent.is_on_this_machine
-            ),
-        )
-
-        opens_on = self._agent_to_open_on(report)
-
-        if opens_on is not None:
-            self._get_dropdown(AGENTS).value = opens_on
-
-    def _agent_to_open_on(self, report: WhatCouldBeRun) -> str | None:
-        """Say which agent a dropdown opens on, which the profile's may not be.
-
-        An agent this machine has not got is greyed and cannot be the value, so
-        the dropdown opens on the first one it can reach — something has to be
-        reported on, and the rest of the list is what there is. Where none can
-        be reached there is nothing to open on, and the report falls back on the
-        agent the profile names.
-
-        :param report: Everything that was read.
-
-        :return: The agent to open on, or ``None`` where none can be reached.
+        :param which: The dropdown to fill.
+        :param choices: What it offers, and what to open on.
         """
-        reachable = [
-            agent.name.value for agent in report.agents if agent.is_on_this_machine
-        ]
+        dropdown = self._get_dropdown(which)
 
-        if not reachable:
-            return None
+        dropdown.offer(choices.options, unavailable=choices.unavailable)
 
-        wanted = report.profile.agent_name.value
-
-        return wanted if wanted in reachable else reachable[0]
-
-    def _get_model_options(self, report: WhatCouldBeRun) -> list[Option]:
-        """Lay out a row per model downloaded, held ones first.
-
-        :param report: Everything that was read.
-
-        :return: The rows, or the one saying there are none.
-        """
-        if not report.downloaded_models:
-            return [Option(NOTHING_DOWNLOADED, disabled=True)]
-
-        return [
-            Option(
-                describe_a_model_row(model, held=model.identifier in report.held),
-                id=model.identifier,
-            )
-            for model in order_models_held_first(report)
-        ]
+        if choices.opens_on is not None:
+            dropdown.value = choices.opens_on
 
     def _highlight_model(self, report: WhatCouldBeRun) -> None:
         """Put the models highlight on the row the profile points at.
