@@ -21,6 +21,7 @@ import typer
 # there; only the name this file binds is the alias.
 from offgrid.cli.binding import read_what_could_be_run, there_is_no_profile
 from offgrid.cli.doctor import doctor as doctor_command
+from offgrid.cli.recommend import read_what_a_list_recommends
 from offgrid.cli.recommend import recommend as recommend_command
 from offgrid.cli.run import launch_the_assembled_profile
 from offgrid.cli.run import run as run_command
@@ -77,6 +78,7 @@ def offgrid(ctx: typer.Context) -> None:
         read_report_func=lambda: read_what_could_be_run(DEFAULT_PATH),
         save_func=lambda profile: save_profile(profile, DEFAULT_PATH),
         measure_func=measure if there_is_no_profile(DEFAULT_PATH) else None,
+        recommend_func=read_what_a_list_recommends,
     )
     departure = screen.run()
 

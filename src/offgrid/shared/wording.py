@@ -63,6 +63,20 @@ what it is.
 """
 
 
+REACHING_THE_NETWORK = (
+    "Reaching the published list now. This is the only time offgrid uses\n"
+    "the network: nothing about this machine is sent, and no cookie is kept."
+)
+"""What is said before a published list is fetched, on both surfaces.
+
+`recommend` and the picker each reach the same page, and neither reaches it
+until asked. Said before the fetch rather than after it, so a person is told
+that this one thing touches the network before it happens rather than once it
+already has. Here because two layers say it and a fact worded twice is two
+surfaces that come to word it differently.
+"""
+
+
 def describe_what_was_stated(value: int | None) -> str:
     """Say what number was stated, or that none was.
 

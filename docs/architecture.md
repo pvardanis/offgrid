@@ -144,6 +144,8 @@ tui/               the layer, and the screen bare `offgrid` opens
   choices.py       what each list offers out of what was read, greyed where
                    a run cannot start it
   dropdown.py      a Select that greys the choices a run cannot start
+  published_list.py  the published table, said before it is reached and
+                   shown on the one key in the picker that touches the network
 ```
 
 **adapters**

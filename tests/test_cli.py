@@ -1558,6 +1558,54 @@ def test_recommend_says_what_stopped_it_rather_than_raising(here, monkeypatch):
     assert "could not reach the leaderboard" in result.stderr
 
 
+def test_recommend_says_it_is_reaching_the_network_before_the_table(here, monkeypatch):
+    # A local tool reaching a third party is worth a heads-up, and the point of
+    # a heads-up is that it comes first: said above the table, not once the
+    # fetch it warns about has already happened.
+    from offgrid.shared.wording import REACHING_THE_NETWORK
+
+    _leaderboard(monkeypatch, models=[_listed("A-Model-35B", "35B")])
+
+    said = runner.invoke(app, ["recommend"]).stderr
+
+    assert REACHING_THE_NETWORK in said
+    assert said.index(REACHING_THE_NETWORK) < said.index("A-Model-35B")
+
+
+def test_recommend_says_it_is_reaching_the_network_even_when_the_fetch_fails(
+    here, monkeypatch
+):
+    # Said before the fetch rather than as its result: a fetch that failed is
+    # exactly the run that proves the sentence came first, since it is there
+    # with no table under it and above what stopped the table.
+    from offgrid.shared.wording import REACHING_THE_NETWORK
+
+    _unreachable(monkeypatch)
+
+    result = runner.invoke(app, ["recommend"])
+    said = result.stderr
+
+    assert result.exit_code == 1
+    assert REACHING_THE_NETWORK in said
+    assert "Could not reach the table" in said
+    assert said.index(REACHING_THE_NETWORK) < said.index("Could not reach the table")
+
+
+def test_the_picker_reader_names_the_download_with_a_placeholder(here, monkeypatch):
+    # The picker shows the whole table and any row on it is a person's to
+    # download, so its download line names a placeholder rather than the one
+    # model `recommend` ranked first. The table still names the concrete rows.
+    from offgrid.cli.recommend import PLACEHOLDER, read_what_a_list_recommends
+
+    _leaderboard(monkeypatch, models=[_listed("A-Model-35B", "35B")])
+
+    said = "\n".join(read_what_a_list_recommends())
+
+    assert "A-Model-35B" in said
+    assert f"lms get {PLACEHOLDER}" in said
+    assert "lms get A-Model-35B" not in said
+
+
 def test_recommend_says_everything_it_says_to_stderr(here, monkeypatch):
     # stdout belongs to whatever is being piped somewhere, as it does in the
     # other commands.
