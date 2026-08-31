@@ -7,6 +7,7 @@ person reads.
 """
 
 import asyncio
+import threading
 from dataclasses import dataclass
 
 import httpx
@@ -32,7 +33,8 @@ from offgrid.domain.running.discarded_windows import save_discarded_window
 from offgrid.domain.running.model import Model
 from offgrid.domain.running.runtime import RuntimeName
 from offgrid.domain.sizing.measuring import describe_the_machine_and_how_to_fit_more
-from offgrid.shared.exceptions import ProfileError
+from offgrid.shared.exceptions import LeaderboardUnavailableError, ProfileError
+from offgrid.shared.wording import REACHING_THE_NETWORK
 from offgrid.tui.dropdown import Dropdown
 from offgrid.tui.picker import (
     AGENTS,
@@ -48,6 +50,7 @@ from offgrid.tui.picker import (
     Departure,
     Picker,
 )
+from offgrid.tui.published_list import TABLE, PublishedList
 from tests.commands import MACHINE
 from tests.doubles import serve_get
 from tests.launches import record_launch
@@ -1327,3 +1330,196 @@ def test_bare_offgrid_with_a_profile_hands_the_screen_no_measurement(here, monke
     runner.invoke(app, [])
 
     assert "unified memory" not in drive(opened[0]).shown
+
+
+def open_the_published_list(here, recommend_func, *after, size=ROOMY):
+    """Open the picker, press the key that recommends, and read the list.
+
+    The worker is waited on before the screen is read, because the fetch runs
+    off the event loop so the network sentence is painted before it: a test
+    reading the screen the instant `r` was pressed would read the sentence and
+    call the table missing.
+
+    :param here: Where the profile is.
+    :param recommend_func: What the key that recommends is handed to read.
+    :param after: Keys to press once the list has answered, for the ones that
+        leave it.
+    :param size: How much terminal to give it.
+
+    :return: What the list shows, whether the list is what is on top, and
+        whether the picker is still open.
+    """
+    picker = Picker(
+        read_report_func=lambda: read_what_could_be_run(here / "profile.yaml"),
+        save_func=lambda profile: save_profile(profile, here / "profile.yaml"),
+        recommend_func=recommend_func,
+    )
+
+    async def driven():
+        async with picker.run_test(size=size) as pilot:
+            await pilot.press("r")
+            await picker.workers.wait_for_complete()
+            await pilot.pause()
+
+            if after:
+                await pilot.press(*after)
+                await pilot.pause()
+
+            top = picker.screen
+            on_list = isinstance(top, PublishedList)
+            shown = str(top.query_one(f"#{TABLE}", Static).content) if on_list else ""
+
+            return shown, on_list, picker.is_running
+
+    return asyncio.run(driven())
+
+
+def test_r_opens_the_published_list_and_shows_it(here, monkeypatch):
+    # The one command that names published models, reachable from the screen
+    # rather than stranded outside it. `r` opens it, and what it read is shown.
+    runner.invoke(app, ["setup"])
+    on_this_machine(monkeypatch, "claude")
+
+    shown, on_list, _ = open_the_published_list(
+        here, lambda: ["A published table", "row one"]
+    )
+
+    assert on_list
+    assert "A published table" in shown
+    assert "row one" in shown
+
+
+def test_the_network_sentence_is_shown_before_the_table(here, monkeypatch):
+    # This is the only key in the picker that touches the network, and it says
+    # so first: the sentence sits above the table, not under the fetch it warns
+    # of.
+    runner.invoke(app, ["setup"])
+    on_this_machine(monkeypatch, "claude")
+
+    shown, _, _ = open_the_published_list(here, lambda: ["the table"])
+
+    assert REACHING_THE_NETWORK in shown
+    assert shown.index(REACHING_THE_NETWORK) < shown.index("the table")
+
+
+def test_a_failed_fetch_leaves_the_list_open_and_says_what_failed(here, monkeypatch):
+    # A network that is not there is what somebody most wants the picker to
+    # survive: the sentence stays, what stopped the table is shown under it, and
+    # the screen stays open so a person can start a network and press it again.
+    runner.invoke(app, ["setup"])
+    on_this_machine(monkeypatch, "claude")
+
+    def refuse():
+        raise LeaderboardUnavailableError("Could not reach the table: no route")
+
+    shown, on_list, running = open_the_published_list(here, refuse)
+
+    assert on_list
+    assert running
+    assert REACHING_THE_NETWORK in shown
+    assert "Could not reach the table: no route" in shown
+    assert shown.index(REACHING_THE_NETWORK) < shown.index("Could not reach the table")
+
+
+def test_opening_the_picker_and_moving_reaches_no_published_list(here, monkeypatch):
+    # Opening the picker reaches nothing, and neither does moving around it:
+    # the fetch happens only when it is pressed for, so browsing never touches
+    # the network. Delete the guard in the action and this still passes — what
+    # proves it is that nothing but `r` calls the reader at all.
+    runner.invoke(app, ["setup"])
+    answer_as_lm_studio(
+        monkeypatch,
+        holding={RESIDENT: SERVED},
+        cold={"google/gemma-4-e4b": 131072},
+    )
+    on_this_machine(monkeypatch, "claude", "opencode")
+    reached = []
+
+    def recommend_func():
+        reached.append(1)
+
+        return ["a table"]
+
+    picker = Picker(
+        read_report_func=lambda: read_what_could_be_run(here / "profile.yaml"),
+        save_func=lambda profile: save_profile(profile, here / "profile.yaml"),
+        recommend_func=recommend_func,
+    )
+    drive(picker, "tab", "down", "tab", "down", "q")
+
+    assert reached == [], "opening the picker or moving in it reached the network"
+
+
+def test_pressing_r_is_what_reaches_the_network(here, monkeypatch):
+    # The other half: the reader is not dead, it is deferred. `r` is what calls
+    # it, exactly once.
+    runner.invoke(app, ["setup"])
+    on_this_machine(monkeypatch, "claude")
+    reached = []
+
+    def recommend_func():
+        reached.append(1)
+
+        return ["a table"]
+
+    open_the_published_list(here, recommend_func)
+
+    assert reached == [1]
+
+
+@pytest.mark.parametrize("key", ["escape", "q"])
+def test_leaving_the_published_list_returns_to_the_picker(here, monkeypatch, key):
+    # The list is a detour, not a departure: both keys that leave it return to
+    # the picker with it still open and everything still assembled.
+    runner.invoke(app, ["setup"])
+    on_this_machine(monkeypatch, "claude")
+
+    _, on_list, running = open_the_published_list(here, lambda: ["the table"], key)
+
+    assert not on_list
+    assert running
+
+
+def test_the_sentence_is_painted_before_the_fetch_rather_than_with_its_result(
+    here, monkeypatch
+):
+    # The headline of this key: told before it happens. Read while the fetch is
+    # still being waited on — the reader is held on an event the test releases —
+    # so the sentence read here is the one painted before the fetch, not the one
+    # rebuilt with its result. Delete the paint in `on_mount` and this is what
+    # fails, where the tests that read the finished frame would not.
+    runner.invoke(app, ["setup"])
+    on_this_machine(monkeypatch, "claude")
+
+    reached = threading.Event()
+
+    def recommend_func():
+        reached.wait(timeout=5)
+
+        return ["the table"]
+
+    picker = Picker(
+        read_report_func=lambda: read_what_could_be_run(here / "profile.yaml"),
+        save_func=lambda profile: save_profile(profile, here / "profile.yaml"),
+        recommend_func=recommend_func,
+    )
+
+    async def driven():
+        async with picker.run_test(size=ROOMY) as pilot:
+            await pilot.press("r")
+            await pilot.pause()
+
+            listed = picker.screen.query_one(f"#{TABLE}", Static)
+            before = str(listed.content)
+
+            reached.set()
+            await picker.workers.wait_for_complete()
+            await pilot.pause()
+
+            return before, str(listed.content)
+
+    before, after = asyncio.run(driven())
+
+    assert REACHING_THE_NETWORK in before
+    assert "the table" not in before
+    assert "the table" in after

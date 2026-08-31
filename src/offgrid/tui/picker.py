@@ -38,6 +38,7 @@ from offgrid.domain.profile import Profile
 from offgrid.shared.exceptions import OffgridError
 from offgrid.tui.choices import Choices, agent_choices, model_options, runtime_choices
 from offgrid.tui.dropdown import Dropdown
+from offgrid.tui.published_list import PublishedList, ReadWhatAListRecommends
 
 type ReadWhatCouldBeRun = Callable[[], WhatCouldBeRun]
 type SaveWhatWasAssembled = Callable[[Profile], None]
@@ -127,10 +128,11 @@ class Picker(App[Departure | None]):
 
     Three keys end a session, keyed to match Claude Code's model picker: `enter`
     runs with what is assembled and saves it, `s` runs with it once, `q` leaves
-    having changed nothing. Textual's own bindings are left as they are —
-    `ctrl+q` leaves, `ctrl+c` does not and says which key does, `ctrl+p` opens
-    the command palette — so that the only things to learn are the three this
-    adds.
+    having changed nothing. `r` opens the published list, which is the one thing
+    the picker does that reaches the network, and does not end the session.
+    Textual's own bindings are left as they are — `ctrl+q` leaves, `ctrl+c` does
+    not and says which key does, `ctrl+p` opens the command palette — so that
+    the only things to learn are the ones this adds.
 
     `enter` is answered on the models list rather than reached at the app,
     because a `Select` or an `OptionList` with the focus consumes `enter` itself
@@ -143,6 +145,7 @@ class Picker(App[Departure | None]):
     BINDINGS: ClassVar[list[BindingType]] = [
         Binding("enter", "run_and_save", "run and save"),
         Binding("s", "run_once", "run once"),
+        Binding("r", "recommend", "recommend"),
         Binding("q", "quit", "leave"),
     ]
 
@@ -213,6 +216,7 @@ class Picker(App[Departure | None]):
         read_report_func: ReadWhatCouldBeRun,
         save_func: SaveWhatWasAssembled,
         measure_func: MeasureThisMachine | None = None,
+        recommend_func: ReadWhatAListRecommends | None = None,
     ) -> None:
         """Take what the screen will show and how it saves, rather than reaching.
 
@@ -229,12 +233,16 @@ class Picker(App[Departure | None]):
             measured rather than an error naming another command. ``None`` where
             a profile is there, since the machine's budget is not what somebody
             with a run already assembled came to read.
+        :param recommend_func: What reads a published list and lays it out, for
+            the key that reaches the network. ``None`` leaves that key with
+            nothing to fetch, which is what a test that is not about it hands in.
         """
         super().__init__()
 
         self._read_report_func = read_report_func
         self._save_func = save_func
         self._measure_func = measure_func
+        self._recommend_func = recommend_func
         self._report: WhatCouldBeRun | None = None
         self._measurement: tuple[str, ...] = ()
 
@@ -355,6 +363,19 @@ class Picker(App[Departure | None]):
             return
 
         self.exit(Departure(profile=assembled, saved=False))
+
+    def action_recommend(self) -> None:
+        """Open the published list, which is what reaches the network.
+
+        The one key here that touches the network, and only when it is pressed.
+        Nothing happens where no reader was handed in: a screen with nothing to
+        fetch is a key that opens onto a blank list, so the key does nothing
+        instead.
+        """
+        if self._recommend_func is None:
+            return
+
+        self.push_screen(PublishedList(self._recommend_func))
 
     def _assemble(self) -> Profile | None:
         """Write what the highlights are on into the profile a run is made from.
