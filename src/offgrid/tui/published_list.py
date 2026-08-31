@@ -20,7 +20,7 @@ from textual import work
 from textual.app import ComposeResult
 from textual.binding import Binding, BindingType
 from textual.containers import VerticalScroll
-from textual.screen import Screen
+from textual.screen import ModalScreen
 from textual.widgets import Footer, Static
 
 from offgrid.shared.exceptions import OffgridError
@@ -35,13 +35,18 @@ PANE = "published-pane"
 """What the table scrolls inside, since it is as long as the list is."""
 
 
-class PublishedList(Screen[None]):
+class PublishedList(ModalScreen[None]):
     """The published table, said before it is reached and shown once it is.
 
     Opened over the picker by the key that recommends, and left with `esc` or
     `q`, which returns to the picker with everything still assembled. It is its
     own full screen rather than a panel, because the table is wider than the
     lists it would sit beside and longer than the report it would sit under.
+
+    Modal so that it holds the keyboard while it is up: the picker's keys run
+    or recommend, and pressing one of those over the table would launch a run
+    and tear the table away mid-read, or open a second copy of this screen.
+    Only the keys bound here answer while it is on top.
     """
 
     BINDINGS: ClassVar[list[BindingType]] = [
