@@ -25,7 +25,7 @@ flowchart TD
     end
     subgraph domain ["domain/"]
         checkup["checkup.py · assembling.py · costing.py"]
-        sizing["sizing/<br/>machine · fit · listing · leaderboard · speed ·<br/>quality · shortlist · recommendation"]
+        sizing["sizing/<br/>machine · fit · measuring · listing · leaderboard ·<br/>speed · quality · shortlist · recommendation"]
         running["running/<br/>model · dialect · capabilities · leaving ·<br/>launch · runtime · agent · config_editing · answering"]
         profile["profile/"]
     end
@@ -204,6 +204,7 @@ domain/
   sizing/          what this machine has room for
     machine.py     what this Mac is, and how to give its GPU more room
     fit.py         how much room it has
+    measuring.py   this machine and what fits, as setup and the screen show it
     listing.py     a model a published list describes, and which ones fit
     leaderboard.py what offgrid asks of a published list
     reading.py     which list and which table to answer from, and what

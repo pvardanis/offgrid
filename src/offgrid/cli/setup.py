@@ -8,8 +8,8 @@ from offgrid.cli.reporting import reporting
 from offgrid.domain.profile import DEFAULT_PATH, Profile, save_profile
 from offgrid.domain.running.agent import AgentConfig, AgentName
 from offgrid.domain.running.runtime import RuntimeConfig, RuntimeName
-from offgrid.domain.sizing.fit import BYTES_PER_GB, get_sizes_that_fit
 from offgrid.domain.sizing.machine import detect, suggest_raising_the_gpu_limit
+from offgrid.domain.sizing.measuring import describe_the_machine
 from offgrid.runtimes import create_runtime_config
 from offgrid.shared.exceptions import ProfileError
 from offgrid.shared.say import tell
@@ -19,8 +19,6 @@ DEFAULT_HOST = "127.0.0.1:1234"
 # decision, not something the file may leave out and have guessed for it.
 DEFAULT_RUNTIME = RuntimeName.LMSTUDIO
 DEFAULT_AGENT = AgentName.CLAUDE_CODE
-BILLION = 1e9
-GIB = 1024**3
 
 
 def setup(
@@ -42,17 +40,8 @@ def setup(
         Profile(runtime=runtime_config, agent=agent_config, **kept), DEFAULT_PATH
     )
 
-    tell(f"{machine.chip} · {machine.memory_bytes / GIB:.0f}GB unified memory")
-    limit = machine.wired_limit_bytes
-    tell(f"GPU limit  {limit / GIB:.0f}GB" if limit else "GPU limit  at its default")
-    tell(f"usable     {machine.usable_bytes / BYTES_PER_GB:.0f}GB")
-    tell("")
-    tell("A model of about this size fits, leaving room for context:")
-    tell("")
-    for bits, parameters in get_sizes_that_fit(machine):
-        tell(f"  {bits:>2}-bit   {parameters / BILLION:>5.0f}B parameters")
-    tell("")
-    tell("`offgrid recommend` names the published models that fit.")
+    for line in describe_the_machine(machine):
+        tell(line)
     tell(f"Load one in your runtime, then `offgrid run`. Profile: {DEFAULT_PATH}")
 
     advice = suggest_raising_the_gpu_limit(machine)
