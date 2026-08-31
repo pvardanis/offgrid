@@ -57,7 +57,10 @@ WHY_DROPPED = {
 
 
 def summarize_findings(
-    table: Table, machine: Machine, describe_model_download: DescribeModelDownload
+    table: Table,
+    machine: Machine,
+    describe_model_download: DescribeModelDownload,
+    closing: str,
 ) -> list[str]:
     """Say what this machine can hold off a published list, best first.
 
@@ -66,6 +69,9 @@ def summarize_findings(
     :param describe_model_download: How the runtime says one of its models
         is downloaded, asked for the model ranked first. Nothing is said about
         downloading where nothing was ranked: there is no model to name.
+    :param closing: What to say after the download instruction — how a run is
+        reached once the model is there. The command line names `offgrid run`;
+        the picker points at its own list, since it can start a run itself.
 
     :return: Every line to say, in order.
     """
@@ -89,12 +95,12 @@ def summarize_findings(
         + [_lay_out(fit, worth, machine) for worth, fit in ranked]
         + _set_off(dropped)
         + _set_off(_credit_the_figures(table.dated))
-        + _set_off(_say_how_to_download(ranked[0][1], describe_model_download))
+        + _set_off(_say_how_to_download(ranked[0][1], describe_model_download, closing))
     )
 
 
 def _say_how_to_download(
-    fit: Fit, describe_model_download: DescribeModelDownload
+    fit: Fit, describe_model_download: DescribeModelDownload, closing: str
 ) -> list[str]:
     """Say how to have the model ranked first, in the runtime's own words.
 
@@ -111,12 +117,14 @@ def _say_how_to_download(
     :param fit: The model ranked first, at the width it was ranked at.
     :param describe_model_download: How the runtime says one of its models
         is downloaded.
+    :param closing: What to say after it — how a run is reached once the model
+        is downloaded.
 
     :return: The lines to say.
     """
     said = describe_model_download(fit.listing.name).splitlines()
 
-    return [*said, "Then `offgrid run`."]
+    return [*said, closing]
 
 
 def _introduce_findings(rows: int, table: Table) -> list[str]:

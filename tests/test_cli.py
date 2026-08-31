@@ -1606,6 +1606,21 @@ def test_the_picker_reader_names_the_download_with_a_placeholder(here, monkeypat
     assert "lms get A-Model-35B" not in said
 
 
+def test_the_picker_reader_points_at_the_list_not_offgrid_run(here, monkeypatch):
+    # `offgrid recommend` names the command because it has no picker. The picker
+    # reader is read inside the picker, which can start a run itself, so it
+    # points a person at its own list rather than sending them back out to a
+    # command they do not need.
+    from offgrid.cli.recommend import PICKER_CLOSING, read_what_a_list_recommends
+
+    _leaderboard(monkeypatch, models=[_listed("A-Model-35B", "35B")])
+
+    said = "\n".join(read_what_a_list_recommends())
+
+    assert PICKER_CLOSING in said
+    assert "Then `offgrid run`." not in said
+
+
 def test_recommend_says_everything_it_says_to_stderr(here, monkeypatch):
     # stdout belongs to whatever is being piped somewhere, as it does in the
     # other commands.
