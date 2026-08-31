@@ -22,6 +22,13 @@ from offgrid.shared.wording import REACHING_THE_NETWORK
 # on the screen rather than a token to fill in.
 PLACEHOLDER = "<model>"
 
+# How each surface says a run is reached once the model is downloaded. The
+# command line has no picker, so it names the command; the picker can start a
+# run itself, so it points at its own list rather than sending a person back
+# out to `offgrid run`.
+THEN_RUN = "Then `offgrid run`."
+PICKER_CLOSING = "Once it is downloaded, pick it in the list and press enter."
+
 
 def recommend() -> None:
     """List the models a published table names that this machine can hold."""
@@ -37,7 +44,7 @@ def recommend() -> None:
 
     say_how = partial(describe_model_download, runtime_name)
 
-    for line in summarize_findings(reading.table, machine, say_how):
+    for line in summarize_findings(reading.table, machine, say_how, THEN_RUN):
         tell(line)
 
 
@@ -67,7 +74,10 @@ def read_what_a_list_recommends() -> list[str]:
         """Say how to download any model, naming the placeholder for one."""
         return describe_model_download(runtime_name, PLACEHOLDER)
 
-    return [*reading.caveats, *summarize_findings(reading.table, machine, say_how)]
+    return [
+        *reading.caveats,
+        *summarize_findings(reading.table, machine, say_how, PICKER_CLOSING),
+    ]
 
 
 def _get_runtime_name() -> RuntimeName:
