@@ -2261,3 +2261,20 @@ deferred to #205. What "a runtime is installed" means is a contract that
 belongs to the runtime adapter, and it is only got right against two runtimes;
 built against LM Studio alone it is a guess the second may not fit. So it rides
 with the second runtime rather than being designed blind now.
+
+## `run` names the door, it does not open it
+
+offgrid has two doors and they do not overlap. `offgrid` is the interactive
+door: at a terminal it opens the picker. `offgrid run <kwargs>` is the manual
+door: configuration on the command line, run directly, never a screen.
+
+A `run` that names nothing and finds the runtime holding nothing is a dead
+end. It refuses, exit 1, as it always has — and the refusal names bare
+`offgrid` as the way to pick what to run. It points at the one door rather
+than opening a second onto the same screen.
+
+**Opening the picker from `run` was built and rejected** (#176, first cut). It
+put a second entrance on the same screen, which needed a `--no-input` flag to
+turn back off, and left `offgrid` and `run` doing the same thing at a dead end
+— the question "why not just open `offgrid`?" had no answer. One door in, one
+signpost to it.
