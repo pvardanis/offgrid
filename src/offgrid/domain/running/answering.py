@@ -63,7 +63,8 @@ def get_resident_model(runtime: Runtime) -> Model:
 
     if resident is None:
         raise ModelUnavailableError(
-            "The runtime is holding no model. Load a model in it, then try again."
+            "The runtime is holding no model. Load one in it, or run `offgrid` "
+            "to pick what to run."
         )
 
     return resident

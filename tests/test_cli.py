@@ -515,7 +515,10 @@ def test_run_refuses_when_nothing_is_loaded(here, monkeypatch):
 
     result = runner.invoke(app, ["run"])
     assert result.exit_code == 1
-    assert "load a model" in result.stderr.lower()
+    # The refusal names the door out of the dead end: bare `offgrid` is how a
+    # person picks what to run.
+    assert "offgrid" in result.stderr.lower()
+    assert "pick" in result.stderr.lower()
 
 
 def test_run_loads_a_named_model_that_is_not_resident(here, monkeypatch):
