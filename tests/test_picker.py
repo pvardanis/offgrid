@@ -1363,6 +1363,7 @@ def open_the_published_list(here, recommend_func, *after, size=ROOMY):
 
             if after:
                 await pilot.press(*after)
+                await picker.workers.wait_for_complete()
                 await pilot.pause()
 
             top = picker.screen
@@ -1478,6 +1479,39 @@ def test_leaving_the_published_list_returns_to_the_picker(here, monkeypatch, key
 
     assert not on_list
     assert running
+
+
+@pytest.mark.parametrize("key", ["enter", "s"])
+def test_the_run_keys_do_nothing_while_the_published_list_is_up(here, monkeypatch, key):
+    # The keys that start a run belong to the picker underneath, and pressing
+    # them while reading the table would launch a run and tear the table away
+    # mid-read. The list holds the keyboard: only the keys that leave it answer,
+    # so `enter` and `s` do nothing and the table stays.
+    runner.invoke(app, ["setup"])
+    on_this_machine(monkeypatch, "claude")
+
+    _, on_list, running = open_the_published_list(here, lambda: ["the table"], key)
+
+    assert on_list
+    assert running
+
+
+def test_pressing_r_again_does_not_reach_the_network_a_second_time(here, monkeypatch):
+    # `r` is the picker's key, and the list that it opens holds the keyboard, so
+    # pressing it again over the open list opens nothing and reaches nothing:
+    # the reader is called the once, not once per press.
+    runner.invoke(app, ["setup"])
+    on_this_machine(monkeypatch, "claude")
+    reached = []
+
+    def recommend_func():
+        reached.append(1)
+
+        return ["a table"]
+
+    open_the_published_list(here, recommend_func, "r")
+
+    assert reached == [1]
 
 
 def test_the_sentence_is_painted_before_the_fetch_rather_than_with_its_result(
