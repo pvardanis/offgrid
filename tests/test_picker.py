@@ -31,7 +31,7 @@ from offgrid.cli import app, read_this_build
 from offgrid.cli.binding import read_profile, read_what_could_be_run
 from offgrid.cli.run import launch_the_assembled_profile
 from offgrid.domain.assembling import IN_MEMORY
-from offgrid.domain.profile import THEMES, save_profile
+from offgrid.domain.profile import Theme, save_profile
 from offgrid.domain.running import discarded_windows
 from offgrid.domain.running.dialect import Dialect
 from offgrid.domain.running.discarded_windows import save_discarded_window
@@ -1617,20 +1617,20 @@ def test_pressing_t_cycles_the_theme_live_and_names_it_in_the_header(here, monke
 
     assert opened.applied_theme == DEFAULT_THEME
     assert DEFAULT_THEME in opened.theme
-    assert cycled.applied_theme == THEMES[1]
-    assert THEMES[1] in cycled.theme
+    assert cycled.applied_theme == Theme.CATPPUCCIN_LATTE
+    assert Theme.CATPPUCCIN_LATTE in cycled.theme
     assert DEFAULT_THEME not in cycled.theme
 
 
 def test_cycling_past_the_last_theme_wraps_to_the_first(here, monkeypatch):
     # The cycle is a ring: stepping off the end returns to the default rather
     # than off the list. Pressing `t` once per theme lands back where it began,
-    # which the `% len(THEMES)` in the step is what holds — drop it and this
+    # which the `% len(Theme)` in the step is what holds — drop it and this
     # goes red on the last press.
     runner.invoke(app, ["setup"])
     on_this_machine(monkeypatch, "claude")
 
-    wrapped = screen(here, *["t"] * len(THEMES))
+    wrapped = screen(here, *["t"] * len(Theme))
 
     assert wrapped.applied_theme == DEFAULT_THEME
     assert DEFAULT_THEME in wrapped.theme
@@ -1645,13 +1645,13 @@ def test_cycling_from_a_loaded_theme_steps_from_where_it_opened(here, monkeypatc
     on_this_machine(monkeypatch, "claude")
     profile = here / "profile.yaml"
     profile.write_text(
-        profile.read_text().replace(f"theme: {DEFAULT_THEME}", f"theme: {THEMES[2]}")
+        profile.read_text().replace(f"theme: {DEFAULT_THEME}", f"theme: {Theme.NORD}")
     )
 
     cycled = screen(here, "t")
 
-    assert cycled.applied_theme == THEMES[3]
-    assert THEMES[3] in cycled.theme
+    assert cycled.applied_theme == Theme.GRUVBOX
+    assert Theme.GRUVBOX in cycled.theme
 
 
 def test_the_cycled_theme_is_written_to_the_profile_when_the_run_is_saved(
@@ -1669,8 +1669,8 @@ def test_the_cycled_theme_is_written_to_the_profile_when_the_run_is_saved(
 
     assert isinstance(driven.left_with, Departure)
     assert driven.left_with.saved is True
-    assert driven.left_with.profile.theme == THEMES[1]
-    assert read_profile(here / "profile.yaml").theme == THEMES[1]
+    assert driven.left_with.profile.theme == Theme.CATPPUCCIN_LATTE
+    assert read_profile(here / "profile.yaml").theme == Theme.CATPPUCCIN_LATTE
 
 
 def test_the_header_opens_on_the_theme_the_profile_holds(here, monkeypatch):
@@ -1681,24 +1681,25 @@ def test_the_header_opens_on_the_theme_the_profile_holds(here, monkeypatch):
     on_this_machine(monkeypatch, "claude")
     profile = here / "profile.yaml"
     profile.write_text(
-        profile.read_text().replace(f"theme: {DEFAULT_THEME}", f"theme: {THEMES[2]}")
+        profile.read_text().replace(f"theme: {DEFAULT_THEME}", f"theme: {Theme.NORD}")
     )
 
     driven = screen(here)
 
-    assert THEMES[2] in driven.theme
-    assert driven.applied_theme == THEMES[2]
+    assert Theme.NORD in driven.theme
+    assert driven.applied_theme == Theme.NORD
 
 
 def test_every_offered_theme_is_a_palette_the_screen_can_draw():
-    # THEMES is a profile field's vocabulary and lives in the domain, but every
+    # Theme is a profile field's vocabulary and lives in the domain, but every
     # name in it has to be one the screen can actually apply — a theme the
     # profile accepts and the screen then cannot draw is worse than no theme.
     # Held apart here, where reaching Textual is what the layer is for.
     available = set(App().available_themes)
+    offered = {theme.value for theme in Theme}
 
-    assert set(THEMES) <= available, (
-        f"offgrid offers themes Textual does not have: {set(THEMES) - available}"
+    assert offered <= available, (
+        f"offgrid offers themes Textual does not have: {offered - available}"
     )
 
 
