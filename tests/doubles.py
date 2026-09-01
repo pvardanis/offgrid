@@ -121,7 +121,7 @@ class StandInAgent:
         :return: A directory under offgrid's, and the way back into one.
         """
         return Conversations(
-            kept_in=KEPT_IN, resumed_by="`offgrid run -- --resume` opens one."
+            kept_in=KEPT_IN, resume_with="`offgrid run -- --resume` opens one."
         )
 
     def plan(self, model: Model) -> Launch:

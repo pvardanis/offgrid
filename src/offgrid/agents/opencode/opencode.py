@@ -128,9 +128,11 @@ class OpenCode:
         """
         return Conversations(
             kept_in=self.config.config_dir / STORE,
-            resumed_by=(
+            resume_with=(
                 f"`offgrid run -- run {CONTINUE}` takes up the last one and "
-                f"`offgrid run -- run {SESSION} <id>` one by identifier, "
+                f"`offgrid run -- run {SESSION} <id>` one by identifier"
+            ),
+            measured=(
                 f"measured against {OFFERS_RESUMING}. To read what is there "
                 f"without holding a model, point `{DATA_HOME}` at it and run "
                 f"`opencode {LISTING}`: measured against {READS_THE_STORE}, "
