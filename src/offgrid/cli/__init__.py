@@ -10,7 +10,10 @@ nothing to do does, so it lives in the callback that runs before every
 command rather than beside the four.
 """
 
+import logging
+import subprocess
 import sys
+from pathlib import Path
 
 import typer
 
@@ -30,11 +33,57 @@ from offgrid.domain.profile import DEFAULT_PATH, save_profile
 from offgrid.domain.sizing.machine import detect
 from offgrid.domain.sizing.measuring import describe_the_machine_and_how_to_fit_more
 from offgrid.shared.exceptions import OffgridError
-from offgrid.shared.say import say_on_stderr, someone_is_at_a_terminal, tell
+from offgrid.shared.say import LOGGER, say_on_stderr, someone_is_at_a_terminal, tell
 
 __all__ = ["app", "main"]
 
 app = typer.Typer(add_completion=False)
+
+
+def read_this_build() -> str:
+    """Read the short commit of the offgrid checkout this is running from.
+
+    A git SHA rather than a version: there is no published package to name, and
+    a person running several clones needs to know which one is about to run. It
+    is read against the source tree this file sits in, not the shell's cwd, so
+    it names the offgrid whose code is running rather than whatever repository a
+    run happens to start in.
+
+    :return: The short SHA, or ``unknown`` where git cannot answer — not a
+        checkout, or no git on the ``PATH``. The header only displays it, so a
+        missing SHA is a word rather than a refusal that would keep the screen
+        from opening. What git complained is logged at debug level, so an
+        ``unknown`` on a clone that is a checkout is not left without a trail.
+    """
+    source = Path(__file__).resolve().parent.parent
+
+    log = logging.getLogger(LOGGER)
+
+    try:
+        found = subprocess.run(
+            ["git", "-C", str(source), "rev-parse", "--short", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError as error:
+        log.debug("Could not run git to read the build: %s", error)
+
+        return "unknown"
+
+    sha = found.stdout.strip()
+
+    if not sha:
+        log.debug(
+            "git named no commit for %s (exit %s): %s",
+            source,
+            found.returncode,
+            found.stderr.strip() or "none",
+        )
+
+        return "unknown"
+
+    return sha
 
 
 @app.callback(invoke_without_command=True)
@@ -77,6 +126,8 @@ def offgrid(ctx: typer.Context) -> None:
     screen = Picker(
         read_report_func=lambda: read_what_could_be_run(DEFAULT_PATH),
         save_func=lambda profile: save_profile(profile, DEFAULT_PATH),
+        sha=read_this_build(),
+        cwd=str(Path.cwd()),
         measure_func=measure if there_is_no_profile(DEFAULT_PATH) else None,
         recommend_func=read_what_a_list_recommends,
     )
