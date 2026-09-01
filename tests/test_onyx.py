@@ -45,6 +45,12 @@ def test_the_table_says_where_it_was_read(flight: str):
     assert parse(flight).source == "https://onyx.app/best-llm-for-coding"
 
 
+def test_the_benchmark_the_list_ranks_by_is_carried_off_the_table(flight: str):
+    # The list ranks by one of its twenty benchmarks, and the panel names which
+    # one the figures came from, so the carried name is what it credits.
+    assert parse(flight).benchmark == "swe_bench_verified"
+
+
 def test_how_many_rows_stated_no_size_is_carried_off_the_table(flight: str):
     # A row dropped here is dropped before anything downstream sees it, so
     # the count is the only thing left to account for it with.

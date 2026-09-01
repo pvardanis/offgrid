@@ -46,6 +46,8 @@ class Table:
 
     :param source: Where it was read, so that whatever prints it can credit
         it without knowing which list it came from.
+    :param benchmark: The benchmark the list ranks its models by, so a panel
+        crediting the figures can name which one they came from.
     :param dated: The date the list states it was last updated, or ``None``
         when it states none. What it says about itself, not when it was
         fetched.
@@ -56,6 +58,7 @@ class Table:
     """
 
     source: str
+    benchmark: str
     dated: str | None
     listings: list[Listing]
     unsized_rows: int
