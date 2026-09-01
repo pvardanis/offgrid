@@ -25,9 +25,9 @@ THEME = "theme-name"
 """Where the theme the screen is drawn in is named."""
 
 BANNER_ROWS = (
-    "█▀█ █▀▀ █▀▀ █▀▀ █▀▄ █ █▀▄",
+    "█▀█ █▀▀ █▀▀ █▀█ █▀▄ ▀ █▀▄",
     "█ █ █▀▀ █▀▀ █▄█ █▀▄ █ █ █",
-    "▀▀▀ ▀   ▀   ▀▀▀ ▀ ▀ ▀ ▀▀▀",
+    "█▄█ █   █   ▄▄█ █ █ █ █▄█",
 )
 """The emboss block spelling offgrid, fixed rather than cycled with the theme."""
 
