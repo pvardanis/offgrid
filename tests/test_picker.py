@@ -12,13 +12,15 @@ import subprocess
 import threading
 from dataclasses import dataclass
 from pathlib import Path
+from typing import cast
 
 import httpx
 import pytest
 import typer
 from rich.cells import cell_len
 from textual.containers import VerticalScroll
-from textual.widgets import OptionList, Select, Static
+from textual.content import Content
+from textual.widgets import Collapsible, OptionList, Select, Static
 from textual.widgets._footer import FooterKey
 from textual.widgets._select import SelectOverlay
 from typer.testing import CliRunner
@@ -28,7 +30,6 @@ from offgrid.cli import app, read_this_build
 from offgrid.cli.binding import read_profile, read_what_could_be_run
 from offgrid.cli.run import launch_the_assembled_profile
 from offgrid.domain.assembling import IN_MEMORY
-from offgrid.domain.costing import RUNNING
 from offgrid.domain.profile import save_profile
 from offgrid.domain.running import discarded_windows
 from offgrid.domain.running.dialect import Dialect
@@ -46,10 +47,13 @@ from offgrid.tui.picker import (
     CHANGED,
     COLUMNS,
     DEFAULT_THEME,
+    DETAIL,
+    FITS,
     MODELS,
     PANE,
     REPORT,
     RUNTIMES,
+    SIGNAL,
     STATUS,
     UNCHANGED,
     WRITES,
@@ -82,6 +86,10 @@ class Driven:
     """What a screen answered after keys were pressed at it."""
 
     shown: str
+    fits: str
+    signal: str
+    signal_colours: dict[str, str]
+    detail_open: bool
     columns: str
     status: str
     build: str
@@ -136,6 +144,29 @@ def _read_a_dropdown(dropdown: Dropdown) -> tuple[list[str], list[str], str | No
     return rows, reachable, on
 
 
+def _colours_on(signal: Static) -> dict[str, str]:
+    """Read which colour paints each line of the signal panel.
+
+    The panel styles a line by covering its whole run with one span, so the
+    span starting where a line starts carries that line's verdict. A line left
+    unpainted maps to the empty string.
+
+    :param signal: The signal panel to read.
+
+    :return: Each line's text against the theme variable painting it.
+    """
+    painted = cast(Content, signal.content)
+    spans = {span.start: str(span.style) for span in painted.spans}
+
+    colours = {}
+    at = 0
+    for line in painted.plain.split("\n"):
+        colours[line] = spans.get(at, "")
+        at += len(line) + 1
+
+    return colours
+
+
 def drive(picker: Picker, *keys: str, size: tuple[int, int] = ROOMY) -> Driven:
     """Open a screen, press keys at it, and read what it is showing.
 
@@ -167,6 +198,10 @@ def drive(picker: Picker, *keys: str, size: tuple[int, int] = ROOMY) -> Driven:
 
             return Driven(
                 shown=str(picker.query_one(f"#{REPORT}", Static).content),
+                fits=str(picker.query_one(f"#{FITS}", Static).content),
+                signal=str(picker.query_one(f"#{SIGNAL}", Static).content),
+                signal_colours=_colours_on(picker.query_one(f"#{SIGNAL}", Static)),
+                detail_open=not picker.query_one(f"#{DETAIL}", Collapsible).collapsed,
                 columns=str(picker.query_one(f"#{COLUMNS}", Static).content),
                 status=str(picker.query_one(f"#{STATUS}", Static).content),
                 build=str(picker.query_one(f"#{BUILD}", Static).content),
@@ -439,10 +474,8 @@ def test_moving_the_highlight_recomputes_what_a_run_would_cost(here, monkeypatch
     opened = screen(here)
     moved = screen(here, "tab", "tab", "down")
 
-    assert f"{RESIDENT} is held, so this costs no load" in opened.shown
-    assert "google/gemma-4-e4b is not held, so this costs a load" in moved.shown
-    assert "model              google/gemma-4-e4b" in moved.shown
-    assert "  context_ceiling  262144" in moved.shown
+    assert f"{RESIDENT} is held, so this costs no load" in opened.signal
+    assert "google/gemma-4-e4b is not held, so this costs a load" in moved.signal
 
 
 def test_the_highlight_is_reported_on_even_where_the_profile_names_another_model(
@@ -463,8 +496,7 @@ def test_the_highlight_is_reported_on_even_where_the_profile_names_another_model
     driven = screen(here, "tab", "tab", "up")
 
     assert str(driven.highlighted[MODELS]).startswith(RESIDENT)
-    assert f"model              {RESIDENT}" in driven.shown
-    assert f"{RESIDENT} is held, so this costs no load" in driven.shown
+    assert f"{RESIDENT} is held, so this costs no load" in driven.signal
 
 
 def test_a_model_that_is_not_held_is_served_at_no_window_rather_than_an_unsaid_one(
@@ -483,8 +515,8 @@ def test_a_model_that_is_not_held_is_served_at_no_window_rather_than_an_unsaid_o
 
     driven = screen(here, "tab", "tab", "down")
 
-    assert "model              google/gemma-4-e4b" in driven.shown
-    assert "  context_window   unknown" in driven.shown
+    assert "google/gemma-4-e4b is not held, so this costs a load" in driven.signal
+    assert "not served yet" in driven.signal
 
 
 def test_the_cursor_will_not_land_on_an_agent_this_machine_cannot_start(
@@ -531,7 +563,7 @@ def test_an_agent_whose_own_settings_will_not_read_is_a_row_and_not_a_blank_scre
     assert not any(row.startswith("opencode") for row in driven.reachable[AGENTS]), (
         "the cursor can reach an agent that would not answer"
     )
-    assert f"model              {RESIDENT}" in driven.shown
+    assert f"{RESIDENT} is held, so this costs no load" in driven.signal
 
 
 def test_moving_the_agent_highlight_recomputes_the_report(here, monkeypatch):
@@ -546,14 +578,14 @@ def test_moving_the_agent_highlight_recomputes_the_report(here, monkeypatch):
     moved = screen(here, "tab", "enter", "down", "enter")
 
     assert moved.highlighted[AGENTS] == "opencode"
-    assert "agent              claude-code, speaking anthropic" in opened.shown
-    assert "agent              opencode, speaking openai" in moved.shown
+    assert "claude-code · pair can talk (anthropic)" in opened.signal
+    assert "opencode · pair can talk (openai)" in moved.signal
 
     # Where its conversations land is read off the highlighted agent's own
-    # config, so it says the report was assembled from that agent rather than
+    # config, so it says the signal was computed for that agent rather than
     # from the one the profile names.
-    assert str(here / "claude-code") in opened.shown
-    assert str(here / "opencode") in moved.shown
+    assert str(here / "claude-code") in opened.signal
+    assert str(here / "opencode") in moved.signal
 
 
 def test_moving_inside_the_open_agent_dropdown_leaves_the_report_alone(
@@ -570,8 +602,8 @@ def test_moving_inside_the_open_agent_dropdown_leaves_the_report_alone(
     hovered = screen(here, "tab", "enter", "down")
 
     assert hovered.highlighted[AGENTS] == "claude-code"
-    assert "agent              claude-code, speaking anthropic" in hovered.shown
-    assert "opencode, speaking openai" not in hovered.shown
+    assert "claude-code · pair can talk (anthropic)" in hovered.signal
+    assert "opencode · pair can talk (openai)" not in hovered.signal
 
 
 def test_moving_onto_an_agent_the_runtime_cannot_talk_to_is_what_refuses_it(
@@ -595,10 +627,10 @@ def test_moving_onto_an_agent_the_runtime_cannot_talk_to_is_what_refuses_it(
     opened = screen(here)
     moved = screen(here, "tab", "enter", "down", "enter")
 
-    assert "refused, and a load would not be reached" not in opened.shown
-    assert "running            refused, and a load would not be reached" in moved.shown
+    assert "refused, and a load would not be reached" not in opened.signal
+    assert "refused, and a load would not be reached" in moved.signal
     assert "the anthropic API and the agent expects openai" in " ".join(
-        moved.shown.split()
+        moved.signal.split()
     )
 
 
@@ -624,9 +656,9 @@ def test_an_agent_the_runtime_cannot_talk_to_is_refused_with_every_dialect_named
 
     # Read with the wrapping taken out, because where the refusal breaks across
     # lines is the terminal's business rather than what it says.
-    flowed = " ".join(driven.shown.split())
+    flowed = " ".join(driven.signal.split())
 
-    assert "running            refused, and a load would not be reached" in driven.shown
+    assert "refused, and a load would not be reached" in driven.signal
     assert "The runtime serves the openai API and the agent expects anthropic" in flowed
     assert "pick a runtime that serves anthropic" in flowed
 
@@ -662,10 +694,12 @@ def test_the_report_for_an_absent_agent_says_where_to_get_it(here, monkeypatch):
     on_this_machine(monkeypatch)
 
     driven = screen(here)
+    marked = next(row for row in driven.listed[AGENTS] if row.startswith("claude-code"))
 
-    assert "  command          claude, not on PATH" in driven.shown
-    assert "https://docs.claude.com/en/docs/claude-code/setup" in driven.shown
-    assert "nothing here starts claude-code, so this pair cannot run" in driven.shown
+    # The run panel bars the pair; where to get the agent rides on its greyed
+    # row, since the cursor cannot land there to compute a report for it.
+    assert "nothing here starts claude-code, so this pair cannot run" in driven.signal
+    assert "https://docs.claude.com/en/docs/claude-code/setup" in marked
 
 
 def test_a_runtime_with_nothing_downloaded_says_so_and_where_to_go_next(
@@ -681,8 +715,8 @@ def test_a_runtime_with_nothing_downloaded_says_so_and_where_to_go_next(
 
     assert driven.listed[MODELS] == ["the runtime has nothing downloaded"]
     assert not driven.reachable[MODELS]
-    assert "the runtime at 127.0.0.1:1234 has nothing downloaded" in driven.shown
-    assert "Run `offgrid recommend`" in driven.shown
+    assert "the runtime at 127.0.0.1:1234 has nothing downloaded" in driven.signal
+    assert "Run `offgrid recommend`" in driven.signal
 
 
 def test_a_runtime_with_nothing_downloaded_still_reports_the_model_named(
@@ -698,7 +732,7 @@ def test_a_runtime_with_nothing_downloaded_still_reports_the_model_named(
 
     driven = screen(here)
 
-    assert "requests           google/gemma-4-e4b" in driven.shown
+    assert "google/gemma-4-e4b, context ceiling" in driven.shown
     assert "name one under `model:` in the profile" not in driven.shown
 
 
@@ -715,10 +749,9 @@ def test_the_agent_a_run_would_try_is_reported_on_even_where_it_would_not_answer
 
     driven = screen(here)
 
-    assert "agent              claude-code, which did not answer" in driven.shown
-    assert "settings.json" in driven.shown
-    assert "runtime            lmstudio at 127.0.0.1:1234, reachable" in driven.shown
-    assert "  dialects         anthropic, openai" in driven.shown
+    assert "claude-code, which did not answer, so this pair cannot run" in driven.signal
+    assert "settings.json" in driven.signal
+    assert "lmstudio at 127.0.0.1:1234, serves anthropic + openai" in driven.shown
 
 
 def test_a_window_offgrid_stopped_asking_for_is_said_on_the_screen(here, monkeypatch):
@@ -730,8 +763,8 @@ def test_a_window_offgrid_stopped_asking_for_is_said_on_the_screen(here, monkeyp
 
     driven = screen(here)
 
-    assert "discarded          131072 was asked for on" in driven.shown
-    assert "to ask again" in driven.shown
+    assert "discarded" in driven.shown
+    assert "context 131072 refused" in driven.shown
 
 
 def test_a_profile_asking_for_nothing_says_so_where_the_held_model_is_highlighted(
@@ -751,13 +784,11 @@ def test_a_profile_asking_for_nothing_says_so_where_the_held_model_is_highlighte
     opened = screen(here)
     moved = screen(here, "tab", "tab", "down")
 
-    asks_for_nothing = (
-        "requests           asks for nothing, so a run takes whatever is held"
-    )
+    asks_for_nothing = "no model, so a run takes whatever is held"
 
     assert str(opened.highlighted[MODELS]).startswith(RESIDENT)
     assert asks_for_nothing in opened.shown
-    assert "requests           google/gemma-4-e4b" in moved.shown
+    assert "google/gemma-4-e4b, context ceiling" in moved.shown
 
 
 def test_a_model_the_runtime_has_not_got_is_named_rather_than_swapped(
@@ -779,9 +810,9 @@ def test_a_model_the_runtime_has_not_got_is_named_rather_than_swapped(
     driven = screen(here)
 
     assert driven.highlighted[MODELS] is None
-    assert "requests           someone/a-model-that-was-deleted" in driven.shown
-    assert "has not got someone/a-model-that-was-deleted" in driven.shown
-    assert f"{RESIDENT} is held" not in driven.shown
+    assert "someone/a-model-that-was-deleted, context ceiling unknown" in driven.shown
+    assert "has not got someone/a-model-that-was-deleted" in driven.signal
+    assert f"{RESIDENT} is held" not in driven.signal
 
 
 def test_a_window_the_profile_asks_for_is_carried_into_what_would_run(
@@ -796,7 +827,7 @@ def test_a_window_the_profile_asks_for_is_carried_into_what_would_run(
 
     driven = screen(here)
 
-    assert "at 65536" in driven.shown
+    assert "requested context 65536" in driven.shown
 
 
 def test_moving_the_highlight_writes_nothing(here, monkeypatch):
@@ -918,46 +949,132 @@ def test_the_build_warns_where_a_checkout_refuses_to_name_its_commit(
     assert "128" in caplog.text
 
 
-def test_the_screen_shows_what_a_run_would_report(here):
+def test_the_screen_shows_what_a_run_would_report(here, monkeypatch):
     # Everything knowable before a load, which is what somebody who has just
-    # installed offgrid has no other way to see.
+    # installed offgrid has no other way to see: the signal it decides on, and
+    # the curated detail behind the toggle — each in the screen's own voice
+    # rather than doctor's column report.
     runner.invoke(app, ["setup"])
+    on_this_machine(monkeypatch, "claude")
 
     driven = screen(here)
-    shown = driven.shown
+    signal = driven.signal
+    detail = driven.shown
 
-    assert "runtime            lmstudio at 127.0.0.1:1234, reachable" in shown
-    assert "  dialects         anthropic, openai" in shown
-    assert f"model              {RESIDENT}" in shown
-    assert "  context_ceiling  262144" in shown
-    assert "  context_window   212224" in shown
-    assert (
-        "requests           asks for nothing, so a run takes whatever is held" in shown
+    assert f"{RESIDENT} is held, so this costs no load" in signal
+    assert "served at context 212224 (context ceiling 262144)" in signal
+    assert "claude-code · pair can talk (anthropic)" in signal
+    assert f"conversations → {here / 'claude-code'}" in signal
+
+    assert "lmstudio at 127.0.0.1:1234, serves anthropic + openai" in detail
+    assert "no model, so a run takes whatever is held" in detail
+    assert "context ceiling 262144" in detail
+    assert "requested context inherit served" in detail
+    assert f"minimum required context {CONTEXT_FLOOR}" in detail
+    assert "claude, at /somewhere/claude" in detail
+    assert "leaving" in detail
+    assert "hosted tools" in detail
+    assert "transcript sharing" in detail
+    assert "agent speaks anthropic ∈ {anthropic, openai}" in detail
+
+
+def test_the_run_panel_signals_what_the_pairing_would_do(here, monkeypatch):
+    # The few lines a person decides on before committing: whether it costs a
+    # load, the window it is served at against its ceiling, and where a
+    # conversation it starts would be kept. Not the fuller dump — that waits
+    # behind a key — so the runtime, the request and the agent's command are not
+    # in it.
+    runner.invoke(app, ["setup"])
+    on_this_machine(monkeypatch, "claude")
+
+    signal = screen(here).signal
+
+    assert f"{RESIDENT} is held, so this costs no load" in signal
+    assert "served at context 212224 (context ceiling 262144)" in signal
+    assert f"conversations → {here / 'claude-code'}" in signal
+    # The way back rides in the signal; the provenance and the finding stay in
+    # the detail's fuller telling. Swap `resume_with` for `said` and this fails.
+    assert "offgrid run -- --resume" in signal
+    assert "offgrid's own" in signal
+    assert "measured against" not in signal
+    assert "request" not in signal
+    assert "dialect" not in signal
+
+
+def test_the_signal_recomputes_the_load_cost_as_the_highlight_moves(here, monkeypatch):
+    # The signal follows the highlight the way the dump does: a model in memory
+    # costs no load, one that is not costs a load, said in the panel a person
+    # reads rather than only in the dump behind the toggle.
+    runner.invoke(app, ["setup"])
+    answer_as_lm_studio(
+        monkeypatch,
+        holding={RESIDENT: SERVED},
+        cold={"google/gemma-4-e4b": 131072},
     )
-    assert "agent              claude-code, speaking anthropic" in shown
-    assert "  command          claude, not on PATH" in shown
-    assert f"  context_minimum  {CONTEXT_FLOOR}" in shown
-    assert "might leave this machine" in shown
-    assert f"conversations\n  {here / 'claude-code'}" in shown
+    on_this_machine(monkeypatch, "claude")
+
+    opened = screen(here)
+    moved = screen(here, "tab", "tab", "down")
+
+    assert f"{RESIDENT} is held, so this costs no load" in opened.signal
+    assert "google/gemma-4-e4b is not held, so this costs a load" in moved.signal
+    # A load is a cost, not a bar: the line is painted warning, not error.
+    costs = next(text for text in moved.signal_colours if "costs a load" in text)
+    assert moved.signal_colours[costs] == "$text-warning"
 
 
-def test_the_screen_and_doctor_word_one_fact_the_same_way(here):
-    # Two surfaces, one report. A sentence either of them held for itself is a
-    # sentence the other comes to say differently.
-    #
-    # Everything up to `running`, which is the one block the screen owns: what a
-    # keystroke would cost is a question `doctor` has never had, because it
-    # reports the model the runtime is already holding.
+def test_the_signal_bars_a_pair_whose_agent_is_not_here(here, monkeypatch):
+    # Viability is a signal, not a footnote: a pair whose agent nothing here
+    # starts cannot run, and the panel a person reads says so before they
+    # commit to a run that would be refused.
     runner.invoke(app, ["setup"])
-    said = runner.invoke(app, ["doctor"]).stderr
+    on_this_machine(monkeypatch)
 
-    driven = screen(here)
-    read_off_both, _, priced = driven.shown.partition(f"\n{RUNNING}")
+    signal = screen(here).signal
 
-    assert priced, "the screen priced nothing, so this compares the whole report"
+    assert "nothing here starts claude-code, so this pair cannot run" in signal
 
-    for line in read_off_both.splitlines():
-        assert line in said, f"the screen says {line!r} and `doctor` does not"
+
+def test_the_signal_paints_each_verdict_its_own_colour(here, monkeypatch):
+    # Colour is the verdict a glance reads before the words are. A free run and
+    # a plain fact are painted apart — success against muted — so the panel does
+    # not read as one flat block. Repaint every line one colour and this fails.
+    runner.invoke(app, ["setup"])
+    on_this_machine(monkeypatch, "claude")
+
+    colours = screen(here).signal_colours
+
+    held = next(text for text in colours if "costs no load" in text)
+    served = next(text for text in colours if "served at context" in text)
+    assert colours[held] == "$text-success"
+    assert colours[served] == "$text-muted"
+
+
+def test_the_signal_paints_a_barred_pair_in_error(here, monkeypatch):
+    # A pair that cannot run is the one verdict a person must not miss, so the
+    # bar line is painted error rather than left the colour of a fact.
+    runner.invoke(app, ["setup"])
+    on_this_machine(monkeypatch)
+
+    colours = screen(here).signal_colours
+
+    barred = next(text for text in colours if "cannot run" in text)
+    assert colours[barred] == "$text-error"
+
+
+def test_the_diagnostics_wait_behind_a_collapsible_closed_by_default(here):
+    # The screen a person first meets is the signal rather than the log. The
+    # fuller dump — the runtime, the request, the discarded-window internals —
+    # is in the collapsible whether it is open or shut, and a key opens it.
+    runner.invoke(app, ["setup"])
+
+    closed = screen(here)
+    opened = screen(here, "d")
+
+    assert not closed.detail_open
+    assert opened.detail_open
+    assert "request" in closed.shown
+    assert "request" not in closed.signal
 
 
 def test_an_unreachable_runtime_names_every_cause_and_the_screen_stays(
@@ -974,7 +1091,7 @@ def test_an_unreachable_runtime_names_every_cause_and_the_screen_stays(
     serve_get(monkeypatch, refuse)
 
     driven = screen(here)
-    shown = driven.shown
+    shown = driven.signal
 
     assert "http://127.0.0.1:1234" in shown
     assert "Start LM Studio" in shown
@@ -1013,9 +1130,8 @@ def test_a_profile_offgrid_cannot_read_is_shown_on_the_screen(here):
     add_to_section(here, "agent", theme="dark")
 
     driven = screen(here)
-    shown = driven.shown
 
-    assert "theme" in shown
+    assert "theme" in driven.signal
     assert driven.still_open
 
 
@@ -1056,14 +1172,38 @@ def test_a_report_taller_than_the_terminal_can_be_read_to_the_end(here):
     # report `doctor` prints.
     runner.invoke(app, ["setup"])
 
-    # Three lists take the focus before the report does, so reaching it is
-    # three tabs — which is the gesture a person makes to read to the bottom.
-    cramped = screen(here, size=(80, 8))
-    scrolled = screen(here, "tab", "tab", "tab", "end", size=(80, 8))
+    # The dump waits behind the diagnostics toggle, so it is opened first, and
+    # the scroller inside it is what reads to the bottom.
+    def scroll(*keys: str) -> tuple[int, int]:
+        picker = Picker(
+            read_report_func=lambda: read_what_could_be_run(here / "profile.yaml"),
+            save_func=lambda profile: save_profile(profile, here / "profile.yaml"),
+            sha=BUILD_SHA,
+            cwd=WORKDIR,
+        )
 
-    assert cramped.could_scroll_to > 0, "the report fits, so nothing is proven"
-    assert cramped.scrolled_to == 0
-    assert scrolled.scrolled_to == scrolled.could_scroll_to
+        async def driven() -> tuple[int, int]:
+            async with picker.run_test(size=(80, 8)) as pilot:
+                await pilot.press("d")
+                picker.query_one(f"#{PANE}", VerticalScroll).focus()
+                await pilot.pause()
+
+                if keys:
+                    await pilot.press(*keys)
+                    await pilot.pause()
+
+                scroller = picker.query_one(f"#{PANE}", VerticalScroll)
+
+                return scroller.scroll_offset.y, scroller.max_scroll_y
+
+        return asyncio.run(driven())
+
+    at_the_top, could_scroll_to = scroll()
+    at_the_end, could_scroll_to_end = scroll("end")
+
+    assert could_scroll_to > 0, "the report fits, so nothing is proven"
+    assert at_the_top == 0
+    assert at_the_end == could_scroll_to_end
 
 
 def test_the_screen_bare_offgrid_opens_reads_the_profile_offgrid_keeps(
@@ -1079,7 +1219,7 @@ def test_the_screen_bare_offgrid_opens_reads_the_profile_offgrid_keeps(
 
     runner.invoke(app, [])
 
-    assert RESIDENT in drive(opened[0]).shown
+    assert any(RESIDENT in row for row in drive(opened[0]).listed[MODELS])
 
 
 def test_s_runs_with_what_is_assembled_and_writes_nothing(here, monkeypatch):
@@ -1343,7 +1483,7 @@ def test_a_save_that_cannot_be_written_is_shown_and_the_screen_stays(here, monke
 
     assert driven.still_open
     assert driven.left_with is None
-    assert "Could not write the profile" in driven.shown
+    assert "Could not write the profile" in driven.signal
 
 
 def test_where_there_is_no_profile_the_screen_measures_rather_than_refusing(
@@ -1356,18 +1496,16 @@ def test_where_there_is_no_profile_the_screen_measures_rather_than_refusing(
 
     driven = fresh_screen(here)
 
-    assert "Apple M1 Max" in driven.shown
-    assert "No profile at" not in driven.shown
-    assert "offgrid setup" not in driven.shown
-    # The report is assembled onto what `setup` would have written, so the lists
-    # and the report work rather than standing empty behind the measurement:
-    # the runtime the default names answers, and the model it holds is shown.
-    assert f"model              {RESIDENT}" in driven.shown
-    # The measurement stands above the report, not below it: a stranger reads
-    # what fits before the run it is assembled into.
-    assert driven.shown.index("Apple M1 Max") < driven.shown.index(
-        f"model              {RESIDENT}"
-    )
+    assert "Apple M1 Max" in driven.fits
+    assert "No profile at" not in driven.fits
+    assert "offgrid setup" not in driven.fits
+    # The report is assembled onto what `setup` would have written, so the run
+    # panel works rather than standing empty beside the measurement: the runtime
+    # the default names answers, and the model it holds is priced in the signal.
+    assert f"{RESIDENT} is held, so this costs no load" in driven.signal
+    # The machine panel is its own panel above the run one, so what fits is read
+    # before the run it is assembled into without either crowding the other.
+    assert "Apple M1 Max" not in driven.shown
 
 
 def test_where_there_is_no_profile_the_screen_says_what_fits_at_each_width(
@@ -1378,7 +1516,7 @@ def test_where_there_is_no_profile_the_screen_says_what_fits_at_each_width(
     on_this_machine(monkeypatch, "claude")
 
     driven = fresh_screen(here)
-    widths = [line for line in driven.shown.splitlines() if "bit" in line]
+    widths = [line for line in driven.fits.splitlines() if "bit" in line]
 
     assert [line.split("-", 1)[0].strip() for line in widths] == ["4", "8", "16"]
     assert all("parameters" in line for line in widths)
@@ -1395,12 +1533,12 @@ def test_the_measurement_survives_a_runtime_that_did_not_answer(here, monkeypatc
 
     driven = fresh_screen(here)
 
-    assert "Apple M1 Max" in driven.shown
+    assert "Apple M1 Max" in driven.fits
     # Not the chip alone: what fits at each width is the payload someone without
     # a runtime came for, and it survives the runtime not answering in full.
-    assert "4-bit" in driven.shown
-    assert "parameters" in driven.shown
-    assert "http://127.0.0.1:1234" in driven.shown
+    assert "4-bit" in driven.fits
+    assert "parameters" in driven.fits
+    assert "http://127.0.0.1:1234" in driven.signal
     assert driven.still_open
 
 
@@ -1425,13 +1563,15 @@ def test_bare_offgrid_with_no_profile_hands_the_screen_a_measurement(here, monke
 
     runner.invoke(app, [])
 
-    assert "Apple M1 Max" in drive(opened[0]).shown
+    assert "Apple M1 Max" in drive(opened[0]).fits
 
 
-def test_bare_offgrid_with_a_profile_hands_the_screen_no_measurement(here, monkeypatch):
-    # The other side of the wiring: a file that is there is a run already
-    # assembled, and its owner did not open the screen to read the machine's
-    # budget — so nothing is measured, and the report is what it has always been.
+def test_bare_offgrid_with_a_profile_still_hands_the_screen_a_measurement(
+    here, monkeypatch
+):
+    # The machine panel shows what fits whether or not a profile is there: its
+    # owner reads the same budget beside a run already assembled, so the wiring
+    # measures for a file that is there as much as for one that is not.
     runner.invoke(app, ["setup"])
     sit_at_a_terminal(monkeypatch)
     opened = []
@@ -1439,7 +1579,7 @@ def test_bare_offgrid_with_a_profile_hands_the_screen_no_measurement(here, monke
 
     runner.invoke(app, [])
 
-    assert "unified memory" not in drive(opened[0]).shown
+    assert "Apple M1 Max" in drive(opened[0]).fits
 
 
 def test_the_header_names_the_build_the_cwd_and_the_theme(here, monkeypatch):

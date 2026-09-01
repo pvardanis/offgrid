@@ -292,22 +292,10 @@ def describe_the_model(
     if model is not None:
         return (
             say_in_columns("model", model.identifier),
-            say_in_columns(
-                "context_ceiling",
-                describe_what_was_stated(model.context_ceiling),
-                under=True,
-            ),
-            say_in_columns(
-                "context_window",
-                describe_what_was_stated(model.context_window) if held else "unknown",
-                under=True,
-            ),
+            *_describe_the_served_window(model, held=held),
         )
 
-    unknown = (
-        say_in_columns("context_ceiling", "unknown", under=True),
-        say_in_columns("context_window", "unknown", under=True),
-    )
+    unknown = _describe_the_served_window(None, held=held)
 
     # `settle_what_to_run` folds the profile's identifier in beside `--model`,
     # and `hold_model` reaches for the resident model only where the pair of
@@ -325,6 +313,41 @@ def describe_the_model(
             "Load a model in the runtime, or name one under `model:` in the profile.",
         ),
         *unknown,
+    )
+
+
+def _describe_the_served_window(model: Model | None, *, held: bool) -> tuple[str, ...]:
+    """Say the window a model runs in: its ceiling, and what it is served at.
+
+    The two numbers read together — the ceiling is what the model states it can
+    take, the window is what the runtime is serving it at now. A model nothing
+    is serving has no window yet, so it is `unknown` rather than unstated: the
+    number does not exist rather than having gone unsaid.
+
+    :param model: The model the numbers are about, or ``None`` for a runtime
+        that would answer with none.
+    :param held: Whether the runtime has it in memory, which is what makes a
+        served window a number rather than a thing not yet decided.
+
+    :return: The ceiling line and the served-window line.
+    """
+    if model is None:
+        return (
+            say_in_columns("context_ceiling", "unknown", under=True),
+            say_in_columns("context_window", "unknown", under=True),
+        )
+
+    return (
+        say_in_columns(
+            "context_ceiling",
+            describe_what_was_stated(model.context_ceiling),
+            under=True,
+        ),
+        say_in_columns(
+            "context_window",
+            describe_what_was_stated(model.context_window) if held else "unknown",
+            under=True,
+        ),
     )
 
 

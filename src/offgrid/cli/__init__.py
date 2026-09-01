@@ -22,7 +22,7 @@ import typer
 # inside it, and `offgrid.cli.setup` would stop reaching the module a test
 # patches or a reader opens. Importing the submodule is what puts the module
 # there; only the name this file binds is the alias.
-from offgrid.cli.binding import read_what_could_be_run, there_is_no_profile
+from offgrid.cli.binding import read_what_could_be_run
 from offgrid.cli.doctor import doctor as doctor_command
 from offgrid.cli.recommend import read_what_a_list_recommends
 from offgrid.cli.recommend import recommend as recommend_command
@@ -122,10 +122,9 @@ def offgrid(ctx: typer.Context) -> None:
     # that is not the screen would pay it.
     from offgrid.tui.picker import Picker
 
-    # A stranger following the README has written no profile, and the screen
-    # measures the machine for them rather than sending them to `setup` first.
-    # A file that is there is a run already assembled, and its budget is not
-    # what its owner opened the screen to read — so nothing is measured for it.
+    # The machine panel shows what fits whether or not a profile is there: a
+    # stranger following the README meets their machine sized without a `setup`
+    # first, and its owner reads the same budget beside a run already assembled.
     def measure() -> tuple[str, ...]:
         return describe_the_machine_and_how_to_fit_more(detect())
 
@@ -134,7 +133,7 @@ def offgrid(ctx: typer.Context) -> None:
         save_func=lambda profile: save_profile(profile, DEFAULT_PATH),
         sha=read_this_build(),
         cwd=str(Path.cwd()),
-        measure_func=measure if there_is_no_profile(DEFAULT_PATH) else None,
+        measure_func=measure,
         recommend_func=read_what_a_list_recommends,
     )
     departure = screen.run()
