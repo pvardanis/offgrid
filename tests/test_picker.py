@@ -1622,6 +1622,38 @@ def test_pressing_t_cycles_the_theme_live_and_names_it_in_the_header(here, monke
     assert DEFAULT_THEME not in cycled.theme
 
 
+def test_cycling_past_the_last_theme_wraps_to_the_first(here, monkeypatch):
+    # The cycle is a ring: stepping off the end returns to the default rather
+    # than off the list. Pressing `t` once per theme lands back where it began,
+    # which the `% len(THEMES)` in the step is what holds — drop it and this
+    # goes red on the last press.
+    runner.invoke(app, ["setup"])
+    on_this_machine(monkeypatch, "claude")
+
+    wrapped = screen(here, *["t"] * len(THEMES))
+
+    assert wrapped.applied_theme == DEFAULT_THEME
+    assert DEFAULT_THEME in wrapped.theme
+
+
+def test_cycling_from_a_loaded_theme_steps_from_where_it_opened(here, monkeypatch):
+    # Cycling begins where a person left off, not at the default: a profile on
+    # the third theme, then `t`, reaches the fourth. This holds that the applied
+    # theme is what the step reads, so a later cycle does not jump back to the
+    # first on every press.
+    runner.invoke(app, ["setup"])
+    on_this_machine(monkeypatch, "claude")
+    profile = here / "profile.yaml"
+    profile.write_text(
+        profile.read_text().replace(f"theme: {DEFAULT_THEME}", f"theme: {THEMES[2]}")
+    )
+
+    cycled = screen(here, "t")
+
+    assert cycled.applied_theme == THEMES[3]
+    assert THEMES[3] in cycled.theme
+
+
 def test_the_cycled_theme_is_written_to_the_profile_when_the_run_is_saved(
     here, monkeypatch
 ):
