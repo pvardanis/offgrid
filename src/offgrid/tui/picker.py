@@ -22,7 +22,8 @@ from typing import ClassVar
 from textual.app import App, ComposeResult
 from textual.binding import Binding, BindingType
 from textual.containers import Horizontal, Vertical, VerticalScroll
-from textual.widgets import Footer, OptionList, Select, Static
+from textual.content import Content
+from textual.widgets import Collapsible, Footer, OptionList, Select, Static
 
 from offgrid.domain.assembling import (
     Pairing,
@@ -33,7 +34,12 @@ from offgrid.domain.assembling import (
     open_on_what_the_profile_holds,
     read_the_highlight,
 )
-from offgrid.domain.costing import describe_what_would_run
+from offgrid.domain.costing import (
+    SignalLine,
+    Tone,
+    describe_the_detail,
+    describe_the_signal,
+)
 from offgrid.domain.profile import Profile
 from offgrid.shared.exceptions import OffgridError
 from offgrid.tui.choices import Choices, agent_choices, model_options, runtime_choices
@@ -78,6 +84,24 @@ REPORT = "report"
 
 PANE = "pane"
 """What the report scrolls inside, since it is as long as the machine makes it."""
+
+RIGHT = "right"
+"""The column beside the lists, split into the machine panel over the run one."""
+
+MACHINE = "machine"
+"""The upper right panel: what this machine holds, at each quantization width."""
+
+FITS = "fits"
+"""Where the machine panel says what fits, which a test reads it back from."""
+
+RUN = "run"
+"""The lower right panel: what the highlighted pairing would do."""
+
+SIGNAL = "signal"
+"""Where the run panel's few colour-coded lines are, read back by a test."""
+
+DETAIL = "detail"
+"""The collapsible the curated detail waits behind, closed by default."""
 
 LISTS = "lists"
 """What the two dropdowns and the models list are stacked in."""
@@ -130,6 +154,18 @@ change something, rather than remember whether they moved anything.
 UNCHANGED = "this is your saved profile"
 """What the status says when what is assembled is exactly what the file holds."""
 
+_TONE_STYLES = {
+    Tone.OK: "$text-success",
+    Tone.BLOCKED: "$text-error",
+    Tone.COST: "$text-warning",
+    Tone.INFO: "$text-muted",
+}
+"""How each verdict is painted: a run that is fine, barred, costed, or a fact.
+
+Theme variables, so the colours move with the theme rather than being fixed
+against one palette.
+"""
+
 
 class Picker(App[Departure | None]):
     """Two dropdowns and a models list, and the report for what is picked.
@@ -154,6 +190,7 @@ class Picker(App[Departure | None]):
         Binding("enter", "run_and_save", "run and save"),
         Binding("s", "run_once", "run once"),
         Binding("r", "recommend", "recommend"),
+        Binding("d", "toggle_detail", "details"),
         Binding("q", "quit", "leave"),
     ]
 
@@ -208,8 +245,28 @@ class Picker(App[Departure | None]):
         padding: 0 1;
     }}
 
-    #{PANE} {{
+    #{RIGHT} {{
         width: 1fr;
+    }}
+
+    /* The two panels share the height, with nothing between them: what this
+       machine holds, over what the highlighted run would do. */
+    #{MACHINE}, #{RUN} {{
+        height: 1fr;
+    }}
+
+    #{FITS} {{
+        padding: 0 1;
+    }}
+
+    #{SIGNAL} {{
+        padding: 0 1;
+    }}
+
+    /* The curated detail scrolls inside the collapsible, so a summary taller
+       than the panel is still read to the end once the detail is opened. */
+    #{DETAIL} #{PANE} {{
+        height: 1fr;
     }}
 
     #{STATUS} {{
@@ -300,7 +357,21 @@ class Picker(App[Departure | None]):
                 ),
                 id=LISTS,
             ),
-            VerticalScroll(Static(id=REPORT, markup=False), id=PANE),
+            Vertical(
+                Vertical(Static(id=FITS, markup=False), id=MACHINE, classes="box"),
+                Vertical(
+                    Static(id=SIGNAL),
+                    Collapsible(
+                        VerticalScroll(Static(id=REPORT, markup=False), id=PANE),
+                        title="details",
+                        collapsed=True,
+                        id=DETAIL,
+                    ),
+                    id=RUN,
+                    classes="box",
+                ),
+                id=RIGHT,
+            ),
         )
         yield Static(id=STATUS, markup=False)
         yield Footer()
@@ -319,11 +390,14 @@ class Picker(App[Departure | None]):
         self.query_one(f"#{RUNTIME_BOX}", Vertical).border_title = "runtime"
         self.query_one(f"#{AGENT_BOX}", Vertical).border_title = "agent"
         self.query_one(f"#{MODEL_BOX}", Vertical).border_title = MODELS
+        self.query_one(f"#{MACHINE}", Vertical).border_title = "machine"
+        self.query_one(f"#{RUN}", Vertical).border_title = "run"
 
-        # Measured first and kept, so it is shown above whatever the report turns
-        # out to be — the machine's budget survives a runtime that did not
-        # answer, which is exactly the machine a stranger opened this to size.
+        # Measured first and kept, so the machine panel is filled whatever the
+        # report turns out to be — the machine's budget survives a runtime that
+        # did not answer, which is exactly the machine a stranger opened to size.
         self._measurement = self._measure()
+        self._show_the_machine()
 
         try:
             report = self._read_report_func()
@@ -512,7 +586,11 @@ class Picker(App[Departure | None]):
         return self.query_one(f"#{MODELS}", OptionList)
 
     def _say_what_would_run(self) -> None:
-        """Show the report for whatever is picked, and whether it differs."""
+        """Show the run panel for whatever is picked, and whether it differs.
+
+        The signal a person decides on goes in the run panel; the curated detail
+        goes into the collapsible under it, closed until a key opens it.
+        """
         report = self._report
 
         if report is None:
@@ -520,7 +598,10 @@ class Picker(App[Departure | None]):
 
         pairing = self._read_the_highlights(report)
 
-        self._say("\n".join(describe_what_would_run(report, pairing)))
+        self._show_the_signal(describe_the_signal(report, pairing))
+        self.query_one(f"#{REPORT}", Static).update(
+            "\n".join(describe_the_detail(report, pairing))
+        )
         self._say_whether_it_differs(report, pairing)
 
     def _read_the_highlights(self, report: WhatCouldBeRun) -> Pairing:
@@ -568,11 +649,45 @@ class Picker(App[Departure | None]):
         except OffgridError as error:
             return (str(error),)
 
+    def action_toggle_detail(self) -> None:
+        """Open or close the collapsible the curated detail waits behind.
+
+        Closed on open so the screen a person first meets is the signal rather
+        than the summary; a key opens it where they are debugging.
+        """
+        detail = self.query_one(f"#{DETAIL}", Collapsible)
+
+        detail.collapsed = not detail.collapsed
+
+    def _show_the_machine(self) -> None:
+        """Put what this machine holds into the machine panel.
+
+        The measurement does not move as a highlight does, so it is shown once
+        rather than recomputed beside every report.
+        """
+        self.query_one(f"#{FITS}", Static).update("\n".join(self._measurement))
+
+    def _show_the_signal(self, lines: tuple[SignalLine, ...]) -> None:
+        """Paint the run panel's signal lines by the verdict each carries.
+
+        :param lines: The signal, each line tagged with how it reads.
+        """
+        painted = Content("\n".join(line.text for line in lines))
+        at = 0
+
+        for line in lines:
+            painted = painted.stylize(_TONE_STYLES[line.tone], at, at + len(line.text))
+            at += len(line.text) + 1
+
+        self.query_one(f"#{SIGNAL}", Static).update(painted)
+
     def _say(self, said: str) -> None:
-        """Put text in the report pane, under the measurement where there is one.
+        """Put a message where the signal reads, painted as a thing barring a run.
+
+        The read that failed, or the write that did: a runtime nothing answered
+        for, or a profile that would not save. It sits where the signal is,
+        which is the panel a person is looking at, rather than behind the toggle.
 
         :param said: What to show there.
         """
-        shown = "\n".join((*self._measurement, "", said)) if self._measurement else said
-
-        self.query_one(f"#{REPORT}", Static).update(shown)
+        self._show_the_signal((SignalLine(said, Tone.BLOCKED),))

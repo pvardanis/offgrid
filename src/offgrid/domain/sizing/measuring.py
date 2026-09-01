@@ -28,11 +28,11 @@ def describe_the_machine(machine: Machine) -> tuple[str, ...]:
     :return: The lines to show, in the order they are read.
     """
     limit = machine.wired_limit_bytes
+    gpu = f"GPU limit {limit / GIB:.0f}GB" if limit else "GPU limit at its default"
 
     return (
-        f"{machine.chip} · {machine.memory_bytes / GIB:.0f}GB unified memory",
-        f"GPU limit  {limit / GIB:.0f}GB" if limit else "GPU limit  at its default",
-        f"usable     {machine.usable_bytes / BYTES_PER_GB:.0f}GB",
+        f"{machine.chip} · {machine.memory_bytes / GIB:.0f}GB unified memory · "
+        f"{gpu} · usable {machine.usable_bytes / BYTES_PER_GB:.0f}GB",
         "",
         "A model of about this size fits, leaving room for context:",
         "",
