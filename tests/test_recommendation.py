@@ -46,6 +46,7 @@ def a_table(*listings: Listing, unsized_rows: int = 0) -> Table:
     """A published list carrying these listings."""
     return Table(
         source="https://onyx.app/best-llm-for-coding",
+        benchmark="swe_bench_verified",
         dated="2026-09-01",
         listings=list(listings),
         unsized_rows=unsized_rows,

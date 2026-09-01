@@ -1705,6 +1705,7 @@ def test_recommend_reads_a_kept_table_back_with_whichever_list_can_read_it(
     # to share — and the table names its own source either way.
     another = Table(
         source="https://another.example/coding",
+        benchmark="swe_bench_verified",
         dated="2026-07-19",
         listings=[
             Listing(
