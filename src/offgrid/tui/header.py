@@ -132,3 +132,16 @@ class HeaderBand(Vertical):
                 yield Static(f"offgrid @ {self._sha}", id=BUILD, markup=False)
                 yield Static(f"{self._cwd}  ·  {INHERITS}", id=CWD, markup=False)
                 yield Static(f"theme: {self._theme}", id=THEME, markup=False)
+
+    def show_theme(self, name: str) -> None:
+        """Name the theme the screen is now drawn in, on the band's third line.
+
+        The theme is the one thing the header reports that changes while the
+        screen is open — a person cycles it live — so the line is restated
+        rather than composed once. The format is kept here, beside where it is
+        first written, so the two cannot drift.
+
+        :param name: The theme now applied.
+        """
+        self._theme = name
+        self.query_one(f"#{THEME}", Static).update(f"theme: {name}")

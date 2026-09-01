@@ -18,6 +18,7 @@ import httpx
 import pytest
 import typer
 from rich.cells import cell_len
+from textual.app import App
 from textual.containers import VerticalScroll
 from textual.content import Content
 from textual.widgets import Collapsible, OptionList, Select, Static
@@ -30,7 +31,7 @@ from offgrid.cli import app, read_this_build
 from offgrid.cli.binding import read_profile, read_what_could_be_run
 from offgrid.cli.run import launch_the_assembled_profile
 from offgrid.domain.assembling import IN_MEMORY
-from offgrid.domain.profile import save_profile
+from offgrid.domain.profile import THEMES, save_profile
 from offgrid.domain.running import discarded_windows
 from offgrid.domain.running.dialect import Dialect
 from offgrid.domain.running.discarded_windows import save_discarded_window
@@ -1601,6 +1602,72 @@ def test_the_header_names_the_build_the_cwd_and_the_theme(here, monkeypatch):
     # The default theme is applied, not only named, so the palette a person
     # meets is the one the third line reports.
     assert driven.applied_theme == DEFAULT_THEME
+
+
+def test_pressing_t_cycles_the_theme_live_and_names_it_in_the_header(here, monkeypatch):
+    # The one control a person cycles live: a key moves the palette on and the
+    # header's third line says which theme the screen is now drawn in. What
+    # cycles is the colour, read back off the app and off the line together so
+    # the name shown is the palette applied.
+    runner.invoke(app, ["setup"])
+    on_this_machine(monkeypatch, "claude")
+
+    opened = screen(here)
+    cycled = screen(here, "t")
+
+    assert opened.applied_theme == DEFAULT_THEME
+    assert DEFAULT_THEME in opened.theme
+    assert cycled.applied_theme == THEMES[1]
+    assert THEMES[1] in cycled.theme
+    assert DEFAULT_THEME not in cycled.theme
+
+
+def test_the_cycled_theme_is_written_to_the_profile_when_the_run_is_saved(
+    here, monkeypatch
+):
+    # Kept means the next open starts on it: cycling the theme and pressing the
+    # key that saves writes the chosen theme, so a later run opens on it. The
+    # file named the default before, so the theme it names afterwards is the
+    # cycle's doing rather than what was already there.
+    runner.invoke(app, ["setup"])
+    answer_as_lm_studio(monkeypatch, holding={RESIDENT: SERVED})
+    on_this_machine(monkeypatch, "claude")
+
+    driven = screen(here, "t", "tab", "tab", "enter")
+
+    assert isinstance(driven.left_with, Departure)
+    assert driven.left_with.saved is True
+    assert driven.left_with.profile.theme == THEMES[1]
+    assert read_profile(here / "profile.yaml").theme == THEMES[1]
+
+
+def test_the_header_opens_on_the_theme_the_profile_holds(here, monkeypatch):
+    # A theme kept last time is the theme this time: the header opens naming the
+    # profile's theme rather than the default, and the palette applied is that
+    # one, so cycling begins where a person left off.
+    runner.invoke(app, ["setup"])
+    on_this_machine(monkeypatch, "claude")
+    profile = here / "profile.yaml"
+    profile.write_text(
+        profile.read_text().replace(f"theme: {DEFAULT_THEME}", f"theme: {THEMES[2]}")
+    )
+
+    driven = screen(here)
+
+    assert THEMES[2] in driven.theme
+    assert driven.applied_theme == THEMES[2]
+
+
+def test_every_offered_theme_is_a_palette_the_screen_can_draw():
+    # THEMES is a profile field's vocabulary and lives in the domain, but every
+    # name in it has to be one the screen can actually apply — a theme the
+    # profile accepts and the screen then cannot draw is worse than no theme.
+    # Held apart here, where reaching Textual is what the layer is for.
+    available = set(App().available_themes)
+
+    assert set(THEMES) <= available, (
+        f"offgrid offers themes Textual does not have: {set(THEMES) - available}"
+    )
 
 
 def open_the_published_list(here, recommend_func, *after, size=ROOMY):

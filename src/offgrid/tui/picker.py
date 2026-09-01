@@ -40,7 +40,7 @@ from offgrid.domain.costing import (
     describe_the_detail,
     describe_the_signal,
 )
-from offgrid.domain.profile import Profile
+from offgrid.domain.profile import DEFAULT_THEME, THEMES, Profile
 from offgrid.shared.exceptions import OffgridError
 from offgrid.tui.choices import Choices, agent_choices, model_options, runtime_choices
 from offgrid.tui.dropdown import Dropdown
@@ -50,13 +50,6 @@ from offgrid.tui.published_list import PublishedList, ReadWhatAListRecommends
 type ReadWhatCouldBeRun = Callable[[], WhatCouldBeRun]
 type SaveWhatWasAssembled = Callable[[Profile], None]
 type MeasureThisMachine = Callable[[], tuple[str, ...]]
-
-DEFAULT_THEME = "catppuccin-mocha"
-"""The theme the screen opens in, settled against the prototype.
-
-Applied on open and named in the header. There is no key to change it, so the
-one theme is both what the screen is drawn in and what the header names.
-"""
 
 
 @dataclass(frozen=True)
@@ -190,6 +183,7 @@ class Picker(App[Departure | None]):
         Binding("enter", "run_and_save", "run and save"),
         Binding("s", "run_once", "run once"),
         Binding("r", "recommend", "recommend"),
+        Binding("t", "cycle_theme", "theme"),
         Binding("d", "toggle_detail", "details"),
         Binding("q", "quit", "leave"),
     ]
@@ -322,6 +316,7 @@ class Picker(App[Departure | None]):
         self._recommend_func = recommend_func
         self._report: WhatCouldBeRun | None = None
         self._measurement: tuple[str, ...] = ()
+        self._theme = DEFAULT_THEME
 
     def compose(self) -> ComposeResult:
         """Build the screen: the dropdowns, the models list, the report beside.
@@ -331,7 +326,7 @@ class Picker(App[Departure | None]):
         # The band above the lists: which offgrid this is, where a run would
         # operate, and the theme. What it shows was handed in, so it reaches
         # nothing.
-        yield HeaderBand(sha=self._sha, cwd=self._cwd, theme=DEFAULT_THEME)
+        yield HeaderBand(sha=self._sha, cwd=self._cwd, theme=self._theme)
 
         # The report is inside something that scrolls, because it is as long as
         # the machine makes it: a discarded window, a long path to the agent, or
@@ -384,8 +379,9 @@ class Picker(App[Departure | None]):
         this to find out about.
         """
         # Applied here, once the app is up, so the palette the header names is
-        # the one the screen is actually drawn in.
-        self.theme = DEFAULT_THEME
+        # the one the screen is actually drawn in. The default holds until the
+        # profile is read, so an error screen is still drawn in a theme.
+        self.theme = self._theme
 
         self.query_one(f"#{RUNTIME_BOX}", Vertical).border_title = "runtime"
         self.query_one(f"#{AGENT_BOX}", Vertical).border_title = "agent"
@@ -407,6 +403,7 @@ class Picker(App[Departure | None]):
             return
 
         self._report = report
+        self._apply_theme(report.profile.theme)
         self._fill_the_lists(report)
         self._say_what_would_run()
 
@@ -480,6 +477,29 @@ class Picker(App[Departure | None]):
 
         self.push_screen(PublishedList(self._recommend_func))
 
+    def action_cycle_theme(self) -> None:
+        """Move the palette on one, and name the theme now drawn in the header.
+
+        The one control cycled live: what moves is the colour, not the banner or
+        the button, so nothing a person picks can make the screen unreadable.
+        The chosen theme rides in what a save writes, so a later run opens on it.
+        """
+        after = THEMES[(THEMES.index(self._theme) + 1) % len(THEMES)]
+
+        self._apply_theme(after)
+        self._say_what_would_run()
+
+    def _apply_theme(self, name: str) -> None:
+        """Draw the screen in a theme, and name it in the header's third line.
+
+        :param name: The theme to draw in, which is one offgrid offers.
+        """
+        # `self.theme` is Textual's own live palette; `self._theme` is what a
+        # save writes and what the next cycle steps on from.
+        self._theme = name
+        self.theme = name
+        self.query_one(HeaderBand).show_theme(name)
+
     def _assemble(self) -> Profile | None:
         """Write what the highlights are on into the profile a run is made from.
 
@@ -492,7 +512,23 @@ class Picker(App[Departure | None]):
         if report is None:
             return None
 
-        return assemble_a_profile(report, self._read_the_highlights(report))
+        return self._assemble_with_theme(report, self._read_the_highlights(report))
+
+    def _assemble_with_theme(self, report: WhatCouldBeRun, pairing: Pairing) -> Profile:
+        """Assemble the profile a save writes, carrying the cycled theme.
+
+        The theme is not one of the highlights, so it is stated over the
+        assembled profile rather than read out of the pairing: what a save
+        writes is the run a person picked drawn in the theme they cycled to.
+
+        :param report: Everything that was read.
+        :param pairing: What the highlights are on.
+
+        :return: The profile a save would write.
+        """
+        return assemble_a_profile(report, pairing).model_copy(
+            update={"theme": self._theme}
+        )
 
     def _fill_the_lists(self, report: WhatCouldBeRun) -> None:
         """Put what offgrid drives, and what this machine has, into the screen.
@@ -626,7 +662,7 @@ class Picker(App[Departure | None]):
         :param report: Everything that was read.
         :param pairing: What the highlights are on.
         """
-        assembled = assemble_a_profile(report, pairing)
+        assembled = self._assemble_with_theme(report, pairing)
         differs = assembled != report.profile
 
         self.query_one(f"#{STATUS}", Static).update(
