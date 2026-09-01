@@ -48,8 +48,8 @@ type MeasureThisMachine = Callable[[], tuple[str, ...]]
 DEFAULT_THEME = "catppuccin-mocha"
 """The theme the screen opens in, settled against the prototype.
 
-Applied on open and named in the header. Cycling it live and keeping a chosen
-one is a later turn of the screen; for now the default is what is shown.
+Applied on open and named in the header. There is no key to change it, so the
+one theme is both what the screen is drawn in and what the header names.
 """
 
 
