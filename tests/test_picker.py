@@ -7,6 +7,7 @@ person reads.
 """
 
 import asyncio
+import logging
 import subprocess
 import threading
 from dataclasses import dataclass
@@ -23,7 +24,7 @@ from textual.widgets._select import SelectOverlay
 from typer.testing import CliRunner
 
 from offgrid.agents.claude_code.launching import CONTEXT_FLOOR
-from offgrid.cli import app
+from offgrid.cli import app, read_this_build
 from offgrid.cli.binding import read_profile, read_what_could_be_run
 from offgrid.cli.run import launch_the_assembled_profile
 from offgrid.domain.assembling import IN_MEMORY
@@ -36,6 +37,7 @@ from offgrid.domain.running.model import Model
 from offgrid.domain.running.runtime import RuntimeName
 from offgrid.domain.sizing.measuring import describe_the_machine_and_how_to_fit_more
 from offgrid.shared.exceptions import LeaderboardUnavailableError, ProfileError
+from offgrid.shared.say import LOGGER
 from offgrid.shared.wording import REACHING_THE_NETWORK
 from offgrid.tui.dropdown import Dropdown
 from offgrid.tui.header import BUILD, CWD, INHERITS, THEME
@@ -878,6 +880,42 @@ def test_bare_offgrid_names_the_build_unknown_where_git_answers_nothing(
 
     assert result.exit_code == 0
     assert "offgrid @ unknown" in drive(opened[0]).build
+
+
+def test_the_build_reads_the_short_commit_git_names(monkeypatch):
+    # A regression guard, not a slice: where git answers, the build is the
+    # short commit it named, with the trailing newline stripped rather than
+    # carried into the header. Nothing else in the suite proves the happy path
+    # — every screen test hands the header a fake SHA — so a `read_this_build`
+    # that returned `unknown` regardless would otherwise go unnoticed.
+    def names_a_commit(*args, **kwargs):
+        return subprocess.CompletedProcess(args, 0, stdout="abc1234\n", stderr="")
+
+    monkeypatch.setattr("offgrid.cli.subprocess.run", names_a_commit)
+
+    assert read_this_build() == "abc1234"
+
+
+def test_the_build_warns_where_a_checkout_refuses_to_name_its_commit(
+    monkeypatch, caplog
+):
+    # A directory that is a checkout but where git exits non-zero with something
+    # to say is the surprising miss. It reads as `unknown` like the benign ones,
+    # but leaves a line saying what git refused, so an `unknown` on a real
+    # checkout is not silent.
+    def refuses(*args, **kwargs):
+        return subprocess.CompletedProcess(
+            args, 128, stdout="", stderr="fatal: not a git repository"
+        )
+
+    monkeypatch.setattr("offgrid.cli.subprocess.run", refuses)
+
+    with caplog.at_level(logging.WARNING, logger=LOGGER):
+        build = read_this_build()
+
+    assert build == "unknown"
+    assert "fatal: not a git repository" in caplog.text
+    assert "128" in caplog.text
 
 
 def test_the_screen_shows_what_a_run_would_report(here):
