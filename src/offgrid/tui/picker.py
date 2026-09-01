@@ -480,9 +480,10 @@ class Picker(App[Departure | None]):
     def action_cycle_theme(self) -> None:
         """Move the palette on one, and name the theme now drawn in the header.
 
-        The one control cycled live: what moves is the colour, not the banner or
-        the button, so nothing a person picks can make the screen unreadable.
-        The chosen theme rides in what a save writes, so a later run opens on it.
+        The one control cycled live: what moves is the palette, never the
+        banner's glyphs or the screen's labels, so nothing a person picks can
+        make it unreadable. The chosen theme rides in what a save writes, so a
+        later run opens on it.
         """
         after = THEMES[(THEMES.index(self._theme) + 1) % len(THEMES)]
 
@@ -494,8 +495,11 @@ class Picker(App[Departure | None]):
 
         :param name: The theme to draw in, which is one offgrid offers.
         """
-        # `self.theme` is Textual's own live palette; `self._theme` is what a
-        # save writes and what the next cycle steps on from.
+        # `self.theme` is Textual's live theme *name* — the reactive it resolves
+        # to a palette; `self._theme` is what a save writes and what the next
+        # cycle steps on from. Assigning a name Textual does not have raises;
+        # that `name` is always one it has is held by
+        # test_every_offered_theme_is_a_palette_the_screen_can_draw.
         self._theme = name
         self.theme = name
         self.query_one(HeaderBand).show_theme(name)
