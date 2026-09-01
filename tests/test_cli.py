@@ -152,7 +152,7 @@ def test_setup_writes_nothing_it_measured_into_the_profile(here):
 
     written = read_written((here / "profile.yaml").read_text())
 
-    assert set(written) == {"runtime", "agent", "model"}
+    assert set(written) == {"runtime", "agent", "model", "theme"}
     assert set(written["runtime"]) == {"name", "host"}
 
 

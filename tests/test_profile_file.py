@@ -37,6 +37,9 @@ agent:
 model:
   identifier: {NAMED_MODEL}
   context_window: 32768
+
+# The colours the screen wears.
+theme: nord
 """
 
 # The whole of a profile typed from the README, which names no model at all.
@@ -88,7 +91,9 @@ def test_a_key_the_file_never_named_is_written_after_what_is_there(tmp_path):
 
     written = path.read_text()
     assert written.startswith(TYPED_BY_HAND)
-    assert written[len(TYPED_BY_HAND) :] == "model:\n  identifier:\n  context_window:\n"
+    assert written[len(TYPED_BY_HAND) :] == (
+        "model:\n  identifier:\n  context_window:\ntheme: catppuccin-mocha\n"
+    )
 
 
 def test_a_file_holding_a_key_offgrid_cannot_act_on_is_written_whole(tmp_path):
@@ -183,6 +188,7 @@ def test_a_profile_written_where_there_is_none_is_written_whole(tmp_path):
         "runtime:\n  host: 127.0.0.1:1234\n  name: lmstudio\n"
         "agent:\n  name: claude-code\n"
         f"model:\n  identifier: {NAMED_MODEL}\n  context_window: 32768\n"
+        "theme: nord\n"
     )
 
 

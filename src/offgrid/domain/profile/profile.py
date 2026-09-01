@@ -11,7 +11,14 @@ both back here.
 
 from pathlib import Path
 
-from pydantic import BaseModel, ConfigDict, Field, SerializeAsAny, ValidationError
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    SerializeAsAny,
+    ValidationError,
+    field_validator,
+)
 
 from offgrid.domain.profile.keeping import DuplicateKeyError, YAMLError, read_yaml
 from offgrid.domain.profile.structure import (
@@ -25,6 +32,31 @@ from offgrid.shared.exceptions import ProfileError
 from offgrid.shared.home import OFFGRID_HOME
 
 DEFAULT_PATH = OFFGRID_HOME / "profile.yaml"
+
+THEMES = (
+    "catppuccin-mocha",
+    "catppuccin-latte",
+    "nord",
+    "gruvbox",
+    "dracula",
+    "tokyo-night",
+    "monokai",
+    "solarized-light",
+)
+"""The colour themes offgrid offers, in the order a key cycles them.
+
+Names the screen applies as palettes, kept here rather than beside the screen
+because it is a profile field's own vocabulary: what a hand-edited theme is
+refused against, and what the picker cycles. Every one is a palette the screen
+can actually draw, which a screen-side test holds this list to.
+"""
+
+DEFAULT_THEME = THEMES[0]
+"""The theme a profile opens in where it names none, and what a fresh one saves.
+
+Settled against the prototype (catppuccin-mocha), and first so that the cycle
+a person walks starts where the screen already was.
+"""
 
 
 class Profile(BaseModel):
@@ -46,6 +78,9 @@ class Profile(BaseModel):
         already holding at whatever it is already serving it at. The section
         belongs to neither adapter: the agent sets the floor, the runtime
         honours the number and the model states the ceiling.
+    :param theme: The colour theme the screen is drawn in, cycled live and kept
+        between runs. Defaults where absent so a file written before the field
+        existed still loads; a name offgrid does not have is refused.
 
     Nothing measured is kept here. The GPU limit moves — a runtime may raise
     it as it starts — so it is read where it is used rather than recorded.
@@ -60,6 +95,31 @@ class Profile(BaseModel):
     runtime: SerializeAsAny[RuntimeConfig]
     agent: SerializeAsAny[AgentConfig]
     model: ModelRequest = Field(default_factory=ModelRequest)
+    theme: str = DEFAULT_THEME
+
+    @field_validator("theme")
+    @classmethod
+    def _theme_is_one_offgrid_has(cls, value: str) -> str:
+        """Refuse a theme name offgrid cannot draw, naming the set that exists.
+
+        The theme is hand-edited like the rest of the file, so a typo is a
+        clear error rather than a silent fall back to the default — and the
+        message names what is on offer, since a person cannot guess the set.
+
+        :param value: The theme the file names.
+
+        :return: The theme, unchanged, where it is one offgrid offers.
+
+        :raise ValueError: When it is not, which pydantic turns into the
+            refusal a reader sees.
+        """
+        if value not in THEMES:
+            raise ValueError(
+                f"theme {value!r} is not one offgrid has. "
+                f"Pick one of: {', '.join(THEMES)}."
+            )
+
+        return value
 
     @property
     def runtime_name(self) -> RuntimeName:
