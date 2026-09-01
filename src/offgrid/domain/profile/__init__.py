@@ -9,8 +9,8 @@ from offgrid.domain.profile.keeping import dump_yaml, read_yaml
 from offgrid.domain.profile.profile import (
     DEFAULT_PATH,
     DEFAULT_THEME,
-    THEMES,
     Profile,
+    Theme,
     create_profile,
     load_yaml,
 )
@@ -21,8 +21,8 @@ from offgrid.domain.profile.structure import refuse_a_flat_profile
 __all__ = [
     "DEFAULT_PATH",
     "DEFAULT_THEME",
-    "THEMES",
     "Profile",
+    "Theme",
     "create_profile",
     "dump_yaml",
     "load_yaml",

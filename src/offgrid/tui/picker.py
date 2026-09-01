@@ -40,7 +40,7 @@ from offgrid.domain.costing import (
     describe_the_detail,
     describe_the_signal,
 )
-from offgrid.domain.profile import DEFAULT_THEME, THEMES, Profile
+from offgrid.domain.profile import DEFAULT_THEME, Profile, Theme
 from offgrid.shared.exceptions import OffgridError
 from offgrid.tui.choices import Choices, agent_choices, model_options, runtime_choices
 from offgrid.tui.dropdown import Dropdown
@@ -485,12 +485,13 @@ class Picker(App[Departure | None]):
         make it unreadable. The chosen theme rides in what a save writes, so a
         later run opens on it.
         """
-        after = THEMES[(THEMES.index(self._theme) + 1) % len(THEMES)]
+        themes = list(Theme)
+        after = themes[(themes.index(self._theme) + 1) % len(themes)]
 
         self._apply_theme(after)
         self._say_what_would_run()
 
-    def _apply_theme(self, name: str) -> None:
+    def _apply_theme(self, name: Theme) -> None:
         """Draw the screen in a theme, and name it in the header's third line.
 
         :param name: The theme to draw in, which is one offgrid offers.

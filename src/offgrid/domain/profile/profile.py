@@ -9,6 +9,7 @@ registries reads the file, asks each registry for its own section, and hands
 both back here.
 """
 
+from enum import StrEnum
 from pathlib import Path
 
 from pydantic import (
@@ -17,7 +18,6 @@ from pydantic import (
     Field,
     SerializeAsAny,
     ValidationError,
-    field_validator,
 )
 
 from offgrid.domain.profile.keeping import DuplicateKeyError, YAMLError, read_yaml
@@ -33,25 +33,29 @@ from offgrid.shared.home import OFFGRID_HOME
 
 DEFAULT_PATH = OFFGRID_HOME / "profile.yaml"
 
-THEMES = (
-    "catppuccin-mocha",
-    "catppuccin-latte",
-    "nord",
-    "gruvbox",
-    "dracula",
-    "tokyo-night",
-    "monokai",
-    "solarized-light",
-)
-"""The colour themes offgrid offers, in the order a key cycles them.
 
-Names the screen applies as palettes, kept here rather than beside the screen
-because it is a profile field's own vocabulary: what a hand-edited theme is
-refused against, and what the picker cycles. Every one is a palette the screen
-can actually draw, which a screen-side test holds this list to.
-"""
+class Theme(StrEnum):
+    """The colour themes offgrid offers, in the order a key cycles them.
 
-DEFAULT_THEME = THEMES[0]
+    A StrEnum, so the profile's theme field validates membership itself and
+    each member is the name the screen applies as a palette. Kept here rather
+    than beside the screen because it is a profile field's own vocabulary: what
+    a hand-edited theme is refused against, and what the picker cycles. Every
+    one is a palette the screen can draw, which a screen-side test holds this
+    enum to.
+    """
+
+    CATPPUCCIN_MOCHA = "catppuccin-mocha"
+    CATPPUCCIN_LATTE = "catppuccin-latte"
+    NORD = "nord"
+    GRUVBOX = "gruvbox"
+    DRACULA = "dracula"
+    TOKYO_NIGHT = "tokyo-night"
+    MONOKAI = "monokai"
+    SOLARIZED_LIGHT = "solarized-light"
+
+
+DEFAULT_THEME = Theme.CATPPUCCIN_MOCHA
 """The theme a profile opens in where it names none, and what a fresh one saves.
 
 Settled against the prototype (catppuccin-mocha), and first so that the cycle
@@ -95,31 +99,7 @@ class Profile(BaseModel):
     runtime: SerializeAsAny[RuntimeConfig]
     agent: SerializeAsAny[AgentConfig]
     model: ModelRequest = Field(default_factory=ModelRequest)
-    theme: str = DEFAULT_THEME
-
-    @field_validator("theme")
-    @classmethod
-    def _theme_is_one_offgrid_has(cls, value: str) -> str:
-        """Refuse a theme name offgrid cannot draw, naming the set that exists.
-
-        The theme is hand-edited like the rest of the file, so a typo is a
-        clear error rather than a silent fall back to the default — and the
-        message names what is on offer, since a person cannot guess the set.
-
-        :param value: The theme the file names.
-
-        :return: The theme, unchanged, where it is one offgrid offers.
-
-        :raise ValueError: When it is not, which pydantic turns into the
-            refusal a reader sees.
-        """
-        if value not in THEMES:
-            raise ValueError(
-                f"theme {value!r} is not one offgrid has. "
-                f"Pick one of: {', '.join(THEMES)}."
-            )
-
-        return value
+    theme: Theme = DEFAULT_THEME
 
     @property
     def runtime_name(self) -> RuntimeName:
