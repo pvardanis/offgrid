@@ -8,7 +8,13 @@ section says is in `test_profile_model.py`.
 import pytest
 
 from offgrid.cli.binding import read_profile
-from offgrid.domain.profile import Profile, dump_yaml, save_profile
+from offgrid.domain.profile import (
+    DEFAULT_THEME,
+    THEMES,
+    Profile,
+    dump_yaml,
+    save_profile,
+)
 from offgrid.domain.running.agent import AgentName
 from offgrid.domain.running.model import ModelRequest
 from offgrid.domain.running.runtime import RuntimeName
@@ -58,6 +64,63 @@ def test_a_setting_only_one_adapter_reads_is_written_down(tmp_path):
     save_profile(Profile(runtime=runtime, agent=agent), path)
 
     assert read_written(path.read_text())["agent"]["theme"] == "light"
+
+
+def test_a_profile_carrying_a_known_theme_loads(tmp_path):
+    # The theme is a preference offgrid keeps between runs, so a hand-edited
+    # file that names one offgrid has loads and reads back the name it named.
+    path = tmp_path / "profile.yaml"
+    path.write_text(NAMED.format(host=HOST) + f"theme: {THEMES[1]}\n")
+
+    assert read_profile(path).theme == THEMES[1]
+
+
+def test_a_profile_naming_no_theme_defaults_rather_than_refusing(tmp_path):
+    # Every field a later version adds has to tolerate a file written before it,
+    # so a profile that names no theme loads on the default rather than being
+    # refused for the field being absent.
+    path = tmp_path / "profile.yaml"
+    path.write_text(NAMED.format(host=HOST))
+
+    assert read_profile(path).theme == DEFAULT_THEME
+
+
+def test_a_profile_naming_an_unknown_theme_is_refused_naming_what_exists(tmp_path):
+    # A theme is hand-edited like the rest of the file, so a typo is a clear
+    # error naming the set that exists rather than a silent fall back to the
+    # default. The guard is proven by deleting the validator and watching this
+    # go green when it should stay red.
+    path = tmp_path / "profile.yaml"
+    path.write_text(NAMED.format(host=HOST) + "theme: neon-dreams\n")
+
+    with pytest.raises(ProfileError) as refused:
+        read_profile(path)
+
+    said = str(refused.value)
+    assert "neon-dreams" in said
+    assert DEFAULT_THEME in said
+
+
+def test_a_theme_survives_a_write_back(tmp_path):
+    # The theme rides in the file with the rest of what offgrid remembers, so a
+    # save writes it and a later read carries it back unchanged.
+    path = tmp_path / "profile.yaml"
+    save_profile(build_profile(theme=THEMES[1]), path)
+
+    assert read_profile(path).theme == THEMES[1]
+    assert read_written(path.read_text())["theme"] == THEMES[1]
+
+
+def test_a_hand_written_theme_survives_a_write_back(tmp_path):
+    # The file is advertised as hand-editable, so a save states the theme over
+    # the line a person typed rather than dropping it and appending its own.
+    path = tmp_path / "profile.yaml"
+    path.write_text(NAMED.format(host=HOST) + f"theme: {THEMES[2]}\n")
+    written = read_profile(path)
+
+    save_profile(written, path)
+
+    assert read_profile(path).theme == THEMES[2]
 
 
 def test_a_profile_typed_by_hand_loads(tmp_path):
