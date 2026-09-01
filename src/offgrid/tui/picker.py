@@ -38,11 +38,19 @@ from offgrid.domain.profile import Profile
 from offgrid.shared.exceptions import OffgridError
 from offgrid.tui.choices import Choices, agent_choices, model_options, runtime_choices
 from offgrid.tui.dropdown import Dropdown
+from offgrid.tui.header import HeaderBand
 from offgrid.tui.published_list import PublishedList, ReadWhatAListRecommends
 
 type ReadWhatCouldBeRun = Callable[[], WhatCouldBeRun]
 type SaveWhatWasAssembled = Callable[[Profile], None]
 type MeasureThisMachine = Callable[[], tuple[str, ...]]
+
+DEFAULT_THEME = "catppuccin-mocha"
+"""The theme the screen opens in, settled against the prototype.
+
+Applied on open and named in the header. Cycling it live and keeping a chosen
+one is a later turn of the screen; for now the default is what is shown.
+"""
 
 
 @dataclass(frozen=True)
@@ -215,6 +223,9 @@ class Picker(App[Departure | None]):
         self,
         read_report_func: ReadWhatCouldBeRun,
         save_func: SaveWhatWasAssembled,
+        *,
+        sha: str,
+        cwd: str,
         measure_func: MeasureThisMachine | None = None,
         recommend_func: ReadWhatAListRecommends | None = None,
     ) -> None:
@@ -223,11 +234,18 @@ class Picker(App[Departure | None]):
         The profile, the runtime and the agents are read by whoever opened the
         screen, and writing the assembled profile back is theirs too, which is
         what keeps the picker clear of every registry and of where the file is
-        kept.
+        kept. The SHA and the cwd the header shows are read the same way — a
+        string and a path the screen only displays, so it reaches no command,
+        registry or adapter to learn them.
 
         :param read_report_func: What the profile, the runtime and the agents answer.
         :param save_func: What writes an assembled profile where a later run
             finds it.
+        :param sha: The git SHA naming which offgrid checkout this is, shown in
+            the header.
+        :param cwd: The working directory a run would inherit, shown in the
+            header. offgrid displays it; the agent inherits the shell's cwd, and
+            offgrid does not set it.
         :param measure_func: What this machine and what fits it read as, handed
             in where there is no profile so that a stranger meets the machine
             measured rather than an error naming another command. ``None`` where
@@ -241,6 +259,8 @@ class Picker(App[Departure | None]):
 
         self._read_report_func = read_report_func
         self._save_func = save_func
+        self._sha = sha
+        self._cwd = cwd
         self._measure_func = measure_func
         self._recommend_func = recommend_func
         self._report: WhatCouldBeRun | None = None
@@ -251,6 +271,11 @@ class Picker(App[Departure | None]):
 
         :yield: Each widget, in the order they are read across the screen.
         """
+        # The band above the lists: which offgrid this is, where a run would
+        # operate, and the theme. What it shows was handed in, so it reaches
+        # nothing.
+        yield HeaderBand(sha=self._sha, cwd=self._cwd, theme=DEFAULT_THEME)
+
         # The report is inside something that scrolls, because it is as long as
         # the machine makes it: a discarded window, a long path to the agent, or
         # a narrow terminal each push the last lines past the bottom. Those
@@ -287,6 +312,10 @@ class Picker(App[Departure | None]):
         so, and a runtime nothing answered for is exactly what somebody opened
         this to find out about.
         """
+        # Applied here, once the app is up, so the palette the header names is
+        # the one the screen is actually drawn in.
+        self.theme = DEFAULT_THEME
+
         self.query_one(f"#{RUNTIME_BOX}", Vertical).border_title = "runtime"
         self.query_one(f"#{AGENT_BOX}", Vertical).border_title = "agent"
         self.query_one(f"#{MODEL_BOX}", Vertical).border_title = MODELS

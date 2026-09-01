@@ -7,8 +7,10 @@ person reads.
 """
 
 import asyncio
+import subprocess
 import threading
 from dataclasses import dataclass
+from pathlib import Path
 
 import httpx
 import pytest
@@ -36,10 +38,12 @@ from offgrid.domain.sizing.measuring import describe_the_machine_and_how_to_fit_
 from offgrid.shared.exceptions import LeaderboardUnavailableError, ProfileError
 from offgrid.shared.wording import REACHING_THE_NETWORK
 from offgrid.tui.dropdown import Dropdown
+from offgrid.tui.header import BUILD, CWD, INHERITS, THEME
 from offgrid.tui.picker import (
     AGENTS,
     CHANGED,
     COLUMNS,
+    DEFAULT_THEME,
     MODELS,
     PANE,
     REPORT,
@@ -64,6 +68,12 @@ runner = CliRunner()
 # both. The narrow one the report was written against is asked for by name.
 ROOMY = (120, 30)
 
+# What the command line reads and hands the screen for the header band: which
+# offgrid this is, and the directory a run would inherit. Fakes here, because
+# the screen only displays them and reads for neither.
+BUILD_SHA = "abc1234"
+WORKDIR = "/somewhere/a-project"
+
 
 @dataclass(frozen=True)
 class Driven:
@@ -72,6 +82,10 @@ class Driven:
     shown: str
     columns: str
     status: str
+    build: str
+    cwd: str
+    theme: str
+    applied_theme: str
     footer: list[str]
     listed: dict[str, list[str]]
     reachable: dict[str, list[str]]
@@ -153,6 +167,10 @@ def drive(picker: Picker, *keys: str, size: tuple[int, int] = ROOMY) -> Driven:
                 shown=str(picker.query_one(f"#{REPORT}", Static).content),
                 columns=str(picker.query_one(f"#{COLUMNS}", Static).content),
                 status=str(picker.query_one(f"#{STATUS}", Static).content),
+                build=str(picker.query_one(f"#{BUILD}", Static).content),
+                cwd=str(picker.query_one(f"#{CWD}", Static).content),
+                theme=str(picker.query_one(f"#{THEME}", Static).content),
+                applied_theme=str(picker.theme),
                 footer=[key.description for key in picker.query(FooterKey)],
                 listed={which: rows for which, (rows, _, _) in read.items()},
                 reachable={which: free for which, (_, free, _) in read.items()},
@@ -179,6 +197,8 @@ def screen(here, *keys: str, size: tuple[int, int] = ROOMY) -> Driven:
         Picker(
             read_report_func=lambda: read_what_could_be_run(here / "profile.yaml"),
             save_func=lambda profile: save_profile(profile, here / "profile.yaml"),
+            sha=BUILD_SHA,
+            cwd=WORKDIR,
         ),
         *keys,
         size=size,
@@ -202,6 +222,8 @@ def fresh_screen(here, *keys: str, size: tuple[int, int] = ROOMY) -> Driven:
         Picker(
             read_report_func=lambda: read_what_could_be_run(here / "profile.yaml"),
             save_func=lambda profile: save_profile(profile, here / "profile.yaml"),
+            sha=BUILD_SHA,
+            cwd=WORKDIR,
             measure_func=lambda: describe_the_machine_and_how_to_fit_more(MACHINE),
         ),
         *keys,
@@ -810,6 +832,54 @@ def test_bare_offgrid_opens_the_screen_instead_of_printing_help(here, monkeypatc
     assert "Usage" not in result.stdout
 
 
+def test_bare_offgrid_names_the_build_unknown_where_git_is_not_on_the_path(
+    here, monkeypatch
+):
+    # The SHA is a line the header only displays, so git not being reachable —
+    # no git on the PATH — is a word rather than the FileNotFoundError that
+    # would otherwise escape the callback and keep the screen from opening.
+    runner.invoke(app, ["setup"])
+    sit_at_a_terminal(monkeypatch)
+
+    def no_git(*args, **kwargs):
+        raise FileNotFoundError(2, "No such file or directory")
+
+    monkeypatch.setattr("offgrid.cli.subprocess.run", no_git)
+    opened = []
+    monkeypatch.setattr(Picker, "run", lambda self: opened.append(self))
+
+    result = runner.invoke(app, [])
+    driven = drive(opened[0])
+
+    assert result.exit_code == 0
+    assert "offgrid @ unknown" in driven.build
+    # The cwd is wired through the same callback: what the screen shows is the
+    # directory a run would inherit, read off this process rather than faked.
+    assert str(Path.cwd()) in driven.cwd
+
+
+def test_bare_offgrid_names_the_build_unknown_where_git_answers_nothing(
+    here, monkeypatch
+):
+    # A git that runs but names no commit — a checkout with no HEAD — answers
+    # empty, which is the other way the SHA can be missing. It reads as the same
+    # word rather than a blank where the commit would be.
+    runner.invoke(app, ["setup"])
+    sit_at_a_terminal(monkeypatch)
+
+    def names_nothing(*args, **kwargs):
+        return subprocess.CompletedProcess(args, 128, stdout="\n", stderr="")
+
+    monkeypatch.setattr("offgrid.cli.subprocess.run", names_nothing)
+    opened = []
+    monkeypatch.setattr(Picker, "run", lambda self: opened.append(self))
+
+    result = runner.invoke(app, [])
+
+    assert result.exit_code == 0
+    assert "offgrid @ unknown" in drive(opened[0]).build
+
+
 def test_the_screen_shows_what_a_run_would_report(here):
     # Everything knowable before a load, which is what somebody who has just
     # installed offgrid has no other way to see.
@@ -1228,6 +1298,8 @@ def test_a_save_that_cannot_be_written_is_shown_and_the_screen_stays(here, monke
     picker = Picker(
         read_report_func=lambda: read_what_could_be_run(here / "profile.yaml"),
         save_func=refuse_to_save,
+        sha=BUILD_SHA,
+        cwd=WORKDIR,
     )
     driven = drive(picker, "tab", "tab", "enter")
 
@@ -1332,6 +1404,27 @@ def test_bare_offgrid_with_a_profile_hands_the_screen_no_measurement(here, monke
     assert "unified memory" not in drive(opened[0]).shown
 
 
+def test_the_header_names_the_build_the_cwd_and_the_theme(here, monkeypatch):
+    # The band above the lists says which offgrid this is, where a run would
+    # operate, and how the screen looks — the three things a person arriving
+    # from the README has no other way to read. The SHA and the cwd are handed
+    # in, so the screen displays them without reaching a command for either.
+    runner.invoke(app, ["setup"])
+    on_this_machine(monkeypatch, "claude")
+
+    driven = screen(here)
+
+    assert BUILD_SHA in driven.build
+    assert WORKDIR in driven.cwd
+    # The cwd line says the directory is inherited, not one offgrid sets — the
+    # note a privacy-minded person reads to know offgrid does not move them.
+    assert INHERITS in driven.cwd
+    assert DEFAULT_THEME in driven.theme
+    # The default theme is applied, not only named, so the palette a person
+    # meets is the one the third line reports.
+    assert driven.applied_theme == DEFAULT_THEME
+
+
 def open_the_published_list(here, recommend_func, *after, size=ROOMY):
     """Open the picker, press the key that recommends, and read the list.
 
@@ -1352,6 +1445,8 @@ def open_the_published_list(here, recommend_func, *after, size=ROOMY):
     picker = Picker(
         read_report_func=lambda: read_what_could_be_run(here / "profile.yaml"),
         save_func=lambda profile: save_profile(profile, here / "profile.yaml"),
+        sha=BUILD_SHA,
+        cwd=WORKDIR,
         recommend_func=recommend_func,
     )
 
@@ -1444,6 +1539,8 @@ def test_opening_the_picker_and_moving_reaches_no_published_list(here, monkeypat
     picker = Picker(
         read_report_func=lambda: read_what_could_be_run(here / "profile.yaml"),
         save_func=lambda profile: save_profile(profile, here / "profile.yaml"),
+        sha=BUILD_SHA,
+        cwd=WORKDIR,
         recommend_func=recommend_func,
     )
     drive(picker, "tab", "down", "tab", "down", "q")
@@ -1535,6 +1632,8 @@ def test_the_sentence_is_painted_before_the_fetch_rather_than_with_its_result(
     picker = Picker(
         read_report_func=lambda: read_what_could_be_run(here / "profile.yaml"),
         save_func=lambda profile: save_profile(profile, here / "profile.yaml"),
+        sha=BUILD_SHA,
+        cwd=WORKDIR,
         recommend_func=recommend_func,
     )
 
