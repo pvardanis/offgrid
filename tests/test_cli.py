@@ -1591,34 +1591,35 @@ def test_recommend_says_it_is_reaching_the_network_even_when_the_fetch_fails(
     assert said.index(REACHING_THE_NETWORK) < said.index("Could not reach the table")
 
 
-def test_the_picker_reader_names_the_download_with_a_placeholder(here, monkeypatch):
-    # The picker shows the whole table and any row on it is a person's to
-    # download, so its download line names a placeholder rather than the one
-    # model `recommend` ranked first. The table still names the concrete rows.
-    from offgrid.cli.recommend import PLACEHOLDER, read_what_a_list_recommends
+def test_the_picker_reader_returns_the_rows_the_list_ranks(here, monkeypatch):
+    # The picker panel renders columns, so its reader hands back structured
+    # rows rather than the printed table `recommend` says on the command line:
+    # the same list, narrowed to what this machine holds, best first.
+    from offgrid.cli.recommend import read_what_a_list_recommends
 
     _leaderboard(monkeypatch, models=[_listed("A-Model-35B", "35B")])
 
-    said = "\n".join(read_what_a_list_recommends())
+    recommendation = read_what_a_list_recommends()
 
-    assert "A-Model-35B" in said
-    assert f"lms get {PLACEHOLDER}" in said
-    assert "lms get A-Model-35B" not in said
+    # One model held at two widths is two rows, leaner first — the panel ranks
+    # a fit, which is a model and a width together.
+    assert {model.name for model in recommendation.models} == {"A-Model-35B"}
+    assert recommendation.models[0].quant == "4-bit"
 
 
-def test_the_picker_reader_points_at_the_list_not_offgrid_run(here, monkeypatch):
-    # `offgrid recommend` names the command because it has no picker. The picker
-    # reader is read inside the picker, which can start a run itself, so it
-    # points a person at its own list rather than sending them back out to a
-    # command they do not need.
-    from offgrid.cli.recommend import PICKER_CLOSING, read_what_a_list_recommends
+def test_the_picker_reader_carries_a_stale_tables_caveat(here, monkeypatch):
+    # A recommendation read from a kept table rather than a fresh fetch carries
+    # what needs saying above it — how old the figures are — so the panel can
+    # show it before the figures.
+    _kept(here, models=[_listed("A-Model-35B", "35B")])
+    _reads(monkeypatch, _refusing_to_answer)
 
-    _leaderboard(monkeypatch, models=[_listed("A-Model-35B", "35B")])
+    from offgrid.cli.recommend import read_what_a_list_recommends
 
-    said = "\n".join(read_what_a_list_recommends())
+    recommendation = read_what_a_list_recommends()
 
-    assert PICKER_CLOSING in said
-    assert "Then `offgrid run`." not in said
+    assert recommendation.models
+    assert any("not a current one" in caveat for caveat in recommendation.caveats)
 
 
 def test_recommend_says_everything_it_says_to_stderr(here, monkeypatch):

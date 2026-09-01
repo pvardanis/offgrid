@@ -10,7 +10,7 @@ import asyncio
 import logging
 import subprocess
 import threading
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import cast
 
@@ -21,7 +21,14 @@ from rich.cells import cell_len
 from textual.app import App
 from textual.containers import VerticalScroll
 from textual.content import Content
-from textual.widgets import Collapsible, OptionList, Select, Static
+from textual.widgets import (
+    Button,
+    Collapsible,
+    DataTable,
+    OptionList,
+    Select,
+    Static,
+)
 from textual.widgets._footer import FooterKey
 from textual.widgets._select import SelectOverlay
 from typer.testing import CliRunner
@@ -38,6 +45,11 @@ from offgrid.domain.running.discarded_windows import save_discarded_window
 from offgrid.domain.running.model import Model
 from offgrid.domain.running.runtime import RuntimeName
 from offgrid.domain.sizing.measuring import describe_the_machine_and_how_to_fit_more
+from offgrid.domain.sizing.recommendation import (
+    PANEL_COLUMNS,
+    Recommendation,
+    RecommendedModel,
+)
 from offgrid.shared.exceptions import LeaderboardUnavailableError, ProfileError
 from offgrid.shared.say import LOGGER
 from offgrid.shared.wording import REACHING_THE_NETWORK
@@ -52,6 +64,12 @@ from offgrid.tui.picker import (
     FITS,
     MODELS,
     PANE,
+    RANKED,
+    RANKED_CAPTION,
+    RECOMMEND,
+    RECOMMEND_CLOSED,
+    RECOMMEND_OPEN,
+    RECOMMENDING,
     REPORT,
     RUNTIMES,
     SIGNAL,
@@ -61,7 +79,6 @@ from offgrid.tui.picker import (
     Departure,
     Picker,
 )
-from offgrid.tui.published_list import TABLE, PublishedList
 from tests.commands import MACHINE
 from tests.doubles import serve_get
 from tests.launches import record_launch
@@ -1703,32 +1720,88 @@ def test_every_offered_theme_is_a_palette_the_screen_can_draw():
     )
 
 
-def open_the_published_list(here, recommend_func, *after, size=ROOMY):
-    """Open the picker, press the key that recommends, and read the list.
+A_RECOMMENDATION = Recommendation(
+    models=(
+        RecommendedModel(
+            name="qwen3-coder-30b-a3b",
+            params="30B (3B active)",
+            quant="4-bit",
+            quality="excellent · 92",
+            context="262144",
+        ),
+        RecommendedModel(
+            name="glm-4.6-32b",
+            params="32B",
+            quant="4-bit",
+            quality="excellent · 90",
+            context="200000",
+        ),
+    ),
+    caption="onyx · dated 2026-09-01 · dropped 3: 2 no size, 1 no score",
+)
+"""A recommendation handed to the panel as rows, so no network is reached.
 
-    The worker is waited on before the screen is read, because the fetch runs
+Built by hand — `Quality` and `Fit` are the domain's, and the leaderboard
+adapter's parse is its own seam — so the picker seam reads what it reveals
+without a page being fetched or an adapter imported.
+"""
+
+
+@dataclass
+class Revealed:
+    """What the machine panel shows once the recommendation is revealed.
+
+    :param headers: The label over each column, read from the table itself.
+    :param rows: Each row of the ranked table, cell by cell.
+    :param caption: The line under the table.
+    :param recommending: What is shown above the table — the network sentence,
+        a caveat, or a refusal.
+    :param recommending_shown: Whether that line is on screen at all.
+    :param table_shown: Whether the table itself is revealed.
+    :param control_label: What the control reads as, whose triangle says
+        whether the table is unfolded.
+    :param fits: What the fits summary still says above the control.
+    :param running: Whether the picker is still the screen — no modal opened.
+    """
+
+    headers: list[str]
+    rows: list[list[str]]
+    caption: str
+    recommending: str
+    recommending_shown: bool
+    table_shown: bool
+    control_label: str
+    fits: str
+    running: bool
+
+
+def reveal(here, recommend_func, *after, measure=None, size=ROOMY):
+    """Open the picker, press the control that recommends, and read the panel.
+
+    The worker is waited on before the panel is read, because the fetch runs
     off the event loop so the network sentence is painted before it: a test
-    reading the screen the instant `r` was pressed would read the sentence and
-    call the table missing.
+    reading the instant the control was used would read the sentence and call
+    the table missing.
 
     :param here: Where the profile is.
-    :param recommend_func: What the key that recommends is handed to read.
-    :param after: Keys to press once the list has answered, for the ones that
-        leave it.
+    :param recommend_func: What the control is handed to read.
+    :param after: Keys to press once the table has answered.
+    :param measure: What the machine panel is handed to size this machine with,
+        for the tests that read the fits summary staying above the table.
     :param size: How much terminal to give it.
 
-    :return: What the list shows, whether the list is what is on top, and
-        whether the picker is still open.
+    :return: What the panel shows once the control has answered.
     """
     picker = Picker(
         read_report_func=lambda: read_what_could_be_run(here / "profile.yaml"),
         save_func=lambda profile: save_profile(profile, here / "profile.yaml"),
         sha=BUILD_SHA,
         cwd=WORKDIR,
+        measure_func=measure,
         recommend_func=recommend_func,
     )
 
-    async def driven():
+    async def driven() -> Revealed:
         async with picker.run_test(size=size) as pilot:
             await pilot.press("r")
             await picker.workers.wait_for_complete()
@@ -1739,164 +1812,90 @@ def open_the_published_list(here, recommend_func, *after, size=ROOMY):
                 await picker.workers.wait_for_complete()
                 await pilot.pause()
 
-            top = picker.screen
-            on_list = isinstance(top, PublishedList)
-            shown = str(top.query_one(f"#{TABLE}", Static).content) if on_list else ""
+            table = picker.query_one(f"#{RANKED}", DataTable)
+            recommending = picker.query_one(f"#{RECOMMENDING}", Static)
 
-            return shown, on_list, picker.is_running
+            return Revealed(
+                headers=[str(column.label) for column in table.columns.values()],
+                rows=[
+                    [str(cell) for cell in table.get_row_at(index)]
+                    for index in range(table.row_count)
+                ],
+                caption=str(picker.query_one(f"#{RANKED_CAPTION}", Static).content),
+                recommending=str(recommending.content),
+                recommending_shown=recommending.display,
+                table_shown=table.display,
+                control_label=str(picker.query_one(f"#{RECOMMEND}", Button).label),
+                fits=str(picker.query_one(f"#{FITS}", Static).content),
+                running=picker.is_running,
+            )
 
     return asyncio.run(driven())
 
 
-def test_r_opens_the_published_list_and_shows_it(here, monkeypatch):
-    # The one command that names published models, reachable from the screen
-    # rather than stranded outside it. `r` opens it, and what it read is shown.
-    runner.invoke(app, ["setup"])
-    on_this_machine(monkeypatch, "claude")
-
-    shown, on_list, _ = open_the_published_list(
-        here, lambda: ["A published table", "row one"]
-    )
-
-    assert on_list
-    assert "A published table" in shown
-    assert "row one" in shown
-
-
-def test_the_network_sentence_is_shown_before_the_table(here, monkeypatch):
-    # This is the only key in the picker that touches the network, and it says
-    # so first: the sentence sits above the table, not under the fetch it warns
-    # of.
-    runner.invoke(app, ["setup"])
-    on_this_machine(monkeypatch, "claude")
-
-    shown, _, _ = open_the_published_list(here, lambda: ["the table"])
-
-    assert REACHING_THE_NETWORK in shown
-    assert shown.index(REACHING_THE_NETWORK) < shown.index("the table")
-
-
-def test_a_failed_fetch_leaves_the_list_open_and_says_what_failed(here, monkeypatch):
-    # A network that is not there is what somebody most wants the picker to
-    # survive: the sentence stays, what stopped the table is shown under it, and
-    # the screen stays open so a person can start a network and press it again.
-    runner.invoke(app, ["setup"])
-    on_this_machine(monkeypatch, "claude")
-
-    def refuse():
-        raise LeaderboardUnavailableError("Could not reach the table: no route")
-
-    shown, on_list, running = open_the_published_list(here, refuse)
-
-    assert on_list
-    assert running
-    assert REACHING_THE_NETWORK in shown
-    assert "Could not reach the table: no route" in shown
-    assert shown.index(REACHING_THE_NETWORK) < shown.index("Could not reach the table")
-
-
-def test_opening_the_picker_and_moving_reaches_no_published_list(here, monkeypatch):
-    # Opening the picker reaches nothing, and neither does moving around it:
-    # the fetch happens only when it is pressed for, so browsing never touches
-    # the network. Delete the guard in the action and this still passes — what
-    # proves it is that nothing but `r` calls the reader at all.
-    runner.invoke(app, ["setup"])
-    answer_as_lm_studio(
-        monkeypatch,
-        holding={RESIDENT: SERVED},
-        cold={"google/gemma-4-e4b": 131072},
-    )
-    on_this_machine(monkeypatch, "claude", "opencode")
-    reached = []
-
-    def recommend_func():
-        reached.append(1)
-
-        return ["a table"]
-
-    picker = Picker(
-        read_report_func=lambda: read_what_could_be_run(here / "profile.yaml"),
-        save_func=lambda profile: save_profile(profile, here / "profile.yaml"),
-        sha=BUILD_SHA,
-        cwd=WORKDIR,
-        recommend_func=recommend_func,
-    )
-    drive(picker, "tab", "down", "tab", "down", "q")
-
-    assert reached == [], "opening the picker or moving in it reached the network"
-
-
-def test_pressing_r_is_what_reaches_the_network(here, monkeypatch):
-    # The other half: the reader is not dead, it is deferred. `r` is what calls
-    # it, exactly once.
-    runner.invoke(app, ["setup"])
-    on_this_machine(monkeypatch, "claude")
-    reached = []
-
-    def recommend_func():
-        reached.append(1)
-
-        return ["a table"]
-
-    open_the_published_list(here, recommend_func)
-
-    assert reached == [1]
-
-
-@pytest.mark.parametrize("key", ["escape", "q"])
-def test_leaving_the_published_list_returns_to_the_picker(here, monkeypatch, key):
-    # The list is a detour, not a departure: both keys that leave it return to
-    # the picker with it still open and everything still assembled.
-    runner.invoke(app, ["setup"])
-    on_this_machine(monkeypatch, "claude")
-
-    _, on_list, running = open_the_published_list(here, lambda: ["the table"], key)
-
-    assert not on_list
-    assert running
-
-
-@pytest.mark.parametrize("key", ["enter", "s"])
-def test_the_run_keys_do_nothing_while_the_published_list_is_up(here, monkeypatch, key):
-    # The keys that start a run belong to the picker underneath, and pressing
-    # them while reading the table would launch a run and tear the table away
-    # mid-read. The list holds the keyboard: only the keys that leave it answer,
-    # so `enter` and `s` do nothing and the table stays.
-    runner.invoke(app, ["setup"])
-    on_this_machine(monkeypatch, "claude")
-
-    _, on_list, running = open_the_published_list(here, lambda: ["the table"], key)
-
-    assert on_list
-    assert running
-
-
-def test_pressing_r_again_does_not_reach_the_network_a_second_time(here, monkeypatch):
-    # `r` is the picker's key, and the list that it opens holds the keyboard, so
-    # pressing it again over the open list opens nothing and reaches nothing:
-    # the reader is called the once, not once per press.
-    runner.invoke(app, ["setup"])
-    on_this_machine(monkeypatch, "claude")
-    reached = []
-
-    def recommend_func():
-        reached.append(1)
-
-        return ["a table"]
-
-    open_the_published_list(here, recommend_func, "r")
-
-    assert reached == [1]
-
-
-def test_the_sentence_is_painted_before_the_fetch_rather_than_with_its_result(
+def test_r_reveals_the_ranked_table_in_place_with_the_fits_summary_kept(
     here, monkeypatch
 ):
-    # The headline of this key: told before it happens. Read while the fetch is
-    # still being waited on — the reader is held on an event the test releases —
-    # so the sentence read here is the one painted before the fetch, not the one
-    # rebuilt with its result. Delete the paint in `on_mount` and this is what
-    # fails, where the tests that read the finished frame would not.
+    # The control reveals the table on the screen a person is already on: no
+    # modal, no second view. The fits summary stays above it, because the table
+    # is worth most read against the machine's budget sitting over it.
+    runner.invoke(app, ["setup"])
+    on_this_machine(monkeypatch, "claude")
+
+    revealed = reveal(
+        here,
+        lambda: A_RECOMMENDATION,
+        measure=lambda: describe_the_machine_and_how_to_fit_more(MACHINE),
+    )
+
+    assert revealed.running
+    assert revealed.table_shown
+    assert "Apple M1 Max" in revealed.fits
+    assert [row[0] for row in revealed.rows] == [
+        "qwen3-coder-30b-a3b",
+        "glm-4.6-32b",
+    ]
+
+
+def test_the_ranked_table_shows_the_columns_the_spec_names(here, monkeypatch):
+    # model, params, quant, quality, context — with the active count named for
+    # a mixture, and the listing's ceiling in the context column.
+    runner.invoke(app, ["setup"])
+    on_this_machine(monkeypatch, "claude")
+
+    revealed = reveal(here, lambda: A_RECOMMENDATION)
+
+    # The headers are read from the table, not assumed, so a column reordered
+    # out of step with a row's cells is caught here rather than mislabelled in
+    # silence.
+    assert revealed.headers == list(PANEL_COLUMNS)
+    assert revealed.rows[0] == [
+        "qwen3-coder-30b-a3b",
+        "30B (3B active)",
+        "4-bit",
+        "excellent · 92",
+        "262144",
+    ]
+
+
+def test_the_caption_names_the_list_and_what_was_dropped(here, monkeypatch):
+    # Under the table: which list the figures came from, and how many rows each
+    # rule dropped, so a model someone expected and did not find is explainable.
+    runner.invoke(app, ["setup"])
+    on_this_machine(monkeypatch, "claude")
+
+    revealed = reveal(here, lambda: A_RECOMMENDATION)
+
+    assert revealed.caption == A_RECOMMENDATION.caption
+
+
+def test_the_network_sentence_is_shown_before_the_fetch_not_with_its_result(
+    here, monkeypatch
+):
+    # The headline of this control: told before it happens. The reader is held
+    # on an event the test releases, so the line read while the fetch is still
+    # waited on is the one painted before it. On success the sentence gives way
+    # to the table, which is what says a fresh list needs no words above it.
     runner.invoke(app, ["setup"])
     on_this_machine(monkeypatch, "claude")
 
@@ -1905,7 +1904,7 @@ def test_the_sentence_is_painted_before_the_fetch_rather_than_with_its_result(
     def recommend_func():
         reached.wait(timeout=5)
 
-        return ["the table"]
+        return A_RECOMMENDATION
 
     picker = Picker(
         read_report_func=lambda: read_what_could_be_run(here / "profile.yaml"),
@@ -1920,17 +1919,222 @@ def test_the_sentence_is_painted_before_the_fetch_rather_than_with_its_result(
             await pilot.press("r")
             await pilot.pause()
 
-            listed = picker.screen.query_one(f"#{TABLE}", Static)
-            before = str(listed.content)
+            line = picker.query_one(f"#{RECOMMENDING}", Static)
+            table = picker.query_one(f"#{RANKED}", DataTable)
+            before = str(line.content)
+            before_rows = table.row_count
 
             reached.set()
             await picker.workers.wait_for_complete()
             await pilot.pause()
 
-            return before, str(listed.content)
+            return before, before_rows, table.row_count, line.display
 
-    before, after = asyncio.run(driven())
+    before, before_rows, after_rows, line_shown = asyncio.run(driven())
 
     assert REACHING_THE_NETWORK in before
-    assert "the table" not in before
-    assert "the table" in after
+    assert before_rows == 0
+    assert after_rows == 2
+    assert not line_shown
+
+
+def test_a_second_press_while_the_fetch_is_in_flight_reaches_nothing(here, monkeypatch):
+    # The control promises the network but once. A person pressing again before
+    # the first read has answered must not start a second: the reader is held on
+    # an event so both presses land while a fetch is outstanding, and only one
+    # read is counted once the event is released.
+    runner.invoke(app, ["setup"])
+    on_this_machine(monkeypatch, "claude")
+
+    reached = threading.Event()
+    calls = []
+
+    def recommend_func():
+        calls.append(1)
+        reached.wait(timeout=5)
+
+        return A_RECOMMENDATION
+
+    picker = Picker(
+        read_report_func=lambda: read_what_could_be_run(here / "profile.yaml"),
+        save_func=lambda profile: save_profile(profile, here / "profile.yaml"),
+        sha=BUILD_SHA,
+        cwd=WORKDIR,
+        recommend_func=recommend_func,
+    )
+
+    async def driven():
+        async with picker.run_test(size=ROOMY) as pilot:
+            await pilot.press("r")
+            await pilot.pause()
+            await pilot.press("r")
+            await pilot.pause()
+
+            reached.set()
+            await picker.workers.wait_for_complete()
+            await pilot.pause()
+
+    asyncio.run(driven())
+
+    assert len(calls) == 1
+
+
+def test_a_failed_fetch_keeps_the_panel_open_and_says_what_failed(here, monkeypatch):
+    # A network that is not there is what a person most wants the panel to
+    # survive: the sentence stays, what stopped the table is shown under it, the
+    # table stays hidden, and the picker stays open so a person can start a
+    # network and use the control again.
+    runner.invoke(app, ["setup"])
+    on_this_machine(monkeypatch, "claude")
+
+    def refuse():
+        raise LeaderboardUnavailableError("Could not reach the table: no route")
+
+    revealed = reveal(here, refuse)
+
+    assert revealed.running
+    assert not revealed.table_shown
+    said = revealed.recommending
+    assert REACHING_THE_NETWORK in said
+    assert "Could not reach the table: no route" in said
+    assert said.index(REACHING_THE_NETWORK) < said.index("Could not reach the table")
+
+
+def test_a_caveat_is_shown_above_the_stale_table(here, monkeypatch):
+    # A table read from a kept copy rather than a fresh fetch says so: the
+    # caveat sits above the table, where the network sentence was, so a person
+    # reads how old the figures are before the figures.
+    runner.invoke(app, ["setup"])
+    on_this_machine(monkeypatch, "claude")
+
+    stale = replace(
+        A_RECOMMENDATION,
+        caveats=("This is the table offgrid read on 2026-08-05, not a current one.",),
+    )
+
+    revealed = reveal(here, lambda: stale)
+
+    assert revealed.table_shown
+    assert revealed.recommending_shown
+    assert "not a current one" in revealed.recommending
+
+
+def test_a_failed_fetch_can_be_used_again(here, monkeypatch):
+    # The refusal lifts the once-only guard, so a person who started a network
+    # after the first failure reaches the table on the second press.
+    runner.invoke(app, ["setup"])
+    on_this_machine(monkeypatch, "claude")
+
+    calls = []
+
+    def recommend_func():
+        calls.append(1)
+
+        if len(calls) == 1:
+            raise LeaderboardUnavailableError("no route")
+
+        return A_RECOMMENDATION
+
+    revealed = reveal(here, recommend_func, "r")
+
+    assert len(calls) == 2
+    assert revealed.table_shown
+
+
+def test_clicking_the_recommend_control_reveals_the_table(here, monkeypatch):
+    # The control is a button as well as a key, so a mouse reaches it. Clicking
+    # it reveals the same table the key does.
+    runner.invoke(app, ["setup"])
+    on_this_machine(monkeypatch, "claude")
+
+    picker = Picker(
+        read_report_func=lambda: read_what_could_be_run(here / "profile.yaml"),
+        save_func=lambda profile: save_profile(profile, here / "profile.yaml"),
+        sha=BUILD_SHA,
+        cwd=WORKDIR,
+        recommend_func=lambda: A_RECOMMENDATION,
+    )
+
+    async def driven():
+        async with picker.run_test(size=ROOMY) as pilot:
+            await pilot.click(f"#{RECOMMEND}")
+            await picker.workers.wait_for_complete()
+            await pilot.pause()
+
+            table = picker.query_one(f"#{RANKED}", DataTable)
+
+            return table.display, table.row_count
+
+    shown, rows = asyncio.run(driven())
+
+    assert shown
+    assert rows == 2
+
+
+def test_opening_the_picker_and_moving_reaches_no_recommendation(here, monkeypatch):
+    # Opening the picker reaches nothing, and neither does moving around it: the
+    # fetch happens only when the control is used, so browsing never touches the
+    # network. What proves it is that nothing but the control calls the reader.
+    runner.invoke(app, ["setup"])
+    on_this_machine(monkeypatch, "claude", "opencode")
+    reached = []
+
+    def recommend_func():
+        reached.append(1)
+
+        return A_RECOMMENDATION
+
+    picker = Picker(
+        read_report_func=lambda: read_what_could_be_run(here / "profile.yaml"),
+        save_func=lambda profile: save_profile(profile, here / "profile.yaml"),
+        sha=BUILD_SHA,
+        cwd=WORKDIR,
+        recommend_func=recommend_func,
+    )
+    drive(picker, "tab", "down", "tab", "down", "q")
+
+    assert reached == [], "opening the picker or moving in it reached the network"
+
+
+def test_using_the_control_again_closes_the_table(here, monkeypatch):
+    # The control toggles: a second use, once the table is up, closes it rather
+    # than opening a second copy or reaching the network again.
+    runner.invoke(app, ["setup"])
+    on_this_machine(monkeypatch, "claude")
+
+    revealed = reveal(here, lambda: A_RECOMMENDATION, "r")
+
+    assert not revealed.table_shown
+
+
+def test_the_controls_triangle_turns_down_as_the_table_unfolds(here, monkeypatch):
+    # The mark on the control is a disclosure triangle: it points right with the
+    # table folded away and turns down as it unfolds, so the control says
+    # whether the table is open the way the run panel's collapsible does.
+    runner.invoke(app, ["setup"])
+    on_this_machine(monkeypatch, "claude")
+
+    opened = reveal(here, lambda: A_RECOMMENDATION)
+    closed = reveal(here, lambda: A_RECOMMENDATION, "r")
+
+    assert opened.control_label == RECOMMEND_OPEN
+    assert closed.control_label == RECOMMEND_CLOSED
+
+
+def test_reopening_the_table_reads_from_what_was_kept(here, monkeypatch):
+    # The read is kept, so showing and hiding the table costs one fetch: opening
+    # it again after closing it reads from what was kept, not the wire. The
+    # reader is called the once across open, close, open.
+    runner.invoke(app, ["setup"])
+    on_this_machine(monkeypatch, "claude")
+    reached = []
+
+    def recommend_func():
+        reached.append(1)
+
+        return A_RECOMMENDATION
+
+    revealed = reveal(here, recommend_func, "r", "r")
+
+    assert reached == [1]
+    assert revealed.table_shown
