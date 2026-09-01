@@ -2071,6 +2071,52 @@ def test_clicking_the_recommend_control_reveals_the_table(here, monkeypatch):
     assert rows == 2
 
 
+def test_a_table_taller_or_wider_than_its_box_scrolls_inside_it(here, monkeypatch):
+    # A published list runs to more rows than the panel is tall and wider than
+    # it is wide. The table keeps its box and scrolls within it, so a long list
+    # neither pushes the caption off the screen nor is clipped without a way to
+    # reach the rest.
+    runner.invoke(app, ["setup"])
+    on_this_machine(monkeypatch, "claude")
+
+    many = Recommendation(
+        models=tuple(
+            RecommendedModel(
+                name=f"a-fairly-long-published-model-name-{index}",
+                params="30B (3B active)",
+                quant="4-bit",
+                quality="excellent · 92",
+                context="262144",
+            )
+            for index in range(15)
+        ),
+        caption="onyx · swe_bench_verified · read today · dropped 0",
+    )
+
+    picker = Picker(
+        read_report_func=lambda: read_what_could_be_run(here / "profile.yaml"),
+        save_func=lambda profile: save_profile(profile, here / "profile.yaml"),
+        sha=BUILD_SHA,
+        cwd=WORKDIR,
+        recommend_func=lambda: many,
+    )
+
+    async def driven():
+        async with picker.run_test(size=ROOMY) as pilot:
+            await pilot.press("r")
+            await picker.workers.wait_for_complete()
+            await pilot.pause()
+
+            table = picker.query_one(f"#{RANKED}", DataTable)
+
+            return table.show_vertical_scrollbar, table.show_horizontal_scrollbar
+
+    down, across = asyncio.run(driven())
+
+    assert down
+    assert across
+
+
 def test_opening_the_picker_and_moving_reaches_no_recommendation(here, monkeypatch):
     # Opening the picker reaches nothing, and neither does moving around it: the
     # fetch happens only when the control is used, so browsing never touches the
