@@ -52,8 +52,9 @@ def read_this_build() -> str:
     :return: The short SHA, or ``unknown`` where git cannot answer — not a
         checkout, or no git on the ``PATH``. The header only displays it, so a
         missing SHA is a word rather than a refusal that would keep the screen
-        from opening. What git complained is logged at debug level, so an
-        ``unknown`` on a clone that is a checkout is not left without a trail.
+        from opening. The benign misses stay quiet; where git ran against a
+        checkout and refused with something to say, what it said is logged at
+        warning level, so an ``unknown`` on a real checkout is not silent.
     """
     source = Path(__file__).resolve().parent.parent
 
@@ -73,17 +74,22 @@ def read_this_build() -> str:
 
     sha = found.stdout.strip()
 
-    if not sha:
-        log.debug(
-            "git named no commit for %s (exit %s): %s",
+    if sha:
+        return sha
+
+    # A git that ran, exited non-zero and said why is a checkout it refused to
+    # name — a broken HEAD, a permissions problem — which the debug level would
+    # bury below the handler the command line installs. A run that named no
+    # commit and said nothing is the benign miss, and stays quiet.
+    if found.returncode != 0 and found.stderr.strip():
+        log.warning(
+            "git could not name this build's commit for %s (exit %s): %s",
             source,
             found.returncode,
-            found.stderr.strip() or "none",
+            found.stderr.strip(),
         )
 
-        return "unknown"
-
-    return sha
+    return "unknown"
 
 
 @app.callback(invoke_without_command=True)
