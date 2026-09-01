@@ -77,8 +77,8 @@ def test_every_agent_says_how_to_get_back_into_one(
 
     kept = agent.conversations
 
-    assert "offgrid run" in kept.resumed_by, (
-        f"{agent_under_test.name} says to resume with `{kept.resumed_by}`, which "
+    assert "offgrid run" in kept.resume_with, (
+        f"{agent_under_test.name} says to resume with `{kept.resume_with}`, which "
         "does not go through a run, and only a run points the agent at the store."
     )
 

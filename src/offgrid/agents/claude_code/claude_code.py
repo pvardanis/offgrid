@@ -124,10 +124,12 @@ class ClaudeCode:
         """
         return Conversations(
             kept_in=self.config.config_dir,
-            resumed_by=(
+            resume_with=(
                 f"`offgrid run -- {RESUME}` opens a picker over these and "
-                f"`offgrid run -- {RESUME} <id>` opens one by session, measured "
-                f"against {OFFERS_RESUME}. Measured against "
+                f"`offgrid run -- {RESUME} <id>` opens one by session"
+            ),
+            measured=(
+                f"measured against {OFFERS_RESUME}. Measured against "
                 f"{CARRIES_CONVERSATIONS}, `CLAUDE_CONFIG_DIR` carries "
                 "conversations as well as settings, which is what moved them here."
             ),

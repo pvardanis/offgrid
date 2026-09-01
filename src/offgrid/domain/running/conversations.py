@@ -26,7 +26,7 @@ STARTED_ON_ITS_OWN = (
 Offgrid's own doing rather than a claim about a vendor: a run points the agent
 at this directory and nothing else does, so an agent started by hand reads what
 it reads by default. What that costs — which command finds nothing, and against
-which version it was measured — is the adapter's, and travels in `resumed_by`.
+which version it was measured — is the adapter's, and travels in `measured`.
 """
 
 
@@ -34,8 +34,14 @@ which version it was measured — is the adapter's, and travels in `resumed_by`.
 class Conversations:
     """Where one agent keeps the conversations a run started, and the way back.
 
-    Both halves are the adapter's, because only it knows which directory it
-    writes into and which argument opens one again.
+    Every half is the adapter's, because only it knows which directory it writes
+    into, which argument opens one again, and against which version that was
+    measured.
+
+    The way back is split from the provenance so each is read where it belongs:
+    the commands are what a person acts on, shown wherever the way back is; the
+    provenance is a diagnostic `doctor` carries and a compact surface leaves
+    out. `said` joins them the one way the report reads them.
 
     What it does not promise is that the directory is one of offgrid's. That is
     the whole point of the member and it cannot be checked here — the home is
@@ -46,12 +52,16 @@ class Conversations:
     :param kept_in: The directory offgrid points the agent at, which is where
         what a run wrote down lands. What sits under it is the agent's own
         layout rather than anything offgrid settles.
-    :param resumed_by: How to open one of them again, named the way that agent
-        names it.
+    :param resume_with: The command or commands that open one of them again,
+        named the way that agent names them.
+    :param measured: Against which version the way back was measured, and any
+        finding that came with it — the adapter's provenance, which `doctor`
+        prints and a compact surface leaves out. Empty where there is none.
     """
 
     kept_in: Path
-    resumed_by: str
+    resume_with: str
+    measured: str = ""
 
     def __post_init__(self) -> None:
         """Refuse an answer a person could not act on.
@@ -66,7 +76,7 @@ class Conversations:
                 "reading the report is standing."
             )
 
-        if not self.resumed_by.strip():
+        if not self.resume_with.strip():
             raise ValueError(
                 f"Conversations are said to be kept at {self.kept_in} and nothing "
                 "names the command that opens one, so a person is told where to "
@@ -75,12 +85,19 @@ class Conversations:
 
     @property
     def said(self) -> str:
-        """The way back in, and what an agent started by hand reads instead.
+        """The way back in, its provenance, and what an agent by hand reads.
 
         One join for every report, the way `Reading.said` is one join for the
-        refusal and the report: the second half is the finding rather than the
-        remedy, and an adapter that had to repeat it is one that can drop it.
+        refusal and the report: the commands, then the provenance where there
+        is any, then the finding that a run's conversations are nowhere the
+        agent looks on its own.
 
-        :return: What to type, and why nothing else finds these.
+        :return: What to type, against what it was measured, and why nothing
+            else finds these.
         """
-        return f"{self.resumed_by} {STARTED_ON_ITS_OWN}"
+        if self.measured:
+            way_back = f"{self.resume_with}, {self.measured}"
+        else:
+            way_back = self.resume_with
+
+        return f"{way_back} {STARTED_ON_ITS_OWN}"
