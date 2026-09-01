@@ -2310,3 +2310,109 @@ so nothing is measured for it.
 width moved to `sizing/measuring.py`, which both surfaces take them from, so the
 screen and `setup` cannot word the machine differently. `setup`'s output is
 unchanged: it prints the same lines, now from one place.
+
+## The header names the build by a commit, not a version
+
+The picker gains a header band, and its first line says which offgrid this is.
+It is a git SHA rather than a version number, on the precedent "The audience is
+a handful of friends on Apple Silicon Macs" already set: there is no published
+package and no semver, so a version would name a release that does not exist,
+while a person running several checkouts still needs to know which clone is
+about to run. The commit is what answers that.
+
+**The other two lines say where the run will happen and how the screen looks.**
+The working directory the agent inherits, and the theme. offgrid shows the cwd,
+it does not set it — the agent takes the shell's cwd, and the header reports it
+so a person knows where a run will operate before starting one.
+
+**The SHA and the cwd are a string and a path the screen only displays, so they
+are handed in from `cli/`** rather than reached for. The layer rule keeps
+`offgrid.tui` importing only `offgrid.domain` and `offgrid.shared`, the way the
+screen already takes `read_report_func` and `measure_func`. The band is its own
+`tui/` module, because the picker's App class is already over the soft length
+limit and a header is a second idea rather than more lines in the screen;
+adding it updates the module map in `docs/architecture.md` and `source_modules`
+in `pyproject.toml` in the same change, both guarded by
+`tests/test_architecture.py`.
+
+**The banner is a three-row emboss block, fixed rather than cycled** — the theme
+moves the palette, not the treatment. It was settled against the prototype
+(catppuccin-mocha).
+
+## Recommendations are opt-in, and open on the screen a person is on
+
+**The picker reaches no network until it is asked to.** Opening it costs
+nothing — the lists are read from the machine and the runtime on this machine,
+and moving a highlight is arithmetic — and a recommendation is the one thing
+that reaches out, so it waits behind a link-style button (`[ … ]`) rather than
+firing on open. Someone who came only to start a run pays for nothing they did
+not ask for, which is what "As someone who only came to start a run, I want the
+screen to open fast and reach no network until I ask" is for.
+
+**Pressing it reveals a fixed-height, scrollable ranked table in place, below
+the fits summary, which stays.** The fetch reads a published list over the
+network on a worker thread, so the screen never freezes while it waits. This
+builds on #178's in-picker recommend — a `recommend_func` and a `RECOMMENDED`
+region — revealing the ranked list in place rather than as a separate view,
+because it is worth most read against the machine's budget sitting above it,
+and #178's current shape is verified before the panel is built.
+
+**The table is built from `shortlist`'s structured rows** — `Quality` and
+`Fit` — rather than the pre-joined `summarize_findings` lines, so it renders
+real columns: model, params (with the active count for a mixture), quantization
+width, quality, and context. Context is the listing's `context_ceiling`,
+labelled `context` to match the models list, never `context_window`, which
+names the served window and is empty for a listing serving nothing. The
+drop-counts and the source attribution are a caption under the table.
+
+**Selecting a ranked row shows that model's download instructions below the
+table**, triggered on row highlight so a mouse click, the arrow keys and enter
+all surface it. offgrid downloads nothing; it says how, on the runtime's own
+sentence — "How a model is downloaded is the runtime's own sentence". The
+instructions come from `describe_model_download`, which lives in `runtimes/`
+and the screen may not import, so it too is handed in from `cli/`.
+
+**What was set aside is showing recommendations on open, always-on** — not the
+button. The mitigation if that is revisited is a cache-instant load with a
+background refresh, recorded here rather than built.
+
+## The theme is picked live and kept in the profile
+
+A person cycles the colour theme with a key and offgrid keeps their choice. It
+is a field on the profile, so it sits with the rest of what offgrid remembers
+between runs, and it defaults where absent so a hand-edited file that names no
+theme still loads — the tolerance every profile field a later version adds has
+to have. An unknown theme name is refused naming the set that exists, the way
+other bad profile fields are refused: a typo is a clear error rather than a
+silent fall back to a default. It is written with `model_dump(mode="json")`
+like the rest of the file.
+
+Cycled live means the screen redraws as the key is pressed; kept means the next
+open starts on it. What cycles is the palette, not the shapes — the emboss
+banner and the link button are fixed whatever the theme, so what a person
+chooses is colour and nothing that could make the screen unreadable.
+catppuccin-mocha is the default.
+
+The theme rides on the header's third line, which is where a person reads the
+current one while they cycle it.
+
+## The run report splits into signal and detail
+
+**The right column becomes two panels at equal height** (`1fr` each), no spacer
+between them: "this machine" on top, where the fits summary and the recommend
+button sit, and "this run" below. The lower panel is where the report a person
+reads before committing lives, and it splits what it says by the question
+behind each part.
+
+**Always on screen, in a few colour-coded lines:** whether the highlighted
+pairing costs a load, the window the model would be served at against its
+ceiling, whether the pair can talk, and where a conversation the run starts
+would be kept — the highlighted agent's `Conversations`. These are what a
+person weighing a run decides on.
+
+**Behind a collapsible, closed by default:** the discarded-window internals,
+the dialect mechanics, and the fuller dump. Nothing is lost — someone debugging
+opens it — but the screen a person first meets is the signal rather than the
+log. The #166 picker showed the whole of it as a column of report text, which
+is what read as a terminal rather than a finished screen; this decides what
+shows first and what waits behind a toggle.
