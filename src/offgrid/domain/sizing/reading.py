@@ -14,6 +14,7 @@ them.
 """
 
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 
 from offgrid.domain.sizing import cache
@@ -30,6 +31,8 @@ class Reading:
     """A table to recommend from, and what is not straightforward about it.
 
     :param table: The published list, as it was read.
+    :param read_on: The day offgrid read this table — today for a fresh fetch,
+        the day it was kept for one read back from the cache.
     :param caveats: Lines to say above the table where something about it
         needs saying: that it is not a current one and how old it is, or that
         this one could not be kept for next time. Empty where a fetch worked
@@ -37,6 +40,7 @@ class Reading:
     """
 
     table: Table
+    read_on: date
     caveats: list[str]
 
 
@@ -74,6 +78,7 @@ def get_reading(leaderboards: tuple[Leaderboard, ...], file_path: Path) -> Readi
 
         return Reading(
             table=table,
+            read_on=date.today(),
             caveats=_why_this_list(refusals, table)
             + _cache_payload(payload, file_path),
         )
@@ -174,6 +179,7 @@ def _get_cached_reading(
 
     return Reading(
         table=table,
+        read_on=date.fromisoformat(read_on),
         caveats=[
             *(f"{refusal}" for refusal in refusals),
             f"This is the table offgrid read on {read_on}, not a current one.",

@@ -1737,7 +1737,7 @@ A_RECOMMENDATION = Recommendation(
             context="200000",
         ),
     ),
-    caption="onyx · dated 2026-09-01 · dropped 3: 2 no size, 1 no score",
+    caption="onyx · swe_bench_verified · read today · dropped 3: 2 no size, 1 no score",
 )
 """A recommendation handed to the panel as rows, so no network is reached.
 
