@@ -36,15 +36,16 @@ def test_it_says_what_size_of_model_fits_at_each_width():
     assert all("parameters" in line for line in widths)
 
 
-def test_it_points_at_recommend_and_names_no_command_a_stranger_must_run_first():
-    # A stranger meets the measurement having run nothing, so it names no
-    # prerequisite. `recommend` is a pointer, not a step before this one.
+def test_the_measurement_names_no_command_to_run():
+    # The measurement is the same words setup prints and the picker panel
+    # shows, and the panel now recommends in place. So it names no command —
+    # neither a prerequisite before it nor a pointer after it — leaving each
+    # surface to add what belongs to it.
     machine = Machine(chip="Apple M1", memory_bytes=16 * GIB, wired_limit_bytes=None)
 
     shown = "\n".join(describe_the_machine(machine))
 
-    assert "`offgrid recommend`" in shown
-    assert "offgrid setup" not in shown
+    assert "offgrid" not in shown
 
 
 def test_it_says_how_to_raise_a_gpu_limit_still_at_its_default():

@@ -62,6 +62,8 @@ def setup(
 
     for line in describe_the_machine(machine):
         tell(line)
+    tell("")
+    tell("`offgrid recommend` names the published models that fit.")
     tell(f"Load one in your runtime, then `offgrid run`. Profile: {DEFAULT_PATH}")
 
     advice = suggest_raising_the_gpu_limit(machine)
