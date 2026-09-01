@@ -31,6 +31,19 @@ BANNER_ROWS = (
 )
 """The emboss block spelling offgrid, fixed rather than cycled with the theme."""
 
+
+def theme_line(name: str) -> str:
+    """Give the header's third line, naming the theme the screen is drawn in.
+
+    Shared by the band's first draw and its restatement so the two cannot drift.
+
+    :param name: The theme now applied.
+
+    :return: The line naming it.
+    """
+    return f"theme: {name}"
+
+
 INHERITS = "the directory the agent inherits"
 """What the cwd line says the working directory is: inherited, not set here.
 
@@ -135,17 +148,16 @@ class HeaderBand(Vertical):
             with Vertical(id="meta"):
                 yield Static(f"offgrid @ {self._sha}", id=BUILD, markup=False)
                 yield Static(f"{self._cwd}  ·  {INHERITS}", id=CWD, markup=False)
-                yield Static(f"theme: {self._theme}", id=THEME, markup=False)
+                yield Static(theme_line(self._theme), id=THEME, markup=False)
 
     def show_theme(self, name: str) -> None:
         """Name the theme the screen is now drawn in, on the band's third line.
 
         The theme is the one thing the header reports that changes while the
         screen is open — a person cycles it live — so the line is restated
-        rather than composed once. The format is kept here, beside where it is
-        first written, so the two cannot drift.
+        rather than composed once, both draws going through `theme_line`.
 
         :param name: The theme now applied.
         """
         self._theme = name
-        self.query_one(f"#{THEME}", Static).update(f"theme: {name}")
+        self.query_one(f"#{THEME}", Static).update(theme_line(name))
