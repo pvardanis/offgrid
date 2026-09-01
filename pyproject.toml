@@ -65,7 +65,9 @@ fail-under = 100
 ignore-init-module = true
 # `.claude` holds agent worktrees, each a whole checkout of this repo. Walking
 # one counts its tests, and the run fails at half the coverage it measured.
-exclude = ["tests", ".claude"]
+# `prototype` holds throwaway design mockups kept as primary sources, not
+# production code held to the docstring rule.
+exclude = ["tests", ".claude", "prototype"]
 
 [tool.ty.src]
 # The same worktrees, for the same reason: each is a checkout at whatever
