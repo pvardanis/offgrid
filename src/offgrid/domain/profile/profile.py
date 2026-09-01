@@ -79,8 +79,8 @@ class Profile(BaseModel):
         belongs to neither adapter: the agent sets the floor, the runtime
         honours the number and the model states the ceiling.
     :param theme: The colour theme the screen is drawn in, cycled live and kept
-        between runs. Defaults where absent so a file written before the field
-        existed still loads; a name offgrid does not have is refused.
+        between runs. Defaults where absent so a profile that names no theme
+        still loads; a name offgrid does not have is refused.
 
     Nothing measured is kept here. The GPU limit moves — a runtime may raise
     it as it starts — so it is read where it is used rather than recorded.
