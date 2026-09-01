@@ -2135,21 +2135,40 @@ The day there is a second runtime, this is where it lands, beside the model
 row's columns and the dialect-refusal pane that were already named as the two
 surfaces that move.
 
-## The report is `doctor`'s, with what a keystroke costs said under it
+## One source of truth, worded per surface — the screen is not `doctor`
 
-Everything down to `conversations` is the report the command prints, asked for
-part by part from the same place — `describe_the_runtime`, `describe_the_model`,
-`describe_what_is_requested`, `describe_the_agent` and
-`describe_a_discarded_window`, which are the five `describe_what_was_read`
-itself composes — against a profile the pairing was written into rather than
-against the file. Under it, one block the screen owns: whether this pair can
-talk, whether the agent is here at all, and whether starting it costs a load.
+The picker and `doctor` answer different questions. `doctor` is diagnosis:
+every fact, in a column, run when something is wrong. The picker is a decision
+made in two seconds before a key is pressed. So the screen words a run its own
+way — compact, colour-coded, glanceable — rather than reprinting `doctor`'s
+report. Reprinting it was what made the picker read as a log rather than a
+finished screen, which is the complaint #214 opens with.
 
-Said under rather than woven in, because the two are read by different
-questions — what a run was told, and what a key would do — and because a screen
-that edited the middle of `doctor`'s report is a screen that comes to word one
-fact differently. `tests/test_picker.py` compares everything above that block
-against what `doctor` prints, line for line.
+What the two share is the source of truth, not the phrasing: both compute off
+the same domain values — a `Model`'s two numbers, the agent's `Conversations`,
+the dialect check — and the same verdict, the `Tone` that
+`_reckon_what_running_would_cost` returns. Two surfaces drift when they each
+recompute a fact, not when they each phrase it, so the fact and the verdict are
+shared and the wording is each surface's own. `doctor`'s report is unchanged;
+the picker no longer echoes a line of it.
+
+The screen owns the whole of what it says now, in two parts read by two
+questions. The signal — what a person decides on — is four lines: whether the
+pairing costs a load, the window it is served at against its ceiling, whether
+the pair can talk, and where a conversation it starts is kept. The detail,
+behind the collapsible, is the fuller telling of the run in the same compact
+voice: the runtime and what it serves, the model asked for and the window it
+could run in, the agent's floor, the command that starts it and where it lives,
+what a run could send off this machine, the dialect the pair agrees on, and any
+window offgrid stopped asking for. What separates it from `doctor` is the
+wording — the screen's own, not `doctor`'s column report — and not the content:
+the diagnostic facts are all here, said the way a screen says them.
+
+This reverses the earlier rule that the screen reprint `doctor` line for line,
+and the guard that compared the two is dropped: it guarded phrasing, which the
+surfaces now diverge on by design. What a cold model costs — a load — is a
+behaviour carried by the shared `Tone`, which is what survives as the thing
+worth guarding.
 
 **Sitting on the model the runtime is already holding is read as asking for
 nothing — and only where the profile asks for nothing.** The two describe the
@@ -2399,20 +2418,27 @@ current one while they cycle it.
 ## The run report splits into signal and detail
 
 **The right column becomes two panels at equal height** (`1fr` each), no spacer
-between them: "this machine" on top, where the fits summary and the recommend
-button sit, and "this run" below. The lower panel is where the report a person
-reads before committing lives, and it splits what it says by the question
-behind each part.
+between them: "machine" on top, where the fits summary and the recommend button
+sit, and "run" below. The lower panel is where the run a person reads before
+committing lives, and it splits what it says by the question behind each part.
+Each panel's border carries the bare word — `machine`, `run` — rather than "this
+machine": the screen already sits on one machine and one run, so the pronoun is
+noise.
 
 **Always on screen, in a few colour-coded lines:** whether the highlighted
 pairing costs a load, the window the model would be served at against its
 ceiling, whether the pair can talk, and where a conversation the run starts
 would be kept — the highlighted agent's `Conversations`. These are what a
-person weighing a run decides on.
+person weighing a run decides on, worded compactly rather than as `doctor`'s
+column report.
 
-**Behind a collapsible, closed by default:** the discarded-window internals,
-the dialect mechanics, and the fuller dump. Nothing is lost — someone debugging
-opens it — but the screen a person first meets is the signal rather than the
-log. The #166 picker showed the whole of it as a column of report text, which
-is what read as a terminal rather than a finished screen; this decides what
-shows first and what waits behind a toggle.
+**Behind a collapsible titled `details`, closed by default:** the fuller
+telling of the run — the runtime and what it serves, the model asked for and
+the window it could run in, the agent's floor, the command that starts it and
+where it lives, what a run could send off this machine, the dialect the pair
+agrees on, and any discarded window. It is all of what `doctor` carries, in the
+picker's own compact wording rather than `doctor`'s column report: the screen a
+person first meets is the signal rather than a log. `d` toggles it. The #166
+picker showed the whole report as a column of report text, which is what read as
+a terminal rather than a finished screen; this decides what shows first, what
+waits behind a toggle, and that both are said in the screen's own voice.
