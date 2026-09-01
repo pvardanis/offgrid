@@ -40,8 +40,6 @@ def describe_the_machine(machine: Machine) -> tuple[str, ...]:
             f"  {bits:>2}-bit   {parameters / BILLION:>5.0f}B parameters"
             for bits, parameters in get_sizes_that_fit(machine)
         ),
-        "",
-        "`offgrid recommend` names the published models that fit.",
     )
 
 
