@@ -45,7 +45,11 @@ class HeaderBand(Vertical):
     DEFAULT_CSS = """
     HeaderBand {
         height: auto;
-        padding: 0 1;
+        /* A symmetric margin so the band floats off the window's edges and off
+           the panels below it, rather than the logo sitting hard against the
+           left rule — which reads as unfinished on a light theme, where the
+           block has nowhere to fade into. */
+        margin: 1 2;
         border-bottom: solid $panel;
     }
 
