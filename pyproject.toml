@@ -19,15 +19,15 @@ dependencies = [
 offgrid = "offgrid.cli:main"
 
 [build-system]
-requires = ["uv_build>=0.12.1,<0.13.0"]
+requires = ["uv_build>=0.12.5,<0.13.0"]
 build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
-    "hypothesis>=6.140",
+    "hypothesis>=6.165.10",
     "import-linter>=2.13",
     "interrogate>=1.7",
-    "prek>=0.4.12",
+    "prek>=0.4.14",
     "pytest>=8.4",
     # What Textual lays a screen out with, which makes it the independent
     # answer to how wide a row is on a terminal. Named here rather than taken
@@ -35,8 +35,8 @@ dev = [
     # dependency change.
     "rich>=14",
     "pytest-cov>=7.1.0",
-    "ruff>=0.14",
-    "ty>=0.0.1a20",
+    "ruff>=0.16.4",
+    "ty>=0.0.74",
 ]
 
 [tool.ruff]
