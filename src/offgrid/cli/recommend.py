@@ -64,7 +64,7 @@ def read_what_a_list_recommends() -> Recommendation:
 
     reading = get_reading(LEADERBOARDS, _cache())
 
-    recommendation = recommend_for_the_panel(reading.table, machine)
+    recommendation = recommend_for_the_panel(reading.table, machine, reading.read_on)
 
     return replace(recommendation, caveats=tuple(reading.caveats))
 

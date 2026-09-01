@@ -10,6 +10,7 @@ them.
 """
 
 from dataclasses import dataclass
+from datetime import date
 from urllib.parse import urlparse
 
 from offgrid.domain.sizing.fit import (
@@ -111,7 +112,9 @@ class Recommendation:
     caveats: tuple[str, ...] = ()
 
 
-def recommend_for_the_panel(table: Table, machine: Machine) -> Recommendation:
+def recommend_for_the_panel(
+    table: Table, machine: Machine, read_on: date
+) -> Recommendation:
     """Lay a published list out as the machine panel's ranked table.
 
     The same shortlist the command line ranks, rendered as five columns and a
@@ -121,6 +124,8 @@ def recommend_for_the_panel(table: Table, machine: Machine) -> Recommendation:
 
     :param table: The published list, as it was read.
     :param machine: The host the models would run on.
+    :param read_on: The day offgrid read the table, which the caption states
+        so how current the figures are is read before them.
 
     :return: The models that fit, best first, and the caption under them.
     """
@@ -131,7 +136,8 @@ def recommend_for_the_panel(table: Table, machine: Machine) -> Recommendation:
     )
 
     return Recommendation(
-        models=models, caption=_caption_the_panel(table, shortlisted.dropped)
+        models=models,
+        caption=_caption_the_panel(table, read_on, shortlisted.dropped),
     )
 
 
@@ -167,18 +173,16 @@ def _write_parameters(fit: Fit) -> str:
     return f"{whole} ({fit.active_parameters / BILLION:.0f}B active)"
 
 
-def _caption_the_panel(table: Table, dropped: list[Dropped]) -> str:
-    """Name the list the figures came from, and what each rule dropped.
+def _caption_the_panel(table: Table, read_on: date, dropped: list[Dropped]) -> str:
+    """Credit the figures — list, benchmark, and read date — then account drops.
 
     :param table: The published list, as it was read.
+    :param read_on: The day offgrid read the table.
     :param dropped: What each rule took, or none where it took nothing.
 
     :return: The one line under the table.
     """
-    parts = [_short_source(table.source)]
-
-    if table.dated:
-        parts.append(f"dated {table.dated}")
+    parts = [_short_source(table.source), table.benchmark, _describe_when_read(read_on)]
 
     if dropped:
         total = sum(one.count for one in dropped)
@@ -188,6 +192,25 @@ def _caption_the_panel(table: Table, dropped: list[Dropped]) -> str:
         parts.append(f"dropped {total}: {reasons}")
 
     return " · ".join(parts)
+
+
+def _describe_when_read(read_on: date) -> str:
+    """Say how current the figures are, relative to today where it reads.
+
+    :param read_on: The day offgrid read the table.
+
+    :return: ``read today`` or ``read yesterday`` where that is what it was,
+        and the date itself for anything older.
+    """
+    days = (date.today() - read_on).days
+
+    if days == 0:
+        return "read today"
+
+    if days == 1:
+        return "read yesterday"
+
+    return f"read {read_on.isoformat()}"
 
 
 def _short_source(source: str) -> str:
