@@ -9,6 +9,9 @@ Nothing here says anything; it returns the lines and the command line says
 them.
 """
 
+from dataclasses import dataclass
+from urllib.parse import urlparse
+
 from offgrid.domain.sizing.fit import (
     BYTES_PER_GB,
     QUANTIZATION_WIDTHS,
@@ -17,6 +20,7 @@ from offgrid.domain.sizing.fit import (
 )
 from offgrid.domain.sizing.listing import Fit, Table
 from offgrid.domain.sizing.machine import Machine, suggest_raising_the_gpu_limit
+from offgrid.domain.sizing.measuring import BILLION
 from offgrid.domain.sizing.quality import Quality
 from offgrid.domain.sizing.shortlist import (
     Dropped,
@@ -54,6 +58,154 @@ WHY_DROPPED = {
     Rule.NO_CODING_SCORE: "published no coding score",
     Rule.FITS_AT_NO_WIDTH: "too large for this machine at every width",
 }
+
+# The same rules, said in the few words a one-line caption has room for. The
+# picker's panel names them beside their counts; the command line spells them
+# out over `WHY_DROPPED`.
+SHORT_WHY_DROPPED = {
+    Rule.NO_PARAMETER_COUNT: "no size",
+    Rule.NO_CODING_SCORE: "no score",
+    Rule.FITS_AT_NO_WIDTH: "too large",
+}
+
+# What the picker's ranked table names its columns, in the order they are read
+# across it. Fewer than the command line's table: the panel is narrower than a
+# terminal, so it shows what decides a choice and leaves the arithmetic behind.
+PANEL_COLUMNS = ("model", "params", "quant", "quality", "context")
+
+
+@dataclass(frozen=True)
+class RecommendedModel:
+    """One model of a recommendation, laid out as the panel's columns.
+
+    :param name: The model's name as the list published it.
+    :param params: How large it is, and — for a mixture — how much of it a
+        token reads, e.g. ``30B (3B active)``.
+    :param quant: The quantization width it is ranked at, e.g. ``4-bit``.
+    :param quality: What it is worth here, as a word and its score.
+    :param context: The listing's published ceiling, or that it stated none.
+    """
+
+    name: str
+    params: str
+    quant: str
+    quality: str
+    context: str
+
+
+@dataclass(frozen=True)
+class Recommendation:
+    """What a published list says this machine can hold, laid out for the panel.
+
+    :param models: The models that fit, best first, each as its columns. Empty
+        where nothing on the list fits.
+    :param caption: One line under the table: which list the figures came from,
+        and how many rows each rule dropped.
+    :param caveats: What needs saying above the table before it is read — that
+        it is not a current one and how old it is. Empty in the ordinary case,
+        where a fetch worked and needs no words.
+    """
+
+    models: tuple[RecommendedModel, ...]
+    caption: str
+    caveats: tuple[str, ...] = ()
+
+
+def recommend_for_the_panel(table: Table, machine: Machine) -> Recommendation:
+    """Lay a published list out as the machine panel's ranked table.
+
+    The same shortlist the command line ranks, rendered as five columns and a
+    one-line caption rather than the fuller printed table, so the panel a
+    person reads on the picker cannot disagree with `recommend` about what
+    fits.
+
+    :param table: The published list, as it was read.
+    :param machine: The host the models would run on.
+
+    :return: The models that fit, best first, and the caption under them.
+    """
+    shortlisted = shortlist(table, machine)
+
+    models = tuple(
+        _a_recommended_model(worth, fit) for worth, fit in shortlisted.ranked
+    )
+
+    return Recommendation(
+        models=models, caption=_caption_the_panel(table, shortlisted.dropped)
+    )
+
+
+def _a_recommended_model(worth: Quality, fit: Fit) -> RecommendedModel:
+    """Lay one ranked fit out as the panel's columns.
+
+    :param worth: What the fit is judged to be worth here.
+    :param fit: The model at the width it was ranked at.
+
+    :return: The row to show.
+    """
+    return RecommendedModel(
+        name=fit.listing.name,
+        params=_write_parameters(fit),
+        quant=f"{fit.quantization_bits}-bit",
+        quality=f"{worth.label} · {worth.score}",
+        context=describe_what_was_stated(fit.listing.context_window),
+    )
+
+
+def _write_parameters(fit: Fit) -> str:
+    """Say how large a model is, and what a token reads where that is less.
+
+    :param fit: The model, at one width this machine holds it at.
+
+    :return: The whole size, with the active count beside it for a mixture.
+    """
+    whole = f"{fit.listing.parameters / BILLION:.0f}B"
+
+    if not fit.is_mixture:
+        return whole
+
+    return f"{whole} ({fit.active_parameters / BILLION:.0f}B active)"
+
+
+def _caption_the_panel(table: Table, dropped: list[Dropped]) -> str:
+    """Name the list the figures came from, and what each rule dropped.
+
+    :param table: The published list, as it was read.
+    :param dropped: What each rule took, or none where it took nothing.
+
+    :return: The one line under the table.
+    """
+    parts = [_short_source(table.source)]
+
+    if table.dated:
+        parts.append(f"dated {table.dated}")
+
+    if dropped:
+        total = sum(one.count for one in dropped)
+        reasons = ", ".join(
+            f"{one.count} {SHORT_WHY_DROPPED[one.rule]}" for one in dropped
+        )
+        parts.append(f"dropped {total}: {reasons}")
+
+    return " · ".join(parts)
+
+
+def _short_source(source: str) -> str:
+    """Name a list by its host rather than its whole address.
+
+    The caption sits in a panel narrower than a terminal, where the full URL
+    the table credits itself with would not fit. The host's first label is
+    what a person calls the list — ``onyx`` for ``onyx.app`` — so that is what
+    is shown.
+
+    :param source: Where the table was read, as it credits itself.
+
+    :return: The short name, or the source unchanged where it is not an
+        address with a host to shorten.
+    """
+    host = urlparse(source).hostname
+
+    return host.split(".")[0] if host else source
 
 
 def summarize_findings(

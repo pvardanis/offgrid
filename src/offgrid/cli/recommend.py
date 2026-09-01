@@ -1,5 +1,6 @@
 """What a published list says this machine can hold."""
 
+from dataclasses import replace
 from functools import partial
 from pathlib import Path
 
@@ -10,24 +11,19 @@ from offgrid.domain.profile import DEFAULT_PATH
 from offgrid.domain.running.runtime import RuntimeName
 from offgrid.domain.sizing.machine import detect
 from offgrid.domain.sizing.reading import get_reading
-from offgrid.domain.sizing.recommendation import summarize_findings
+from offgrid.domain.sizing.recommendation import (
+    Recommendation,
+    recommend_for_the_panel,
+    summarize_findings,
+)
 from offgrid.leaderboards import LEADERBOARDS
 from offgrid.runtimes import describe_model_download
 from offgrid.shared.say import tell
 from offgrid.shared.wording import REACHING_THE_NETWORK
 
-# What the picker's download instruction names in place of one model, since the
-# whole table is in front of a person there and any row on it is theirs to
-# download. The command line names the model it ranked first instead: one name
-# on the screen rather than a token to fill in.
-PLACEHOLDER = "<model>"
-
-# How each surface says a run is reached once the model is downloaded. The
-# command line has no picker, so it names the command; the picker can start a
-# run itself, so it points at its own list rather than sending a person back
-# out to `offgrid run`.
+# How the command line says a run is reached once the model is downloaded. It
+# has no picker, so it names the command a person types to reach one.
 THEN_RUN = "Then `offgrid run`."
-PICKER_CLOSING = "Once it is downloaded, pick it in the list and press enter."
 
 
 def recommend() -> None:
@@ -48,36 +44,29 @@ def recommend() -> None:
         tell(line)
 
 
-def read_what_a_list_recommends() -> list[str]:
-    """Read a published list and lay it out for the picker to show.
+def read_what_a_list_recommends() -> Recommendation:
+    """Read a published list and lay it out for the picker's panel.
 
-    The same page `recommend` reaches, read the same way, and laid out with the
-    same columns. What differs is the download instruction: it names a
-    placeholder rather than the model ranked first, because the whole table is
-    on screen and a person there may want any row on it. Nothing is printed —
-    the lines are returned, and the screen that asked for them shows them under
-    the sentence it said before this reached anything.
+    The same page `recommend` reaches, read the same way and ranked by the same
+    shortlist, laid out as the panel's columns rather than the printed table.
+    Nothing is printed — the recommendation is returned, and the panel that
+    asked for it reveals it below the sentence it said before this reached
+    anything.
 
-    :return: The caveats and the table, as lines.
+    :return: The models that fit, the caption under them, and any staleness
+        caveat to show above the table.
 
     :raise LeaderboardUnavailableError: When no list answered and there is no
-        table kept from a run that reached one. The screen shows it and stays
+        table kept from a run that reached one. The panel shows it and stays
         open, so a person can start a network and press the key again.
     """
     machine = detect()
 
-    runtime_name = _get_runtime_name()
-
     reading = get_reading(LEADERBOARDS, _cache())
 
-    def say_how(_model: str) -> str:
-        """Say how to download any model, naming the placeholder for one."""
-        return describe_model_download(runtime_name, PLACEHOLDER)
+    recommendation = recommend_for_the_panel(reading.table, machine)
 
-    return [
-        *reading.caveats,
-        *summarize_findings(reading.table, machine, say_how, PICKER_CLOSING),
-    ]
+    return replace(recommendation, caveats=tuple(reading.caveats))
 
 
 def _get_runtime_name() -> RuntimeName:

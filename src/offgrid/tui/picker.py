@@ -16,14 +16,23 @@ and exits with what to run. The screen never holds a model itself.
 """
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import astuple, dataclass
 from typing import ClassVar
 
+from textual import work
 from textual.app import App, ComposeResult
 from textual.binding import Binding, BindingType
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.content import Content
-from textual.widgets import Collapsible, Footer, OptionList, Select, Static
+from textual.widgets import (
+    Button,
+    Collapsible,
+    DataTable,
+    Footer,
+    OptionList,
+    Select,
+    Static,
+)
 
 from offgrid.domain.assembling import (
     Pairing,
@@ -41,15 +50,17 @@ from offgrid.domain.costing import (
     describe_the_signal,
 )
 from offgrid.domain.profile import DEFAULT_THEME, Profile, Theme
+from offgrid.domain.sizing.recommendation import PANEL_COLUMNS, Recommendation
 from offgrid.shared.exceptions import OffgridError
+from offgrid.shared.wording import REACHING_THE_NETWORK
 from offgrid.tui.choices import Choices, agent_choices, model_options, runtime_choices
 from offgrid.tui.dropdown import Dropdown
 from offgrid.tui.header import HeaderBand
-from offgrid.tui.published_list import PublishedList, ReadWhatAListRecommends
 
 type ReadWhatCouldBeRun = Callable[[], WhatCouldBeRun]
 type SaveWhatWasAssembled = Callable[[Profile], None]
 type MeasureThisMachine = Callable[[], tuple[str, ...]]
+type ReadWhatAListRecommends = Callable[[], Recommendation]
 
 
 @dataclass(frozen=True)
@@ -86,6 +97,36 @@ MACHINE = "machine"
 
 FITS = "fits"
 """Where the machine panel says what fits, which a test reads it back from."""
+
+RECOMMEND = "recommend"
+"""The link-style control that reveals the ranked table, in place, below fits."""
+
+RANKED = "ranked"
+"""The ranked table itself, revealed by the control and read back by a test."""
+
+RANKED_CAPTION = "ranked-caption"
+"""Under the table: which list the figures came from, and what was dropped."""
+
+RECOMMENDING = "recommending"
+"""Above the table: the network sentence while it fetches, then any caveat.
+
+The one place in the picker that reaches the network says so before it does,
+and this is where. It carries the sentence while the fetch runs, then either a
+staleness caveat on success or what stopped the fetch on failure, and is empty
+where a fresh table needs no words.
+"""
+
+RECOMMEND_CLOSED = "[ ▶ recommend models ]"
+"""What the control reads as with the table folded away: a right-pointing mark.
+
+A disclosure triangle, the run panel's `details` collapsible uses the same, so
+the mark that turns down as the table unfolds is the one a person already knows.
+"""
+
+RECOMMEND_OPEN = "[ ▼ recommend models ]"
+"""What the control reads as with the table unfolded: the mark turned to point
+down, so the triangle says whether the table is open the way a collapsible's does.
+"""
 
 RUN = "run"
 """The lower right panel: what the highlighted pairing would do."""
@@ -165,8 +206,9 @@ class Picker(App[Departure | None]):
 
     Three keys end a session, keyed to match Claude Code's model picker: `enter`
     runs with what is assembled and saves it, `s` runs with it once, `q` leaves
-    having changed nothing. `r` opens the published list, which is the one thing
-    the picker does that reaches the network, and does not end the session.
+    having changed nothing. `r` reveals the ranked table in the machine panel,
+    which is the one thing the picker does that reaches the network, and does
+    not end the session.
     Textual's own bindings are left as they are — `ctrl+q` leaves, `ctrl+c` does
     not and says which key does, `ctrl+p` opens the command palette — so that
     the only things to learn are the ones this adds.
@@ -253,6 +295,43 @@ class Picker(App[Departure | None]):
         padding: 0 1;
     }}
 
+    /* The link-style control, centred over the table it reveals. A button, so
+       a click and `enter` reach it, but flattened of a button's chrome to read
+       as a link: no border, no fill, its one line the accent it points with. */
+    #{RECOMMEND} {{
+        border: none;
+        background: transparent;
+        color: $accent;
+        text-style: bold;
+        content-align: center middle;
+        width: 1fr;
+        height: 1;
+        min-width: 0;
+        margin: 1 0 0 0;
+    }}
+
+    #{RECOMMEND}:focus {{
+        text-style: bold reverse;
+    }}
+
+    /* Fixed-height and scrolling, so a shelf of models does not push the
+       caption or the run panel off the screen: the table is read inside itself. */
+    #{RANKED} {{
+        height: 10;
+        margin: 0 1;
+    }}
+
+    #{RANKED_CAPTION}, #{RECOMMENDING} {{
+        color: $text-muted;
+        padding: 0 1;
+    }}
+
+    /* Nothing of the recommendation is on screen until the control is used:
+       the table, its caption and the network line all wait. */
+    #{RANKED}, #{RANKED_CAPTION}, #{RECOMMENDING} {{
+        display: none;
+    }}
+
     #{SIGNAL} {{
         padding: 0 1;
     }}
@@ -317,6 +396,9 @@ class Picker(App[Departure | None]):
         self._report: WhatCouldBeRun | None = None
         self._measurement: tuple[str, ...] = ()
         self._theme = DEFAULT_THEME
+        self._recommendation: Recommendation | None = None
+        self._table_open = False
+        self._fetching = False
 
     def compose(self) -> ComposeResult:
         """Build the screen: the dropdowns, the models list, the report beside.
@@ -353,7 +435,19 @@ class Picker(App[Departure | None]):
                 id=LISTS,
             ),
             Vertical(
-                Vertical(Static(id=FITS, markup=False), id=MACHINE, classes="box"),
+                Vertical(
+                    Static(id=FITS, markup=False),
+                    # The one control here that reaches the network. It reveals
+                    # the table in place below the fits summary, which stays; a
+                    # button, so a click and `enter` on it toggle it as `r`
+                    # does.
+                    Button(RECOMMEND_CLOSED, id=RECOMMEND),
+                    Static(id=RECOMMENDING, markup=False),
+                    DataTable(id=RANKED, cursor_type="row", zebra_stripes=True),
+                    Static(id=RANKED_CAPTION, markup=False),
+                    id=MACHINE,
+                    classes="box",
+                ),
                 Vertical(
                     Static(id=SIGNAL),
                     Collapsible(
@@ -464,18 +558,166 @@ class Picker(App[Departure | None]):
 
         self.exit(Departure(profile=assembled, saved=False))
 
-    def action_recommend(self) -> None:
-        """Open the published list, which is what reaches the network.
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        """Toggle the ranked table where the control is clicked or entered.
 
-        The one key here that touches the network, and only when it is pressed.
-        Nothing happens where no reader was handed in: a screen with nothing to
-        fetch is a key that opens onto a blank list, so the key does nothing
-        instead.
+        The control is a button, so a mouse click and `enter` while it has the
+        focus both reach it, as the `r` key does. A press of any other button
+        is left to whoever owns it.
+
+        :param event: Which button was pressed.
+        """
+        if event.button.id == RECOMMEND:
+            self.action_recommend()
+
+    def action_recommend(self) -> None:
+        """Toggle the ranked table in place, reaching the network but once.
+
+        The one control here that touches the network, and only the first time
+        it is used: the fits summary stays and the table is revealed below it —
+        no modal, no second screen — with the fetch on a worker thread so the
+        screen never freezes and the network sentence painted before it.
+
+        Using it again closes the table, and using it once more opens it from
+        what was read, not from the network: the read is kept, so a person may
+        show and hide the table as often as they like for the one fetch. A press
+        while a fetch is still in flight does nothing, so mashing the control on
+        a slow network starts the one read rather than a fan of them. Nothing
+        happens where no reader was handed in — the control has nothing to open.
         """
         if self._recommend_func is None:
             return
 
-        self.push_screen(PublishedList(self._recommend_func))
+        if self._fetching:
+            return
+
+        if self._table_open:
+            self._hide_recommendation()
+
+            return
+
+        if self._recommendation is not None:
+            self._reveal_recommendation(self._recommendation)
+
+            return
+
+        self._fetching = True
+        self._show_recommending(REACHING_THE_NETWORK)
+        self._fetch_recommendation(self._recommend_func)
+
+    @work(thread=True)
+    def _fetch_recommendation(self, read: ReadWhatAListRecommends) -> None:
+        """Read the recommendation off the event loop, and reveal what it said.
+
+        On a thread because the read blocks on the network, which would freeze
+        the screen the sentence was just painted on. What comes back — a table
+        or what stopped it — is shown from the event loop, since a worker may
+        not touch the screen itself.
+
+        :param read: The reader, handed in already known to be there so the
+            worker does not carry a branch for the case the caller ruled out.
+        """
+        try:
+            recommendation = read()
+        except OffgridError as error:
+            self.call_from_thread(self._recommendation_failed, str(error))
+
+            return
+
+        self.call_from_thread(self._keep_and_reveal, recommendation)
+
+    def _keep_and_reveal(self, recommendation: Recommendation) -> None:
+        """Keep what was read, so the network is reached but the once, then show.
+
+        :param recommendation: What the reader answered.
+        """
+        self._recommendation = recommendation
+        self._fetching = False
+
+        self._reveal_recommendation(recommendation)
+
+    def _reveal_recommendation(self, recommendation: Recommendation) -> None:
+        """Fill the ranked table and reveal it, with its caption.
+
+        The network sentence is replaced by any staleness caveat, or cleared
+        where the table is fresh, so what stays above the table is what still
+        needs saying rather than a fetch already finished. Reached both by the
+        fetch and by opening from what was kept, since the table reads the same
+        either way.
+
+        :param recommendation: The models that fit and the caption under them.
+        """
+        table = self.query_one(f"#{RANKED}", DataTable)
+
+        table.clear(columns=True)
+        table.add_columns(*PANEL_COLUMNS)
+        for model in recommendation.models:
+            # A row is the model's own cells, in the order its fields are named
+            # — which is the order `PANEL_COLUMNS` heads them — so a column
+            # added or moved is one edit beside the other, not a positional
+            # list here to keep in step by hand.
+            table.add_row(*astuple(model))
+
+        self.query_one(f"#{RANKED_CAPTION}", Static).update(recommendation.caption)
+        self._show_recommending("\n".join(recommendation.caveats))
+        self._reveal(RANKED, RANKED_CAPTION)
+        self._mark_the_control(open=True)
+        self._table_open = True
+
+    def _hide_recommendation(self) -> None:
+        """Close the table, keeping what was read so it opens again for free.
+
+        Everything the control revealed goes back to waiting — the table, its
+        caption and any caveat above it — but what was read stays kept, so
+        opening it again reaches nothing.
+        """
+        for one in (RANKED, RANKED_CAPTION, RECOMMENDING):
+            self.query_one(f"#{one}").display = False
+
+        self._mark_the_control(open=False)
+        self._table_open = False
+
+    def _mark_the_control(self, *, open: bool) -> None:
+        """Turn the control's triangle to say whether the table is unfolded.
+
+        :param open: Whether the table is showing, so the mark points down, or
+            folded away, so it points right.
+        """
+        self.query_one(f"#{RECOMMEND}", Button).label = (
+            RECOMMEND_OPEN if open else RECOMMEND_CLOSED
+        )
+
+    def _recommendation_failed(self, said: str) -> None:
+        """Keep the sentence, say what stopped the table, and allow another try.
+
+        The panel stays open and the table stays hidden, so a person can start
+        a network and use the control again — which is why the in-flight guard
+        is lifted rather than left set.
+
+        :param said: What stopped the fetch.
+        """
+        self._show_recommending("\n".join((REACHING_THE_NETWORK, "", said)))
+        self._fetching = False
+
+    def _show_recommending(self, said: str) -> None:
+        """Put a line above the table, showing it only where there is one.
+
+        :param said: The network sentence, a caveat, or a refusal — or nothing,
+            which leaves the line hidden so a fresh table needs no words above
+            it.
+        """
+        line = self.query_one(f"#{RECOMMENDING}", Static)
+
+        line.update(said)
+        line.display = bool(said)
+
+    def _reveal(self, *ids: str) -> None:
+        """Show widgets that waited hidden until the control was used.
+
+        :param ids: Which widgets to reveal.
+        """
+        for one in ids:
+            self.query_one(f"#{one}").display = True
 
     def action_cycle_theme(self) -> None:
         """Move the palette on one, and name the theme now drawn in the header.
