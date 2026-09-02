@@ -24,7 +24,10 @@ import typer
 # there; only the name this file binds is the alias.
 from offgrid.cli.binding import read_what_could_be_run
 from offgrid.cli.doctor import doctor as doctor_command
-from offgrid.cli.recommend import read_what_a_list_recommends
+from offgrid.cli.recommend import (
+    describe_download_for_the_profile,
+    read_what_a_list_recommends,
+)
 from offgrid.cli.recommend import recommend as recommend_command
 from offgrid.cli.run import launch_the_assembled_profile
 from offgrid.cli.run import run as run_command
@@ -32,8 +35,9 @@ from offgrid.cli.setup import setup as setup_command
 from offgrid.domain.profile import DEFAULT_PATH, save_profile
 from offgrid.domain.sizing.machine import detect
 from offgrid.domain.sizing.measuring import describe_the_machine_and_how_to_fit_more
-from offgrid.shared.exceptions import OffgridError
+from offgrid.shared.exceptions import OffgridError, ProfileError
 from offgrid.shared.say import LOGGER, say_on_stderr, someone_is_at_a_terminal, tell
+from offgrid.shared.wording import DescribeModelDownload
 
 __all__ = ["app", "main"]
 
@@ -92,6 +96,29 @@ def read_this_build() -> str:
     return "unknown"
 
 
+def _download_describer() -> DescribeModelDownload | None:
+    """Bind how a ranked model is downloaded to the runtime a profile names.
+
+    Read here rather than on the screen, so the picker reaches no runtime
+    adapter to say how a model is downloaded: it is handed the describer already
+    bound to the runtime a run would land in.
+
+    A profile that will not load has no runtime to name, and so no describer.
+    That is not swallowed: the report the screen reads raises the same refusal
+    and shows it, so the screen still opens and says what is wrong — with the
+    download instruction absent, which is the honest thing where the runtime is
+    unknown. Only the load refusal is caught, so a failure of another kind is
+    not quietly turned into a missing instruction.
+
+    :return: The describer bound to this profile's runtime, or ``None`` where a
+        profile is there and will not load.
+    """
+    try:
+        return describe_download_for_the_profile()
+    except ProfileError:
+        return None
+
+
 @app.callback(invoke_without_command=True)
 def offgrid(ctx: typer.Context) -> None:
     """Run a coding agent against a model on this machine."""
@@ -135,6 +162,7 @@ def offgrid(ctx: typer.Context) -> None:
         cwd=str(Path.cwd()),
         measure_func=measure,
         recommend_func=read_what_a_list_recommends,
+        describe_download_func=_download_describer(),
     )
     departure = screen.run()
 

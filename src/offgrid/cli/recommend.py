@@ -19,7 +19,7 @@ from offgrid.domain.sizing.recommendation import (
 from offgrid.leaderboards import LEADERBOARDS
 from offgrid.runtimes import describe_model_download
 from offgrid.shared.say import tell
-from offgrid.shared.wording import REACHING_THE_NETWORK
+from offgrid.shared.wording import REACHING_THE_NETWORK, DescribeModelDownload
 
 # How the command line says a run is reached once the model is downloaded. It
 # has no picker, so it names the command a person types to reach one.
@@ -67,6 +67,24 @@ def read_what_a_list_recommends() -> Recommendation:
     return recommend_for_the_panel(
         reading.table, machine, reading.read_on, date.today()
     )
+
+
+def describe_download_for_the_profile() -> DescribeModelDownload:
+    """Bind the download describer to the runtime a profile names, for the screen.
+
+    The picker says how a highlighted model is downloaded without importing a
+    runtime adapter, so the describer is bound here — where the runtime is
+    named — and handed in already asking only for a model. The same runtime a
+    recommendation is ranked for, so the instruction names the runtime a run
+    would land in.
+
+    :return: What says how a model is downloaded into this profile's runtime,
+        asked for the model.
+
+    :raise ProfileError: When there is a profile and it is not one, the way
+        every other command refuses it.
+    """
+    return partial(describe_model_download, _get_runtime_name())
 
 
 def _get_runtime_name() -> RuntimeName:

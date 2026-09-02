@@ -52,7 +52,7 @@ from offgrid.domain.costing import (
 from offgrid.domain.profile import DEFAULT_THEME, Profile, Theme
 from offgrid.domain.sizing.recommendation import PANEL_COLUMNS, Recommendation
 from offgrid.shared.exceptions import OffgridError
-from offgrid.shared.wording import REACHING_THE_NETWORK
+from offgrid.shared.wording import REACHING_THE_NETWORK, DescribeModelDownload
 from offgrid.tui.choices import Choices, agent_choices, model_options, runtime_choices
 from offgrid.tui.dropdown import Dropdown
 from offgrid.tui.header import HeaderBand
@@ -106,6 +106,15 @@ RANKED = "ranked"
 
 RANKED_CAPTION = "ranked-caption"
 """Under the table: which list the figures came from, and what was dropped."""
+
+DOWNLOAD = "download"
+"""Below the table: how the highlighted model is downloaded, in the runtime's
+own words.
+
+Surfaced on row highlight, so a mouse click, the arrow keys and enter all show
+it. offgrid says how; it downloads nothing. The words are handed in, so the
+screen reaches no runtime adapter to learn them.
+"""
 
 RECOMMENDING = "recommending"
 """Above the table: the network sentence while it fetches, then nothing.
@@ -335,9 +344,20 @@ class Picker(App[Departure | None]):
         padding: 0 1;
     }}
 
+    /* The download instruction sits below the caption, drawn in the full text
+       colour rather than the caption's muted grey: it is what a person acts on,
+       and the caption is the credit under the table. A rule above it sets it
+       off from the caption without a border. */
+    #{DOWNLOAD} {{
+        padding: 0 1;
+        margin: 1 0 0 0;
+        border-top: dashed $panel;
+    }}
+
     /* Nothing of the recommendation is on screen until the control is used:
-       the table, its caption and the network line all wait. */
-    #{RANKED}, #{RANKED_CAPTION}, #{RECOMMENDING} {{
+       the table, its caption, the download instruction and the network line
+       all wait. */
+    #{RANKED}, #{RANKED_CAPTION}, #{DOWNLOAD}, #{RECOMMENDING} {{
         display: none;
     }}
 
@@ -377,6 +397,7 @@ class Picker(App[Departure | None]):
         cwd: str,
         measure_func: MeasureThisMachine | None = None,
         recommend_func: ReadWhatAListRecommends | None = None,
+        describe_download_func: DescribeModelDownload | None = None,
     ) -> None:
         """Take what the screen will show and how it saves, rather than reaching.
 
@@ -403,6 +424,12 @@ class Picker(App[Departure | None]):
         :param recommend_func: What reads a published list and lays it out, for
             the key that reaches the network. ``None`` leaves that key with
             nothing to fetch, which is what a test that is not about it hands in.
+        :param describe_download_func: How the runtime a profile names says one
+            of its models is downloaded, asked for the model a ranked row is
+            highlighted on. Handed in already bound to the runtime, so the
+            screen reaches no adapter to learn it. ``None`` where the ranked
+            table is not in play — the highlight has nothing to say about
+            downloading.
         """
         super().__init__()
 
@@ -412,6 +439,7 @@ class Picker(App[Departure | None]):
         self._cwd = cwd
         self._measure_func = measure_func
         self._recommend_func = recommend_func
+        self._describe_download_func = describe_download_func
         self._report: WhatCouldBeRun | None = None
         self._measurement: tuple[str, ...] = ()
         self._theme = DEFAULT_THEME
@@ -454,7 +482,13 @@ class Picker(App[Departure | None]):
                 id=LISTS,
             ),
             Vertical(
-                Vertical(
+                # Scrolls, because the fits summary, the revealed table, its
+                # caption and the download instruction together stand taller
+                # than the half-column the panel is given: without it the
+                # instruction below the table is drawn past the panel's foot and
+                # off the screen. The highlight scrolls its instruction into
+                # view, so a row picked is a row read.
+                VerticalScroll(
                     Static(id=FITS, markup=False),
                     # The one control here that reaches the network. It reveals
                     # the table in place below the fits summary, which stays; a
@@ -464,6 +498,11 @@ class Picker(App[Departure | None]):
                     Static(id=RECOMMENDING, markup=False),
                     DataTable(id=RANKED, cursor_type="row", zebra_stripes=True),
                     Static(id=RANKED_CAPTION, markup=False),
+                    # How the highlighted model is downloaded, in the runtime's
+                    # own words. Read as plain text, since the instruction
+                    # carries a command a person copies — backticks and all —
+                    # which a screen reading markup would eat.
+                    Static(id=DOWNLOAD, markup=False),
                     id=MACHINE,
                     classes="box",
                 ),
@@ -499,7 +538,7 @@ class Picker(App[Departure | None]):
         self.query_one(f"#{RUNTIME_BOX}", Vertical).border_title = "runtime"
         self.query_one(f"#{AGENT_BOX}", Vertical).border_title = "agent"
         self.query_one(f"#{MODEL_BOX}", Vertical).border_title = MODELS
-        self.query_one(f"#{MACHINE}", Vertical).border_title = "machine"
+        self.query_one(f"#{MACHINE}", VerticalScroll).border_title = "machine"
         self.query_one(f"#{RUN}", Vertical).border_title = "run"
 
         # Measured first and kept, so the machine panel is filled whatever the
@@ -536,6 +575,19 @@ class Picker(App[Departure | None]):
         :param event: That the models list moved, which is what wakes this.
         """
         self._say_what_would_run()
+
+    def on_data_table_row_highlighted(self, event: DataTable.RowHighlighted) -> None:
+        """Say how the model a ranked row was highlighted on is downloaded.
+
+        The ranked table is the one table on the screen, and the highlight moves
+        on it however a person reaches a row — a mouse click, the arrow keys or
+        `enter` — so this is where the download instruction below it is kept in
+        step with what is highlighted.
+
+        :param event: That a ranked row is now highlighted, and which one.
+        """
+        if event.data_table.id == RANKED:
+            self._show_the_download(event.cursor_row)
 
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         """Run and save when a model row is chosen, which `enter` on it is.
@@ -685,6 +737,16 @@ class Picker(App[Departure | None]):
         self._mark_the_control(open=True)
         self._table_open = True
 
+        # The table takes the keys as it opens, so the arrows walk its rows and
+        # the download instruction below follows the highlight without a person
+        # first tabbing onto it.
+        table.focus()
+
+        # Reopening from what was kept adds no highlight event, so the download
+        # is shown for the top row here rather than waited for: the table opens
+        # on its best row, and the instruction below it is that row's.
+        self._show_the_download(0)
+
     def _hide_recommendation(self) -> None:
         """Close the table, keeping what was read so it opens again for free.
 
@@ -695,8 +757,48 @@ class Picker(App[Departure | None]):
         for one in (RANKED, RANKED_CAPTION, RECOMMENDING):
             self.query_one(f"#{one}").display = False
 
+        self._clear_the_download()
         self._mark_the_control(open=False)
         self._table_open = False
+
+    def _show_the_download(self, index: int) -> None:
+        """Show how the model a ranked row is highlighted on is downloaded.
+
+        The instruction is the runtime's own words for the highlighted model,
+        asked of the describer handed in. Nothing is shown where no describer was
+        handed in, or where the index names no row — an empty recommendation
+        highlights nothing.
+
+        :param index: Which ranked row is highlighted, counted from the top.
+        """
+        if self._describe_download_func is None or self._recommendation is None:
+            return
+
+        models = self._recommendation.models
+
+        if not 0 <= index < len(models):
+            return
+
+        panel = self.query_one(f"#{DOWNLOAD}", Static)
+
+        panel.update(self._describe_download_func(models[index].name))
+        panel.display = True
+
+        # The panel stands taller than its half-column and scrolls, so the
+        # instruction is brought into view rather than left below the foot of
+        # the panel where a row picked would say nothing.
+        panel.scroll_visible(animate=False)
+
+    def _clear_the_download(self) -> None:
+        """Take the download instruction off the screen and empty it.
+
+        Called as the table is closed: the instruction belongs to the open
+        table, so nothing about a model is left below a table that is gone.
+        """
+        panel = self.query_one(f"#{DOWNLOAD}", Static)
+
+        panel.update("")
+        panel.display = False
 
     def _mark_the_control(self, *, open: bool) -> None:
         """Turn the control's triangle to say whether the table is unfolded.
