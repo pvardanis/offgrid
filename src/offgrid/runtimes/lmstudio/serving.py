@@ -78,14 +78,20 @@ def describe_model_download(name: str) -> str:
     The application is named rather than an address: what a person opens is the
     copy in front of them, whichever machine is serving.
 
-    :param name: The model it is about, spelt as the published table spells it.
-        Both the search and `lms get` take a name rather than the identifier
-        the runtime answers to afterwards.
+    The command carries a placeholder, not the name. The published table spells
+    a model as its list does, which is not the identifier LM Studio downloads it
+    under, so `lms get` is shown with a `<model-id>` slot rather than handed a
+    name that would resolve to nothing — the name is what the search takes, in
+    the app or the CLI, and the identifier is what a person fills the slot with.
+
+    :param name: The model it is about, spelt as the published table spells it,
+        which is what a person searches on rather than what the runtime answers
+        to afterwards.
 
     :return: What to do to have that model downloaded.
     """
-    # A way each, and the one carrying the command is not wrapped: a line
-    # broken through `lms get` is one that no longer runs where it is pasted.
+    # A way each, and the one carrying the command is not wrapped, so it reads
+    # as the one line a person copies rather than breaking across two.
     return "\n".join(
         [
             f"To download {name}, either:",
@@ -94,6 +100,6 @@ def describe_model_download(name: str) -> str:
                 LINE_WIDTH,
                 subsequent_indent="  ",
             ),
-            f"- run `lms get {name}`, where you have its CLI",
+            "- or run `lms get <model-id>`, where you have its CLI",
         ]
     )
