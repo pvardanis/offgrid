@@ -131,7 +131,7 @@ def recommend_for_the_panel(
     shortlisted = shortlist(table, machine)
 
     models = tuple(
-        _a_recommended_model(worth, fit) for worth, fit in shortlisted.ranked
+        _to_recommended_model(worth, fit) for worth, fit in shortlisted.ranked
     )
 
     return Recommendation(
@@ -140,7 +140,7 @@ def recommend_for_the_panel(
     )
 
 
-def _a_recommended_model(worth: Quality, fit: Fit) -> RecommendedModel:
+def _to_recommended_model(worth: Quality, fit: Fit) -> RecommendedModel:
     """Lay one ranked fit out as the panel's columns.
 
     :param worth: What the fit is judged to be worth here.
