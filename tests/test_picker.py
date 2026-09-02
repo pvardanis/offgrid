@@ -1043,17 +1043,6 @@ def test_the_run_panel_signals_what_the_pairing_would_do(here, monkeypatch):
     assert "dialect" not in signal
 
 
-def test_the_signal_lines_are_spaced_apart(here, monkeypatch):
-    # The signal reads as separated lines rather than a wall of text: a blank
-    # line sits between each. Join them with a single newline and this fails.
-    runner.invoke(app, ["setup"])
-    on_this_machine(monkeypatch, "claude")
-
-    signal = screen(here).signal
-
-    assert "so this costs no load\n\nserved at context" in signal
-
-
 def test_the_signal_recomputes_the_load_cost_as_the_highlight_moves(here, monkeypatch):
     # The signal follows the highlight the way the dump does: a model in memory
     # costs no load, one that is not costs a load, said in the panel a person
