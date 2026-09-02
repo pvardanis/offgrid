@@ -285,9 +285,14 @@ class Picker(App[Departure | None]):
         width: 1fr;
     }}
 
-    /* The two panels share the height, with nothing between them: what this
-       machine holds, over what the highlighted run would do. */
-    #{MACHINE}, #{RUN} {{
+    /* The machine panel takes only what it shows — the fits summary and the
+       control, or the ranked table once it is revealed — and the run panel
+       takes the rest of the column, so what a run would do has the room. */
+    #{MACHINE} {{
+        height: auto;
+    }}
+
+    #{RUN} {{
         height: 1fr;
     }}
 
