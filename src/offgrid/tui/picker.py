@@ -134,6 +134,15 @@ RUN = "run"
 SIGNAL = "signal"
 """Where the run panel's few colour-coded lines are, read back by a test."""
 
+SIGNAL_PANE = "signal-pane"
+"""What the signal scrolls inside, so its share of the run panel is bounded.
+
+The signal takes the larger share of the run panel and the detail the
+smaller; a share that is a fraction of the panel is bounded rather than as
+tall as the lines make it, so on a short terminal the signal scrolls to its
+end rather than pushing the detail off.
+"""
+
 DETAIL = "detail"
 """The collapsible the curated detail waits behind, closed by default."""
 
@@ -285,14 +294,10 @@ class Picker(App[Departure | None]):
         width: 1fr;
     }}
 
-    /* The machine panel takes the column's slack and the run panel hugs its
-       content, so what a run would do sits together with no gap under it. */
-    #{MACHINE} {{
+    /* The two panels split the column evenly: what this machine holds, over
+       what the highlighted run would do. */
+    #{MACHINE}, #{RUN} {{
         height: 1fr;
-    }}
-
-    #{RUN} {{
-        height: auto;
     }}
 
     #{FITS} {{
@@ -340,8 +345,20 @@ class Picker(App[Departure | None]):
         padding: 0 1;
     }}
 
+    /* The signal takes twice the detail's share of the run panel, so what a
+       run would do sits in the larger part and the curated detail in the
+       smaller. Each scrolls within its share on a terminal too short to hold
+       it whole. */
+    #{SIGNAL_PANE} {{
+        height: 2fr;
+    }}
+
+    #{DETAIL} {{
+        height: 1fr;
+    }}
+
     /* The curated detail scrolls inside the collapsible, so a summary taller
-       than the panel is still read to the end once the detail is opened. */
+       than its share is still read to the end once the detail is opened. */
     #{DETAIL} #{PANE} {{
         height: 1fr;
     }}
@@ -453,7 +470,7 @@ class Picker(App[Departure | None]):
                     classes="box",
                 ),
                 Vertical(
-                    Static(id=SIGNAL),
+                    VerticalScroll(Static(id=SIGNAL), id=SIGNAL_PANE),
                     Collapsible(
                         VerticalScroll(Static(id=REPORT, markup=False), id=PANE),
                         title="details",
