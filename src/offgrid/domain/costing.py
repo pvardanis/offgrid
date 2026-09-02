@@ -110,9 +110,9 @@ def describe_the_signal(
     """Say, in a few lines that read at a glance, what this pairing would do.
 
     The part of a run a person decides on before committing: whether it costs a
-    load, the context it would be served at against its ceiling, whether the
-    pair can talk, and where a conversation it starts would be kept. A pairing
-    that cannot run says only why; there is no context to weigh behind a bar.
+    load, the context it would be served at and what a run would request,
+    whether the pair can talk, and where a conversation it starts would be kept.
+    A pairing that cannot run says only why; there is no context behind a bar.
 
     :param report: Everything that was read.
     :param pairing: What the highlight is on.
@@ -140,10 +140,13 @@ def describe_the_signal(
 
     model = _find_the_model_that_would_answer(report, pairing)
     held = model is not None and model.identifier in report.held
+    requested = assemble_a_profile(report, pairing).model
 
     return (
         *_toned(cost.lines, cost.tone),
-        SignalLine(_describe_the_served_context(model, held=held), Tone.INFO),
+        SignalLine(
+            _describe_the_served_context(model, requested, held=held), Tone.INFO
+        ),
         SignalLine(
             _describe_whether_the_pair_can_talk(agent.name, answered.terms.dialect),
             Tone.INFO,
@@ -230,13 +233,17 @@ def _under_agent(label: str, value: str) -> str:
     return f"{_SUBINDENT}{label:<{_LABEL - len(_SUBINDENT)}}{value}"
 
 
-def _describe_the_served_context(model: Model | None, *, held: bool) -> str:
-    """Say the context a model would run in: what it is served at, and its most.
+def _describe_the_served_context(
+    model: Model | None, request: ModelRequest, *, held: bool
+) -> str:
+    """Say the context a model would run in: what it is served at, and the ask.
 
-    A held model is being served at a window now; a cold one is not being served
-    at all, so it has a ceiling and no window yet.
+    A held model is being served at a window now, with what a run would request
+    beside it; a cold one is not being served at all, so only the request is
+    said. The ceiling is left to the detail's model line rather than said twice.
 
     :param model: The model that would answer, or ``None`` for none.
+    :param request: What the run will ask for.
     :param held: Whether the runtime has it in memory.
 
     :return: The line to say.
@@ -244,14 +251,14 @@ def _describe_the_served_context(model: Model | None, *, held: bool) -> str:
     if model is None:
         return "context unknown"
 
-    ceiling = describe_what_was_stated(model.context_ceiling)
+    requested = _describe_requested_context(request)
 
     if held:
         window = describe_what_was_stated(model.context_window)
 
-        return f"served at context {window} (context ceiling {ceiling})"
+        return f"served at context {window} (requested context {requested})"
 
-    return f"context ceiling {ceiling}"
+    return f"requested context {requested}"
 
 
 def _describe_whether_the_pair_can_talk(name: AgentName, dialect: Dialect) -> str:
@@ -308,10 +315,7 @@ def _describe_the_model(model: Model | None, request: ModelRequest) -> str:
     """
     ceiling = describe_what_was_stated(model.context_ceiling) if model else "unknown"
 
-    if request.context_window is None:
-        requested = "inherit served"
-    else:
-        requested = str(request.context_window)
+    requested = _describe_requested_context(request)
 
     if request.identifier is not None:
         asked = request.identifier
@@ -319,6 +323,19 @@ def _describe_the_model(model: Model | None, request: ModelRequest) -> str:
         asked = "no model, so a run takes whatever is held"
 
     return f"{asked}, context ceiling {ceiling}, requested context {requested}"
+
+
+def _describe_requested_context(request: ModelRequest) -> str:
+    """Say the context a run would ask a model be held at, or that it inherits.
+
+    :param request: What the run will ask for.
+
+    :return: The window as a number, or that a run inherits what is served.
+    """
+    if request.context_window is None:
+        return "inherit served"
+
+    return str(request.context_window)
 
 
 def _describe_the_command(answered: WhatTheAgentAnswered) -> str:
