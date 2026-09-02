@@ -180,7 +180,7 @@ def _caption_the_panel(
     :param table: The published list, as it was read.
     :param read_on: The day offgrid read the table.
     :param today: The day to read the read date against.
-    :param dropped: What each rule took, or none where it took nothing.
+    :param dropped: What each rule took, an empty list where it took nothing.
 
     :return: The one line under the table.
     """
