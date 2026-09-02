@@ -54,8 +54,11 @@ DescribeModelDownload = Callable[[str], str]
 """How a runtime says one of its models is downloaded, given the model's name.
 
 The answer names that model, and arrives in lines no wider than `LINE_WIDTH` —
-nothing reflows it, since a command in it has to survive being copied.
-`tests/test_runtime_downloading.py` holds every adapter to both.
+nothing reflows it, since a command in it has to survive being copied. It
+answers rather than raises: the picker calls it as the highlight moves, with no
+handler around it, so a describer that reached a server and failed would escape
+onto the event loop. `tests/test_runtime_downloading.py` holds every adapter to
+all three.
 
 Here because the registry that holds one per runtime and the report that
 prints it are in layers that may not import each other, and both need to say

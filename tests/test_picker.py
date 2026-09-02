@@ -61,6 +61,7 @@ from offgrid.tui.picker import (
     COLUMNS,
     DEFAULT_THEME,
     DETAIL,
+    DOWNLOAD,
     FITS,
     MODELS,
     PANE,
@@ -1787,6 +1788,9 @@ class Revealed:
     :param control_label: What the control reads as, whose triangle says
         whether the table is unfolded.
     :param fits: What the fits summary still says above the control.
+    :param download: The per-runtime download instruction shown below the
+        table for the highlighted row.
+    :param download_shown: Whether that instruction is on screen at all.
     :param running: Whether the picker is still the screen — no modal opened.
     """
 
@@ -1798,10 +1802,14 @@ class Revealed:
     table_shown: bool
     control_label: str
     fits: str
+    download: str
+    download_shown: bool
     running: bool
 
 
-def reveal(here, recommend_func, *after, measure=None, size=ROOMY):
+def reveal(
+    here, recommend_func, *after, measure=None, size=ROOMY, describe_download=None
+):
     """Open the picker, press the control that recommends, and read the panel.
 
     The worker is waited on before the panel is read, because the fetch runs
@@ -1815,6 +1823,9 @@ def reveal(here, recommend_func, *after, measure=None, size=ROOMY):
     :param measure: What the machine panel is handed to size this machine with,
         for the tests that read the fits summary staying above the table.
     :param size: How much terminal to give it.
+    :param describe_download: What the screen is handed to say how a highlighted
+        model is downloaded, for the tests that read the instruction below the
+        table.
 
     :return: What the panel shows once the control has answered.
     """
@@ -1825,6 +1836,7 @@ def reveal(here, recommend_func, *after, measure=None, size=ROOMY):
         cwd=WORKDIR,
         measure_func=measure,
         recommend_func=recommend_func,
+        describe_download_func=describe_download,
     )
 
     async def driven() -> Revealed:
@@ -1840,6 +1852,7 @@ def reveal(here, recommend_func, *after, measure=None, size=ROOMY):
 
             table = picker.query_one(f"#{RANKED}", DataTable)
             recommending = picker.query_one(f"#{RECOMMENDING}", Static)
+            download = picker.query_one(f"#{DOWNLOAD}", Static)
 
             return Revealed(
                 headers=[str(column.label) for column in table.columns.values()],
@@ -1853,6 +1866,8 @@ def reveal(here, recommend_func, *after, measure=None, size=ROOMY):
                 table_shown=table.display,
                 control_label=str(picker.query_one(f"#{RECOMMEND}", Button).label),
                 fits=str(picker.query_one(f"#{FITS}", Static).content),
+                download=str(download.content),
+                download_shown=download.display,
                 running=picker.is_running,
             )
 
@@ -2206,3 +2221,163 @@ def test_reopening_the_table_reads_from_what_was_kept(here, monkeypatch):
 
     assert reached == [1]
     assert revealed.table_shown
+
+
+def test_highlighting_a_ranked_row_shows_that_models_download_instruction(
+    here, monkeypatch
+):
+    # Revealing the table lands the highlight on the best row, and its
+    # per-runtime download instruction is shown below the table. The instruction
+    # is handed in, so the screen reaches no runtime adapter to say how.
+    runner.invoke(app, ["setup"])
+    on_this_machine(monkeypatch, "claude")
+
+    revealed = reveal(
+        here,
+        lambda: A_RECOMMENDATION,
+        describe_download=lambda name: f"To download {name}, run `get {name}`.",
+    )
+
+    name = "qwen3-coder-30b-a3b"
+
+    assert revealed.download_shown
+    assert revealed.download == f"To download {name}, run `get {name}`."
+
+
+def test_moving_the_ranked_highlight_shows_the_new_models_instruction(
+    here, monkeypatch
+):
+    # The instruction follows the highlight: arrow keys move down the table and
+    # the instruction is the next model's, which is what surfacing on highlight
+    # means — a mouse click, the arrows and enter all move the highlight alike.
+    runner.invoke(app, ["setup"])
+    on_this_machine(monkeypatch, "claude")
+
+    revealed = reveal(
+        here,
+        lambda: A_RECOMMENDATION,
+        "down",
+        describe_download=lambda name: f"how to get {name}",
+    )
+
+    assert revealed.download == "how to get glm-4.6-32b"
+
+
+def test_the_download_instruction_is_on_screen_and_not_below_the_panel(
+    here, monkeypatch
+):
+    # Showing it in the DOM is not showing it to a person: the panel stands
+    # taller than its half-column, so without scrolling the instruction into
+    # view it is drawn past the panel's foot and off the screen. A short
+    # terminal is where that bites, so it is where this reads the region.
+    runner.invoke(app, ["setup"])
+    on_this_machine(monkeypatch, "claude")
+
+    picker = Picker(
+        read_report_func=lambda: read_what_could_be_run(here / "profile.yaml"),
+        save_func=lambda profile: save_profile(profile, here / "profile.yaml"),
+        sha=BUILD_SHA,
+        cwd=WORKDIR,
+        measure_func=lambda: tuple(f"fits line {index}" for index in range(6)),
+        recommend_func=lambda: A_RECOMMENDATION,
+        describe_download_func=lambda name: f"To download {name}:\n- search\n- get it",
+    )
+
+    async def driven() -> tuple[bool, bool, str]:
+        async with picker.run_test(size=(100, 24)) as pilot:
+            await pilot.press("r")
+            await picker.workers.wait_for_complete()
+            await pilot.pause()
+
+            panel = picker.query_one(f"#{DOWNLOAD}", Static)
+
+            return (
+                picker.screen.region.contains_region(panel.region),
+                panel.display,
+                str(panel.content),
+            )
+
+    on_screen, shown, content = asyncio.run(driven())
+
+    # A hidden panel has a zero-size region the screen trivially contains, so
+    # reading the region alone would pass while the instruction shows nothing.
+    # It has to be displayed and say something for its position to mean it.
+    assert shown, "the download panel is not displayed"
+    assert content, "the download panel says nothing"
+    assert on_screen, "the download instruction is off the screen"
+
+
+def test_clicking_a_ranked_row_shows_that_models_download_instruction(
+    here, monkeypatch
+):
+    # The other arm the criterion names: a mouse click on a row surfaces the
+    # instruction as the arrow keys do, since both move the highlight the one
+    # handler answers to.
+    runner.invoke(app, ["setup"])
+    on_this_machine(monkeypatch, "claude")
+
+    picker = Picker(
+        read_report_func=lambda: read_what_could_be_run(here / "profile.yaml"),
+        save_func=lambda profile: save_profile(profile, here / "profile.yaml"),
+        sha=BUILD_SHA,
+        cwd=WORKDIR,
+        recommend_func=lambda: A_RECOMMENDATION,
+        describe_download_func=lambda name: f"how to get {name}",
+    )
+
+    async def driven() -> tuple[str, str]:
+        async with picker.run_test(size=ROOMY) as pilot:
+            await pilot.press("r")
+            await picker.workers.wait_for_complete()
+            await pilot.pause()
+
+            # Click into the table rather than at a row the layout might have
+            # moved: whichever row the click lands on, the instruction shown is
+            # that row's, which is what the mouse arm has to guarantee.
+            await pilot.click(f"#{RANKED}", offset=(5, 2))
+            await pilot.pause()
+
+            table = picker.query_one(f"#{RANKED}", DataTable)
+            landed = str(table.get_row_at(table.cursor_row)[0])
+            shown = str(picker.query_one(f"#{DOWNLOAD}", Static).content)
+
+            return landed, shown
+
+    landed, shown = asyncio.run(driven())
+
+    assert shown == f"how to get {landed}"
+
+
+def test_the_download_instruction_is_the_runtimes_own_words(here, monkeypatch):
+    # What the runtime said is shown as it wrote it, line for line: a command a
+    # person copies must survive being shown, so the screen does not reflow it.
+    runner.invoke(app, ["setup"])
+    on_this_machine(monkeypatch, "claude")
+
+    said = (
+        "To download qwen3-coder-30b-a3b, either:\n"
+        "- search it\n"
+        "- run `lms get qwen3-coder-30b-a3b`"
+    )
+
+    revealed = reveal(here, lambda: A_RECOMMENDATION, describe_download=lambda _: said)
+
+    assert revealed.download == said
+
+
+def test_collapsing_the_table_clears_the_download_instruction(here, monkeypatch):
+    # The instruction belongs to the open table: closing the table with a second
+    # press clears the instruction along with it, so nothing about a model is
+    # left below a table that is no longer on the screen.
+    runner.invoke(app, ["setup"])
+    on_this_machine(monkeypatch, "claude")
+
+    revealed = reveal(
+        here,
+        lambda: A_RECOMMENDATION,
+        "r",
+        describe_download=lambda name: f"how to get {name}",
+    )
+
+    assert not revealed.download_shown
+    assert revealed.download == ""

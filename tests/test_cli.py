@@ -7,8 +7,9 @@ import subprocess
 import pytest
 from typer.testing import CliRunner
 
-from offgrid.cli import app
+from offgrid.cli import _download_describer, app
 from offgrid.cli.binding import read_profile
+from offgrid.cli.recommend import describe_download_for_the_profile
 from offgrid.domain.running.model import ModelRequest
 from offgrid.domain.sizing.leaderboard import Leaderboard
 from offgrid.domain.sizing.listing import Listing, Table
@@ -1217,6 +1218,45 @@ def test_recommend_says_how_to_download_nothing_where_nothing_fits(here, monkeyp
     result = runner.invoke(app, ["recommend"])
 
     assert "To download" not in result.stderr
+
+
+def test_the_picker_is_handed_how_to_download_into_the_profiles_runtime(here):
+    # The screen says how a ranked model is downloaded without importing a
+    # runtime adapter: the command line binds the describer to the runtime the
+    # profile names and hands it in, already asking only for a model.
+    runner.invoke(app, ["setup"])
+
+    say_how = describe_download_for_the_profile()
+
+    assert "To download A-Model-35B" in say_how("A-Model-35B")
+    assert "LM Studio" in say_how("A-Model-35B")
+
+
+def test_a_profile_that_will_not_load_leaves_the_picker_no_download_describer(here):
+    # A file that is there and will not load has no runtime to name, so no
+    # describer — and the picker still opens, because the report it reads raises
+    # the same refusal and shows it. The binding does not raise past the screen.
+    (here / "profile.yaml").write_text("runtime:\n  name: not-a-runtime\n")
+
+    assert _download_describer() is None
+
+
+def test_a_binding_failure_that_is_not_a_bad_profile_is_not_swallowed(
+    here, monkeypatch
+):
+    # Only the load refusal is caught. A failure of another kind reaching the
+    # binding is a fault to see, not a download line quietly dropped, so it
+    # propagates rather than resolving to no describer. Widen the catch and this
+    # goes green on a hidden failure.
+    def raise_something_else():
+        raise RuntimeError("the binding broke for a reason that is not the profile")
+
+    monkeypatch.setattr(
+        "offgrid.cli.describe_download_for_the_profile", raise_something_else
+    )
+
+    with pytest.raises(RuntimeError, match="the binding broke"):
+        _download_describer()
 
 
 def test_recommend_says_a_machine_nothing_fits_is_not_the_problem(here, monkeypatch):
