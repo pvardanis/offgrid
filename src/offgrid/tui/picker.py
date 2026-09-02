@@ -625,7 +625,9 @@ class Picker(App[Departure | None]):
         self._fetch_recommendation(self._recommend_func)
 
     @work(thread=True)
-    def _fetch_recommendation(self, read: ReadWhatAListRecommends) -> None:
+    def _fetch_recommendation(
+        self, read_recommendation_func: ReadWhatAListRecommends
+    ) -> None:
         """Read the recommendation off the event loop, and reveal what it said.
 
         On a thread because the read blocks on the network, which would freeze
@@ -633,11 +635,12 @@ class Picker(App[Departure | None]):
         or what stopped it — is shown from the event loop, since a worker may
         not touch the screen itself.
 
-        :param read: The reader, handed in already known to be there so the
-            worker does not carry a branch for the case the caller ruled out.
+        :param read_recommendation_func: The reader, handed in already known to
+            be there so the worker does not carry a branch for the case the
+            caller ruled out.
         """
         try:
-            recommendation = read()
+            recommendation = read_recommendation_func()
         except OffgridError as error:
             self.call_from_thread(self._recommendation_failed, str(error))
 
