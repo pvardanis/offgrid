@@ -951,14 +951,17 @@ class Picker(App[Departure | None]):
     def _show_the_signal(self, lines: tuple[SignalLine, ...]) -> None:
         """Paint the run panel's signal lines by the verdict each carries.
 
+        A blank line sits between each, so the few lines read as separated
+        statements rather than a wall of text.
+
         :param lines: The signal, each line tagged with how it reads.
         """
-        painted = Content("\n".join(line.text for line in lines))
+        painted = Content("\n\n".join(line.text for line in lines))
         at = 0
 
         for line in lines:
             painted = painted.stylize(_TONE_STYLES[line.tone], at, at + len(line.text))
-            at += len(line.text) + 1
+            at += len(line.text) + 2
 
         self.query_one(f"#{SIGNAL}", Static).update(painted)
 
