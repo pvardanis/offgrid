@@ -537,10 +537,12 @@ def test_a_model_that_is_not_held_is_served_at_no_window_rather_than_an_unsaid_o
 
     a_load = "google/gemma-4-e4b is not held by lmstudio, so this costs a load"
 
-    # A cold model states its ceiling and no window — that it is not served is
-    # the first line's "not held", so the context line does not say it twice.
+    # A cold model is served at no window, so the context line says what a run
+    # would request rather than a ceiling the detail's model line already gives.
+    # That it is not served is the first line's "not held", said once.
     assert a_load in driven.signal
-    assert "context ceiling 262144" in driven.signal
+    assert "requested context inherit served" in driven.signal
+    assert "context ceiling" not in driven.signal
     assert "not served yet" not in driven.signal
 
 
@@ -987,7 +989,7 @@ def test_the_screen_shows_what_a_run_would_report(here, monkeypatch):
     detail = driven.shown
 
     assert f"{RESIDENT} is held by lmstudio, so this costs no load" in signal
-    assert "served at context 212224 (context ceiling 262144)" in signal
+    assert "served at context 212224 (requested context inherit served)" in signal
     assert "claude-code · pair can talk (anthropic)" in signal
     assert f"conversations → {here / 'claude-code'}" in signal
 
@@ -1020,17 +1022,16 @@ def test_a_nested_detail_lines_value_aligns_with_a_top_lines(here, monkeypatch):
 
 def test_the_run_panel_signals_what_the_pairing_would_do(here, monkeypatch):
     # The few lines a person decides on before committing: whether it costs a
-    # load, the window it is served at against its ceiling, and where a
+    # load, the window it is served at and what a run would request, and where a
     # conversation it starts would be kept. Not the fuller dump — that waits
-    # behind a key — so the runtime, the request and the agent's command are not
-    # in it.
+    # behind a key — so the runtime and the agent's command are not in it.
     runner.invoke(app, ["setup"])
     on_this_machine(monkeypatch, "claude")
 
     signal = screen(here).signal
 
     assert f"{RESIDENT} is held by lmstudio, so this costs no load" in signal
-    assert "served at context 212224 (context ceiling 262144)" in signal
+    assert "served at context 212224 (requested context inherit served)" in signal
     assert f"conversations → {here / 'claude-code'}" in signal
     # The way back rides in the signal; the provenance and the finding stay in
     # the detail's fuller telling. Swap `resume_with` for `said` and this fails.
@@ -1039,7 +1040,6 @@ def test_the_run_panel_signals_what_the_pairing_would_do(here, monkeypatch):
     # left. Double the space and this fails.
     assert f"{here / 'claude-code'} (offgrid's own" in signal
     assert "measured against" not in signal
-    assert "request" not in signal
     assert "dialect" not in signal
 
 
