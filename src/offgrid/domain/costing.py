@@ -278,7 +278,7 @@ def _describe_conversations(kept: Conversations) -> str:
 
     :return: The line to say.
     """
-    return f"conversations → {kept.kept_in}  (offgrid's own; {kept.resume_with})"
+    return f"conversations → {kept.kept_in} (offgrid's own; {kept.resume_with})"
 
 
 def _describe_the_runtime(report: WhatCouldBeRun) -> str:
