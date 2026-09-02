@@ -10,7 +10,7 @@ import asyncio
 import logging
 import subprocess
 import threading
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from pathlib import Path
 from typing import cast
 
@@ -66,6 +66,7 @@ from offgrid.tui.picker import (
     PANE,
     RANKED,
     RANKED_CAPTION,
+    RANKED_FOR_THIS_MACHINE,
     RECOMMEND,
     RECOMMEND_CLOSED,
     RECOMMEND_OPEN,
@@ -1755,7 +1756,7 @@ class Revealed:
     :param rows: Each row of the ranked table, cell by cell.
     :param caption: The line under the table.
     :param recommending: What is shown above the table — the network sentence,
-        a caveat, or a refusal.
+        the subtitle, or a refusal.
     :param recommending_shown: Whether that line is on screen at all.
     :param table_shown: Whether the table itself is revealed.
     :param control_label: What the control reads as, whose triangle says
@@ -1895,7 +1896,7 @@ def test_the_network_sentence_is_shown_before_the_fetch_not_with_its_result(
     # The headline of this control: told before it happens. The reader is held
     # on an event the test releases, so the line read while the fetch is still
     # waited on is the one painted before it. On success the sentence gives way
-    # to the table, which is what says a fresh list needs no words above it.
+    # to the subtitle naming what the table is.
     runner.invoke(app, ["setup"])
     on_this_machine(monkeypatch, "claude")
 
@@ -1928,14 +1929,14 @@ def test_the_network_sentence_is_shown_before_the_fetch_not_with_its_result(
             await picker.workers.wait_for_complete()
             await pilot.pause()
 
-            return before, before_rows, table.row_count, line.display
+            return before, before_rows, table.row_count, str(line.content)
 
-    before, before_rows, after_rows, line_shown = asyncio.run(driven())
+    before, before_rows, after_rows, after = asyncio.run(driven())
 
     assert REACHING_THE_NETWORK in before
     assert before_rows == 0
     assert after_rows == 2
-    assert not line_shown
+    assert after == RANKED_FOR_THIS_MACHINE
 
 
 def test_a_second_press_while_the_fetch_is_in_flight_reaches_nothing(here, monkeypatch):
@@ -2000,23 +2001,18 @@ def test_a_failed_fetch_keeps_the_panel_open_and_says_what_failed(here, monkeypa
     assert said.index(REACHING_THE_NETWORK) < said.index("Could not reach the table")
 
 
-def test_a_caveat_is_shown_above_the_stale_table(here, monkeypatch):
-    # A table read from a kept copy rather than a fresh fetch says so: the
-    # caveat sits above the table, where the network sentence was, so a person
-    # reads how old the figures are before the figures.
+def test_the_subtitle_names_what_the_table_is(here, monkeypatch):
+    # Above the table, where the network sentence was: a plain subtitle saying
+    # what the table is, not what offgrid did to read it. How old the figures
+    # are is the caption's read date, not a line of its own here.
     runner.invoke(app, ["setup"])
     on_this_machine(monkeypatch, "claude")
 
-    stale = replace(
-        A_RECOMMENDATION,
-        caveats=("This is the table offgrid read on 2026-08-05, not a current one.",),
-    )
-
-    revealed = reveal(here, lambda: stale)
+    revealed = reveal(here, lambda: A_RECOMMENDATION)
 
     assert revealed.table_shown
     assert revealed.recommending_shown
-    assert "not a current one" in revealed.recommending
+    assert revealed.recommending == RANKED_FOR_THIS_MACHINE
 
 
 def test_a_failed_fetch_can_be_used_again(here, monkeypatch):
