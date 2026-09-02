@@ -66,7 +66,6 @@ from offgrid.tui.picker import (
     PANE,
     RANKED,
     RANKED_CAPTION,
-    RANKED_FOR_THIS_MACHINE,
     RECOMMEND,
     RECOMMEND_CLOSED,
     RECOMMEND_OPEN,
@@ -1755,8 +1754,8 @@ class Revealed:
     :param headers: The label over each column, read from the table itself.
     :param rows: Each row of the ranked table, cell by cell.
     :param caption: The line under the table.
-    :param recommending: What is shown above the table — the network sentence,
-        the subtitle, or a refusal.
+    :param recommending: What is shown above the table — the network sentence
+        or a refusal.
     :param recommending_shown: Whether that line is on screen at all.
     :param table_shown: Whether the table itself is revealed.
     :param control_label: What the control reads as, whose triangle says
@@ -1880,8 +1879,10 @@ def test_the_ranked_table_shows_the_columns_the_spec_names(here, monkeypatch):
 
 
 def test_the_caption_names_the_list_and_what_was_dropped(here, monkeypatch):
-    # Under the table: which list the figures came from, and how many rows each
-    # rule dropped, so a model someone expected and did not find is explainable.
+    # Under the table, and the only words about it there: which list the figures
+    # came from, the benchmark it ranks by, when it was read, and how many rows
+    # each rule dropped, so a model someone expected and did not find is
+    # explainable.
     runner.invoke(app, ["setup"])
     on_this_machine(monkeypatch, "claude")
 
@@ -1896,7 +1897,7 @@ def test_the_network_sentence_is_shown_before_the_fetch_not_with_its_result(
     # The headline of this control: told before it happens. The reader is held
     # on an event the test releases, so the line read while the fetch is still
     # waited on is the one painted before it. On success the sentence gives way
-    # to the subtitle naming what the table is.
+    # to the table, which is what says a fresh list needs no words above it.
     runner.invoke(app, ["setup"])
     on_this_machine(monkeypatch, "claude")
 
@@ -1929,14 +1930,14 @@ def test_the_network_sentence_is_shown_before_the_fetch_not_with_its_result(
             await picker.workers.wait_for_complete()
             await pilot.pause()
 
-            return before, before_rows, table.row_count, str(line.content)
+            return before, before_rows, table.row_count, line.display
 
-    before, before_rows, after_rows, after = asyncio.run(driven())
+    before, before_rows, after_rows, line_shown = asyncio.run(driven())
 
     assert REACHING_THE_NETWORK in before
     assert before_rows == 0
     assert after_rows == 2
-    assert after == RANKED_FOR_THIS_MACHINE
+    assert not line_shown
 
 
 def test_a_second_press_while_the_fetch_is_in_flight_reaches_nothing(here, monkeypatch):
@@ -2001,18 +2002,17 @@ def test_a_failed_fetch_keeps_the_panel_open_and_says_what_failed(here, monkeypa
     assert said.index(REACHING_THE_NETWORK) < said.index("Could not reach the table")
 
 
-def test_the_subtitle_names_what_the_table_is(here, monkeypatch):
-    # Above the table, where the network sentence was: a plain subtitle saying
-    # what the table is, not what offgrid did to read it. How old the figures
-    # are is the caption's read date, not a line of its own here.
+def test_nothing_is_shown_above_a_fresh_table(here, monkeypatch):
+    # The network sentence gives way to the table itself, with no line left
+    # above it: what the table is and how old its figures are is the caption
+    # below, not a subtitle over it.
     runner.invoke(app, ["setup"])
     on_this_machine(monkeypatch, "claude")
 
     revealed = reveal(here, lambda: A_RECOMMENDATION)
 
     assert revealed.table_shown
-    assert revealed.recommending_shown
-    assert revealed.recommending == RANKED_FOR_THIS_MACHINE
+    assert not revealed.recommending_shown
 
 
 def test_a_failed_fetch_can_be_used_again(here, monkeypatch):
