@@ -108,13 +108,16 @@ RANKED_CAPTION = "ranked-caption"
 """Under the table: which list the figures came from, and what was dropped."""
 
 RECOMMENDING = "recommending"
-"""Above the table: the network sentence while it fetches, then any caveat.
+"""Above the table: the network sentence while it fetches, then the subtitle.
 
 The one place in the picker that reaches the network says so before it does,
-and this is where. It carries the sentence while the fetch runs, then either a
-staleness caveat on success or what stopped the fetch on failure, and is empty
-where a fresh table needs no words.
+and this is where. It carries the sentence while the fetch runs, then either
+the subtitle naming the table on success or what stopped the fetch on failure.
 """
+
+RANKED_FOR_THIS_MACHINE = "ranked for this machine"
+"""The subtitle above the revealed table, saying what it is rather than how it
+was read: how old the figures are is the caption's read date, not a line here."""
 
 RECOMMEND_CLOSED = "[ ▶ recommend models ]"
 """What the control reads as with the table folded away: a right-pointing mark.
@@ -639,11 +642,10 @@ class Picker(App[Departure | None]):
     def _reveal_recommendation(self, recommendation: Recommendation) -> None:
         """Fill the ranked table and reveal it, with its caption.
 
-        The network sentence is replaced by any staleness caveat, or cleared
-        where the table is fresh, so what stays above the table is what still
-        needs saying rather than a fetch already finished. Reached both by the
-        fetch and by opening from what was kept, since the table reads the same
-        either way.
+        The network sentence gives way to the subtitle naming the table, so
+        what stays above it says what the table is rather than a fetch already
+        finished. Reached both by the fetch and by opening from what was kept,
+        since the table reads the same either way.
 
         :param recommendation: The models that fit and the caption under them.
         """
@@ -659,7 +661,7 @@ class Picker(App[Departure | None]):
             table.add_row(*astuple(model))
 
         self.query_one(f"#{RANKED_CAPTION}", Static).update(recommendation.caption)
-        self._show_recommending("\n".join(recommendation.caveats))
+        self._show_recommending(RANKED_FOR_THIS_MACHINE)
         self._reveal(RANKED, RANKED_CAPTION)
         self._mark_the_control(open=True)
         self._table_open = True
@@ -668,7 +670,7 @@ class Picker(App[Departure | None]):
         """Close the table, keeping what was read so it opens again for free.
 
         Everything the control revealed goes back to waiting — the table, its
-        caption and any caveat above it — but what was read stays kept, so
+        caption and the subtitle above it — but what was read stays kept, so
         opening it again reaches nothing.
         """
         for one in (RANKED, RANKED_CAPTION, RECOMMENDING):
@@ -702,9 +704,9 @@ class Picker(App[Departure | None]):
     def _show_recommending(self, said: str) -> None:
         """Put a line above the table, showing it only where there is one.
 
-        :param said: The network sentence, a caveat, or a refusal — or nothing,
-            which leaves the line hidden so a fresh table needs no words above
-            it.
+        :param said: The network sentence, the subtitle, or a refusal — or
+            nothing, which leaves the line hidden while nothing needs saying
+            above the table.
         """
         line = self.query_one(f"#{RECOMMENDING}", Static)
 

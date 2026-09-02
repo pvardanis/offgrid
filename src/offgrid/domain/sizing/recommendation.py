@@ -101,15 +101,12 @@ class Recommendation:
     :param models: The models that fit, best first, each as its columns. Empty
         where nothing on the list fits.
     :param caption: One line under the table: which list the figures came from,
-        and how many rows each rule dropped.
-    :param caveats: What needs saying above the table before it is read — that
-        it is not a current one and how old it is. Empty in the ordinary case,
-        where a fetch worked and needs no words.
+        the benchmark it ranks by, when it was read, and how many rows each rule
+        dropped.
     """
 
     models: tuple[RecommendedModel, ...]
     caption: str
-    caveats: tuple[str, ...] = ()
 
 
 def recommend_for_the_panel(

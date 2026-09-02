@@ -1,6 +1,5 @@
 """What a published list says this machine can hold."""
 
-from dataclasses import replace
 from functools import partial
 from pathlib import Path
 
@@ -51,10 +50,10 @@ def read_what_a_list_recommends() -> Recommendation:
     shortlist, laid out as the panel's columns rather than the printed table.
     Nothing is printed — the recommendation is returned, and the panel that
     asked for it reveals it below the sentence it said before this reached
-    anything.
+    anything. How old the figures are is the caption's read date, so a table
+    read from a kept copy says so without a caveat line of its own.
 
-    :return: The models that fit, the caption under them, and any staleness
-        caveat to show above the table.
+    :return: The models that fit and the caption under them.
 
     :raise LeaderboardUnavailableError: When no list answered and there is no
         table kept from a run that reached one. The panel shows it and stays
@@ -64,9 +63,7 @@ def read_what_a_list_recommends() -> Recommendation:
 
     reading = get_reading(LEADERBOARDS, _cache())
 
-    recommendation = recommend_for_the_panel(reading.table, machine, reading.read_on)
-
-    return replace(recommendation, caveats=tuple(reading.caveats))
+    return recommend_for_the_panel(reading.table, machine, reading.read_on)
 
 
 def _get_runtime_name() -> RuntimeName:

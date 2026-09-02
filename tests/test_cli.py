@@ -1607,10 +1607,10 @@ def test_the_picker_reader_returns_the_rows_the_list_ranks(here, monkeypatch):
     assert recommendation.models[0].quant == "4-bit"
 
 
-def test_the_picker_reader_carries_a_stale_tables_caveat(here, monkeypatch):
-    # A recommendation read from a kept table rather than a fresh fetch carries
-    # what needs saying above it — how old the figures are — so the panel can
-    # show it before the figures.
+def test_the_picker_reader_says_when_a_kept_table_was_read(here, monkeypatch):
+    # A recommendation read from a kept table rather than a fresh fetch says how
+    # old the figures are in the caption's read date, so the panel shows their
+    # age without a caveat line of its own.
     _kept(here, models=[_listed("A-Model-35B", "35B")])
     _reads(monkeypatch, _refusing_to_answer)
 
@@ -1619,7 +1619,7 @@ def test_the_picker_reader_carries_a_stale_tables_caveat(here, monkeypatch):
     recommendation = read_what_a_list_recommends()
 
     assert recommendation.models
-    assert any("not a current one" in caveat for caveat in recommendation.caveats)
+    assert "read " in recommendation.caption
 
 
 def test_recommend_says_everything_it_says_to_stderr(here, monkeypatch):
