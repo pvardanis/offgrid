@@ -996,6 +996,21 @@ def test_the_screen_shows_what_a_run_would_report(here, monkeypatch):
     assert "agent speaks anthropic ∈ {anthropic, openai}" in detail
 
 
+def test_a_nested_detail_lines_value_aligns_with_a_top_lines(here, monkeypatch):
+    # A line nested under the agent puts its value in the same column a top line
+    # does, so the detail reads down one column and the indent alone shows the
+    # nesting. Widen the sub-label back into a second column and this fails.
+    runner.invoke(app, ["setup"])
+    on_this_machine(monkeypatch, "claude")
+
+    lines = screen(here).shown.splitlines()
+
+    runtime = next(line for line in lines if line.startswith("runtime"))
+    command = next(line for line in lines if line.lstrip().startswith("command"))
+
+    assert runtime.index("lmstudio") == command.index("claude")
+
+
 def test_the_run_panel_signals_what_the_pairing_would_do(here, monkeypatch):
     # The few lines a person decides on before committing: whether it costs a
     # load, the window it is served at against its ceiling, and where a

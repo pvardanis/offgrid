@@ -44,15 +44,17 @@ _LABEL = 10
 """How wide the detail's label column is, the longest label plus a space.
 
 Its own narrow width rather than the report's, because the detail is a summary
-a person glances down rather than the column `doctor` prints.
+a person glances down rather than the column `doctor` prints. Every value, a
+top label's and a nested one's alike, begins at this column, so the detail
+reads as one aligned column however deep a line sits.
 """
 
-_SUBLABEL = 9
-"""How wide the label of a line nested under one of the detail's is.
+_SUBINDENT = "  "
+"""How far a line nested under one of the detail's is indented.
 
 The command, the ways off the machine and the dialect are the agent's, so they
-sit indented under it with their own narrower label rather than in the top
-column beside the runtime and the model.
+sit indented under it — but their values still begin at `_LABEL`, so the indent
+shows the nesting without opening a second value column beside the first.
 """
 
 
@@ -222,9 +224,10 @@ def _under_agent(label: str, value: str) -> str:
     :param label: What the nested line is about.
     :param value: What it says.
 
-    :return: The indent, the label padded to its column, then the value.
+    :return: The indent, the label padded so its value begins at ``_LABEL``,
+        then the value.
     """
-    return f"{' ' * _LABEL}{label:<{_SUBLABEL}}{value}"
+    return f"{_SUBINDENT}{label:<{_LABEL - len(_SUBINDENT)}}{value}"
 
 
 def _describe_the_served_context(model: Model | None, *, held: bool) -> str:
@@ -345,7 +348,7 @@ def _describe_what_might_leave(readings: tuple[Reading, ...]) -> tuple[str, ...]
     :return: The lines to say.
     """
     column = max(len(reading.subject) for reading in readings) + 2
-    indent = " " * (_LABEL + _SUBLABEL)
+    indent = " " * _LABEL
     first, *rest = readings
 
     return (
