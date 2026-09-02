@@ -492,8 +492,10 @@ def test_moving_the_highlight_recomputes_what_a_run_would_cost(here, monkeypatch
     opened = screen(here)
     moved = screen(here, "tab", "tab", "down")
 
-    assert f"{RESIDENT} is held, so this costs no load" in opened.signal
-    assert "google/gemma-4-e4b is not held, so this costs a load" in moved.signal
+    a_load = "google/gemma-4-e4b is not held by lmstudio, so this costs a load"
+
+    assert f"{RESIDENT} is held by lmstudio, so this costs no load" in opened.signal
+    assert a_load in moved.signal
 
 
 def test_the_highlight_is_reported_on_even_where_the_profile_names_another_model(
@@ -514,7 +516,7 @@ def test_the_highlight_is_reported_on_even_where_the_profile_names_another_model
     driven = screen(here, "tab", "tab", "up")
 
     assert str(driven.highlighted[MODELS]).startswith(RESIDENT)
-    assert f"{RESIDENT} is held, so this costs no load" in driven.signal
+    assert f"{RESIDENT} is held by lmstudio, so this costs no load" in driven.signal
 
 
 def test_a_model_that_is_not_held_is_served_at_no_window_rather_than_an_unsaid_one(
@@ -533,8 +535,13 @@ def test_a_model_that_is_not_held_is_served_at_no_window_rather_than_an_unsaid_o
 
     driven = screen(here, "tab", "tab", "down")
 
-    assert "google/gemma-4-e4b is not held, so this costs a load" in driven.signal
-    assert "not served yet" in driven.signal
+    a_load = "google/gemma-4-e4b is not held by lmstudio, so this costs a load"
+
+    # A cold model states its ceiling and no window — that it is not served is
+    # the first line's "not held", so the context line does not say it twice.
+    assert a_load in driven.signal
+    assert "context ceiling 262144" in driven.signal
+    assert "not served yet" not in driven.signal
 
 
 def test_the_cursor_will_not_land_on_an_agent_this_machine_cannot_start(
@@ -581,7 +588,7 @@ def test_an_agent_whose_own_settings_will_not_read_is_a_row_and_not_a_blank_scre
     assert not any(row.startswith("opencode") for row in driven.reachable[AGENTS]), (
         "the cursor can reach an agent that would not answer"
     )
-    assert f"{RESIDENT} is held, so this costs no load" in driven.signal
+    assert f"{RESIDENT} is held by lmstudio, so this costs no load" in driven.signal
 
 
 def test_moving_the_agent_highlight_recomputes_the_report(here, monkeypatch):
@@ -979,7 +986,7 @@ def test_the_screen_shows_what_a_run_would_report(here, monkeypatch):
     signal = driven.signal
     detail = driven.shown
 
-    assert f"{RESIDENT} is held, so this costs no load" in signal
+    assert f"{RESIDENT} is held by lmstudio, so this costs no load" in signal
     assert "served at context 212224 (context ceiling 262144)" in signal
     assert "claude-code · pair can talk (anthropic)" in signal
     assert f"conversations → {here / 'claude-code'}" in signal
@@ -1022,7 +1029,7 @@ def test_the_run_panel_signals_what_the_pairing_would_do(here, monkeypatch):
 
     signal = screen(here).signal
 
-    assert f"{RESIDENT} is held, so this costs no load" in signal
+    assert f"{RESIDENT} is held by lmstudio, so this costs no load" in signal
     assert "served at context 212224 (context ceiling 262144)" in signal
     assert f"conversations → {here / 'claude-code'}" in signal
     # The way back rides in the signal; the provenance and the finding stay in
@@ -1051,8 +1058,10 @@ def test_the_signal_recomputes_the_load_cost_as_the_highlight_moves(here, monkey
     opened = screen(here)
     moved = screen(here, "tab", "tab", "down")
 
-    assert f"{RESIDENT} is held, so this costs no load" in opened.signal
-    assert "google/gemma-4-e4b is not held, so this costs a load" in moved.signal
+    a_load = "google/gemma-4-e4b is not held by lmstudio, so this costs a load"
+
+    assert f"{RESIDENT} is held by lmstudio, so this costs no load" in opened.signal
+    assert a_load in moved.signal
     # A load is a cost, not a bar: the line is painted warning, not error.
     costs = next(text for text in moved.signal_colours if "costs a load" in text)
     assert moved.signal_colours[costs] == "$text-warning"
@@ -1537,7 +1546,7 @@ def test_where_there_is_no_profile_the_screen_measures_rather_than_refusing(
     # The report is assembled onto what `setup` would have written, so the run
     # panel works rather than standing empty beside the measurement: the runtime
     # the default names answers, and the model it holds is priced in the signal.
-    assert f"{RESIDENT} is held, so this costs no load" in driven.signal
+    assert f"{RESIDENT} is held by lmstudio, so this costs no load" in driven.signal
     # The machine panel is its own panel above the run one, so what fits is read
     # before the run it is assembled into without either crowding the other.
     assert "Apple M1 Max" not in driven.shown
