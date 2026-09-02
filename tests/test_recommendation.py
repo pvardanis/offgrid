@@ -18,8 +18,10 @@ from offgrid.domain.sizing.recommendation import (
 GIB = 1024**3
 BILLION = 1e9
 
-# A read date for the captions that do not turn on how it reads.
+# A read date, and the day to read it against, for the captions that do not
+# turn on how it reads.
 READ_ON = date(2026, 9, 1)
+NOW = date(2026, 9, 1)
 
 
 def machine() -> Machine:
@@ -65,7 +67,9 @@ def test_the_panel_has_the_five_columns_the_spec_names():
 
 
 def test_a_dense_model_states_its_size_without_an_active_count():
-    recommendation = recommend_for_the_panel(a_table(a_listing()), machine(), READ_ON)
+    recommendation = recommend_for_the_panel(
+        a_table(a_listing()), machine(), READ_ON, NOW
+    )
 
     top = recommendation.models[0]
 
@@ -78,13 +82,15 @@ def test_a_mixture_names_the_count_a_token_reads():
     # holds and what it reads, so a person sizes the run by the smaller number.
     listing = a_listing(name="qwen3-coder-30b-a3b", active=3 * BILLION)
 
-    recommendation = recommend_for_the_panel(a_table(listing), machine(), READ_ON)
+    recommendation = recommend_for_the_panel(a_table(listing), machine(), READ_ON, NOW)
 
     assert recommendation.models[0].params == "30B (3B active)"
 
 
 def test_the_quality_column_carries_the_word_and_the_score():
-    top = recommend_for_the_panel(a_table(a_listing()), machine(), READ_ON).models[0]
+    top = recommend_for_the_panel(a_table(a_listing()), machine(), READ_ON, NOW).models[
+        0
+    ]
 
     label, separator, score = top.quality.partition(" · ")
 
@@ -94,7 +100,9 @@ def test_the_quality_column_carries_the_word_and_the_score():
 
 
 def test_the_quant_and_context_are_the_widths_and_the_ceiling():
-    top = recommend_for_the_panel(a_table(a_listing()), machine(), READ_ON).models[0]
+    top = recommend_for_the_panel(a_table(a_listing()), machine(), READ_ON, NOW).models[
+        0
+    ]
 
     assert top.quant == "4-bit"
     assert top.context == "262144"
@@ -103,13 +111,15 @@ def test_the_quant_and_context_are_the_widths_and_the_ceiling():
 def test_a_listing_serving_nothing_states_no_context_rather_than_a_zero():
     listing = a_listing(context_window=None)
 
-    top = recommend_for_the_panel(a_table(listing), machine(), READ_ON).models[0]
+    top = recommend_for_the_panel(a_table(listing), machine(), READ_ON, NOW).models[0]
 
     assert top.context == "unstated"
 
 
 def test_the_caption_names_the_list_the_figures_came_from():
-    caption = recommend_for_the_panel(a_table(a_listing()), machine(), READ_ON).caption
+    caption = recommend_for_the_panel(
+        a_table(a_listing()), machine(), READ_ON, NOW
+    ).caption
 
     assert "onyx" in caption
 
@@ -117,18 +127,24 @@ def test_the_caption_names_the_list_the_figures_came_from():
 def test_the_caption_names_the_benchmark_the_list_ranks_by():
     # The figures are one benchmark of the list's twenty, so the caption says
     # which, between the list it came from and when it was read.
-    caption = recommend_for_the_panel(a_table(a_listing()), machine(), READ_ON).caption
+    caption = recommend_for_the_panel(
+        a_table(a_listing()), machine(), READ_ON, NOW
+    ).caption
 
     assert "swe_bench_verified" in caption
 
 
 def test_the_caption_says_when_the_table_was_read():
     # Today reads as today, the day before as yesterday, and anything older as
-    # its date, so how current the figures are is read before they are.
-    today = date.today()
+    # its date, so how current the figures are is read before they are. The day
+    # it reads against is handed in, so the sentence does not turn on the clock.
+    # A day unlike the real one, so a read of the clock here would read wrong.
+    today = date(2030, 6, 15)
 
     def when(read_on: date) -> str:
-        return recommend_for_the_panel(a_table(a_listing()), machine(), read_on).caption
+        return recommend_for_the_panel(
+            a_table(a_listing()), machine(), read_on, today
+        ).caption
 
     assert "read today" in when(today)
     assert "read yesterday" in when(today - timedelta(days=1))
@@ -146,7 +162,7 @@ def test_the_caption_counts_what_each_rule_dropped():
         unsized_rows=scored_but_unsized,
     )
 
-    caption = recommend_for_the_panel(table, machine(), READ_ON).caption
+    caption = recommend_for_the_panel(table, machine(), READ_ON, NOW).caption
 
     assert "dropped 3" in caption
     assert "no size" in caption
@@ -154,6 +170,8 @@ def test_the_caption_counts_what_each_rule_dropped():
 
 
 def test_nothing_dropped_is_left_off_the_caption():
-    caption = recommend_for_the_panel(a_table(a_listing()), machine(), READ_ON).caption
+    caption = recommend_for_the_panel(
+        a_table(a_listing()), machine(), READ_ON, NOW
+    ).caption
 
     assert "dropped" not in caption

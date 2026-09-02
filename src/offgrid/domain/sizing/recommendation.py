@@ -110,7 +110,7 @@ class Recommendation:
 
 
 def recommend_for_the_panel(
-    table: Table, machine: Machine, read_on: date
+    table: Table, machine: Machine, read_on: date, today: date
 ) -> Recommendation:
     """Lay a published list out as the machine panel's ranked table.
 
@@ -123,6 +123,8 @@ def recommend_for_the_panel(
     :param machine: The host the models would run on.
     :param read_on: The day offgrid read the table, which the caption states
         so how current the figures are is read before them.
+    :param today: The day to read the read date against, handed in so the
+        caption does not turn on the clock inside the domain.
 
     :return: The models that fit, best first, and the caption under them.
     """
@@ -134,7 +136,7 @@ def recommend_for_the_panel(
 
     return Recommendation(
         models=models,
-        caption=_caption_the_panel(table, read_on, shortlisted.dropped),
+        caption=_caption_the_panel(table, read_on, today, shortlisted.dropped),
     )
 
 
@@ -170,16 +172,23 @@ def _write_parameters(fit: Fit) -> str:
     return f"{whole} ({fit.active_parameters / BILLION:.0f}B active)"
 
 
-def _caption_the_panel(table: Table, read_on: date, dropped: list[Dropped]) -> str:
+def _caption_the_panel(
+    table: Table, read_on: date, today: date, dropped: list[Dropped]
+) -> str:
     """Credit the figures — list, benchmark, and read date — then account drops.
 
     :param table: The published list, as it was read.
     :param read_on: The day offgrid read the table.
+    :param today: The day to read the read date against.
     :param dropped: What each rule took, or none where it took nothing.
 
     :return: The one line under the table.
     """
-    parts = [_short_source(table.source), table.benchmark, _describe_when_read(read_on)]
+    parts = [
+        _short_source(table.source),
+        table.benchmark,
+        _describe_when_read(read_on, today),
+    ]
 
     if dropped:
         total = sum(one.count for one in dropped)
@@ -191,15 +200,16 @@ def _caption_the_panel(table: Table, read_on: date, dropped: list[Dropped]) -> s
     return " · ".join(parts)
 
 
-def _describe_when_read(read_on: date) -> str:
-    """Say how current the figures are, relative to today where it reads.
+def _describe_when_read(read_on: date, today: date) -> str:
+    """Say how current the figures are, relative to the day handed in.
 
     :param read_on: The day offgrid read the table.
+    :param today: The day to read the read date against.
 
     :return: ``read today`` or ``read yesterday`` where that is what it was,
         and the date itself for anything older.
     """
-    days = (date.today() - read_on).days
+    days = (today - read_on).days
 
     if days == 0:
         return "read today"
