@@ -285,15 +285,14 @@ class Picker(App[Departure | None]):
         width: 1fr;
     }}
 
-    /* The machine panel takes only what it shows — the fits summary and the
-       control, or the ranked table once it is revealed — and the run panel
-       takes the rest of the column, so what a run would do has the room. */
+    /* The machine panel takes the column's slack and the run panel hugs its
+       content, so what a run would do sits together with no gap under it. */
     #{MACHINE} {{
-        height: auto;
+        height: 1fr;
     }}
 
     #{RUN} {{
-        height: 1fr;
+        height: auto;
     }}
 
     #{FITS} {{
