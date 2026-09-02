@@ -1,5 +1,6 @@
 """What a published list says this machine can hold."""
 
+from datetime import date
 from functools import partial
 from pathlib import Path
 
@@ -63,7 +64,9 @@ def read_what_a_list_recommends() -> Recommendation:
 
     reading = get_reading(LEADERBOARDS, _cache())
 
-    return recommend_for_the_panel(reading.table, machine, reading.read_on)
+    return recommend_for_the_panel(
+        reading.table, machine, reading.read_on, date.today()
+    )
 
 
 def _get_runtime_name() -> RuntimeName:
