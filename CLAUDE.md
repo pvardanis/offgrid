@@ -56,6 +56,25 @@ Verify every review finding before acting on it — one reviewer insisted the
 fixtures' models did not exist, an hour after they were captured from a live
 server. Report what a finding got wrong beside what it got right.
 
+## Skill config
+
+Per-repo configuration the mattpocock engineering skills read at runtime.
+
+### Issue tracker
+
+Issues live as GitHub issues on `pvardanis/offgrid`, driven with `gh`. See
+`docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five canonical triage roles, each mapped to a label of the same name. See
+`docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` for the glossary, `docs/decisions.md` for
+decisions, `docs/architecture.md` for the module map. See `docs/agents/domain.md`.
+
 ## Testing
 
 - Fixtures are captured from a live runtime, never invented.
