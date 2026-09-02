@@ -137,10 +137,10 @@ SIGNAL = "signal"
 SIGNAL_PANE = "signal-pane"
 """What the signal scrolls inside, so its share of the run panel is bounded.
 
-The signal takes the larger share of the run panel and the detail the
-smaller; a share that is a fraction of the panel is bounded rather than as
-tall as the lines make it, so on a short terminal the signal scrolls to its
-end rather than pushing the detail off.
+The signal takes half the run panel and the detail the other half; a share
+that is a fraction of the panel is bounded rather than as tall as the lines
+make it, so on a short terminal the signal scrolls to its end rather than
+pushing the detail off.
 """
 
 DETAIL = "detail"
@@ -345,12 +345,10 @@ class Picker(App[Departure | None]):
         padding: 0 1;
     }}
 
-    /* The signal takes twice the detail's share of the run panel, so what a
-       run would do sits in the larger part and the curated detail in the
-       smaller. Each scrolls within its share on a terminal too short to hold
-       it whole. */
+    /* The signal and the detail split the run panel evenly, a half each. Each
+       scrolls within its half on a terminal too short to hold it whole. */
     #{SIGNAL_PANE} {{
-        height: 2fr;
+        height: 1fr;
     }}
 
     #{DETAIL} {{
