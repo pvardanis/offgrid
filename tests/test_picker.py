@@ -1028,7 +1028,9 @@ def test_the_run_panel_signals_what_the_pairing_would_do(here, monkeypatch):
     # The way back rides in the signal; the provenance and the finding stay in
     # the detail's fuller telling. Swap `resume_with` for `said` and this fails.
     assert "offgrid run -- --resume" in signal
-    assert "offgrid's own" in signal
+    # One space between the directory and the parenthetical, not the gap two
+    # left. Double the space and this fails.
+    assert f"{here / 'claude-code'} (offgrid's own" in signal
     assert "measured against" not in signal
     assert "request" not in signal
     assert "dialect" not in signal
