@@ -251,7 +251,7 @@ def _describe_the_served_context(model: Model | None, *, held: bool) -> str:
 
         return f"served at context {window} (context ceiling {ceiling})"
 
-    return f"context ceiling {ceiling}, not served yet"
+    return f"context ceiling {ceiling}"
 
 
 def _describe_whether_the_pair_can_talk(name: AgentName, dialect: Dialect) -> str:
@@ -477,10 +477,16 @@ def _reckon_what_running_would_cost(
             Tone.BLOCKED,
         )
 
-    if identifier in report.held:
-        return RunningCost((f"{identifier} is held, so this costs no load",), Tone.OK)
+    runtime = report.profile.runtime.name.value
 
-    return RunningCost((f"{identifier} is not held, so this costs a load",), Tone.COST)
+    if identifier in report.held:
+        return RunningCost(
+            (f"{identifier} is held by {runtime}, so this costs no load",), Tone.OK
+        )
+
+    return RunningCost(
+        (f"{identifier} is not held by {runtime}, so this costs a load",), Tone.COST
+    )
 
 
 def _refuse_a_pair_that_cannot_talk(
