@@ -146,8 +146,12 @@ def test_downloading_offers_the_command_and_leads_with_the_application():
     # `lms get` is LM Studio's download command, and `lms` is not on the
     # `PATH` until a person has bootstrapped it — which offgrid neither does
     # nor asks for. So the search everybody has comes first and the command is
-    # offered after it, each carrying the model's name.
+    # offered after it. The name rides the search, not the command: the
+    # published name is not the identifier LM Studio downloads under, so
+    # `lms get` is handed no name that would resolve to nothing.
     said = describe_model_download("Qwen3.6-35B-A3B")
 
     assert said.index("LM Studio") < said.index("lms get")
-    assert "lms get Qwen3.6-35B-A3B" in said
+    assert "lms get <model-id>" in said
+    assert "lms get Qwen3.6-35B-A3B" not in said
+    assert "Qwen3.6-35B-A3B" in said
