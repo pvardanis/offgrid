@@ -2442,3 +2442,50 @@ person first meets is the signal rather than a log. `d` toggles it. The #166
 picker showed the whole report as a column of report text, which is what read as
 a terminal rather than a finished screen; this decides what shows first, what
 waits behind a toggle, and that both are said in the screen's own voice.
+
+## The context window is picked in the picker
+
+The window is the last configurable profile field the picker could not set. It
+lives on the model request as `context_window`, an optional token count, and
+until now a person could only ask for one by hand-editing the file or passing
+`--context-window`. This gives it a control on the screen, beside the model list
+where a window belongs, since a window is asked of a particular model.
+
+**A dropdown of round windows, with a free-text escape.** The dropdown offers
+`inherit` and the round token counts a window is usually chosen as — 32768,
+65536, 131072 and up — plus a last `Custom…` entry that reveals a text box for
+any other valid number. The dropdown is the control; the box exists only when
+`Custom…` is picked, and a value that is not one of the presets — hand-typed, or
+loaded from a hand-edited profile — shows as `Custom (N)` with the box
+pre-filled. **The free text is the source of truth; the dropdown writes into
+it.** A slider was set aside: Textual ships none, so it would be a keyboard-driven
+widget built from nothing, it needs a right edge the model ceiling does not
+always give (a runtime may state none), and its cells cannot land on the exact
+round windows people actually ask for.
+
+**`inherit` is a first-class, reachable value, not just the opening state.** It
+means the field stays `None` and the runtime serves whatever it serves. A person
+who sets a window can return to `inherit` without restarting, the same way the
+field is optional in the file.
+
+**A window is bounded per model, never per machine.** The floor is the agent's
+`CONTEXT_FLOOR`; the ceiling is the model's own, read from the runtime's
+catalogue, and is `None` when the runtime states none — in which case only the
+floor and a positive count are enforced. The machine imposes no token ceiling,
+so none is invented. Presets above the highlighted model's ceiling are greyed
+the way an unreachable dropdown choice already is.
+
+**The set window is validated lazily against the highlighted model, and an
+unworkable one is said rather than silently fixed.** The ceiling moves as the
+model highlight moves, so a window good for one model may be too large for the
+next. When it is, the signal line reads the same message a person would get from
+the runtime or the agent — below the floor, above the ceiling, or not a positive
+count — and the run is blocked until it is resolved. It is never clamped to fit:
+clamping would hide that the model cannot hold what was asked.
+
+**The value updates live and is written only on a saved run.** Editing changes
+the in-memory window as the theme's cycling does; it reaches `profile.yaml` only
+on `enter`, never on `s`, and rides into the assembled profile the way the theme
+does. While the box holds focus its keystrokes are its own — the picker's `t`,
+`s` and `q` are suppressed by focus, `enter` commits the value and returns focus
+to the model list, and `escape` cancels back to the prior value.
