@@ -56,8 +56,11 @@ def test_it_says_how_to_raise_a_gpu_limit_still_at_its_default():
     shown = "\n".join(describe_the_machine_and_how_to_fit_more(machine))
 
     # The command sits on the sentence's own line, not wrapped onto the next, so
-    # it copies whole. Split it back onto two lines and this fails.
-    assert "which a reboot undoes: sudo sysctl iogpu.wired_limit_mb=14336" in shown
+    # it copies whole. Split it back onto two lines and this fails. The
+    # backticks set the command off from the sentence that leads to it.
+    wanted = "(which a reboot undoes), run `sudo sysctl iogpu.wired_limit_mb=14336`"
+
+    assert wanted in shown
 
 
 def test_it_suggests_nothing_where_the_gpu_limit_is_already_raised():
