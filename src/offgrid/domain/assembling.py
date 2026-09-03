@@ -166,7 +166,7 @@ class Pairing:
     context_window: int | None
 
 
-def requested_window(
+def get_request_model_context(
     report: WhatCouldBeRun, store: Mapping[str, int], identifier: str
 ) -> int | None:
     """Say the concrete window a model would be requested at.
@@ -185,10 +185,12 @@ def requested_window(
     :return: The window to request the model at, or ``None`` where nothing
         states one.
     """
-    target = report.profile.model
+    model_request = report.profile.model
 
-    if identifier == target.identifier and target.context_window is not None:
-        return target.context_window
+    names_the_target = identifier == model_request.identifier
+
+    if names_the_target and model_request.context_window is not None:
+        return model_request.context_window
 
     if identifier in store:
         return store[identifier]
@@ -240,7 +242,9 @@ def open_on_what_the_profile_holds(
         agent=report.profile.agent_name,
         model=identifier,
         context_window=(
-            None if identifier is None else requested_window(report, store, identifier)
+            None
+            if identifier is None
+            else get_request_model_context(report, store, identifier)
         ),
     )
 
@@ -308,7 +312,9 @@ def read_the_highlight(
         agent=named.agent if agent is None else AgentName(agent),
         model=resolved,
         context_window=(
-            None if resolved is None else requested_window(report, store, resolved)
+            None
+            if resolved is None
+            else get_request_model_context(report, store, resolved)
         ),
     )
 
