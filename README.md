@@ -1,6 +1,5 @@
 <div align="center">
 
-<!-- TODO: replace with docs/assets/logo.svg once copied in from the Desktop -->
 <h1>offgrid</h1>
 
 Run a coding agent against a local model, tuned to the machine it runs on.
@@ -16,7 +15,7 @@ Run a coding agent against a local model, tuned to the machine it runs on.
 
 </div>
 
-![The picker](docs/assets/picker.svg)
+![The offgrid TUI](docs/assets/tui.png)
 
 offgrid starts a coding **agent** against a model held in memory by a
 **runtime** on this machine. It holds the model you asked for, sizes the
