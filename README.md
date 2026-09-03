@@ -30,6 +30,7 @@ qwen/qwen3.6-35b-a3b, window 262144
 - [Requirements](#requirements)
 - [Install](#install)
 - [Quick start](#quick-start)
+- [The picker](#the-picker)
 - [Commands](#commands)
 - [What a run does](#what-a-run-does)
 - [Runtimes](#runtimes)
@@ -135,6 +136,10 @@ is one line, so the file reads as a list of commands.
 
 ## Quick start
 
+[The picker](#the-picker) does all of this on one screen — what fits, what to
+download, what a run would cost, and starting it. The four commands below are the
+same steps taken one at a time, and are what a script reaches for.
+
 **1. Measure the machine.** This writes a profile and says how much room there
 is, at each quantization width:
 
@@ -216,10 +221,76 @@ Anything after `--` reaches the agent unchanged:
 $ offgrid run -- -p "explain what this module does"
 ```
 
+## The picker
+
+Run `offgrid` with nothing after it, at a terminal, and it opens the picker: one
+screen that sizes this machine, pairs a runtime, an agent and a model, and starts
+the run. Named where there is no terminal — a script, a pipe — it prints the
+command table instead, since a screen there would wait for a key that never comes.
+
+![The picker](docs/assets/picker.svg)
+
+**The header band** is a block logo, and three lines a person arriving from the
+README has no other way to read: `offgrid @ <sha>`, the git SHA of the checkout
+about to run, since there is no published version to name; the working directory
+a run would inherit — offgrid shows it, the agent takes the shell's cwd, and
+offgrid does not set it — and the theme the screen is drawn in.
+
+**Three lists on the left** are what a run is assembled from:
+
+- **runtime** — the runtimes offgrid drives. Only the one the profile names has a
+  config to run from, so the rest are greyed and the cursor steps over them.
+- **agent** — the agents offgrid drives, the ones this machine has not installed
+  greyed.
+- **models** — every model the runtime has downloaded, held ones first, each row
+  its identifier and the context window it would be run at. This is the list the
+  keys below act on, and it holds the focus.
+
+**Two right-column panels**, of equal height:
+
+- **machine** — what fits at each quantization width, the same budget `setup`
+  prints, shown whether or not a profile is there. A **recommend** control below
+  it reveals, in place, a ranked table of what a published list says this machine
+  can hold; highlighting a row says how to download that model in the runtime's
+  own words. It is the one thing the picker does that reaches the network, and it
+  fetches once — opening and closing the table afterwards costs nothing.
+- **run** — colour-coded signal lines for the pairing the highlights are on:
+  whether starting it costs a load, the window it would be served at against the
+  model's ceiling, whether the runtime and agent can talk, and where a
+  conversation it starts would be kept. The diagnostic detail `doctor` prints is
+  folded behind a toggle. Below the panels, a status line says which key writes
+  and whether what is assembled still matches your saved profile.
+
+**The keys:**
+
+| Key | What it does | What it writes |
+|---|---|---|
+| `enter` | Runs the highlighted pairing | Saves it as the profile, and remembers the model's window |
+| `s` | Runs the highlighted pairing once | Nothing |
+| `e` | Opens a slider over the model's row to edit its context window | Nothing until a run saves it |
+| `r` | Reveals or hides the recommend table — reaches the network, once | Nothing |
+| `t` | Cycles the theme, live | Nothing until a run saves it |
+| `d` | Opens or closes the run panel's detail | Nothing |
+| `q` | Leaves, having changed nothing | Nothing |
+
+`enter` and `s` match Claude Code's model picker, so the reflex carries over.
+Nothing but `enter` writes: browsing the lists, editing a window, cycling the
+theme and opening the table all leave the file alone until a run is started. The
+theme cycled to with `t` is one of the eight offgrid offers, only the palette
+moves and never the logo or the labels, and the one landed on rides into what
+`enter` saves — so a later `offgrid` opens on it.
+
+**What the panels show that other tools do not.** Showing whether a model fits
+before you commit is common — Jan, GPT4All and `lms load --estimate-only` all do
+it. What was not found anywhere, and what the picker adds, is the window a model
+would be *served* at, shown before the load, and a warning when the pairing about
+to start would cost a load and discard a cached prefix.
+
 ## Commands
 
 | Command | What it does |
 |---|---|
+| `offgrid` | Opens [the picker](#the-picker) at a terminal — the four commands below on one screen — or prints this table where there is no terminal to open on. |
 | `offgrid setup [--host HOST]` | Measures this Mac, says what fits, writes the profile. Keeps whatever you edited into it by hand — unless the file no longer loads, which is set aside as `profile.yaml.rejected` and replaced. |
 | `offgrid recommend` | Fetches a published coding table, keeps the models this machine can hold, prints them at each width they fit at, and says how the runtime the profile names has one downloaded into it. |
 | `offgrid doctor` | Reports the runtime, the model it is holding, the most that model could be served at, what it is being served at, what the profile asks the next run for, whether the agent it names is on the `PATH`, the smallest window the agent starts in, the dialects the runtime serves, and the agent's own dialect. A runtime holding nothing is reported in the model's lines and exits `1`; every other line is read without one. |
