@@ -1,13 +1,7 @@
 <div align="center">
 
-<pre>
- ██████╗ ███████╗███████╗ ██████╗ ██████╗ ██╗██████╗
-██╔═══██╗██╔════╝██╔════╝██╔════╝ ██╔══██╗██║██╔══██╗
-██║   ██║█████╗  █████╗  ██║  ███╗██████╔╝██║██║  ██║
-██║   ██║██╔══╝  ██╔══╝  ██║   ██║██╔══██╗██║██║  ██║
-╚██████╔╝██║     ██║     ╚██████╔╝██║  ██║██║██████╔╝
- ╚═════╝ ╚═╝     ╚═╝      ╚═════╝ ╚═╝  ╚═╝╚═╝╚═════╝
-</pre>
+<img src="docs/assets/logo.png" alt="offgrid" width="220">
+<br><br>
 
 Run a coding agent against a local model, tuned to the machine it runs on.
 
@@ -22,7 +16,7 @@ Run a coding agent against a local model, tuned to the machine it runs on.
 
 </div>
 
-![The offgrid TUI](docs/assets/tui.png)
+![The offgrid TUI](docs/assets/tui-window.svg)
 
 offgrid starts a coding **agent** against a model held in memory by a
 **runtime** on this machine. It holds the model you asked for, sizes the
@@ -30,8 +24,7 @@ agent's context to the window the runtime is actually serving, and lets the
 model go when the agent exits. No prompt, code or file leaves the machine.
 
 Run `offgrid` with nothing after it and the whole of that happens on one screen —
-the [TUI](#tui) above. The commands underneath it are the same steps for a
-script.
+the [TUI](#tui) above.
 
 ## Contents
 
