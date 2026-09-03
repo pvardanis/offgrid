@@ -140,7 +140,9 @@ def test_a_typed_window_within_both_bounds_reads_as_the_number():
     # The picker's custom box hands whatever was typed here. A whole number of
     # tokens between the floor and the ceiling is the window to hold at.
     assert (
-        refuse_a_typed_window("65536", floor=FLOOR, ceiling=131072, identifier=RESIDENT)
+        refuse_a_typed_window(
+            "65536", floor=FLOOR, ceiling=131072, model_identifier=RESIDENT
+        )
         == 65536
     )
 
@@ -149,7 +151,9 @@ def test_a_typed_window_that_is_not_a_whole_number_is_refused():
     # Text that is not a number of tokens cannot be a window, and the box says
     # what to type rather than committing something the int would choke on.
     with pytest.raises(ContextWindowUnworkableError) as raised:
-        refuse_a_typed_window("lots", floor=FLOOR, ceiling=131072, identifier=RESIDENT)
+        refuse_a_typed_window(
+            "lots", floor=FLOOR, ceiling=131072, model_identifier=RESIDENT
+        )
 
     assert "'lots' is not a window" in str(raised.value)
 
@@ -158,7 +162,9 @@ def test_a_typed_window_of_zero_or_below_is_refused():
     # Zero is not a small window, it is not a window. The message matches the
     # one the request itself gives.
     with pytest.raises(ContextWindowUnworkableError) as raised:
-        refuse_a_typed_window("0", floor=FLOOR, ceiling=131072, identifier=RESIDENT)
+        refuse_a_typed_window(
+            "0", floor=FLOOR, ceiling=131072, model_identifier=RESIDENT
+        )
 
     assert "above zero, so 0 cannot be asked for" in str(raised.value)
 
@@ -167,7 +173,9 @@ def test_a_typed_window_below_the_floor_is_refused_with_the_floor_message():
     # The box reuses the same refusal a load would fail with, so a person reads
     # the floor and the number they typed, not a second phrasing of it.
     with pytest.raises(ContextWindowUnworkableError) as raised:
-        refuse_a_typed_window("8000", floor=FLOOR, ceiling=131072, identifier=RESIDENT)
+        refuse_a_typed_window(
+            "8000", floor=FLOOR, ceiling=131072, model_identifier=RESIDENT
+        )
 
     assert "A window of 8000 is below the agent's floor of 25000" in str(raised.value)
 
@@ -175,7 +183,7 @@ def test_a_typed_window_below_the_floor_is_refused_with_the_floor_message():
 def test_a_typed_window_above_the_ceiling_is_refused_with_the_ceiling_message():
     with pytest.raises(ContextWindowUnworkableError) as raised:
         refuse_a_typed_window(
-            "200000", floor=FLOOR, ceiling=131072, identifier=RESIDENT
+            "200000", floor=FLOOR, ceiling=131072, model_identifier=RESIDENT
         )
 
     assert f"above {RESIDENT}'s ceiling of 131072" in str(raised.value)
@@ -185,7 +193,9 @@ def test_a_typed_window_is_not_measured_against_a_floor_no_agent_stated():
     # Where no agent answered there is no floor to measure, so only the ceiling
     # and positivity stand between the box and a commit.
     assert (
-        refuse_a_typed_window("100", floor=None, ceiling=131072, identifier=RESIDENT)
+        refuse_a_typed_window(
+            "100", floor=None, ceiling=131072, model_identifier=RESIDENT
+        )
         == 100
     )
 
@@ -194,6 +204,8 @@ def test_a_typed_window_is_not_measured_against_a_ceiling_the_runtime_omits():
     # A model stating no ceiling leaves nothing above to measure against, so a
     # large window the runtime never bounded is taken as typed.
     assert (
-        refuse_a_typed_window("900000", floor=FLOOR, ceiling=None, identifier=RESIDENT)
+        refuse_a_typed_window(
+            "900000", floor=FLOOR, ceiling=None, model_identifier=RESIDENT
+        )
         == 900000
     )

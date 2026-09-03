@@ -169,7 +169,7 @@ class Pairing:
 def get_requested_model_context(
     report: WhatCouldBeRun,
     store: Mapping[str, int],
-    identifier: str,
+    model_identifier: str,
     *,
     edits: Mapping[str, int],
 ) -> int | None:
@@ -187,28 +187,28 @@ def get_requested_model_context(
 
     :param report: Everything that was read.
     :param store: The window each model was last saved at, keyed on the model.
-    :param identifier: The model to seed a window for.
+    :param model_identifier: The model to seed a window for.
     :param edits: The window edited in place this session, keyed on the model,
         beating every other seed. Empty where nothing has been edited.
 
     :return: The window to request the model at, or ``None`` where nothing
         states one.
     """
-    if identifier in edits:
-        return edits[identifier]
+    if model_identifier in edits:
+        return edits[model_identifier]
 
     model_request = report.profile.model
 
-    names_the_target = identifier == model_request.identifier
+    names_the_target = model_identifier == model_request.identifier
 
     if names_the_target and model_request.context_window is not None:
         return model_request.context_window
 
-    if identifier in store:
-        return store[identifier]
+    if model_identifier in store:
+        return store[model_identifier]
 
     for model in report.downloaded_models:
-        if model.identifier == identifier:
+        if model.identifier == model_identifier:
             return model.context_ceiling
 
     return None

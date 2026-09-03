@@ -433,7 +433,7 @@ class WindowEditor(Vertical):
                 typed,
                 floor=self._floor,
                 ceiling=self._ceiling,
-                identifier=self._identifier,
+                model_identifier=self._identifier,
             )
         except ContextWindowUnworkableError as refused:
             self._say(str(refused))
