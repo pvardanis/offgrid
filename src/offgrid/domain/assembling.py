@@ -325,11 +325,11 @@ def read_the_highlight(
 
     resident = report.runtime.resident
     sitting_on_the_resident = resident is not None and model == resident.identifier
-    takes_what_is_held = (
+    what_is_held = (
         sitting_on_the_resident and named.model is None and model not in edits
     )
 
-    resolved = named.model if model is None or takes_what_is_held else model
+    resolved = named.model if model is None or what_is_held else model
 
     return Pairing(
         agent=named.agent if agent is None else AgentName(agent),
