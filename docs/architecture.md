@@ -240,6 +240,8 @@ domain/
                    not grant, kept between runs
     discarding.py  whether a window is asked for again, and what became
                    of the one that was
+    last_saved_windows.py  the window each model was last saved at, so a
+                   later run can open on it
   profile/         what is remembered between runs
     profile.py     the file, and what is read out of it
     keeping.py     reading and writing YAML without losing the comments,

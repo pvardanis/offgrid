@@ -112,3 +112,14 @@ class DiscardedWindowsUnreadableError(OffgridError):
     cannot be opened is a fault: until it is fixed, offgrid asks for a window
     it has already been refused on every run, and pays the reload each time.
     """
+
+
+class LastSavedWindowsUnreadableError(OffgridError):
+    """What offgrid keeps about last-saved windows is there and will not read.
+
+    A file that is not there is no memory and is worth no message, because
+    that is every model before one is first saved. One that cannot be opened
+    is a fault: until it is fixed, the picker cannot default a model to the
+    window it last ran at, and a record silently dropped is a default quietly
+    lost.
+    """
