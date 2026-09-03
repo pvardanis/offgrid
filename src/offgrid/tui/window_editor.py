@@ -109,6 +109,9 @@ class WindowTrack(Widget):
 
     can_focus = True
 
+    ALLOW_SELECT = False
+    """No text to select: a drag moves the handle, it does not sweep a highlight."""
+
     COMPONENT_CLASSES: ClassVar[set[str]] = {
         "window-track--bar",
         "window-track--handle",
