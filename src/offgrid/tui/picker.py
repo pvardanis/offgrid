@@ -697,13 +697,18 @@ class Picker(App[Departure | None]):
     async def action_edit_window(self) -> None:
         """Float the window slider over the highlighted row, where there is one.
 
-        Empty list or nothing highlighted is a no-op: there is no row to edit
-        and no cell to float over. A press while the slider is already open is
-        left to it — it owns the keys until it commits or is abandoned.
+        Opens only where the models list holds the focus: `e` edits a model's
+        window, so a press while another panel has the focus is a no-op rather
+        than floating a control over a row a person is not on. Empty list or
+        nothing highlighted is a no-op too, and a press while the slider is
+        already open is left to it — it owns the keys until it closes.
         """
         report = self._report
 
         if report is None or self._slider_is_open():
+            return
+
+        if not self._get_list().has_focus:
             return
 
         identifier = self._get_highlighted_model()
