@@ -19,7 +19,7 @@ from tests.launches import record_launch
 from tests.lmstudio_server import RESIDENT, answer_as_lm_studio
 
 
-def _hand_write(here, *, noticed_at: str, identifier: str = RESIDENT) -> None:
+def _hand_write(here, *, noticed_at: str, model_identifier: str = RESIDENT) -> None:
     """Write a record by hand, so a test can pin the day it was noticed.
 
     The stamp is the store's to make, which is what stops an unstamped record
@@ -27,12 +27,12 @@ def _hand_write(here, *, noticed_at: str, identifier: str = RESIDENT) -> None:
 
     :param here: Where the profile and what sits beside it are written.
     :param noticed_at: The day and time to put on the record.
-    :param identifier: The model the record is about.
+    :param model_identifier: The model the record is about.
     """
     record = {
         "runtime": "lmstudio",
         "host": HOST,
-        "identifier": identifier,
+        "model_identifier": model_identifier,
         "asked_for": ASKED_FOR,
         "served": 212224,
         "noticed_at": noticed_at,
@@ -107,7 +107,7 @@ def test_run_claims_nothing_about_holding_a_model_it_loaded_this_run(here, monke
     # never checked.
     runner.invoke(app, ["setup"])
     record_launch(monkeypatch)
-    _hand_write(here, identifier="a/other-7b", noticed_at="2026-08-21T14:31:07")
+    _hand_write(here, model_identifier="a/other-7b", noticed_at="2026-08-21T14:31:07")
     asked = answer_as_lm_studio(monkeypatch, cold={"a/other-7b": SERVED}, serves=SERVED)
 
     result = runner.invoke(
@@ -232,7 +232,7 @@ def test_a_refusal_of_another_window_is_put_to_the_runtime_and_kept(here, monkey
     # and leave this one unrecorded, so every later run pays the load again.
     runner.invoke(app, ["setup"])
     record_launch(monkeypatch)
-    _hand_write(here, identifier="a/other-7b", noticed_at="2026-08-21T14:31:07")
+    _hand_write(here, model_identifier="a/other-7b", noticed_at="2026-08-21T14:31:07")
     put = answer_as_lm_studio(monkeypatch, cold={"a/other-7b": SERVED}, serves=SERVED)
 
     result = runner.invoke(

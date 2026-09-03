@@ -55,7 +55,9 @@ def refuse_to_ask_runtime_again(
     :param discarded_windows: What was kept about this runtime.
     :return: Whether a model was refused exactly this window before.
     """
-    refused = {(record.identifier, record.asked_for) for record in discarded_windows}
+    refused = {
+        (record.model_identifier, record.asked_for) for record in discarded_windows
+    }
 
     return lambda identifier, window: (identifier, window) in refused
 
@@ -85,7 +87,8 @@ def read_what_became_of_the_window(
 
     question = (model.identifier, asked_for)
     record = next(
-        (r for r in discarded_windows if (r.identifier, r.asked_for) == question), None
+        (r for r in discarded_windows if (r.model_identifier, r.asked_for) == question),
+        None,
     )
 
     if record is not None:
@@ -145,7 +148,7 @@ def save_discarded_window_if_new(
         save_discarded_window(
             runtime=runtime,
             host=host,
-            identifier=model.identifier,
+            model_identifier=model.identifier,
             asked_for=what_became_of_the_window.asked_for,
             served=what_became_of_the_window.served,
             file_path=file_path,

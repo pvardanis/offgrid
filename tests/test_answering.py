@@ -152,7 +152,7 @@ def _refused(**kept):
             DiscardedWindow(
                 runtime=RuntimeName.LMSTUDIO,
                 host=HOST,
-                identifier=identifier,
+                model_identifier=identifier,
                 asked_for=window,
                 served=262_144,
                 noticed_at="2026-08-21T14:31:07",

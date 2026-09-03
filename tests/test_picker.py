@@ -345,7 +345,7 @@ def record_a_discarded_window(here) -> None:
     save_discarded_window(
         runtime=RuntimeName.LMSTUDIO,
         host="127.0.0.1:1234",
-        identifier=RESIDENT,
+        model_identifier=RESIDENT,
         asked_for=131072,
         served=SERVED,
         file_path=discarded_windows.DEFAULT_PATH,

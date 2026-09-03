@@ -33,19 +33,19 @@ def _kept(tmp_path):
     return tmp_path / "discarded-windows.json"
 
 
-def _save(tmp_path, *, host=HOST, identifier=MODEL, asked_for=1000, served=2000):
+def _save(tmp_path, *, host=HOST, model_identifier=MODEL, asked_for=1000, served=2000):
     """Keep one record, defaulting everything a test is not about.
 
     :param tmp_path: The test's directory.
     :param host: Address the runtime listens on.
-    :param identifier: The model that was asked for.
+    :param model_identifier: The model that was asked for.
     :param asked_for: The window the run asked to hold it at.
     :param served: The window the runtime served instead.
     """
     save_discarded_window(
         runtime=RUNTIME,
         host=host,
-        identifier=identifier,
+        model_identifier=model_identifier,
         asked_for=asked_for,
         served=served,
         file_path=_kept(tmp_path),
@@ -65,7 +65,7 @@ def _hand_written(tmp_path, *records) -> None:
 _WHOLE = {
     "runtime": RUNTIME.value,
     "host": HOST,
-    "identifier": MODEL,
+    "model_identifier": MODEL,
     "asked_for": 1000,
     "served": 2000,
     "noticed_at": "2026-08-21T14:31:07",
@@ -99,18 +99,18 @@ def test_a_record_is_about_one_model_on_one_server(tmp_path):
 
     (here,) = read_discarded_windows(RUNTIME, HOST, _kept(tmp_path))
 
-    assert (here.identifier, here.asked_for) == (MODEL, 1000)
+    assert (here.model_identifier, here.asked_for) == (MODEL, 1000)
     assert read_discarded_windows(RUNTIME, "127.0.0.1:9999", _kept(tmp_path)) == ()
 
 
 def test_replacing_one_record_leaves_the_others_alone(tmp_path):
     _save(tmp_path, asked_for=1000)
-    _save(tmp_path, identifier=OTHER_MODEL, asked_for=5, served=6)
+    _save(tmp_path, model_identifier=OTHER_MODEL, asked_for=5, served=6)
     _save(tmp_path, asked_for=1000, served=9000)
 
     read = read_discarded_windows(RUNTIME, HOST, _kept(tmp_path))
 
-    assert (OTHER_MODEL, 5) in {(r.identifier, r.asked_for) for r in read}
+    assert (OTHER_MODEL, 5) in {(r.model_identifier, r.asked_for) for r in read}
 
 
 def test_a_file_that_is_not_there_is_no_memory(tmp_path):

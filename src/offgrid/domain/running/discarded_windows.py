@@ -42,7 +42,7 @@ class DiscardedWindow(BaseModel):
         time rather than for all time, so a runtime that stops listening on it
         and another that starts must not be answered with each other's records.
     :param host: Address the runtime listens on.
-    :param identifier: The model that was asked for.
+    :param model_identifier: The model that was asked for.
     :param asked_for: The window the run asked to hold it at.
     :param served: The window the runtime is serving it at instead.
     :param noticed_at: When offgrid saw it, as ``2026-08-21T14:31:07``.
@@ -52,7 +52,7 @@ class DiscardedWindow(BaseModel):
 
     runtime: RuntimeName
     host: str
-    identifier: str
+    model_identifier: str
     asked_for: Window
     served: Window
     noticed_at: str
@@ -73,7 +73,7 @@ def save_discarded_window(
     *,
     runtime: RuntimeName,
     host: str,
-    identifier: str,
+    model_identifier: str,
     asked_for: int,
     served: int,
     file_path: Path,
@@ -89,7 +89,7 @@ def save_discarded_window(
 
     :param runtime: Which runtime it was.
     :param host: Address the runtime listens on.
-    :param identifier: The model that was asked for.
+    :param model_identifier: The model that was asked for.
     :param asked_for: The window the run asked to hold it at.
     :param served: The window the runtime is serving it at instead.
     :param file_path: Where to keep it.
@@ -101,17 +101,18 @@ def save_discarded_window(
     noticed_window = DiscardedWindow(
         runtime=runtime,
         host=host,
-        identifier=identifier,
+        model_identifier=model_identifier,
         asked_for=asked_for,
         served=served,
         noticed_at=datetime.now().isoformat(timespec="seconds"),
     )
 
-    asked = (runtime, host, identifier, asked_for)
+    asked = (runtime, host, model_identifier, asked_for)
     others = [
         record
         for record in _read_all(file_path)
-        if (record.runtime, record.host, record.identifier, record.asked_for) != asked
+        if (record.runtime, record.host, record.model_identifier, record.asked_for)
+        != asked
     ]
 
     file_path.parent.mkdir(parents=True, exist_ok=True)
