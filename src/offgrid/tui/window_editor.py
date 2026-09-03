@@ -450,19 +450,30 @@ class WindowEditor(Vertical):
         message.display = True
 
     def on_key(self, event: events.Key) -> None:
-        """Abandon the edit on `escape`, or commit the handle's window on `enter`.
+        """Abandon on `escape`, step to the box on `down`, or commit on `enter`.
 
         `enter` reaches here only with the track focused: the box takes its own
         `enter` as a submit. Either way the window settles through the same
         refusal, so the handle's window is refused where a load could not hold
-        it rather than committed unmeasured.
+        it rather than committed unmeasured. `down` on the track moves the focus
+        to the box below it, so the window can be typed over from the keyboard.
 
-        :param event: The key pressed, read for `escape` and `enter`.
+        :param event: The key pressed, read for `escape`, `down` and `enter`.
         """
         if event.key == "escape":
             event.stop()
 
             self.post_message(self.Cancelled())
+
+            return
+
+        if event.key == "down":
+            tracks = self.query(WindowTrack)
+
+            if tracks and tracks.first().has_focus:
+                event.stop()
+
+                self.query_one(f"#{WINDOW_BOX}", Input).focus()
 
             return
 

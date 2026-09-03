@@ -2707,6 +2707,24 @@ def test_a_typed_in_range_value_moves_the_handle_to_it(here, monkeypatch):
     assert driven.box == "65536"
 
 
+def test_an_arrow_down_from_the_track_moves_to_the_box_to_type(here, monkeypatch):
+    # `e` rests the focus on the track; a down arrow moves it to the box below,
+    # so the window can be typed over from the keyboard rather than only reached
+    # with the mouse.
+    runner.invoke(app, ["setup"])
+    name_a_model(here, RESIDENT)
+    answer_as_lm_studio(
+        monkeypatch, holding={RESIDENT: 100000}, ceilings={RESIDENT: 131072}
+    )
+    on_this_machine(monkeypatch, "claude")
+
+    driven = screen(here, "tab", "tab", "e", "down", "settle", *"65536")
+
+    assert driven.editing is True
+    assert driven.handle == 65536
+    assert driven.box == "65536"
+
+
 def test_a_typed_value_above_the_ceiling_is_refused_in_place(here, monkeypatch):
     # A value above the model's ceiling is refused in the words a load would
     # fail with, never reaches the row, and leaves the handle where it was: the
