@@ -344,4 +344,7 @@ def _read_what_was_discarded(
     except DiscardedWindowsUnreadableError as error:
         return (), str(error)
 
-    return tuple(r for r in records if r.identifier == resident.identifier), None
+    return (
+        tuple(r for r in records if r.model_identifier == resident.identifier),
+        None,
+    )
