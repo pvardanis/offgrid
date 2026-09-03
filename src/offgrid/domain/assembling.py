@@ -166,7 +166,7 @@ class Pairing:
     context_window: int | None
 
 
-def get_request_model_context(
+def get_requested_model_context(
     report: WhatCouldBeRun, store: Mapping[str, int], identifier: str
 ) -> int | None:
     """Say the concrete window a model would be requested at.
@@ -244,7 +244,7 @@ def open_on_what_the_profile_holds(
         context_window=(
             None
             if identifier is None
-            else get_request_model_context(report, store, identifier)
+            else get_requested_model_context(report, store, identifier)
         ),
     )
 
@@ -314,7 +314,7 @@ def read_the_highlight(
         context_window=(
             None
             if resolved is None
-            else get_request_model_context(report, store, resolved)
+            else get_requested_model_context(report, store, resolved)
         ),
     )
 
