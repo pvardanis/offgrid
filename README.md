@@ -16,7 +16,7 @@ Run a coding agent against a local model, tuned to the machine it runs on.
 
 </div>
 
-![The offgrid TUI](docs/assets/tui-window.svg)
+![The offgrid TUI](docs/assets/tui.svg)
 
 offgrid starts a coding **agent** against a model held in memory by a
 **runtime** on this machine. It holds the model you asked for, sizes the
