@@ -2815,6 +2815,23 @@ def test_e_is_a_no_op_where_nothing_is_downloaded(here, monkeypatch):
     assert driven.editing is False
 
 
+def test_e_opens_the_slider_only_from_the_models_panel(here, monkeypatch):
+    # `e` edits the window of a highlighted model, so it opens the slider only
+    # where the models list holds the focus: pressed while another panel has it,
+    # it does nothing rather than floating a control over a row a person is not
+    # looking at.
+    runner.invoke(app, ["setup"])
+    name_a_model(here, RESIDENT)
+    answer_as_lm_studio(
+        monkeypatch, holding={RESIDENT: 100000}, ceilings={RESIDENT: 131072}
+    )
+    on_this_machine(monkeypatch, "claude")
+
+    driven = screen(here, "e")
+
+    assert driven.editing is False
+
+
 def test_committing_from_the_track_is_refused_where_the_window_is_unworkable(
     here, monkeypatch
 ):
