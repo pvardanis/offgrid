@@ -889,6 +889,25 @@ def test_a_hand_edited_window_on_the_profiles_model_is_kept_not_replaced(
     assert "requested context 65536" in driven.signal
 
 
+def test_the_profiles_window_beats_a_store_entry_for_the_same_model(here, monkeypatch):
+    # The profile targets the model and the store remembers a window for it too.
+    # The hand-edit wins: the row shows the profile's number, never the one the
+    # store last saved, so consulting the store never shadows what a person
+    # wrote down against the model the profile names.
+    runner.invoke(app, ["setup"])
+    name_a_model(here, RESIDENT)
+    add_to_section(here, "model", context_window=65536)
+    answer_as_lm_studio(monkeypatch, holding={RESIDENT: SERVED})
+    on_this_machine(monkeypatch, "claude")
+    remember_window(RESIDENT, 32000)
+
+    driven = screen(here)
+    (row,) = driven.listed[MODELS]
+
+    assert row.split() == [RESIDENT, IN_MEMORY, "65536"]
+    assert "requested context 65536" in driven.signal
+
+
 def test_moving_the_highlight_writes_nothing(here, monkeypatch):
     # Looking around is free: the profile a person hand-edited is exactly as
     # they left it, and nothing else has appeared beside it.
