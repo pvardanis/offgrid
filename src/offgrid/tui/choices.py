@@ -8,6 +8,7 @@ The screen puts what these return onto the widgets and moves the highlight;
 this only says what there is to put.
 """
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 
 from rich.console import RenderableType
@@ -18,6 +19,7 @@ from offgrid.domain.assembling import (
     describe_a_model_row,
     describe_an_agent_row,
     order_models_held_first,
+    requested_window,
 )
 from offgrid.domain.running.runtime import RuntimeName
 
@@ -45,10 +47,12 @@ class Choices:
     opens_on: str | None
 
 
-def model_options(report: WhatCouldBeRun) -> list[Option]:
+def model_options(report: WhatCouldBeRun, store: Mapping[str, int]) -> list[Option]:
     """Lay out a row per model downloaded, held ones first.
 
     :param report: Everything that was read.
+    :param store: The window each model was last saved at, seeding the window
+        each row's `context` column shows.
 
     :return: The rows, or the one saying there are none.
     """
@@ -57,7 +61,11 @@ def model_options(report: WhatCouldBeRun) -> list[Option]:
 
     return [
         Option(
-            describe_a_model_row(model, held=model.identifier in report.held),
+            describe_a_model_row(
+                model,
+                held=model.identifier in report.held,
+                window=requested_window(report, store, model.identifier),
+            ),
             id=model.identifier,
         )
         for model in order_models_held_first(report)

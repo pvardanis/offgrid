@@ -14,6 +14,7 @@ person can see what offgrid drives; the day there are two, this is where the
 second one lands.
 """
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 
 from offgrid.domain.checkup import WhatTheAgentAnswered, WhatTheRuntimeAnswered
@@ -148,16 +149,55 @@ class WhatCouldBeRun:
 
 @dataclass(frozen=True)
 class Pairing:
-    """The agent and model a highlight is sitting on.
+    """The agent and model a highlight is sitting on, and the window to hold it at.
 
     :param agent: The agent that would be started.
     :param model: The model that would answer, or ``None`` where the pairing
         asks for nothing and takes whatever the runtime is holding — which is
         what a profile naming no model says, and what the picker opens on.
+    :param context_window: The concrete window the model would be requested at,
+        seeded from the profile, the store, or the model's ceiling. ``None``
+        only where the pairing names no model and inherits whatever is served,
+        or where nothing states a ceiling to fall back on.
     """
 
     agent: AgentName
     model: str | None
+    context_window: int | None
+
+
+def requested_window(
+    report: WhatCouldBeRun, store: Mapping[str, int], identifier: str
+) -> int | None:
+    """Say the concrete window a model would be requested at.
+
+    Seeded profile → store → ceiling: the model the profile targets keeps its
+    hand-edited window, so a number somebody wrote down is not replaced by a
+    default; every other model falls back to the window it was last saved at,
+    and to its ceiling where the store remembers none. There is no ``inherit``
+    on a row the picker shows — the window is a concrete number, or ``None``
+    only where nothing states a ceiling to settle on.
+
+    :param report: Everything that was read.
+    :param store: The window each model was last saved at, keyed on the model.
+    :param identifier: The model to seed a window for.
+
+    :return: The window to request the model at, or ``None`` where nothing
+        states one.
+    """
+    target = report.profile.model
+
+    if identifier == target.identifier and target.context_window is not None:
+        return target.context_window
+
+    if identifier in store:
+        return store[identifier]
+
+    for model in report.downloaded_models:
+        if model.identifier == identifier:
+            return model.context_ceiling
+
+    return None
 
 
 def order_models_held_first(report: WhatCouldBeRun) -> tuple[Model, ...]:
@@ -178,7 +218,9 @@ def order_models_held_first(report: WhatCouldBeRun) -> tuple[Model, ...]:
     )
 
 
-def open_on_what_the_profile_holds(report: WhatCouldBeRun) -> Pairing:
+def open_on_what_the_profile_holds(
+    report: WhatCouldBeRun, store: Mapping[str, int]
+) -> Pairing:
     """Say what the picker is assembled as before anybody presses a key.
 
     The file itself, so that the first thing shown is what a run would do
@@ -187,12 +229,19 @@ def open_on_what_the_profile_holds(report: WhatCouldBeRun) -> Pairing:
     as having written its name down.
 
     :param report: Everything that was read.
+    :param store: The window each model was last saved at, seeding the one the
+        pairing would be requested at.
 
     :return: The pairing the file holds.
     """
+    identifier = report.profile.model.identifier
+
     return Pairing(
         agent=report.profile.agent_name,
-        model=report.profile.model.identifier,
+        model=identifier,
+        context_window=(
+            None if identifier is None else requested_window(report, store, identifier)
+        ),
     )
 
 
@@ -217,7 +266,11 @@ def find_what_would_answer(report: WhatCouldBeRun, pairing: Pairing) -> str | No
 
 
 def read_the_highlight(
-    report: WhatCouldBeRun, *, agent: str | None, model: str | None
+    report: WhatCouldBeRun,
+    store: Mapping[str, int],
+    *,
+    agent: str | None,
+    model: str | None,
 ) -> Pairing:
     """Read what the highlights are sitting on as a pairing.
 
@@ -234,6 +287,8 @@ def read_the_highlight(
     two statements and the highlight is the one a person just made.
 
     :param report: Everything that was read.
+    :param store: The window each model was last saved at, seeding the one the
+        resolved model would be requested at.
     :param agent: What the agent list's highlight is on, or ``None`` where the
         list has no row a cursor can reach.
     :param model: What the model list's highlight is on, or ``None`` where the
@@ -241,29 +296,34 @@ def read_the_highlight(
 
     :return: The pairing to report on.
     """
-    named = open_on_what_the_profile_holds(report)
+    named = open_on_what_the_profile_holds(report, store)
 
     resident = report.runtime.resident
     sitting_on_the_resident = resident is not None and model == resident.identifier
     takes_what_is_held = sitting_on_the_resident and named.model is None
 
+    resolved = named.model if model is None or takes_what_is_held else model
+
     return Pairing(
         agent=named.agent if agent is None else AgentName(agent),
-        model=named.model if model is None or takes_what_is_held else model,
+        model=resolved,
+        context_window=(
+            None if resolved is None else requested_window(report, store, resolved)
+        ),
     )
 
 
 def assemble_a_profile(report: WhatCouldBeRun, pairing: Pairing) -> Profile:
     """Write what a highlight is on into the profile it would be saved as.
 
-    A copy of the file with the pairing's agent and model in it: what the file
-    would say if the key that writes were pressed, and what a run reached from
-    the screen is made from whether or not it is written.
+    A copy of the file with the pairing's agent, model and window in it: what
+    the file would say if the key that writes were pressed, and what a run
+    reached from the screen is made from whether or not it is written.
 
-    The window is carried through rather than settled. A pairing that asks for
-    no number is one the runtime answers with whatever it remembers, and
-    materialising it into a number is a request nobody made — the one thing a
-    save must not quietly write.
+    The window is the concrete one the pairing was seeded with — the profile's
+    for the model it targets, else the store's, else the ceiling — so a run is
+    priced and saved at the number the row shows. A pairing that names no model
+    carries no window and inherits whatever the runtime serves.
 
     :param report: Everything that was read.
     :param pairing: What the highlights are on.
@@ -279,7 +339,7 @@ def assemble_a_profile(report: WhatCouldBeRun, pairing: Pairing) -> Profile:
             "agent": find_agent(report, pairing.agent).config,
             "model": ModelRequest(
                 identifier=pairing.model,
-                context_window=report.profile.model.context_window,
+                context_window=pairing.context_window,
             ),
         }
     )
@@ -347,7 +407,7 @@ def _mark_an_agent_row(name: AgentName, marked: str, why: str) -> str:
     )
 
 
-def describe_a_model_row(model: Model, *, held: bool) -> str:
+def describe_a_model_row(model: Model, *, held: bool, window: int | None) -> str:
     """Lay out the row one model is listed as.
 
     Padded text rather than real columns, which is what `OptionList` costs and
@@ -355,13 +415,15 @@ def describe_a_model_row(model: Model, *, held: bool) -> str:
 
     :param model: The model to lay out.
     :param held: Whether the runtime has it in memory.
+    :param window: The concrete window this model would be requested at, which
+        the `context` column shows.
 
     :return: The row, as it is read.
     """
     return _lay_out_a_model_row(
         model.identifier,
         IN_MEMORY if held else "",
-        describe_what_was_stated(model.context_ceiling),
+        describe_what_was_stated(window),
     )
 
 
@@ -369,10 +431,10 @@ def name_the_model_columns() -> str:
     """Name what each column of a model row holds.
 
     A bare number in a list is a number about nothing: a person scanning
-    262144 against 40960 has to already know which of a model's two context
-    figures they are reading. The `context` column is its ceiling — the figure
-    that exists whether or not anything has loaded the model, where the other
-    one does not exist until it is served.
+    262144 against 40960 has to already know which of a model's context
+    figures they are reading. The `context` column is the window a run would
+    request the model at — its own last-saved window where there is one, else
+    its ceiling — so the number on the row is the one a run would ask for.
 
     Laid out by the same call the rows are, so that a column that moves cannot
     leave its own name behind.
@@ -382,7 +444,7 @@ def name_the_model_columns() -> str:
     return _lay_out_a_model_row("model", "held", "context")
 
 
-def _lay_out_a_model_row(identifier: str, held: str, ceiling: str) -> str:
+def _lay_out_a_model_row(identifier: str, held: str, window: str) -> str:
     """Put three values in the columns a model is listed in.
 
     Padded by what each takes on a terminal rather than by how many characters
@@ -393,14 +455,14 @@ def _lay_out_a_model_row(identifier: str, held: str, ceiling: str) -> str:
 
     :param identifier: What the model is called.
     :param held: What marks it as in memory, or empty where it is not.
-    :param ceiling: The most it could ever be served at.
+    :param window: The window it would be requested at.
 
     :return: The line, as it is read.
     """
     laid_out = (
         pad_to_cells(identifier, MODEL_COLUMN),
         center_in_cells(held, HELD_COLUMN),
-        ceiling,
+        window,
     )
 
     return "".join(laid_out).rstrip()

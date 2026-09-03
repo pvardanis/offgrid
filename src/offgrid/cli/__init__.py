@@ -32,7 +32,8 @@ from offgrid.cli.recommend import recommend as recommend_command
 from offgrid.cli.run import launch_the_assembled_profile
 from offgrid.cli.run import run as run_command
 from offgrid.cli.setup import setup as setup_command
-from offgrid.domain.profile import DEFAULT_PATH, save_profile
+from offgrid.domain.profile import DEFAULT_PATH, Profile, save_profile
+from offgrid.domain.running import last_saved_windows
 from offgrid.domain.sizing.machine import detect
 from offgrid.domain.sizing.measuring import describe_the_machine_and_how_to_fit_more
 from offgrid.shared.exceptions import OffgridError, ProfileError
@@ -119,6 +120,34 @@ def _download_describer() -> DescribeModelDownload | None:
         return None
 
 
+def save_the_assembled_profile(profile: Profile) -> None:
+    """Write the assembled profile, and remember the window its model runs at.
+
+    Both on the one key that writes, so the number the picker showed is the one
+    a later run opens on: the profile carries what to run, and the store carries
+    the window each model was last saved at, keyed on the model alone. A profile
+    naming no model, or naming one with no concrete window, writes nothing to
+    the store — there is no model, or no number, to remember.
+
+    :param profile: What the picker assembled, its model carrying the window it
+        would be requested at.
+
+    :raise ProfileError: When the profile cannot be written.
+    :raise LastSavedWindowsUnreadableError: When the store is there and will
+        not read, since remembering one window means writing the rest back.
+    """
+    save_profile(profile, DEFAULT_PATH)
+
+    model = profile.model
+
+    if model.identifier is not None and model.context_window is not None:
+        last_saved_windows.save_last_saved_window(
+            model_identifier=model.identifier,
+            window=model.context_window,
+            file_path=last_saved_windows.DEFAULT_PATH,
+        )
+
+
 @app.callback(invoke_without_command=True)
 def offgrid(ctx: typer.Context) -> None:
     """Run a coding agent against a model on this machine."""
@@ -157,9 +186,12 @@ def offgrid(ctx: typer.Context) -> None:
 
     screen = Picker(
         read_report_func=lambda: read_what_could_be_run(DEFAULT_PATH),
-        save_func=lambda profile: save_profile(profile, DEFAULT_PATH),
+        save_func=save_the_assembled_profile,
         sha=read_this_build(),
         cwd=str(Path.cwd()),
+        read_store_func=lambda: last_saved_windows.read_last_saved_windows(
+            last_saved_windows.DEFAULT_PATH
+        ),
         measure_func=measure,
         recommend_func=read_what_a_list_recommends,
         describe_download_func=_download_describer(),
