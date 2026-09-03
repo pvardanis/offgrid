@@ -449,7 +449,7 @@ class Picker(App[Departure | None]):
         self._recommend_func = recommend_func
         self._describe_download_func = describe_download_func
         self._report: WhatCouldBeRun | None = None
-        self._store: dict[str, int] = {}
+        self._context_store: dict[str, int] = {}
         self._measurement: tuple[str, ...] = ()
         self._theme = DEFAULT_THEME
         self._recommendation: Recommendation | None = None
@@ -565,7 +565,7 @@ class Picker(App[Departure | None]):
             return
 
         self._report = report
-        self._store = store
+        self._context_store = store
         self._apply_theme(report.profile.theme)
         self._fill_the_lists(report)
         self._say_what_would_run()
@@ -920,7 +920,7 @@ class Picker(App[Departure | None]):
 
         :param report: Everything that was read.
         """
-        self._get_list().add_options(model_options(report, self._store))
+        self._get_list().add_options(model_options(report, self._context_store))
         self._highlight_model(report)
 
         self._offer(RUNTIMES, runtime_choices(report))
@@ -951,7 +951,7 @@ class Picker(App[Departure | None]):
         """
         listed = self._get_list()
         wanted = find_what_would_answer(
-            report, open_on_what_the_profile_holds(report, self._store)
+            report, open_on_what_the_profile_holds(report, self._context_store)
         )
         rows = list(enumerate(listed.options))
         reachable = [index for index, option in rows if not option.disabled]
@@ -1031,7 +1031,7 @@ class Picker(App[Departure | None]):
         """
         return read_the_highlight(
             report,
-            self._store,
+            self._context_store,
             agent=self._get_picked_agent(),
             model=self._get_highlighted_model(),
         )

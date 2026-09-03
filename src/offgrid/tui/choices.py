@@ -18,8 +18,8 @@ from offgrid.domain.assembling import (
     WhatCouldBeRun,
     describe_a_model_row,
     describe_an_agent_row,
+    get_request_model_context,
     order_models_held_first,
-    requested_window,
 )
 from offgrid.domain.running.runtime import RuntimeName
 
@@ -47,12 +47,14 @@ class Choices:
     opens_on: str | None
 
 
-def model_options(report: WhatCouldBeRun, store: Mapping[str, int]) -> list[Option]:
+def model_options(
+    report: WhatCouldBeRun, context_store: Mapping[str, int]
+) -> list[Option]:
     """Lay out a row per model downloaded, held ones first.
 
     :param report: Everything that was read.
-    :param store: The window each model was last saved at, seeding the window
-        each row's `context` column shows.
+    :param context_store: The window each model was last saved at, seeding the
+        window each row's `context` column shows.
 
     :return: The rows, or the one saying there are none.
     """
@@ -64,7 +66,9 @@ def model_options(report: WhatCouldBeRun, store: Mapping[str, int]) -> list[Opti
             describe_a_model_row(
                 model,
                 held=model.identifier in report.held,
-                window=requested_window(report, store, model.identifier),
+                window=get_request_model_context(
+                    report, context_store, model.identifier
+                ),
             ),
             id=model.identifier,
         )
