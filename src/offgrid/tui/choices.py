@@ -18,7 +18,7 @@ from offgrid.domain.assembling import (
     WhatCouldBeRun,
     describe_a_model_row,
     describe_an_agent_row,
-    get_request_model_context,
+    get_requested_model_context,
     order_models_held_first,
 )
 from offgrid.domain.running.runtime import RuntimeName
@@ -66,7 +66,7 @@ def model_options(
             describe_a_model_row(
                 model,
                 held=model.identifier in report.held,
-                window=get_request_model_context(
+                window=get_requested_model_context(
                     report, context_store, model.identifier
                 ),
             ),
