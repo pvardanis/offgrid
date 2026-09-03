@@ -2489,3 +2489,55 @@ dropdown changes the in-memory window as the theme's cycling does, and it rides
 into the assembled profile the same way. On a saved run — `enter`, not the
 run-once `s` — the window is written to the per-model last-saved store keyed by
 model identifier, so that model opens there next time. Run-once writes nothing.
+
+## The window is edited on a slider from the floor to the ceiling
+
+The dropdown of round windows above is replaced by the control LM Studio's
+"Context Length" already teaches: a horizontal track spanning the agent's floor
+to the model's ceiling, a handle on the window the row shows, an editable value
+box, and a caption naming the ceiling. Everything else the decision above
+settled holds — the `context` cell reads the requested window, the picker always
+names a number, the pick is held per model for the session and rides into the
+profile and the store on a saved run. Only the shape of the control changed.
+
+A window is a point on a range, not one of six round numbers. The presets read
+as the whole of what a person could ask for, when what they could ask for is
+every count the model holds; a value between two presets meant `Custom…`, a
+detour for something the range should have offered directly. The slider says the
+range and lets the point land anywhere in it.
+
+**Continuous, in `[floor, ceiling]`.** The window is any whole number of tokens
+the model can hold above the agent's floor. The floor is the left edge and the
+ceiling the right, so nothing below the floor or above the ceiling is reachable
+by moving the handle — the two refusals a load would fail with are off the track
+by construction, and reachable only by typing a number into the box.
+
+**The mouse moves the handle; the keys are the option.** Dragging the handle or
+clicking the track sets the window, which is how a person reaches for a slider.
+The keyboard has to reach it too — the seam drives keys through `Pilot`, and a
+person without a mouse still has to set a window — so `←`/`→` move ±4096 tokens
+and `PageUp`/`PageDown` ±32768, each clamped at the edges. A step is needed at
+all because a continuous handle moved one token at a time is millions of presses
+from floor to ceiling; 4096 is a round token count small enough to tune with and
+large enough to cross the range in reach. The box is where an exact number that
+is no multiple of the step is typed.
+
+**The box is always shown, and refuses in place.** It carries the window the
+handle is on, and typing a whole number inside the range moves the handle to it,
+so the two halves of the control say one value. A value that is not a positive
+count, is below the floor, or is above the ceiling is refused in the words the
+runtime or the agent would give — `context_window.py`'s own refusals, reused so
+the box and a load fail in one voice — and the handle does not move to it. The
+window is never clamped to fit, because clamping hides that the model cannot
+hold what was asked.
+
+The pure arithmetic of the track — a value to a fraction of the range, a
+fraction back to a value, a value stepped and clamped — is public and unit
+tested directly, the way `context_window.py`'s refusals are. What the control
+does under the keys is read through `Pilot` at the picker seam. A mouse drag is
+a fraction of the track's width turned into a value, which is the arithmetic the
+unit tests pin, rather than a frame the seam forbids snapshotting.
+
+Where the runtime states no ceiling there is no right edge to draw, but a model
+downloaded into a runtime states how much context it allows, so in practice the
+ceiling is always a number and the track always has both ends.
