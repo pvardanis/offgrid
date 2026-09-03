@@ -40,20 +40,22 @@ class LastSavedWindow(BaseModel):
     Keys it does not name are refused, so a hand-edited record with a typo in
     it is reported rather than read as a record about nothing.
 
-    :param identifier: The model that was saved.
+    :param model_identifier: The model that was saved.
     :param window: The window it was saved at.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    identifier: str
+    model_identifier: str
     window: Window
 
 
 LAST_SAVED_WINDOWS = TypeAdapter(list[LastSavedWindow])
 
 
-def save_last_saved_window(*, identifier: str, window: int, file_path: Path) -> None:
+def save_last_saved_window(
+    *, model_identifier: str, window: int, file_path: Path
+) -> None:
     """Keep the window a model was saved at, replacing the one kept before it.
 
     One record per model, because the store is what it was last saved at rather
@@ -63,7 +65,7 @@ def save_last_saved_window(*, identifier: str, window: int, file_path: Path) -> 
     Written beside the file and moved onto it, so that a run interrupted
     mid-write leaves the last record rather than half of this one.
 
-    :param identifier: The model that was saved.
+    :param model_identifier: The model that was saved.
     :param window: The window it was saved at.
     :param file_path: Where to keep it.
 
@@ -71,10 +73,12 @@ def save_last_saved_window(*, identifier: str, window: int, file_path: Path) -> 
     :raise LastSavedWindowsUnreadableError: When what is there will not read,
         since replacing one record means writing the rest back.
     """
-    saved = LastSavedWindow(identifier=identifier, window=window)
+    saved = LastSavedWindow(model_identifier=model_identifier, window=window)
 
     others = [
-        record for record in _read_all(file_path) if record.identifier != identifier
+        record
+        for record in _read_all(file_path)
+        if record.model_identifier != model_identifier
     ]
 
     file_path.parent.mkdir(parents=True, exist_ok=True)
@@ -99,7 +103,7 @@ def read_last_saved_windows(file_path: Path) -> dict[str, int]:
     :raise LastSavedWindowsUnreadableError: When the file is there and will not
         read.
     """
-    return {record.identifier: record.window for record in _read_all(file_path)}
+    return {record.model_identifier: record.window for record in _read_all(file_path)}
 
 
 def _read_all(file_path: Path) -> list[LastSavedWindow]:
