@@ -31,15 +31,15 @@ def _kept(tmp_path):
     return tmp_path / "last-saved-windows.json"
 
 
-def _save(tmp_path, *, identifier=MODEL, window=131_072):
+def _save(tmp_path, *, model_identifier=MODEL, window=131_072):
     """Keep one record, defaulting everything a test is not about.
 
     :param tmp_path: The test's directory.
-    :param identifier: The model that was saved.
+    :param model_identifier: The model that was saved.
     :param window: The window it was saved at.
     """
     save_last_saved_window(
-        identifier=identifier,
+        model_identifier=model_identifier,
         window=window,
         file_path=_kept(tmp_path),
     )
@@ -56,7 +56,7 @@ def _hand_written(tmp_path, *records) -> None:
 
 # A record offgrid would have written, for a test to spoil one key of.
 _WHOLE = {
-    "identifier": MODEL,
+    "model_identifier": MODEL,
     "window": 131_072,
 }
 
@@ -68,8 +68,8 @@ def test_a_saved_window_reads_back_as_it_was_kept(tmp_path):
 
 
 def test_a_second_model_is_kept_beside_the_first(tmp_path):
-    _save(tmp_path, identifier=MODEL, window=1000)
-    _save(tmp_path, identifier=OTHER_MODEL, window=2000)
+    _save(tmp_path, model_identifier=MODEL, window=1000)
+    _save(tmp_path, model_identifier=OTHER_MODEL, window=2000)
 
     assert read_last_saved_windows(_kept(tmp_path)) == {MODEL: 1000, OTHER_MODEL: 2000}
 
@@ -85,15 +85,15 @@ def test_saving_a_model_again_moves_its_window(tmp_path):
 
 
 def test_saving_one_model_leaves_anothers_record_alone(tmp_path):
-    _save(tmp_path, identifier=MODEL, window=1000)
-    _save(tmp_path, identifier=OTHER_MODEL, window=2000)
-    _save(tmp_path, identifier=MODEL, window=9000)
+    _save(tmp_path, model_identifier=MODEL, window=1000)
+    _save(tmp_path, model_identifier=OTHER_MODEL, window=2000)
+    _save(tmp_path, model_identifier=MODEL, window=9000)
 
     assert read_last_saved_windows(_kept(tmp_path)) == {MODEL: 9000, OTHER_MODEL: 2000}
 
 
 def test_a_model_with_no_record_has_no_entry(tmp_path):
-    _save(tmp_path, identifier=MODEL)
+    _save(tmp_path, model_identifier=MODEL)
 
     assert OTHER_MODEL not in read_last_saved_windows(_kept(tmp_path))
 
