@@ -34,14 +34,18 @@ from textual.widgets._select import SelectOverlay
 from typer.testing import CliRunner
 
 from offgrid.agents.claude_code.launching import CONTEXT_FLOOR
-from offgrid.cli import app, read_this_build
+from offgrid.cli import app, read_this_build, save_the_assembled_profile
 from offgrid.cli.binding import read_profile, read_what_could_be_run
 from offgrid.cli.run import launch_the_assembled_profile
 from offgrid.domain.assembling import IN_MEMORY
 from offgrid.domain.profile import Theme, save_profile
-from offgrid.domain.running import discarded_windows
+from offgrid.domain.running import discarded_windows, last_saved_windows
 from offgrid.domain.running.dialect import Dialect
 from offgrid.domain.running.discarded_windows import save_discarded_window
+from offgrid.domain.running.last_saved_windows import (
+    read_last_saved_windows,
+    save_last_saved_window,
+)
 from offgrid.domain.running.model import Model
 from offgrid.domain.running.runtime import RuntimeName
 from offgrid.domain.sizing.measuring import describe_the_machine_and_how_to_fit_more
@@ -252,9 +256,12 @@ def screen(here, *keys: str, size: tuple[int, int] = ROOMY) -> Driven:
     return drive(
         Picker(
             read_report_func=lambda: read_what_could_be_run(here / "profile.yaml"),
-            save_func=lambda profile: save_profile(profile, here / "profile.yaml"),
+            save_func=save_the_assembled_profile,
             sha=BUILD_SHA,
             cwd=WORKDIR,
+            read_store_func=lambda: read_last_saved_windows(
+                last_saved_windows.DEFAULT_PATH
+            ),
         ),
         *keys,
         size=size,
@@ -359,6 +366,23 @@ def name_a_model(here, identifier: str) -> None:
     :param identifier: The model to name.
     """
     add_to_section(here, "model", identifier=identifier)
+
+
+def remember_window(identifier: str, window: int) -> None:
+    """Keep that a model was last saved at a window, as the store would.
+
+    Written where the suite points the store's `DEFAULT_PATH`, which is where
+    the picker reads it back from: the seed comes through the same call a real
+    save writes.
+
+    :param identifier: The model that was saved.
+    :param window: The window it was saved at.
+    """
+    save_last_saved_window(
+        model_identifier=identifier,
+        window=window,
+        file_path=last_saved_windows.DEFAULT_PATH,
+    )
 
 
 def sit_at_a_terminal(monkeypatch) -> None:
@@ -539,10 +563,11 @@ def test_a_model_that_is_not_held_is_served_at_no_window_rather_than_an_unsaid_o
     a_load = "google/gemma-4-e4b is not held by lmstudio, so this costs a load"
 
     # A cold model is served at no window, so the context line says what a run
-    # would request rather than a ceiling the detail's model line already gives.
-    # That it is not served is the first line's "not held", said once.
+    # would request — the concrete window it is seeded with, its ceiling where
+    # nothing else states one — rather than a served window that does not exist
+    # yet. That it is not served is the first line's "not held", said once.
     assert a_load in driven.signal
-    assert "requested context inherit served" in driven.signal
+    assert "requested context 262144" in driven.signal
     assert "context ceiling" not in driven.signal
     assert "not served yet" not in driven.signal
 
@@ -843,19 +868,25 @@ def test_a_model_the_runtime_has_not_got_is_named_rather_than_swapped(
     assert f"{RESIDENT} is held" not in driven.signal
 
 
-def test_a_window_the_profile_asks_for_is_carried_into_what_would_run(
+def test_a_hand_edited_window_on_the_profiles_model_is_kept_not_replaced(
     here, monkeypatch
 ):
-    # A number somebody wrote down is a request, and a report that dropped it
-    # would price a run at a window nobody asked for.
+    # Option A: a number somebody wrote down against the model the profile
+    # targets is kept, rather than replaced by the store or the ceiling. It
+    # shows on the row, rides into the signal a run is priced by, and is what a
+    # save writes back — so a hand-edit is never silently dropped.
     runner.invoke(app, ["setup"])
+    name_a_model(here, RESIDENT)
     add_to_section(here, "model", context_window=65536)
     answer_as_lm_studio(monkeypatch, holding={RESIDENT: SERVED})
     on_this_machine(monkeypatch, "claude")
 
     driven = screen(here)
+    (row,) = driven.listed[MODELS]
 
+    assert row.split() == [RESIDENT, IN_MEMORY, "65536"]
     assert "requested context 65536" in driven.shown
+    assert "requested context 65536" in driven.signal
 
 
 def test_moving_the_highlight_writes_nothing(here, monkeypatch):
@@ -1304,11 +1335,96 @@ def test_enter_runs_with_what_is_assembled_and_saves_it(here, monkeypatch):
 
     assert driven.left_with.profile.model.identifier == "google/gemma-4-e4b"
     assert saved.identifier == "google/gemma-4-e4b"
-    # The window nobody chose stays unwritten: the picker offers no way to pick
-    # one, so materialising the runtime's served window into a saved number
-    # would be a request nobody made and a behaviour change disguised as a save.
-    assert saved.context_window is None
-    assert driven.left_with.profile.model.context_window is None
+    # The window the row showed rides into the save: the cold model was seeded
+    # with its ceiling, so that concrete number reaches the profile rather than
+    # an `inherit` the picker never offered.
+    assert saved.context_window == 262144
+    assert driven.left_with.profile.model.context_window == 262144
+
+
+def test_enter_remembers_the_models_window_in_the_store(here, monkeypatch):
+    # The window a save writes reaches the store too, keyed on the model, so a
+    # later run opens that model on what it last ran at rather than its ceiling.
+    # The cold model is seeded with its ceiling, which is what the save keeps.
+    runner.invoke(app, ["setup"])
+    answer_as_lm_studio(
+        monkeypatch,
+        holding={RESIDENT: SERVED},
+        cold={"google/gemma-4-e4b": 131072},
+    )
+    on_this_machine(monkeypatch, "claude")
+
+    screen(here, "tab", "tab", "down", "enter")
+
+    assert read_last_saved_windows(last_saved_windows.DEFAULT_PATH) == {
+        "google/gemma-4-e4b": 262144
+    }
+
+
+def test_each_rows_context_shows_its_window_seeded_profile_then_store_then_ceiling(
+    here, monkeypatch
+):
+    # The `context` column is the window a run would request each model at, per
+    # row: the profile's number for the model it targets, else the store's last
+    # saved window, else the model's ceiling. All three seeds show at once, one
+    # to a row.
+    runner.invoke(app, ["setup"])
+    name_a_model(here, RESIDENT)
+    add_to_section(here, "model", context_window=40960)
+    answer_as_lm_studio(
+        monkeypatch,
+        holding={RESIDENT: SERVED},
+        cold={"google/gemma-4-e4b": 131072, "someone/other-model": 131072},
+        ceilings={"google/gemma-4-e4b": 200000, "someone/other-model": 131072},
+    )
+    on_this_machine(monkeypatch, "claude")
+    remember_window("google/gemma-4-e4b", 80000)
+
+    resident, from_store, from_ceiling = screen(here).listed[MODELS]
+
+    assert resident.split() == [RESIDENT, IN_MEMORY, "40960"]
+    assert from_store.split() == ["google/gemma-4-e4b", "80000"]
+    assert from_ceiling.split() == ["someone/other-model", "131072"]
+
+
+def test_a_stores_window_rides_into_what_a_run_would_request(here, monkeypatch):
+    # A model with no profile number and no highlight edit still runs at what it
+    # last ran at: the store window seeds the row and is priced by the signal,
+    # rather than the ceiling a model with no memory falls back to.
+    runner.invoke(app, ["setup"])
+    answer_as_lm_studio(
+        monkeypatch,
+        holding={RESIDENT: SERVED},
+        cold={"google/gemma-4-e4b": 131072},
+    )
+    on_this_machine(monkeypatch, "claude")
+    remember_window("google/gemma-4-e4b", 80000)
+
+    driven = screen(here, "tab", "tab", "down")
+
+    assert "requested context 80000" in driven.signal
+
+
+def test_s_writes_neither_the_profile_nor_the_store(here, monkeypatch):
+    # `s` runs once and remembers nothing: the model it leaves with never
+    # reaches the profile, and its window never reaches the store — so a run
+    # tried once does not become the window a later run opens on.
+    runner.invoke(app, ["setup"])
+    answer_as_lm_studio(
+        monkeypatch,
+        holding={RESIDENT: SERVED},
+        cold={"google/gemma-4-e4b": 131072},
+    )
+    on_this_machine(monkeypatch, "claude")
+    profile = here / "profile.yaml"
+    before = profile.read_text()
+
+    driven = screen(here, "tab", "tab", "down", "s")
+
+    assert isinstance(driven.left_with, Departure)
+    assert driven.left_with.saved is False
+    assert profile.read_text() == before
+    assert read_last_saved_windows(last_saved_windows.DEFAULT_PATH) == {}
 
 
 def test_enter_saves_the_agent_that_was_picked_and_not_only_the_model(

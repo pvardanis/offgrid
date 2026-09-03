@@ -144,3 +144,7 @@ def _no_real_home(
         "offgrid.domain.running.discarded_windows.DEFAULT_PATH",
         tmp_path / "discarded-windows.json",
     )
+    monkeypatch.setattr(
+        "offgrid.domain.running.last_saved_windows.DEFAULT_PATH",
+        tmp_path / "last-saved-windows.json",
+    )

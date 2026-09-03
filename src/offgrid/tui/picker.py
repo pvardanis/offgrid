@@ -59,6 +59,7 @@ from offgrid.tui.header import HeaderBand
 
 type ReadWhatCouldBeRun = Callable[[], WhatCouldBeRun]
 type SaveWhatWasAssembled = Callable[[Profile], None]
+type ReadLastSavedWindows = Callable[[], dict[str, int]]
 type MeasureThisMachine = Callable[[], tuple[str, ...]]
 type ReadWhatAListRecommends = Callable[[], Recommendation]
 
@@ -395,6 +396,7 @@ class Picker(App[Departure | None]):
         *,
         sha: str,
         cwd: str,
+        read_store_func: ReadLastSavedWindows | None = None,
         measure_func: MeasureThisMachine | None = None,
         recommend_func: ReadWhatAListRecommends | None = None,
         describe_download_func: DescribeModelDownload | None = None,
@@ -416,6 +418,11 @@ class Picker(App[Departure | None]):
         :param cwd: The working directory a run would inherit, shown in the
             header. offgrid displays it; the agent inherits the shell's cwd, and
             offgrid does not set it.
+        :param read_store_func: What each model was last saved at, keyed on the
+            model, seeding the window every row shows and a run is priced at.
+            ``None`` where a test hands in no store, which reads as no model
+            having a remembered window and every one falling back to its
+            ceiling.
         :param measure_func: What this machine and what fits it read as, handed
             in where there is no profile so that a stranger meets the machine
             measured rather than an error naming another command. ``None`` where
@@ -437,10 +444,12 @@ class Picker(App[Departure | None]):
         self._save_func = save_func
         self._sha = sha
         self._cwd = cwd
+        self._read_store_func = read_store_func
         self._measure_func = measure_func
         self._recommend_func = recommend_func
         self._describe_download_func = describe_download_func
         self._report: WhatCouldBeRun | None = None
+        self._store: dict[str, int] = {}
         self._measurement: tuple[str, ...] = ()
         self._theme = DEFAULT_THEME
         self._recommendation: Recommendation | None = None
@@ -549,12 +558,14 @@ class Picker(App[Departure | None]):
 
         try:
             report = self._read_report_func()
+            store = self._read_store_func() if self._read_store_func else {}
         except OffgridError as error:
             self._say(str(error))
 
             return
 
         self._report = report
+        self._store = store
         self._apply_theme(report.profile.theme)
         self._fill_the_lists(report)
         self._say_what_would_run()
@@ -909,7 +920,7 @@ class Picker(App[Departure | None]):
 
         :param report: Everything that was read.
         """
-        self._get_list().add_options(model_options(report))
+        self._get_list().add_options(model_options(report, self._store))
         self._highlight_model(report)
 
         self._offer(RUNTIMES, runtime_choices(report))
@@ -939,7 +950,9 @@ class Picker(App[Departure | None]):
         :param report: Everything that was read.
         """
         listed = self._get_list()
-        wanted = find_what_would_answer(report, open_on_what_the_profile_holds(report))
+        wanted = find_what_would_answer(
+            report, open_on_what_the_profile_holds(report, self._store)
+        )
         rows = list(enumerate(listed.options))
         reachable = [index for index, option in rows if not option.disabled]
         found = [index for index, option in rows if option.id == wanted]
@@ -1018,6 +1031,7 @@ class Picker(App[Departure | None]):
         """
         return read_the_highlight(
             report,
+            self._store,
             agent=self._get_picked_agent(),
             model=self._get_highlighted_model(),
         )
