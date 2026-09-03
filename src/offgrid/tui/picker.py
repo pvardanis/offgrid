@@ -35,14 +35,19 @@ from textual.widgets import (
 )
 
 from offgrid.domain.assembling import (
+    HELD_COLUMN,
+    MODEL_COLUMN,
     Pairing,
     WhatCouldBeRun,
     assemble_a_profile,
+    find_agent,
     find_what_would_answer,
+    get_requested_model_context,
     name_the_model_columns,
     open_on_what_the_profile_holds,
     read_the_highlight,
 )
+from offgrid.domain.checkup import WhatTheAgentAnswered
 from offgrid.domain.costing import (
     SignalLine,
     Tone,
@@ -50,12 +55,21 @@ from offgrid.domain.costing import (
     describe_the_signal,
 )
 from offgrid.domain.profile import DEFAULT_THEME, Profile, Theme
+from offgrid.domain.running.agent import AgentName
+from offgrid.domain.running.model import Model
 from offgrid.domain.sizing.recommendation import PANEL_COLUMNS, Recommendation
 from offgrid.shared.exceptions import OffgridError
 from offgrid.shared.wording import REACHING_THE_NETWORK, DescribeModelDownload
-from offgrid.tui.choices import Choices, agent_choices, model_options, runtime_choices
+from offgrid.tui.choices import (
+    Choices,
+    agent_choices,
+    describe_the_row,
+    model_options,
+    runtime_choices,
+)
 from offgrid.tui.dropdown import Dropdown
 from offgrid.tui.header import HeaderBand
+from offgrid.tui.window_editor import WINDOW_EDITOR, WindowEditor
 
 type ReadWhatCouldBeRun = Callable[[], WhatCouldBeRun]
 type SaveWhatWasAssembled = Callable[[Profile], None]
@@ -243,6 +257,7 @@ class Picker(App[Departure | None]):
     BINDINGS: ClassVar[list[BindingType]] = [
         Binding("enter", "run_and_save", "run and save"),
         Binding("s", "run_once", "run once"),
+        Binding("e", "edit_window", "edit window"),
         Binding("r", "recommend", "recommend"),
         Binding("t", "cycle_theme", "theme"),
         Binding("d", "toggle_detail", "details"),
@@ -250,6 +265,12 @@ class Picker(App[Departure | None]):
     ]
 
     CSS = f"""
+    /* A layer above the lists for the window slider to float on, so it draws
+       over the row it edits rather than pushing the list about. */
+    Screen {{
+        layers: base overlay;
+    }}
+
     #{LISTS} {{
         width: 44;
     }}
@@ -450,6 +471,8 @@ class Picker(App[Departure | None]):
         self._describe_download_func = describe_download_func
         self._report: WhatCouldBeRun | None = None
         self._context_store: dict[str, int] = {}
+        self._session_windows: dict[str, int] = {}
+        self._editing_model: str | None = None
         self._measurement: tuple[str, ...] = ()
         self._theme = DEFAULT_THEME
         self._recommendation: Recommendation | None = None
@@ -583,9 +606,14 @@ class Picker(App[Departure | None]):
     ) -> None:
         """Report on whatever the model highlight is now on.
 
-        :param event: That the models list moved, which is what wakes this.
+        The runtime and agent dropdowns carry their own lists, and moving
+        inside one is about that choice rather than the run, so the report is
+        left alone until the highlight that moved is the models list's own.
+
+        :param event: That a list moved, which is what wakes this.
         """
-        self._say_what_would_run()
+        if event.option_list.id == MODELS:
+            self._say_what_would_run()
 
     def on_data_table_row_highlighted(self, event: DataTable.RowHighlighted) -> None:
         """Say how the model a ranked row was highlighted on is downloaded.
@@ -606,13 +634,24 @@ class Picker(App[Departure | None]):
         The models list has the focus and consumes `enter` before the app is
         reached, so selecting a row is where `enter` runs. A disabled row emits
         nothing, so the row that says nothing is downloaded cannot arm a run.
+        The runtime and agent dropdowns carry lists too; a choice made on one
+        is that dropdown's to answer, not the key that ends the session, so
+        only the models list's own selection runs.
 
-        :param event: That a model row was chosen, which wakes this.
+        :param event: That a row was chosen, which wakes this.
         """
-        self.action_run_and_save()
+        if event.option_list.id == MODELS:
+            self.action_run_and_save()
 
     def action_run_and_save(self) -> None:
-        """Leave to run with what is assembled, having saved it as remembered."""
+        """Leave to run with what is assembled, having saved it as remembered.
+
+        A no-op while the window slider is open, so an `enter` committing a
+        window is not also read as the key that ends the session.
+        """
+        if self._slider_is_open():
+            return
+
         assembled = self._assemble()
 
         if assembled is None:
@@ -632,13 +671,175 @@ class Picker(App[Departure | None]):
         self.exit(Departure(profile=assembled, saved=True))
 
     def action_run_once(self) -> None:
-        """Leave to run with what is assembled, writing nothing."""
+        """Leave to run with what is assembled, writing nothing.
+
+        A no-op while the window slider is open, for the same reason the key
+        that saves is: the keys belong to the editor until it closes.
+        """
+        if self._slider_is_open():
+            return
+
         assembled = self._assemble()
 
         if assembled is None:
             return
 
         self.exit(Departure(profile=assembled, saved=False))
+
+    def _slider_is_open(self) -> bool:
+        """Say whether the window slider is floated over a row.
+
+        :return: Whether a slider is on the screen, so the keys that end the
+            session and the key that opens another are left to it until it closes.
+        """
+        return bool(self.query(f"#{WINDOW_EDITOR}"))
+
+    async def action_edit_window(self) -> None:
+        """Float the window slider over the highlighted row, where there is one.
+
+        Empty list or nothing highlighted is a no-op: there is no row to edit
+        and no cell to float over. A press while the slider is already open is
+        left to it — it owns the keys until it commits or is abandoned.
+        """
+        report = self._report
+
+        if report is None or self._slider_is_open():
+            return
+
+        identifier = self._get_highlighted_model()
+
+        if identifier is None:
+            return
+
+        model = self._find_downloaded_model(report, identifier)
+
+        editor = WindowEditor(
+            identifier=identifier,
+            current=get_requested_model_context(
+                report, self._context_store, identifier, edits=self._session_windows
+            ),
+            floor=self._floor_for_the_picked_agent(report),
+            ceiling=None if model is None else model.context_ceiling,
+        )
+
+        self._editing_model = identifier
+
+        await self.mount(editor)
+
+        self._float_over_the_row(editor)
+
+    def on_window_editor_committed(self, event: WindowEditor.Committed) -> None:
+        """Keep the picked window in memory, and redraw the row to show it.
+
+        The window is kept per model for the session, so arrowing away and
+        back finds it, and it rides into the assembled profile and the store
+        the way the cycled theme does.
+
+        :param event: The window the editor settled on.
+        """
+        identifier = self._editing_model
+
+        self._close_the_editor()
+
+        if identifier is None:
+            return
+
+        self._session_windows[identifier] = event.window
+        self._redraw_the_row(identifier)
+        self._say_what_would_run()
+
+    def on_window_editor_cancelled(self, event: WindowEditor.Cancelled) -> None:
+        """Drop the slider, leaving the row on the window it already showed.
+
+        :param event: That the edit was abandoned.
+        """
+        self._close_the_editor()
+
+    def _close_the_editor(self) -> None:
+        """Take the slider off the screen and give the models list the keys."""
+        for editor in self.query(WindowEditor):
+            editor.remove()
+
+        self._editing_model = None
+        self._get_list().focus()
+
+    def _redraw_the_row(self, identifier: str) -> None:
+        """Redraw one model's row so its `context` cell shows the picked window.
+
+        :param identifier: The model whose row to redraw.
+        """
+        report = self._report
+
+        if report is None:
+            return
+
+        model = self._find_downloaded_model(report, identifier)
+
+        if model is None:
+            return
+
+        self._get_list().replace_option_prompt(
+            identifier,
+            describe_the_row(report, self._context_store, self._session_windows, model),
+        )
+
+    def _find_downloaded_model(
+        self, report: WhatCouldBeRun, identifier: str
+    ) -> Model | None:
+        """Find one downloaded model by its identifier.
+
+        :param report: Everything that was read.
+        :param identifier: The model to find.
+
+        :return: The model, or ``None`` where the runtime has no such one.
+        """
+        return next(
+            (
+                model
+                for model in report.downloaded_models
+                if model.identifier == identifier
+            ),
+            None,
+        )
+
+    def _floor_for_the_picked_agent(self, report: WhatCouldBeRun) -> int | None:
+        """Say the smallest window the picked agent starts in, where it answered.
+
+        The window box measures against the agent a run would start, so a value
+        below its floor is refused in the same words a load would fail with.
+
+        :param report: Everything that was read.
+
+        :return: The agent's floor, or ``None`` where none is picked or the
+            picked one's settings would not read.
+        """
+        picked = self._get_picked_agent()
+
+        if picked is None:
+            return None
+
+        answered = find_agent(report, AgentName(picked)).answered
+
+        if isinstance(answered, WhatTheAgentAnswered):
+            return answered.terms.context_floor
+
+        return None
+
+    def _float_over_the_row(self, editor: WindowEditor) -> None:
+        """Place the slider over the highlighted row's `context` cell.
+
+        :param editor: The slider to place.
+        """
+        listed = self._get_list()
+        region = listed.region
+        index = listed.highlighted or 0
+
+        row = region.y + index - listed.scroll_offset.y
+
+        editor.styles.offset = (
+            region.x + MODEL_COLUMN + HELD_COLUMN,
+            max(region.y, row),
+        )
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Toggle the ranked table where the control is clicked or entered.
@@ -920,7 +1121,9 @@ class Picker(App[Departure | None]):
 
         :param report: Everything that was read.
         """
-        self._get_list().add_options(model_options(report, self._context_store))
+        self._get_list().add_options(
+            model_options(report, self._context_store, self._session_windows)
+        )
         self._highlight_model(report)
 
         self._offer(RUNTIMES, runtime_choices(report))
@@ -1034,6 +1237,7 @@ class Picker(App[Departure | None]):
             self._context_store,
             agent=self._get_picked_agent(),
             model=self._get_highlighted_model(),
+            edits=self._session_windows,
         )
 
     def _say_whether_it_differs(self, report: WhatCouldBeRun, pairing: Pairing) -> None:

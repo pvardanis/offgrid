@@ -167,24 +167,36 @@ class Pairing:
 
 
 def get_requested_model_context(
-    report: WhatCouldBeRun, store: Mapping[str, int], identifier: str
+    report: WhatCouldBeRun,
+    store: Mapping[str, int],
+    identifier: str,
+    *,
+    edits: Mapping[str, int],
 ) -> int | None:
     """Say the concrete window a model would be requested at.
 
-    Seeded profile → store → ceiling: the model the profile targets keeps its
-    hand-edited window, so a number somebody wrote down is not replaced by a
-    default; every other model falls back to the window it was last saved at,
-    and to its ceiling where the store remembers none. There is no ``inherit``
-    on a row the picker shows — the window is a concrete number, or ``None``
-    only where nothing states a ceiling to settle on.
+    Seeded session edit → profile → store → ceiling: a window edited in place
+    on the row this session beats everything, so the number a person just
+    picked is what the row and a run ask for; failing that, the model the
+    profile targets keeps its hand-edited window, so a number somebody wrote
+    down is not replaced by a default; every other model falls back to the
+    window it was last saved at, and to its ceiling where the store remembers
+    none. There is no ``inherit`` on a row the picker shows — the window is a
+    concrete number, or ``None`` only where nothing states a ceiling to settle
+    on.
 
     :param report: Everything that was read.
     :param store: The window each model was last saved at, keyed on the model.
     :param identifier: The model to seed a window for.
+    :param edits: The window edited in place this session, keyed on the model,
+        beating every other seed. Empty where nothing has been edited.
 
     :return: The window to request the model at, or ``None`` where nothing
         states one.
     """
+    if identifier in edits:
+        return edits[identifier]
+
     model_request = report.profile.model
 
     names_the_target = identifier == model_request.identifier
@@ -244,7 +256,7 @@ def open_on_what_the_profile_holds(
         context_window=(
             None
             if identifier is None
-            else get_requested_model_context(report, store, identifier)
+            else get_requested_model_context(report, store, identifier, edits={})
         ),
     )
 
@@ -275,6 +287,7 @@ def read_the_highlight(
     *,
     agent: str | None,
     model: str | None,
+    edits: Mapping[str, int],
 ) -> Pairing:
     """Read what the highlights are sitting on as a pairing.
 
@@ -290,6 +303,11 @@ def read_the_highlight(
     does name one is left alone, because there the highlight and the file are
     two statements and the highlight is the one a person just made.
 
+    A window edited in place on the held model names it, though: a window is
+    asked of a particular model, so a concrete number picked for the resident
+    row is a request to hold that model at it rather than to inherit whatever
+    is served, and inheriting has no window to carry.
+
     :param report: Everything that was read.
     :param store: The window each model was last saved at, seeding the one the
         resolved model would be requested at.
@@ -297,6 +315,9 @@ def read_the_highlight(
         list has no row a cursor can reach.
     :param model: What the model list's highlight is on, or ``None`` where the
         list has no row a cursor can reach.
+    :param edits: The window edited in place this session, keyed on the model,
+        beating the store and the profile for the model it resolves to. Empty
+        where nothing has been edited.
 
     :return: The pairing to report on.
     """
@@ -304,7 +325,9 @@ def read_the_highlight(
 
     resident = report.runtime.resident
     sitting_on_the_resident = resident is not None and model == resident.identifier
-    takes_what_is_held = sitting_on_the_resident and named.model is None
+    takes_what_is_held = (
+        sitting_on_the_resident and named.model is None and model not in edits
+    )
 
     resolved = named.model if model is None or takes_what_is_held else model
 
@@ -314,7 +337,7 @@ def read_the_highlight(
         context_window=(
             None
             if resolved is None
-            else get_requested_model_context(report, store, resolved)
+            else get_requested_model_context(report, store, resolved, edits=edits)
         ),
     )
 

@@ -21,6 +21,7 @@ from offgrid.domain.assembling import (
     get_requested_model_context,
     order_models_held_first,
 )
+from offgrid.domain.running.model import Model
 from offgrid.domain.running.runtime import RuntimeName
 
 NOTHING_DOWNLOADED = "the runtime has nothing downloaded"
@@ -47,14 +48,49 @@ class Choices:
     opens_on: str | None
 
 
+def describe_the_row(
+    report: WhatCouldBeRun,
+    context_store: Mapping[str, int],
+    edits: Mapping[str, int],
+    model: Model,
+) -> RenderableType:
+    """Render one model's row, its `context` column seeded the way the list is.
+
+    The row the list lays out and the row the picker redraws in place are the
+    same row, so both read it from here rather than each knowing what a row
+    shows.
+
+    :param report: Everything that was read.
+    :param context_store: The window each model was last saved at, seeding the
+        window the row's `context` column shows.
+    :param edits: The window edited in place this session, keyed on the model,
+        beating the store for the row it was edited on.
+    :param model: The model whose row to render.
+
+    :return: The row as it reads.
+    """
+    return describe_a_model_row(
+        model,
+        held=model.identifier in report.held,
+        window=get_requested_model_context(
+            report, context_store, model.identifier, edits=edits
+        ),
+    )
+
+
 def model_options(
-    report: WhatCouldBeRun, context_store: Mapping[str, int]
+    report: WhatCouldBeRun,
+    context_store: Mapping[str, int],
+    edits: Mapping[str, int],
 ) -> list[Option]:
     """Lay out a row per model downloaded, held ones first.
 
     :param report: Everything that was read.
     :param context_store: The window each model was last saved at, seeding the
         window each row's `context` column shows.
+    :param edits: The window edited in place this session, keyed on the model,
+        beating the store for the row it was edited on. Empty where nothing
+        has been edited.
 
     :return: The rows, or the one saying there are none.
     """
@@ -63,13 +99,7 @@ def model_options(
 
     return [
         Option(
-            describe_a_model_row(
-                model,
-                held=model.identifier in report.held,
-                window=get_requested_model_context(
-                    report, context_store, model.identifier
-                ),
-            ),
+            describe_the_row(report, context_store, edits, model),
             id=model.identifier,
         )
         for model in order_models_held_first(report)

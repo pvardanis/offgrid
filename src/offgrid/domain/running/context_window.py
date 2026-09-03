@@ -106,6 +106,53 @@ def refuse_a_window_above_the_ceiling(
     )
 
 
+def refuse_a_typed_window(
+    typed: str, *, floor: int | None, ceiling: int | None, identifier: str
+) -> int:
+    """Read a typed window, or refuse it in the words its bound would use.
+
+    The picker's custom box hands whatever was typed here: a whole number of
+    tokens, or something that is not one. A number is measured against the same
+    two bounds a run is — the agent's floor below and the model's ceiling above
+    — so the box holds the message a load would have failed with rather than
+    committing a window the runtime would take and serve wrong.
+
+    :param typed: What was typed into the box.
+    :param floor: The smallest window the agent can start in, or ``None`` where
+        no agent answered to state one, which leaves nothing below to measure.
+    :param ceiling: The most the model could be served at, or ``None`` where
+        the runtime states none, which leaves nothing above to measure.
+    :param identifier: The model the box is editing, named in the ceiling's
+        refusal.
+
+    :return: The window to hold the model at.
+
+    :raise ContextWindowUnworkableError: When what was typed is not a positive
+        whole number of tokens, is below the floor, or is above the ceiling.
+    """
+    try:
+        window = int(typed)
+    except ValueError:
+        raise ContextWindowUnworkableError(
+            f"{typed!r} is not a window. Type a whole number of tokens, like 131072."
+        ) from None
+
+    if window <= 0:
+        raise ContextWindowUnworkableError(
+            f"A window is a number of tokens above zero, so {window} cannot be "
+            "asked for. Type a positive number of tokens, like 131072."
+        )
+
+    if floor is not None:
+        refuse_a_window_below_the_floor(window, floor=floor)
+
+    refuse_a_window_above_the_ceiling(
+        ModelRequest(identifier=identifier, context_window=window), ceiling=ceiling
+    )
+
+    return window
+
+
 def get_model_ceiling(
     runtime: Runtime, model_request: ModelRequest, resident: Model | None
 ) -> int | None:
