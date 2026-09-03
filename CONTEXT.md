@@ -105,6 +105,13 @@ is remembered per runtime and model, because asking again costs a release and a
 load reaching the same state — and the load throws away whatever prefix the
 runtime had cached.
 
+**last-saved window** — the window a model was last saved at, kept so the picker
+can default that model to what it last ran at rather than a fixed number. The
+runtime cannot supply it, since a cold model is served at no window; offgrid
+keeps it per model, because it is what a person chose to run that model at
+rather than what any server did with it. Written only when a profile is saved,
+and only for the model being saved.
+
 **launch** — an environment and an argument list, built before anything runs,
 so it can be shown rather than guessed at. It carries the caution below, where
 there is one.
