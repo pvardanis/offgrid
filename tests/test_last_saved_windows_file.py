@@ -11,11 +11,11 @@ one is first saved.
 import json
 
 import pytest
+
 from offgrid.domain.running.last_saved_windows import (
     read_last_saved_windows,
     save_last_saved_window,
 )
-
 from offgrid.shared.exceptions import LastSavedWindowsUnreadableError
 
 MODEL = "a/held-7b"
@@ -107,6 +107,18 @@ def test_a_file_that_will_not_read_is_said_out_loud(tmp_path):
 
     with pytest.raises(LastSavedWindowsUnreadableError, match="could not be read"):
         read_last_saved_windows(_kept(tmp_path))
+
+
+def test_a_save_over_a_file_that_will_not_read_is_refused(tmp_path):
+    # Replacing one record means writing the rest back, so a save reads what is
+    # there first. A file it cannot read is refused rather than clobbered — a
+    # save that ate it would take every other model's window with it.
+    _kept(tmp_path).write_text("{not json at all")
+
+    with pytest.raises(LastSavedWindowsUnreadableError):
+        _save(tmp_path)
+
+    assert _kept(tmp_path).read_text() == "{not json at all"
 
 
 @pytest.mark.parametrize(
