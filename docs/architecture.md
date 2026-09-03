@@ -146,6 +146,8 @@ tui/               the layer, and the screen bare `offgrid` opens
   choices.py       what each list offers out of what was read, greyed where
                    a run cannot start it
   dropdown.py      a Select that greys the choices a run cannot start
+  window_editor.py the slider `e` floats over a model row to set the
+                   window it would be requested at
 ```
 
 **adapters**

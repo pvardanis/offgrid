@@ -25,6 +25,7 @@ from textual.widgets import (
     Button,
     Collapsible,
     DataTable,
+    Input,
     OptionList,
     Select,
     Static,
@@ -84,6 +85,13 @@ from offgrid.tui.picker import (
     Departure,
     Picker,
 )
+from offgrid.tui.window_editor import (
+    WINDOW_BOX,
+    WINDOW_CAPTION,
+    WINDOW_EDITOR,
+    WINDOW_MESSAGE,
+    WindowTrack,
+)
 from tests.commands import MACHINE
 from tests.doubles import serve_get
 from tests.launches import record_launch
@@ -127,6 +135,11 @@ class Driven:
     still_open: bool
     scrolled_to: int
     could_scroll_to: int
+    editing: bool
+    handle: int | None
+    box: str
+    caption: str
+    window_message: str
 
 
 def _read_a_list(listed: OptionList) -> tuple[list[str], list[str], str | None]:
@@ -190,6 +203,38 @@ def _colours_on(signal: Static) -> dict[str, str]:
     return colours
 
 
+def _read_the_window_editor(
+    picker: Picker,
+) -> tuple[bool, int | None, str, str, str]:
+    """Read back the window control, where `e` has floated one.
+
+    The whole control is read the way a person sees it: whether it is open, the
+    window its handle rests on, the number in the box beside it, the ceiling its
+    caption names, and what it says about a value it will not commit.
+
+    :param picker: The screen to read.
+
+    :return: Whether the control is open, the window under the handle or
+        ``None`` where there is no track, the box's text, the caption, and the
+        refusal it holds.
+    """
+    if not picker.query(f"#{WINDOW_EDITOR}"):
+        return False, None, "", "", ""
+
+    tracks = picker.query(WindowTrack)
+    box = picker.query_one(f"#{WINDOW_BOX}", Input)
+    caption = picker.query_one(f"#{WINDOW_CAPTION}", Static)
+    message = picker.query_one(f"#{WINDOW_MESSAGE}", Static)
+
+    return (
+        True,
+        tracks.first().value if tracks else None,
+        box.value,
+        str(caption.content),
+        str(message.content),
+    )
+
+
 def drive(picker: Picker, *keys: str, size: tuple[int, int] = ROOMY) -> Driven:
     """Open a screen, press keys at it, and read what it is showing.
 
@@ -198,7 +243,11 @@ def drive(picker: Picker, *keys: str, size: tuple[int, int] = ROOMY) -> Driven:
     driver's own tidying up as the key having worked.
 
     :param picker: The screen to open.
-    :param keys: What to press, in order.
+    :param keys: What to press, in order. The pseudo-key ``"settle"`` waits for
+        the screen to go idle rather than pressing anything, so a message a key
+        posted — a window committed, an overlay removed — is worked through
+        before the next key lands. It stands for the beat between two of a
+        person's own key presses, which happens for free at a real terminal.
     :param size: How much terminal to give it, for a report that is taller.
 
     :return: What it shows, whether it is still open, and how far the report
@@ -207,8 +256,17 @@ def drive(picker: Picker, *keys: str, size: tuple[int, int] = ROOMY) -> Driven:
 
     async def driven() -> Driven:
         async with picker.run_test(size=size) as pilot:
-            if keys:
-                await pilot.press(*keys)
+            for key in keys:
+                if key == "settle":
+                    await pilot.pause()
+                elif key == "click-track-left":
+                    # The mouse is the slider's primary input, so a click on the
+                    # track's left edge is driven the way the arrows are: the
+                    # left edge is the floor, the one column a click lands a known
+                    # window on without reading how wide the track was laid out.
+                    await pilot.click(WindowTrack, offset=(0, 0))
+                else:
+                    await pilot.press(key)
 
             await pilot.pause()
 
@@ -218,6 +276,7 @@ def drive(picker: Picker, *keys: str, size: tuple[int, int] = ROOMY) -> Driven:
                 MODELS: _read_a_list(picker.query_one(f"#{MODELS}", OptionList)),
             }
             scroller = picker.query_one(f"#{PANE}", VerticalScroll)
+            editor = _read_the_window_editor(picker)
 
             return Driven(
                 shown=str(picker.query_one(f"#{REPORT}", Static).content),
@@ -239,6 +298,11 @@ def drive(picker: Picker, *keys: str, size: tuple[int, int] = ROOMY) -> Driven:
                 still_open=picker.is_running,
                 scrolled_to=scroller.scroll_offset.y,
                 could_scroll_to=scroller.max_scroll_y,
+                editing=editor[0],
+                handle=editor[1],
+                box=editor[2],
+                caption=editor[3],
+                window_message=editor[4],
             )
 
     return asyncio.run(driven())
@@ -2516,3 +2580,256 @@ def test_collapsing_the_table_clears_the_download_instruction(here, monkeypatch)
 
     assert not revealed.download_shown
     assert revealed.download == ""
+
+
+def test_e_floats_a_window_control_naming_the_models_ceiling(here, monkeypatch):
+    # `e` on the highlighted row floats a control over its `context` cell: a
+    # handle on the window the cell shows, the same window in the box beside it,
+    # and a caption naming the most the model could be served at.
+    runner.invoke(app, ["setup"])
+    name_a_model(here, RESIDENT)
+    answer_as_lm_studio(
+        monkeypatch, holding={RESIDENT: 100000}, ceilings={RESIDENT: 131072}
+    )
+    on_this_machine(monkeypatch, "claude")
+
+    driven = screen(here, "tab", "tab", "e")
+
+    assert driven.editing is True
+    assert driven.handle == 131072
+    assert driven.box == "131072"
+    assert driven.caption == "supports up to 131072 tokens"
+
+
+def test_the_control_is_a_box_alone_where_no_ceiling_is_stated(here, monkeypatch):
+    # A model the runtime states no ceiling for has no right edge to run a track
+    # to, so only the box shows and the caption says as much.
+    runner.invoke(app, ["setup"])
+    name_a_model(here, RESIDENT)
+    answer_as_lm_studio(
+        monkeypatch, holding={RESIDENT: 100000}, ceilings={RESIDENT: None}
+    )
+    on_this_machine(monkeypatch, "claude")
+
+    driven = screen(here, "tab", "tab", "e")
+
+    assert driven.editing is True
+    assert driven.handle is None
+    assert driven.caption == "no ceiling stated"
+
+
+def test_an_arrow_moves_the_handle_and_enter_commits_and_redraws_the_cell(
+    here, monkeypatch
+):
+    # An arrow moves the handle by a step and `enter` commits where it rests:
+    # the control closes, the row's `context` cell redraws with the window, and
+    # the signal prices the run at it. The handle opens on the ceiling, so a
+    # left arrow lands a step below it.
+    runner.invoke(app, ["setup"])
+    name_a_model(here, RESIDENT)
+    answer_as_lm_studio(
+        monkeypatch, holding={RESIDENT: 100000}, ceilings={RESIDENT: 131072}
+    )
+    on_this_machine(monkeypatch, "claude")
+
+    driven = screen(here, "tab", "tab", "e", "left", "enter")
+
+    assert driven.editing is False
+    assert driven.listed[MODELS][0].split() == [RESIDENT, IN_MEMORY, "126976"]
+    assert "requested context 126976" in driven.signal
+
+
+def test_a_page_key_moves_the_handle_by_a_page(here, monkeypatch):
+    # A page key moves the handle further than an arrow: `pagedown` from the
+    # ceiling lands a page below it.
+    runner.invoke(app, ["setup"])
+    name_a_model(here, RESIDENT)
+    answer_as_lm_studio(
+        monkeypatch, holding={RESIDENT: 100000}, ceilings={RESIDENT: 131072}
+    )
+    on_this_machine(monkeypatch, "claude")
+
+    driven = screen(here, "tab", "tab", "e", "pagedown")
+
+    assert driven.editing is True
+    assert driven.handle == 98304
+
+
+def test_an_arrow_at_the_edge_clamps_rather_than_leaving_the_range(here, monkeypatch):
+    # The handle opens on the ceiling, so a right arrow that would step past it
+    # is held at the ceiling rather than asking for a window the model cannot
+    # hold.
+    runner.invoke(app, ["setup"])
+    name_a_model(here, RESIDENT)
+    answer_as_lm_studio(
+        monkeypatch, holding={RESIDENT: 100000}, ceilings={RESIDENT: 131072}
+    )
+    on_this_machine(monkeypatch, "claude")
+
+    driven = screen(here, "tab", "tab", "e", "right")
+
+    assert driven.editing is True
+    assert driven.handle == 131072
+
+
+def test_clicking_the_track_moves_the_handle_to_where_it_lands(here, monkeypatch):
+    # The mouse is the slider's primary input: a click on the track's left edge
+    # rests the handle on the floor, the window that edge stands for, and the
+    # box beside it reads the same window back.
+    runner.invoke(app, ["setup"])
+    name_a_model(here, RESIDENT)
+    answer_as_lm_studio(
+        monkeypatch, holding={RESIDENT: 100000}, ceilings={RESIDENT: 131072}
+    )
+    on_this_machine(monkeypatch, "claude")
+
+    driven = screen(here, "tab", "tab", "e", "click-track-left")
+
+    assert driven.editing is True
+    assert driven.handle == CONTEXT_FLOOR
+    assert driven.box == str(CONTEXT_FLOOR)
+
+
+def test_a_typed_in_range_value_moves_the_handle_to_it(here, monkeypatch):
+    # A whole count the model can hold, typed into the box, moves the handle to
+    # it: the box and the handle are the same window read two ways.
+    runner.invoke(app, ["setup"])
+    name_a_model(here, RESIDENT)
+    answer_as_lm_studio(
+        monkeypatch, holding={RESIDENT: 100000}, ceilings={RESIDENT: 131072}
+    )
+    on_this_machine(monkeypatch, "claude")
+
+    driven = screen(here, "tab", "tab", "e", "tab", "settle", *"65536")
+
+    assert driven.editing is True
+    assert driven.handle == 65536
+    assert driven.box == "65536"
+
+
+def test_a_typed_value_above_the_ceiling_is_refused_in_place(here, monkeypatch):
+    # A value above the model's ceiling is refused in the words a load would
+    # fail with, never reaches the row, and leaves the handle where it was: the
+    # box stays open on the message and the run is still priced at the window it
+    # showed.
+    runner.invoke(app, ["setup"])
+    name_a_model(here, RESIDENT)
+    answer_as_lm_studio(
+        monkeypatch, holding={RESIDENT: 100000}, ceilings={RESIDENT: 131072}
+    )
+    on_this_machine(monkeypatch, "claude")
+
+    driven = screen(here, "tab", "tab", "e", "tab", "settle", *"200000", "enter")
+
+    assert driven.editing is True
+    assert driven.handle == 131072
+    assert f"above {RESIDENT}'s ceiling of 131072" in driven.window_message
+    assert "requested context 131072" in driven.signal
+
+
+def test_a_typed_value_that_is_not_a_number_is_refused_in_place(here, monkeypatch):
+    # The box is free text, so a person can type something that is not a count
+    # at all — and it is refused there in the same voice a bad number is,
+    # rather than swallowed before it can be read back.
+    runner.invoke(app, ["setup"])
+    name_a_model(here, RESIDENT)
+    answer_as_lm_studio(
+        monkeypatch, holding={RESIDENT: 100000}, ceilings={RESIDENT: 131072}
+    )
+    on_this_machine(monkeypatch, "claude")
+
+    driven = screen(here, "tab", "tab", "e", "tab", "settle", *"lots", "enter")
+
+    assert driven.editing is True
+    assert "'lots' is not a window" in driven.window_message
+
+
+def test_escape_abandons_the_edit_and_the_row_keeps_its_window(here, monkeypatch):
+    # `escape` closes the control without committing, so the row keeps the
+    # window it showed rather than the one the handle had moved onto.
+    runner.invoke(app, ["setup"])
+    name_a_model(here, RESIDENT)
+    answer_as_lm_studio(
+        monkeypatch, holding={RESIDENT: 100000}, ceilings={RESIDENT: 131072}
+    )
+    on_this_machine(monkeypatch, "claude")
+
+    driven = screen(here, "tab", "tab", "e", "left", "escape")
+
+    assert driven.editing is False
+    assert driven.listed[MODELS][0].split() == [RESIDENT, IN_MEMORY, "131072"]
+    assert "requested context 131072" in driven.signal
+
+
+def test_a_session_edit_survives_arrowing_away_and_back(here, monkeypatch):
+    # A window picked this session is held in memory: arrowing off the row and
+    # back finds it still on the cell, not the seed it opened on.
+    runner.invoke(app, ["setup"])
+    name_a_model(here, RESIDENT)
+    answer_as_lm_studio(
+        monkeypatch,
+        holding={RESIDENT: 100000},
+        cold={"google/gemma-4-e4b": 131072},
+        ceilings={RESIDENT: 131072, "google/gemma-4-e4b": 131072},
+    )
+    on_this_machine(monkeypatch, "claude")
+
+    driven = screen(here, "tab", "tab", "e", "left", "enter", "down", "up")
+
+    assert driven.editing is False
+    assert driven.listed[MODELS][0].split() == [RESIDENT, IN_MEMORY, "126976"]
+    assert "requested context 126976" in driven.signal
+
+
+def test_a_session_edit_rides_into_the_profile_and_the_store_on_enter(
+    here, monkeypatch
+):
+    # The edited window rides into the assembled profile and the last-saved
+    # store on the key that writes, exactly as a seeded window does.
+    runner.invoke(app, ["setup"])
+    name_a_model(here, RESIDENT)
+    answer_as_lm_studio(
+        monkeypatch, holding={RESIDENT: 100000}, ceilings={RESIDENT: 131072}
+    )
+    on_this_machine(monkeypatch, "claude")
+
+    driven = screen(here, "tab", "tab", "e", "left", "enter", "settle", "enter")
+
+    assert isinstance(driven.left_with, Departure)
+    assert driven.left_with.profile.model.context_window == 126976
+    assert read_profile(here / "profile.yaml").model.context_window == 126976
+    assert read_last_saved_windows(last_saved_windows.DEFAULT_PATH) == {
+        RESIDENT: 126976
+    }
+
+
+def test_e_is_a_no_op_where_nothing_is_downloaded(here, monkeypatch):
+    # An empty list has no row to edit and no cell to float over, so `e` does
+    # nothing rather than opening a control over the sentence that says so.
+    runner.invoke(app, ["setup"])
+    answer_as_lm_studio(monkeypatch)
+    on_this_machine(monkeypatch, "claude")
+
+    driven = screen(here, "tab", "tab", "e")
+
+    assert driven.editing is False
+
+
+def test_committing_from_the_track_is_refused_where_the_window_is_unworkable(
+    here, monkeypatch
+):
+    # Where no agent answered to state a floor, the track runs from zero, so a
+    # click on its left edge rests the handle on a window no load could hold.
+    # Committing from the track is refused in the same words the box gives,
+    # never reaching the row, rather than pricing a run at a window of zero.
+    runner.invoke(app, ["setup"])
+    name_a_model(here, RESIDENT)
+    answer_as_lm_studio(
+        monkeypatch, holding={RESIDENT: 100000}, ceilings={RESIDENT: 131072}
+    )
+    on_this_machine(monkeypatch)
+
+    driven = screen(here, "tab", "tab", "e", "click-track-left", "enter")
+
+    assert driven.editing is True
+    assert "cannot be asked for" in driven.window_message
