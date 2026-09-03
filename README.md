@@ -255,11 +255,12 @@ offgrid does not set it — and the theme the screen is drawn in.
   own words. It is the one thing the picker does that reaches the network, and it
   fetches once — opening and closing the table afterwards costs nothing.
 - **run** — colour-coded signal lines for the pairing the highlights are on:
-  whether starting it costs a load, the window it would be served at against the
-  model's ceiling, whether the runtime and agent can talk, and where a
-  conversation it starts would be kept. The diagnostic detail `doctor` prints is
-  folded behind a toggle. Below the panels, a status line says which key writes
-  and whether what is assembled still matches your saved profile.
+  whether starting it costs a load, the window it would be served at beside what
+  a run requests, whether the runtime and agent can talk, and where a
+  conversation it starts would be kept. A fuller telling — the same facts
+  `doctor` reports, in the picker's own compact words, the model's ceiling among
+  them — is folded behind a toggle. Below the panels, a status line says which
+  key writes and whether what is assembled still matches your saved profile.
 
 **The keys:**
 
@@ -280,11 +281,11 @@ theme cycled to with `t` is one of the eight offgrid offers, only the palette
 moves and never the logo or the labels, and the one landed on rides into what
 `enter` saves — so a later `offgrid` opens on it.
 
-**What the panels show that other tools do not.** Showing whether a model fits
+**What offgrid shows that other tools do not.** Showing whether a model fits
 before you commit is common — Jan, GPT4All and `lms load --estimate-only` all do
-it. What was not found anywhere, and what the picker adds, is the window a model
-would be *served* at, shown before the load, and a warning when the pairing about
-to start would cost a load and discard a cached prefix.
+it. What was not found anywhere is the window a model would be *served* at, shown
+before the run, and a warning that a swap costs a load and takes the held model's
+cached prefix with it.
 
 ## Commands
 
