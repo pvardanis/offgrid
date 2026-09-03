@@ -2477,7 +2477,7 @@ offered at all rather than shown greyed: the row is being edited for one fixed
 model, so a window it cannot hold has no reason to appear.
 
 **A bad custom value is blocked at the box, never committed.** The box validates
-against the model whose row it floats over — below the agent's `CONTEXT_FLOOR`,
+against the model whose row it floats over — below the agent's `context_floor`,
 above the ceiling, or not a positive count — and holds the same message a person
 would get from the runtime or the agent until the value is workable. Nothing
 out of range reaches the row or the profile; it is never clamped to fit, since
