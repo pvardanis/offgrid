@@ -107,7 +107,7 @@ def refuse_a_window_above_the_ceiling(
 
 
 def refuse_a_typed_window(
-    typed: str, *, floor: int | None, ceiling: int | None, identifier: str
+    typed: str, *, floor: int | None, ceiling: int | None, model_identifier: str
 ) -> int:
     """Read a typed window, or refuse it in the words its bound would use.
 
@@ -122,8 +122,8 @@ def refuse_a_typed_window(
         no agent answered to state one, which leaves nothing below to measure.
     :param ceiling: The most the model could be served at, or ``None`` where
         the runtime states none, which leaves nothing above to measure.
-    :param identifier: The model the box is editing, named in the ceiling's
-        refusal.
+    :param model_identifier: The model the box is editing, named in the
+        ceiling's refusal.
 
     :return: The window to hold the model at.
 
@@ -147,7 +147,8 @@ def refuse_a_typed_window(
         refuse_a_window_below_the_floor(window, floor=floor)
 
     refuse_a_window_above_the_ceiling(
-        ModelRequest(identifier=identifier, context_window=window), ceiling=ceiling
+        ModelRequest(identifier=model_identifier, context_window=window),
+        ceiling=ceiling,
     )
 
     return window
