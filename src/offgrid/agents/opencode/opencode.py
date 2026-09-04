@@ -124,12 +124,18 @@ class OpenCode:
         beneath it is not named: the `opencode/` hung off that value, and the
         database and write-ahead log inside it, are OpenCode's own.
 
+        The way back names the model because `--continue` does not: OpenCode
+        scopes the last session by the repo, and offgrid points every run of
+        this repo at one store, so the last session there is as readily another
+        model's as this one's. `--session <id>` is how a person reaches past it.
+
         :return: Where they are kept, and how to open one again.
         """
         return Conversations(
             kept_in=self.config.config_dir / STORE,
             resume_with=(
-                f"`offgrid run -- {CONTINUE}` takes up the last one and "
+                f"`offgrid run -- {CONTINUE}` takes up this repo's last "
+                "session, whichever model wrote it, and "
                 f"`offgrid run -- {SESSION} <id>` one by identifier"
             ),
             measured=(
