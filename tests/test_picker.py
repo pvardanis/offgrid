@@ -63,6 +63,7 @@ from offgrid.tui.context_window_editor import (
     WINDOW_CAPTION,
     WINDOW_EDITOR,
     WINDOW_MESSAGE,
+    ContextWindowEditor,
 )
 from offgrid.tui.context_window_track import ContextWindowTrack
 from offgrid.tui.departure import Departure
@@ -2601,6 +2602,41 @@ def test_e_floats_a_window_control_naming_the_models_ceiling(here, monkeypatch):
     assert driven.handle == 131072
     assert driven.box == "131072"
     assert driven.caption == "supports up to 131072 tokens"
+
+
+def test_a_second_e_while_the_slider_is_open_floats_no_second_control(
+    here, monkeypatch
+):
+    # `e` while the slider is already floated does not stack another control
+    # over the row: the float takes the focus off the models list, and `e` only
+    # floats a control where that list holds it. A second control would carry
+    # the id the first already has, so a stack is refused at mount rather than
+    # counted — which is why the guard is read as exactly one open.
+    runner.invoke(app, ["setup"])
+    name_a_model(here, RESIDENT)
+    answer_as_lm_studio(
+        monkeypatch, holding={RESIDENT: 100000}, ceilings={RESIDENT: 131072}
+    )
+    on_this_machine(monkeypatch, "claude")
+
+    picker = Picker(
+        read_report_func=lambda: read_what_could_be_run(here / "profile.yaml"),
+        save_func=save_the_assembled_profile,
+        sha=BUILD_SHA,
+        cwd=WORKDIR,
+        read_store_func=lambda: read_last_saved_windows(
+            last_saved_windows.DEFAULT_PATH
+        ),
+    )
+
+    async def driven() -> int:
+        async with picker.run_test(size=ROOMY) as pilot:
+            await pilot.press("tab", "tab", "e", "e")
+            await pilot.pause()
+
+            return len(picker.query(ContextWindowEditor))
+
+    assert asyncio.run(driven()) == 1
 
 
 def test_the_control_is_a_box_alone_where_no_ceiling_is_stated(here, monkeypatch):
