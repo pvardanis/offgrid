@@ -23,7 +23,6 @@ from textual import work
 from textual.app import App, ComposeResult
 from textual.binding import Binding, BindingType
 from textual.containers import Horizontal, Vertical, VerticalScroll
-from textual.content import Content
 from textual.widgets import (
     Button,
     Collapsible,
@@ -46,12 +45,7 @@ from offgrid.domain.assembling import (
     open_on_what_the_profile_holds,
     read_the_highlight,
 )
-from offgrid.domain.costing import (
-    SignalLine,
-    Tone,
-    describe_the_detail,
-    describe_the_signal,
-)
+from offgrid.domain.costing import describe_the_detail, describe_the_signal
 from offgrid.domain.profile import DEFAULT_THEME, Profile, Theme
 from offgrid.domain.sizing.recommendation import PANEL_COLUMNS, Recommendation
 from offgrid.shared.exceptions import OffgridError
@@ -66,6 +60,7 @@ from offgrid.tui.choices import (
 from offgrid.tui.dropdown import Dropdown
 from offgrid.tui.header import HeaderBand
 from offgrid.tui.reckoning import find_downloaded_model, floor_for_agent
+from offgrid.tui.signal import SignalView
 from offgrid.tui.window_editor import WINDOW_EDITOR, WindowEditor
 
 type ReadWhatCouldBeRun = Callable[[], WhatCouldBeRun]
@@ -217,18 +212,6 @@ change something, rather than remember whether they moved anything.
 
 UNCHANGED = "this is your saved profile"
 """What the status says when what is assembled is exactly what the file holds."""
-
-_TONE_STYLES = {
-    Tone.OK: "$text-success",
-    Tone.BLOCKED: "$text-error",
-    Tone.COST: "$text-warning",
-    Tone.INFO: "$text-muted",
-}
-"""How each verdict is painted: a run that is fine, barred, costed, or a fact.
-
-Theme variables, so the colours move with the theme rather than being fixed
-against one palette.
-"""
 
 
 class Picker(App[Departure | None]):
@@ -536,7 +519,7 @@ class Picker(App[Departure | None]):
                     classes="box",
                 ),
                 Vertical(
-                    VerticalScroll(Static(id=SIGNAL), id=SIGNAL_PANE),
+                    VerticalScroll(SignalView(id=SIGNAL), id=SIGNAL_PANE),
                     Collapsible(
                         VerticalScroll(Static(id=REPORT, markup=False), id=PANE),
                         title="details",
@@ -580,7 +563,7 @@ class Picker(App[Departure | None]):
             report = self._read_report_func()
             store = self._read_store_func() if self._read_store_func else {}
         except OffgridError as error:
-            self._say(str(error))
+            self.query_one(SignalView).bar(str(error))
 
             return
 
@@ -661,7 +644,7 @@ class Picker(App[Departure | None]):
             # no permission, a path that is a file — is painted where it happened
             # and the screen stays open, rather than escaping into the event loop
             # as a traceback nothing here would turn into a sentence.
-            self._say(str(error))
+            self.query_one(SignalView).bar(str(error))
 
             return
 
@@ -1179,7 +1162,7 @@ class Picker(App[Departure | None]):
 
         pairing = self._read_the_highlights(report)
 
-        self._show_the_signal(describe_the_signal(report, pairing))
+        self.query_one(SignalView).show(describe_the_signal(report, pairing))
         self.query_one(f"#{REPORT}", Static).update(
             "\n".join(describe_the_detail(report, pairing))
         )
@@ -1249,28 +1232,3 @@ class Picker(App[Departure | None]):
         rather than recomputed beside every report.
         """
         self.query_one(f"#{FITS}", Static).update("\n".join(self._measurement))
-
-    def _show_the_signal(self, lines: tuple[SignalLine, ...]) -> None:
-        """Paint the run panel's signal lines by the verdict each carries.
-
-        :param lines: The signal, each line tagged with how it reads.
-        """
-        painted = Content("\n".join(line.text for line in lines))
-        at = 0
-
-        for line in lines:
-            painted = painted.stylize(_TONE_STYLES[line.tone], at, at + len(line.text))
-            at += len(line.text) + 1
-
-        self.query_one(f"#{SIGNAL}", Static).update(painted)
-
-    def _say(self, said: str) -> None:
-        """Put a message where the signal reads, painted as a thing barring a run.
-
-        The read that failed, or the write that did: a runtime nothing answered
-        for, or a profile that would not save. It sits where the signal is,
-        which is the panel a person is looking at, rather than behind the toggle.
-
-        :param said: What to show there.
-        """
-        self._show_the_signal((SignalLine(said, Tone.BLOCKED),))
