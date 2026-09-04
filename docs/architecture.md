@@ -542,7 +542,7 @@ of use is right even when a runtime moves it at startup, which oMLX does.
 
 ## Where a port lives — built
 
-`Runtime`, `Agent`, `Capabilities` and `Leaderboard` are domain types. They sit
+`Runtime`, `Agent` and `Leaderboard` are domain types. They sit
 beside the code that needs them, and never inside `runtimes/`, `agents/` or
 `leaderboards/`.
 
@@ -984,7 +984,7 @@ place `rg` finds.
 
 ## What crosses a seam — built
 
-`Model`, `Dialect`, `Capabilities`, `Launch`, `Table` — domain types, all of
+`Model`, `Dialect`, `Launch`, `Table` — domain types, all of
 them. No vendor payload, no `dict`, no HTTP object.
 
 Adapters raise the domain's own exceptions from `exceptions.py`, as
@@ -1063,7 +1063,7 @@ and `wire_api = "chat"` is a named error.
 What `Dialect` cannot express is that LM Studio answers `200` to
 `/v1/messages/count_tokens` while logging `Unexpected endpoint or method`,
 which is worse than a `404` because a caller cannot tell "counted zero" from
-"not implemented". That is what `Capabilities` is for (#43).
+"not implemented". That gap is open as #43, and no type carries the answer yet.
 
 ## What follows outside the ports — built
 
