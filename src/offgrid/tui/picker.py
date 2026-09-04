@@ -60,7 +60,7 @@ from offgrid.tui.choices import (
     runtime_choices,
 )
 from offgrid.tui.dropdown import Dropdown
-from offgrid.tui.header import HeaderBand
+from offgrid.tui.header_band import HeaderBand
 from offgrid.tui.reckoning import find_downloaded_model, floor_for_agent
 from offgrid.tui.recommend_panel import ReadWhatAListRecommends, RecommendPanel
 from offgrid.tui.shell import (

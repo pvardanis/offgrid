@@ -59,7 +59,7 @@ from offgrid.shared.exceptions import LeaderboardUnavailableError, ProfileError
 from offgrid.shared.say import LOGGER
 from offgrid.shared.wording import REACHING_THE_NETWORK
 from offgrid.tui.dropdown import Dropdown
-from offgrid.tui.header import BUILD, CWD, THEME
+from offgrid.tui.header_band import BUILD, CWD, THEME
 from offgrid.tui.picker import (
     CHANGED,
     DEFAULT_THEME,
