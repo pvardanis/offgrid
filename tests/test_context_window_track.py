@@ -7,7 +7,7 @@ the control does under the keys is proven at the picker seam; this proves the
 sums a mouse drag and an arrow both rest on.
 """
 
-from offgrid.tui.window_editor import (
+from offgrid.tui.context_window_track import (
     get_fraction_of_value,
     get_step_value,
     get_value_at_fraction,

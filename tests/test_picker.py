@@ -58,6 +58,13 @@ from offgrid.domain.sizing.recommendation import (
 from offgrid.shared.exceptions import LeaderboardUnavailableError, ProfileError
 from offgrid.shared.say import LOGGER
 from offgrid.shared.wording import REACHING_THE_NETWORK
+from offgrid.tui.context_window_editor import (
+    WINDOW_BOX,
+    WINDOW_CAPTION,
+    WINDOW_EDITOR,
+    WINDOW_MESSAGE,
+)
+from offgrid.tui.context_window_track import ContextWindowTrack
 from offgrid.tui.dropdown import Dropdown
 from offgrid.tui.header_band import BUILD, CWD, THEME
 from offgrid.tui.picker import (
@@ -88,13 +95,6 @@ from offgrid.tui.shell import (
     RUNTIMES,
     SIGNAL,
     STATUS,
-)
-from offgrid.tui.window_editor import (
-    WINDOW_BOX,
-    WINDOW_CAPTION,
-    WINDOW_EDITOR,
-    WINDOW_MESSAGE,
-    ContextWindowTrack,
 )
 from tests.commands import MACHINE
 from tests.doubles import serve_get
