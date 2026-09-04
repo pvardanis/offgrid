@@ -2639,6 +2639,32 @@ def test_a_second_e_while_the_slider_is_open_floats_no_second_control(
     assert asyncio.run(driven()) == 1
 
 
+def test_e_on_an_empty_list_floats_no_control(here, monkeypatch):
+    # An empty list gives `e` no row to float over, so it is a no-op rather than
+    # a control floated over the placeholder row.
+    runner.invoke(app, ["setup"])
+    answer_as_lm_studio(monkeypatch)
+    on_this_machine(monkeypatch, "claude")
+
+    driven = screen(here, "tab", "tab", "e")
+
+    assert driven.editing is False
+
+
+def test_enter_on_an_empty_list_does_not_leave(here, monkeypatch):
+    # An empty list gives `enter` nothing to select: the placeholder row is
+    # disabled, so `enter` on it starts no run. The screen stays open on nothing
+    # rather than leaving on a profile that names no model.
+    runner.invoke(app, ["setup"])
+    answer_as_lm_studio(monkeypatch)
+    on_this_machine(monkeypatch, "claude")
+
+    driven = screen(here, "tab", "tab", "enter")
+
+    assert driven.still_open is True
+    assert driven.left_with is None
+
+
 def test_the_control_is_a_box_alone_where_no_ceiling_is_stated(here, monkeypatch):
     # A model the runtime states no ceiling for has no right edge to run a track
     # to, so only the box shows and the caption says as much.
