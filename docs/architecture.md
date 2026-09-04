@@ -152,7 +152,7 @@ tui/               the layer, and the screen bare `offgrid` opens
                    downloaded model a row is, and a picked agent's floor
   signal.py        the run panel's signal, each line painted by the verdict
                    it carries
-  recommending.py  the one control that reaches the network: the ranked table
+  recommend_panel.py the one control that reaches the network: the ranked table
                    of what a published list says fits, fetched once
   shell.py         where the screen's widgets sit: the ids they answer to and
                    the CSS that lays them out
