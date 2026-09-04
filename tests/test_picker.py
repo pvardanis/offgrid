@@ -68,7 +68,7 @@ from offgrid.tui.picker import (
     Departure,
     Picker,
 )
-from offgrid.tui.recommending import (
+from offgrid.tui.recommend_panel import (
     DOWNLOAD,
     RANKED,
     RANKED_CAPTION,

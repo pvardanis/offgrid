@@ -62,7 +62,7 @@ from offgrid.tui.choices import (
 from offgrid.tui.dropdown import Dropdown
 from offgrid.tui.header import HeaderBand
 from offgrid.tui.reckoning import find_downloaded_model, floor_for_agent
-from offgrid.tui.recommending import ReadWhatAListRecommends, RecommendPanel
+from offgrid.tui.recommend_panel import ReadWhatAListRecommends, RecommendPanel
 from offgrid.tui.shell import (
     AGENT_BOX,
     AGENTS,
