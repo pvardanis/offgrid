@@ -59,6 +59,7 @@ from offgrid.tui.choices import (
     model_options,
     runtime_choices,
 )
+from offgrid.tui.context_window_editor import WINDOW_EDITOR, ContextWindowEditor
 from offgrid.tui.dropdown import Dropdown
 from offgrid.tui.header_band import HeaderBand
 from offgrid.tui.reckoning import find_downloaded_model, floor_for_agent
@@ -85,7 +86,6 @@ from offgrid.tui.shell import (
     STATUS,
 )
 from offgrid.tui.signal_view import SignalView
-from offgrid.tui.window_editor import WINDOW_EDITOR, ContextWindowEditor
 
 type ReadWhatCouldBeRun = Callable[[], WhatCouldBeRun]
 type SaveWhatWasAssembled = Callable[[Profile], None]

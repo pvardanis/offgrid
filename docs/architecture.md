@@ -146,8 +146,10 @@ tui/               the layer, and the screen bare `offgrid` opens
   choices.py       what each list offers out of what was read, greyed where
                    a run cannot start it
   dropdown.py      a Select that greys the choices a run cannot start
-  window_editor.py the slider `e` floats over a model row to set the
-                   window it would be requested at
+  context_window_track.py the track a handle rides to set a context window,
+                   the agent's floor to the model's ceiling
+  context_window_editor.py the box `e` floats over a model row: the track, a
+                   number to type over, and what it commits back
   reckoning.py     the facts the picker shows but does not compute: which
                    downloaded model a row is, and a picked agent's floor
   signal_view.py   the run panel's signal, each line painted by the verdict
