@@ -77,7 +77,9 @@ def test_run_lets_the_model_go_when_opencode_fails(here, monkeypatch):
 
 def test_run_says_the_way_back_on_exit(here, monkeypatch):
     # OpenCode prints no resume hint of its own, so the exit line supplies the
-    # missing one the same way it corrects Claude's.
+    # missing one the same way it corrects Claude's. It says `--continue` is
+    # blind to which model wrote the session it takes up, because a store shared
+    # across a repo's runs is exactly where the last one is another model's.
     name_opencode(here)
     answer_as_lm_studio(monkeypatch, holding={RESIDENT: 212224})
     record_launch(monkeypatch)
@@ -86,6 +88,7 @@ def test_run_says_the_way_back_on_exit(here, monkeypatch):
 
     assert result.exit_code == 0
     assert "offgrid run -- --continue" in result.stderr
+    assert "whichever model wrote it" in result.stderr
 
 
 def test_run_hands_the_rest_of_the_line_to_opencode(here, monkeypatch):
