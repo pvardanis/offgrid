@@ -40,14 +40,12 @@ from offgrid.domain.assembling import (
     Pairing,
     WhatCouldBeRun,
     assemble_a_profile,
-    find_agent,
     find_what_would_answer,
     get_requested_model_context,
     name_the_model_columns,
     open_on_what_the_profile_holds,
     read_the_highlight,
 )
-from offgrid.domain.checkup import WhatTheAgentAnswered
 from offgrid.domain.costing import (
     SignalLine,
     Tone,
@@ -55,8 +53,6 @@ from offgrid.domain.costing import (
     describe_the_signal,
 )
 from offgrid.domain.profile import DEFAULT_THEME, Profile, Theme
-from offgrid.domain.running.agent import AgentName
-from offgrid.domain.running.model import Model
 from offgrid.domain.sizing.recommendation import PANEL_COLUMNS, Recommendation
 from offgrid.shared.exceptions import OffgridError
 from offgrid.shared.wording import REACHING_THE_NETWORK, DescribeModelDownload
@@ -69,6 +65,7 @@ from offgrid.tui.choices import (
 )
 from offgrid.tui.dropdown import Dropdown
 from offgrid.tui.header import HeaderBand
+from offgrid.tui.reckoning import find_downloaded_model, floor_for_agent
 from offgrid.tui.window_editor import WINDOW_EDITOR, WindowEditor
 
 type ReadWhatCouldBeRun = Callable[[], WhatCouldBeRun]
@@ -716,14 +713,14 @@ class Picker(App[Departure | None]):
         if identifier is None:
             return
 
-        model = self._find_downloaded_model(report, identifier)
+        model = find_downloaded_model(report, identifier)
 
         editor = WindowEditor(
             identifier=identifier,
             current=get_requested_model_context(
                 report, self._context_store, identifier, edits=self._session_windows
             ),
-            floor=self._floor_for_the_picked_agent(report),
+            floor=floor_for_agent(report, self._get_picked_agent()),
             ceiling=None if model is None else model.context_ceiling,
         )
 
@@ -778,7 +775,7 @@ class Picker(App[Departure | None]):
         if report is None:
             return
 
-        model = self._find_downloaded_model(report, identifier)
+        model = find_downloaded_model(report, identifier)
 
         if model is None:
             return
@@ -787,48 +784,6 @@ class Picker(App[Departure | None]):
             identifier,
             describe_the_row(report, self._context_store, self._session_windows, model),
         )
-
-    def _find_downloaded_model(
-        self, report: WhatCouldBeRun, identifier: str
-    ) -> Model | None:
-        """Find one downloaded model by its identifier.
-
-        :param report: Everything that was read.
-        :param identifier: The model to find.
-
-        :return: The model, or ``None`` where the runtime has no such one.
-        """
-        return next(
-            (
-                model
-                for model in report.downloaded_models
-                if model.identifier == identifier
-            ),
-            None,
-        )
-
-    def _floor_for_the_picked_agent(self, report: WhatCouldBeRun) -> int | None:
-        """Say the smallest window the picked agent starts in, where it answered.
-
-        The window box measures against the agent a run would start, so a value
-        below its floor is refused in the same words a load would fail with.
-
-        :param report: Everything that was read.
-
-        :return: The agent's floor, or ``None`` where none is picked or the
-            picked one's settings would not read.
-        """
-        picked = self._get_picked_agent()
-
-        if picked is None:
-            return None
-
-        answered = find_agent(report, AgentName(picked)).answered
-
-        if isinstance(answered, WhatTheAgentAnswered):
-            return answered.terms.context_floor
-
-        return None
 
     def _float_over_the_row(self, editor: WindowEditor) -> None:
         """Place the slider over the highlighted row's `context` cell.
