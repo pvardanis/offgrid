@@ -75,6 +75,19 @@ def test_run_lets_the_model_go_when_opencode_fails(here, monkeypatch):
     assert asked["let_go"] == [RESIDENT]
 
 
+def test_run_says_the_way_back_on_exit(here, monkeypatch):
+    # OpenCode prints no resume hint of its own, so the exit line supplies the
+    # missing one the same way it corrects Claude's.
+    name_opencode(here)
+    answer_as_lm_studio(monkeypatch, holding={RESIDENT: 212224})
+    record_launch(monkeypatch)
+
+    result = runner.invoke(app, ["run"])
+
+    assert result.exit_code == 0
+    assert "offgrid run -- run --continue" in result.stderr
+
+
 def test_run_hands_the_rest_of_the_line_to_opencode(here, monkeypatch):
     # Unchanged and in the order they were typed, and a subcommand among them
     # works: OpenCode's own interface and a one-shot run take one argv shape.

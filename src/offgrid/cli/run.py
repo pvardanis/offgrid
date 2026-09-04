@@ -171,14 +171,25 @@ def launch_a_run(
         if launch.caution is not None:
             tell(f"{launch.caution}")
 
+        launched = True
         try:
             code = start(launch)
         except OSError as error:
             tell(explain_why_it_would_not_start(launch.argv[0], error))
             code = 127
+            launched = False
     except KeyboardInterrupt:
         code = 130
     finally:
         runtime.let_go(model.identifier)
+
+    # The genuine last line, printed after the release so it beats the agent's
+    # own farewell, which prints during `start`. offgrid pointed the agent at
+    # offgrid's own config dir, so the agent's own resume hint reads the default
+    # one and finds nothing; this is the way back that works. A spawn that never
+    # happened wrote no session, so there is nothing to get back into — and only
+    # that, not a launched run that exited 127 on its own.
+    if launched:
+        tell(f"\n{agent.conversations.resume_with}")
 
     return code
