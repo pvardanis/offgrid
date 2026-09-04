@@ -18,7 +18,7 @@ Run a coding agent against a local model, tuned to the machine it runs on.
 
 ![The offgrid TUI](docs/assets/tui.svg)
 
-offgrid starts a coding **agent** against a model held in memory by a
+`offgrid` starts a coding **agent** against a model held in memory by a
 **runtime** on this machine. It holds the model you asked for, sizes the
 agent's context to the window the runtime is actually serving, and lets the
 model go when the agent exits. No prompt, code or file leaves the machine.
@@ -30,6 +30,7 @@ the [TUI](#tui) above.
 
 - [TUI](#tui)
 - [Quick start](#quick-start)
+- [The profile](#the-profile)
 - [Concepts](#concepts)
 - [Why](#why)
 - [Requirements](#requirements)
@@ -38,17 +39,16 @@ the [TUI](#tui) above.
 - [What a run does](#what-a-run-does)
 - [Runtimes](#runtimes)
 - [Agents](#agents)
-- [The profile](#the-profile)
 - [What offgrid does not do](#what-offgrid-does-not-do)
-- [Measured on an M1 Max](#measured-on-an-m1-max)
 - [Development](#development)
 
 ## TUI
 
 The full-screen picker above is what bare `offgrid` opens. On it you see what
 fits this machine, pair a runtime, an agent and a model, and start the run,
-without touching the profile by hand. Where there is no terminal to draw on — a
-script, a pipe — it prints the [command table](#commands) instead.
+without touching the profile by hand. Run from a real terminal, `offgrid` opens
+this picker; run from a script or a pipe — where there is no terminal to draw a
+full screen on — it prints the [command table](#commands) instead.
 
 The keys match Claude Code's model picker, so the reflex carries over:
 
@@ -65,71 +65,144 @@ The keys match Claude Code's model picker, so the reflex carries over:
 Only `enter` writes. Browsing the lists, editing a window, cycling the theme and
 opening the recommendations all leave the profile alone until a run starts.
 
+## Quick start
+
+With a [runtime](#runtimes) and an [agent](#agents) installed, the runtime's
+local server running, and a model downloaded, run `offgrid` from a clone (see
+[Install](#install)):
+
+```sh
+uv run offgrid
+```
+
+The [TUI](#tui) sizes the machine, shows what fits, lets you pick a model, and
+starts the agent — everything on one screen. It also shows what other tools do
+not: the window a model would be *served* at, before the run, and a warning that
+swapping models costs a load and takes the held model's cached prefix with it.
+
+`uv run offgrid` needs no activated virtualenv. A packaged install you run as
+plain `offgrid`, with nothing to clone, is planned.
+
+For a script, or the steps one at a time, each is a command:
+
+- `offgrid setup` — measure the machine and write a profile
+- `offgrid recommend` — name the published models that fit
+- `offgrid doctor` — say what a run would find, without paying for a load
+- `offgrid run` — start the agent
+
+[Commands](#commands) has what each prints and the flags it takes.
+
+## The profile
+
+`~/.offgrid/profile.yaml` is what the [TUI](#tui) writes when you pick a pairing
+and press `enter`, and what the next run reads. It is hand-editable, but the
+picker means you rarely need to reach for it:
+
+```yaml
+runtime:
+  name: lmstudio
+  host: 127.0.0.1:1234
+agent:
+  name: claude-code
+model:
+  identifier: qwen/qwen3.6-35b-a3b
+  context_window: 32768
+```
+
+| Key | Meaning |
+|---|---|
+| `runtime.name`, `agent.name` | which adapters to use. Both are required: a name `offgrid` has no adapter for is refused rather than recorded, and a section naming none is refused rather than guessed at |
+| `runtime.host` | where the runtime listens. It sits under the runtime because that is the only thing it means anything to |
+| `model.identifier` | what `run` holds when the command line names nothing. Left out, it uses whatever the runtime is already holding |
+| `model.context_window` | what `run` holds it at when the command line names no window. Left out, the runtime serves whatever it last remembered |
+
+One section per adapter, so an adapter with settings of its own has somewhere
+to put them and the file says what belongs to what. `model` is a section too,
+and belongs to neither adapter: the agent sets the floor a window has to clear,
+the runtime honours the number, and the model states the ceiling. It is the one
+section you can leave out altogether, and so is either key inside it — `setup`
+writes both keys with nothing under them for you to fill in.
+
+A typo is an error rather than a shrug: `modle:` is reported, not read as "no
+model named", and so is `context_windwo:` inside the section. So is a key the
+adapter a section names does not read — that one is caught a moment later, when
+the command binds the adapter, and the message names the section as well as the
+key.
+
+A profile in either older shape — `host:` beside `runtime:`, or a `model:` that
+names a model instead of holding a section — is refused, with the shape to
+write in the message. There is no migration.
+
+Nothing measured is kept here. `setup` reads the chip, the memory and the GPU
+limit and prints them; every command that needs them reads them again, so a
+raised limit counts from the moment it is raised.
+
 ## Concepts
 
 Five words carry the whole design, and the modules are named after them.
 
 - **runtime** — the server that holds models in memory and answers requests.
-  One adapter per runtime, in `runtimes/`.
-- **agent** — the coding tool being launched. One adapter per agent, in
-  `agents/`.
+  One adapter per supported runtime, in `runtimes/`.
+- **agent** — the coding tool being launched. One adapter per supported agent,
+  in `agents/`.
 - **dialect** — the HTTP API shape a runtime serves and an agent expects,
   `anthropic` or `openai`. A runtime serves a set of them and an agent speaks
   one, and the two can be paired only when the agent's is among the runtime's.
-  offgrid refuses the pair rather than translating between them.
+  `offgrid` refuses the pair rather than translating between them.
 - **held**, **resident** — a model the runtime currently has in memory. A held
   model answers immediately; anything else costs a load first.
-- **profile** — what offgrid remembers between runs: one section per adapter,
+- **profile** — what `offgrid` remembers between runs: one section per adapter,
   saying which runtime and agent to use and whatever each of them reads, plus
   which model to run.
 
 ## Why
 
-Pointing an agent at a local server is a dozen environment variables, and
-getting one wrong fails quietly rather than loudly.
+Three things `offgrid` does that pointing an agent at a local server yourself
+does not.
 
-- **Context.** A model's catalogue entry states its *ceiling* until it is
-  loaded, and the window it is *served* at afterwards. Size the agent from the
-  ceiling and it never compacts — the runtime truncates the prefix instead,
-  which is the failure compacting exists to prevent.
-- **Memory.** One machine, one pool. A model left loaded is memory nothing else
-  can use, and a runtime's own tooling will happily report success having freed
-  nothing.
+**It does the plumbing.** Aiming an agent at a local runtime is a dozen
+environment variables, and getting one wrong fails quietly rather than loudly.
+`offgrid` sets them, and says what it set.
+
+- **Context.** Before a model is loaded, the runtime's catalogue lists the most
+  context it *could* serve — its ceiling. Once the model is loaded, the same
+  entry reports the window it was actually *served* at, which is often smaller.
+  Size the agent from the ceiling and it never compacts — the runtime truncates
+  the prefix instead, the failure compacting exists to prevent. `offgrid` sizes
+  it from what is served.
 - **Naming.** A runtime asked for a model it does not have may answer anyway,
   with whatever it does hold — so a typo runs the wrong model without saying so.
 - **Search.** An agent's web search may execute on its vendor's servers. Against
   a local model there is nothing to run it, and what comes back is invented
   rather than an error.
 
-offgrid does that plumbing, says what it did, and gets out of the way.
+**It picks models for the machine.** `offgrid recommend` takes a published
+coding leaderboard and keeps only the models this Mac can hold, ranked and shown
+at each width they fit at.
+
+**It keeps the work local.** No prompt, code or file leaves the machine on a
+run — everything the agent sends goes to a model in memory on this Mac.
+
+`offgrid` does that plumbing, says what it did, and gets out of the way.
 
 ## Requirements
 
 - macOS on Apple Silicon
 - Python 3.13+
-- A [supported runtime](#runtimes), with its local server running
-- A [supported agent](#agents)
-- A model downloaded in the runtime
+- A [supported runtime](#runtimes) installed, with its local server running
+- A [supported agent](#agents) installed and on your `PATH`
+- A model already downloaded in that runtime
 
 ## Install
 
-offgrid is installed with [uv](https://github.com/astral-sh/uv), which is one
+`offgrid` is installed with [uv](https://github.com/astral-sh/uv), which is one
 command if you do not have it:
 
 ```sh
 curl -LsSf https://astral.sh/uv/install.sh | sh     # or: brew install uv
 ```
 
-Then:
-
-```sh
-uv tool install git+https://github.com/pvardanis/offgrid
-```
-
-That puts `offgrid` on your `PATH`. `uv tool upgrade offgrid` later, `uv tool
-uninstall offgrid` to remove it.
-
-From a clone, for development:
+Then clone and install:
 
 ```sh
 git clone https://github.com/pvardanis/offgrid
@@ -137,15 +210,10 @@ cd offgrid
 just install            # uv sync, and the checks on every commit
 ```
 
-That puts the virtualenv at `.venv` in the clone, with offgrid and the dev
-tools in it. `uv run <command>` uses it without activating anything, which is
-what the recipes do. Activate it when you want the tools on your `PATH`
-directly — for a shell session, or to point an editor at the interpreter:
-
-```sh
-source .venv/bin/activate    # .venv/bin/activate.fish for fish
-offgrid --help               # and deactivate when done
-```
+That puts the virtualenv at `.venv` in the clone, with `offgrid` and the dev
+tools in it. `uv run offgrid` uses it without activating anything, which is what
+[Quick start](#quick-start) does. A packaged install you can run as plain
+`offgrid` from anywhere is planned.
 
 The recipes need [just](https://github.com/casey/just):
 
@@ -156,28 +224,6 @@ uvx --from rust-just just --list     # or run it without installing anything
 
 Without it, `uv sync && uv run prek install` does the same thing — every recipe
 is one line, so the file reads as a list of commands.
-
-## Quick start
-
-With a [runtime](#runtimes) running and a model downloaded, run offgrid:
-
-```sh
-offgrid
-```
-
-The [TUI](#tui) sizes the machine, shows what fits, lets you pick a model, and
-starts the agent — everything on one screen. It also shows what other tools do
-not: the window a model would be *served* at, before the run, and a warning that
-swapping models costs a load and takes the held model's cached prefix with it.
-
-For a script, or the steps one at a time, each is a command:
-
-- `offgrid setup` — measure the machine and write a profile
-- `offgrid recommend` — name the published models that fit
-- `offgrid doctor` — say what a run would find, without paying for a load
-- `offgrid run` — start the agent
-
-[Commands](#commands) has what each prints and the flags it takes.
 
 ## Commands
 
@@ -206,7 +252,7 @@ downloaded, and nothing is written.
 | Code | Meaning |
 |---|---|
 | *n* | whatever the agent exited with |
-| `1` | offgrid refused — no profile, no runtime, unknown model, unusable settings — or `doctor` printed its report and the runtime is holding nothing |
+| `1` | `offgrid` refused — no profile, no runtime, unknown model, unusable settings — or `doctor` printed its report and the runtime is holding nothing |
 | `127` | the agent could not be started |
 | `130` | interrupted |
 | `128+n` | the agent was killed by signal *n* |
@@ -274,7 +320,7 @@ Then, in order:
 1. Reads the profile, and refuses early when the runtime and the agent speak
    different dialects — before spending a minute on a load.
 2. Writes the agent's profile directory if it is not there, and refuses to
-   start when the settings there would undo a guarantee offgrid makes.
+   start when the settings there would undo a guarantee `offgrid` makes.
 3. Refuses a window smaller than the agent can start in or larger than the
    model's ceiling, while the load is still something to be spent rather than
    something already spent.
@@ -301,7 +347,7 @@ Then, in order:
 
 Adding one is a module in `runtimes/` exposing a config class and a
 `connect(config)`, and one line each in the two registries beside it. The
-config declares which keys the runtime section may carry, and offgrid refuses
+config declares which keys the runtime section may carry, and `offgrid` refuses
 the rest on the adapter's behalf. Its name is a property of the class rather
 than a field, so a config cannot claim to be an adapter it is not. What that answers with satisfies `Runtime`: it
 reports the dialects it serves and what it can be asked to do, lists what it
@@ -326,7 +372,7 @@ What a runtime owes to count as serving a dialect fully is
 <br>
 
 Reached over HTTP at the `host` in your profile, and nowhere else: nothing
-offgrid does needs LM Studio's `lms` command on your `PATH`. That wants
+`offgrid` does needs LM Studio's `lms` command on your `PATH`. That wants
 **LM Studio 0.4.0 or newer**, which is where the unload endpoint arrived — an
 older one answers the release with a 404 at the end of a run, after the agent
 has finished. It serves Anthropic's `/v1/messages` alongside OpenAI's, so an
@@ -373,7 +419,7 @@ section carries, then report a dialect, build a launch — an environment and an
 argument list — and prepare whatever profile it reads. The config carries where
 the runtime listens, filled from the runtime's own section, so an adapter has
 it both before it writes anything and while it builds a launch. What it writes
-is what offgrid never revises; anything derived from the profile belongs in the
+is what `offgrid` never revises; anything derived from the profile belongs in the
 launch instead, which is rebuilt every run rather than going stale in a file
 nothing rewrites. Where its files live is derived from its name, so nobody
 writes that down.
@@ -406,17 +452,17 @@ identical between turns.
 The compaction window is set only at 100,000 and above, because Claude Code
 raises anything smaller to 100,000 — asking for 32,768 gets 100,000 back, and
 the agent then runs to 100k before compacting while the runtime truncates at
-32k. Below that, and when the runtime states no window at all, offgrid sets
+32k. Below that, and when the runtime states no window at all, `offgrid` sets
 none, takes any you exported back out of what the agent inherits, and says so
 before the run: `/compact` is the recovery there.
 
 **Its profile lives in `~/.offgrid/claude-code/`**, separate from your own
 `~/.claude`, which is what keeps your plugins, servers and hooks out of a
-prefix you pay to prefill on every cold request. offgrid writes two files there
+prefix you pay to prefill on every cold request. `offgrid` writes two files there
 and then leaves them alone, since both are meant to be edited:
 
 - `settings.json` — denies `WebSearch`, loads no plugins or project MCP
-  servers. offgrid refuses to start if the deny has been removed.
+  servers. `offgrid` refuses to start if the deny has been removed.
 - `CLAUDE.md` — tells the agent that search is unavailable and why, that
   `WebFetch` works when a URL is known, and to say what it could not look up
   rather than answer from memory.
@@ -454,22 +500,22 @@ launch is three variables pointing OpenCode at the JSON:
 
 The two halves deep-merge, and so does your own configuration under your home:
 your provider entry, your keys and your timeouts come through a run untouched,
-and only a key offgrid names is overridden.
+and only a key `offgrid` names is overridden.
 
 **Its file lives in `~/.offgrid/opencode/opencode.json`**, and holds only what
-offgrid never revises — the provider entry's package and label, the published
+`offgrid` never revises — the provider entry's package and label, the published
 schema so an editor can check your edits, and `share: disabled`, which is what
-keeps a session transcript off OpenCode's servers. offgrid writes it if it is
+keeps a session transcript off OpenCode's servers. `offgrid` writes it if it is
 not there and then leaves it alone, because it is meant to be edited.
 
-**And it reads `share` back before every run.** A file offgrid has left alone
+**And it reads `share` back before every run.** A file `offgrid` has left alone
 is a file nothing else will correct, so an edit that turns sharing on — or one
 that leaves the key out, which the published schema gives no default for and
 opencode 1.18.23 fills in with nothing — stops the run, naming the file and
 what to set. `offgrid doctor` says the same thing without costing a load.
 
 Everything else is rebuilt every run and carried in the launch, so nothing
-offgrid derives can go stale in a file: a moved runtime, a different model or a
+`offgrid` derives can go stale in a file: a moved runtime, a different model or a
 different window are right on the next run without anything being rewritten.
 The window is what the runtime is actually serving, so OpenCode compacts before
 the runtime truncates. Where the runtime states no window, no limit is sent at
@@ -482,87 +528,26 @@ and it talks to whatever provider it is pointed at rather than to one vendor.
 **A project configuration is not read for the length of a run** — an
 `opencode.json`, a `.opencode` directory and instructions such as `AGENTS.md`,
 in the directory you started from and every directory above it up to the
-project root. offgrid cannot
+project root. `offgrid` cannot
 outrank the providers, agents and permissions one of those adds, so it runs
 with none of them, and says so before the run rather than leaving you to meet
 it mid-session. Start OpenCode yourself to use what a project states.
 
 </details>
 
-## The profile
-
-`~/.offgrid/profile.yaml`, hand-editable:
-
-```yaml
-runtime:
-  name: lmstudio
-  host: 127.0.0.1:1234
-agent:
-  name: claude-code
-model:
-  identifier: qwen/qwen3.6-35b-a3b
-  context_window: 32768
-```
-
-| Key | Meaning |
-|---|---|
-| `runtime.name`, `agent.name` | which adapters to use. Both are required: a name offgrid has no adapter for is refused rather than recorded, and a section naming none is refused rather than guessed at |
-| `runtime.host` | where the runtime listens. It sits under the runtime because that is the only thing it means anything to |
-| `model.identifier` | what `run` holds when the command line names nothing. Left out, it uses whatever the runtime is already holding |
-| `model.context_window` | what `run` holds it at when the command line names no window. Left out, the runtime serves whatever it last remembered |
-
-One section per adapter, so an adapter with settings of its own has somewhere
-to put them and the file says what belongs to what. `model` is a section too,
-and belongs to neither adapter: the agent sets the floor a window has to clear,
-the runtime honours the number, and the model states the ceiling. It is the one
-section you can leave out altogether, and so is either key inside it — `setup`
-writes both keys with nothing under them for you to fill in.
-
-A typo is an error rather than a shrug: `modle:` is reported, not read as "no
-model named", and so is `context_windwo:` inside the section. So is a key the
-adapter a section names does not read — that one is caught a moment later, when
-the command binds the adapter, and the message names the section as well as the
-key.
-
-A profile in either older shape — `host:` beside `runtime:`, or a `model:` that
-names a model instead of holding a section — is refused, with the shape to
-write in the message. There is no migration.
-
-Nothing measured is kept here. `setup` reads the chip, the memory and the GPU
-limit and prints them; every command that needs them reads them again, so a
-raised limit counts from the moment it is raised.
-
 ## What offgrid does not do
 
 - **Choose a model.** `recommend` names the published models this machine can
   hold. Which of them suits your work, and downloading it, stay yours.
 - **Search the web.** See [Agents](#agents). A replacement is planned.
-- **Enforce privacy.** Nothing stops you running a hosted agent on private
-  work. Whoever wants a local model runs `offgrid`.
+- **Enforce privacy — yet.** Today nothing stops you pointing a hosted agent at
+  private work; `offgrid` keeps a run local but does not police the machine. A
+  verified private mode is the long-term goal.
 - **Fall back to a hosted model.** When the local model cannot do the job, that
   is the answer.
 - **Translate between dialects.** A runtime and an agent that disagree are
   refused, with what to do about it.
 - **Run anywhere else.** macOS on Apple Silicon, and one runtime adapter so far.
-
-## Measured on an M1 Max
-
-64GB:
-
-| Model | Architecture | On disk | Decode |
-|---|---|---|---|
-| `qwen/qwen3.6-35b-a3b` | MoE, 3B active/token | 35G (8-bit) | 41.9 tok/s |
-| `prism-ml/bonsai-27b` | dense 27B | 8.0G (2-bit) | 6.9 tok/s |
-
-Decode tracks *active parameters*, not file size — 2-bit shrinks memory without
-shrinking the matmul, so the 8GB model is six times slower than the 35GB one.
-Pick by architecture.
-
-Prefill runs at ~384 tok/s cold, and prefix caching is worth protecting: a
-repeated 22k-token prefix dropped from 57.3s to 1.7s. That is why `run` says
-out loud when a swap is about to throw one away. The runtime answers one
-request at a time, so parallel subagents queue *and* evict each other's prefix
-— fan-out is a net loss locally.
 
 ## Development
 
@@ -579,7 +564,7 @@ check at a time, and `mutate` for a run that writes no `.pyc` files. Each one
 names a hook rather than a tool, so the recipes cannot disagree with
 `.pre-commit-config.yaml` about what a check is.
 
-The recipes are for working on offgrid. Using it is `offgrid setup`, `offgrid
+The recipes are for working on `offgrid`. Using it is `offgrid setup`, `offgrid
 recommend`, `offgrid doctor` and `offgrid run`, and nothing here wraps those.
 
 The hooks run on every commit once `just install` has been run. CI runs the
@@ -601,6 +586,7 @@ When mutation-testing by hand, set `PYTHONDONTWRITEBYTECODE=1` — edits made
 within the same second as a restore leave stale `.pyc` files, and the suite
 then tests code that is no longer on disk.
 
-Commits follow [Conventional Commits](https://www.conventionalcommits.org/)
-with the modules as scopes. What was decided and why lives in
-`docs/decisions.md`; the domain language in `CONTEXT.md`.
+Measurements from a real machine live in [`benchmarks/`](benchmarks/). Commits
+follow [Conventional Commits](https://www.conventionalcommits.org/) with the
+modules as scopes. What was decided and why lives in `docs/decisions.md`; the
+domain language in `CONTEXT.md`.
