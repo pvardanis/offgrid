@@ -785,6 +785,85 @@ def test_an_agent_that_is_there_but_not_executable_is_not_called_missing(
     assert "on PATH" not in result.stderr
 
 
+def test_run_says_the_way_back_on_a_normal_exit(here, monkeypatch):
+    # offgrid pointed Claude at its own config dir, so Claude's own parting
+    # `--resume` line reads the default dir and finds nothing. This last word
+    # is the one that works.
+    runner.invoke(app, ["setup"])
+    record_launch(monkeypatch)
+
+    result = runner.invoke(app, ["run"])
+
+    assert result.exit_code == 0
+    assert "offgrid run -- --resume" in result.stderr
+    # resume_with alone, not the measured provenance or the by-hand caveat that
+    # `.said` would append.
+    assert "started outside a run" not in result.stderr
+    assert "measured against" not in result.stderr
+    # The genuine last line, after the release, so it beats the agent's own.
+    assert result.stderr.strip().splitlines()[-1].startswith("`offgrid run -- --resume")
+    # Set off by a blank line, not crowded against what the run said before it.
+    assert "\n\n`offgrid run -- --resume" in result.stderr
+
+
+def test_run_says_the_way_back_on_a_non_zero_exit(here, monkeypatch):
+    # A crash still wrote a resumable session, and is exactly when a person
+    # wants back in.
+    runner.invoke(app, ["setup"])
+    record_launch(monkeypatch, code=1)
+
+    result = runner.invoke(app, ["run"])
+
+    assert result.exit_code == 1
+    assert "offgrid run -- --resume" in result.stderr
+
+
+def test_run_says_the_way_back_when_it_is_interrupted(here, monkeypatch):
+    # Ctrl-C left a resumable session behind too.
+    runner.invoke(app, ["setup"])
+
+    def interrupted(launch):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr("offgrid.cli.run.start", interrupted)
+
+    result = runner.invoke(app, ["run"])
+
+    assert result.exit_code == 130
+    assert "offgrid run -- --resume" in result.stderr
+
+
+def test_run_says_the_way_back_when_a_launched_agent_exits_127(here, monkeypatch):
+    # 127 is a real exit code too: an agent that ran and wrote a session can
+    # return it. Only a spawn that never happened stays silent, so a launched
+    # 127 still gets the way back.
+    runner.invoke(app, ["setup"])
+    record_launch(monkeypatch, code=127)
+
+    result = runner.invoke(app, ["run"])
+
+    assert result.exit_code == 127
+    assert "offgrid run -- --resume" in result.stderr
+
+
+def test_run_says_nothing_of_the_way_back_when_the_agent_never_started(
+    here, monkeypatch, runtime
+):
+    # Nothing ran and nothing was written, so there is no session to get back
+    # into.
+    runner.invoke(app, ["setup"])
+
+    def missing(launch):
+        raise FileNotFoundError(2, "No such file or directory", "claude")
+
+    monkeypatch.setattr("offgrid.cli.run.start", missing)
+
+    result = runner.invoke(app, ["run"])
+
+    assert result.exit_code == 127
+    assert "offgrid run -- --resume" not in result.stderr
+
+
 def test_a_runtime_that_will_not_let_go_is_reported_not_hidden(here, monkeypatch):
     runner.invoke(app, ["setup"])
     refuse_to_let_go(monkeypatch, "it would not go")
