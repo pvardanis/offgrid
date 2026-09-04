@@ -160,6 +160,8 @@ tui/               the layer, and the screen bare `offgrid` opens
                    of what a published list says fits, fetched once
   shell.py         where the screen's widgets sit: the ids they answer to and
                    the CSS that lays them out
+  window_edits.py  the windows a person set this session and the row the
+                   slider edits, kept beside the report
 ```
 
 **adapters**

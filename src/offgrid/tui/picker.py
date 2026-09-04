@@ -86,6 +86,7 @@ from offgrid.tui.shell import (
     STATUS,
 )
 from offgrid.tui.signal_view import SignalView
+from offgrid.tui.window_edits import WindowEdits
 
 type ReadWhatCouldBeRun = Callable[[], WhatCouldBeRun]
 type SaveWhatWasAssembled = Callable[[Profile], None]
@@ -204,8 +205,7 @@ class Picker(App[Departure | None]):
         self._describe_download_func = describe_download_func
         self._report: WhatCouldBeRun | None = None
         self._context_store: dict[str, int] = {}
-        self._session_windows: dict[str, int] = {}
-        self._editing_model: str | None = None
+        self._edits = WindowEdits()
         self._measurement: tuple[str, ...] = ()
         self._theme = DEFAULT_THEME
 
@@ -433,13 +433,13 @@ class Picker(App[Departure | None]):
         editor = ContextWindowEditor(
             identifier=identifier,
             current=get_requested_model_context(
-                report, self._context_store, identifier, edits=self._session_windows
+                report, self._context_store, identifier, edits=self._edits.windows
             ),
             floor=floor_for_agent(report, self._get_picked_agent()),
             ceiling=None if model is None else model.context_ceiling,
         )
 
-        self._editing_model = identifier
+        self._edits.begin(identifier)
 
         await self.mount(editor)
 
@@ -456,14 +456,13 @@ class Picker(App[Departure | None]):
 
         :param event: The window the editor settled on.
         """
-        identifier = self._editing_model
+        identifier = self._edits.commit(event.window)
 
         self._close_the_editor()
 
         if identifier is None:
             return
 
-        self._session_windows[identifier] = event.window
         self._redraw_the_row(identifier)
         self._say_what_would_run()
 
@@ -474,6 +473,7 @@ class Picker(App[Departure | None]):
 
         :param event: That the edit was abandoned.
         """
+        self._edits.cancel()
         self._close_the_editor()
 
     def _close_the_editor(self) -> None:
@@ -481,7 +481,6 @@ class Picker(App[Departure | None]):
         for editor in self.query(ContextWindowEditor):
             editor.remove()
 
-        self._editing_model = None
         self._get_list().focus()
 
     def _redraw_the_row(self, identifier: str) -> None:
@@ -501,7 +500,7 @@ class Picker(App[Departure | None]):
 
         self._get_list().replace_option_prompt(
             identifier,
-            describe_the_row(report, self._context_store, self._session_windows, model),
+            describe_the_row(report, self._context_store, self._edits.windows, model),
         )
 
     def _float_over_the_row(self, editor: ContextWindowEditor) -> None:
@@ -598,7 +597,7 @@ class Picker(App[Departure | None]):
         :param report: Everything that was read.
         """
         self._get_list().add_options(
-            model_options(report, self._context_store, self._session_windows)
+            model_options(report, self._context_store, self._edits.windows)
         )
         self._highlight_model(report)
 
@@ -713,7 +712,7 @@ class Picker(App[Departure | None]):
             self._context_store,
             agent=self._get_picked_agent(),
             model=self._get_highlighted_model(),
-            edits=self._session_windows,
+            edits=self._edits.windows,
         )
 
     def _say_whether_it_differs(self, report: WhatCouldBeRun, pairing: Pairing) -> None:
