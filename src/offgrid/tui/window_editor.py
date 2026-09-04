@@ -54,7 +54,7 @@ PAGE_STEP = 32768
 """How far a page key moves the handle, eight arrows in one press."""
 
 
-def fraction_of_value(value: int, floor: int, ceiling: int) -> float:
+def get_fraction_of_value(value: int, floor: int, ceiling: int) -> float:
     """Say how far along the track a window rests, from the left edge.
 
     :param value: The window to place, clamped into the range it is measured in.
@@ -71,7 +71,7 @@ def fraction_of_value(value: int, floor: int, ceiling: int) -> float:
     return clamp((value - floor) / (ceiling - floor), 0.0, 1.0)
 
 
-def value_at_fraction(fraction: float, floor: int, ceiling: int) -> int:
+def get_value_at_fraction(fraction: float, floor: int, ceiling: int) -> int:
     """Say which window rests a fraction along the track from the left edge.
 
     :param fraction: How far along the track, clamped to the track's own ends.
@@ -85,7 +85,7 @@ def value_at_fraction(fraction: float, floor: int, ceiling: int) -> int:
     return floor + round(settled * (ceiling - floor))
 
 
-def step_value(value: int, delta: int, floor: int, ceiling: int) -> int:
+def get_step_value(value: int, delta: int, floor: int, ceiling: int) -> int:
     """Move a window by a key's step, held inside the track's own ends.
 
     :param value: The window the handle rests on now.
@@ -170,7 +170,7 @@ class WindowTrack(Widget):
         :return: The bar as a line of text, the handle a step within it.
         """
         width = max(self.size.width, 1)
-        fraction = fraction_of_value(self.value, self._floor, self._ceiling)
+        fraction = get_fraction_of_value(self.value, self._floor, self._ceiling)
         handle = round(fraction * (width - 1))
 
         bar = self.get_component_rich_style("window-track--bar")
@@ -208,7 +208,7 @@ class WindowTrack(Widget):
 
         event.stop()
 
-        moved = step_value(self.value, steps[event.key], self._floor, self._ceiling)
+        moved = get_step_value(self.value, steps[event.key], self._floor, self._ceiling)
 
         self._move_to(moved)
 
@@ -222,7 +222,7 @@ class WindowTrack(Widget):
         width = max(self.size.width, 1)
         fraction = x / (width - 1) if width > 1 else 0.0
 
-        return value_at_fraction(fraction, self._floor, self._ceiling)
+        return get_value_at_fraction(fraction, self._floor, self._ceiling)
 
     def on_mouse_down(self, event: events.MouseDown) -> None:
         """Take the pointer and rest the handle where it went down.
