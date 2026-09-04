@@ -61,18 +61,8 @@ from offgrid.shared.wording import REACHING_THE_NETWORK
 from offgrid.tui.dropdown import Dropdown
 from offgrid.tui.header import BUILD, CWD, THEME
 from offgrid.tui.picker import (
-    AGENTS,
     CHANGED,
-    COLUMNS,
     DEFAULT_THEME,
-    DETAIL,
-    FITS,
-    MODELS,
-    PANE,
-    REPORT,
-    RUNTIMES,
-    SIGNAL,
-    STATUS,
     UNCHANGED,
     WRITES,
     Departure,
@@ -86,6 +76,18 @@ from offgrid.tui.recommending import (
     RECOMMEND_CLOSED,
     RECOMMEND_OPEN,
     RECOMMENDING,
+)
+from offgrid.tui.shell import (
+    AGENTS,
+    COLUMNS,
+    DETAIL,
+    FITS,
+    MODELS,
+    PANE,
+    REPORT,
+    RUNTIMES,
+    SIGNAL,
+    STATUS,
 )
 from offgrid.tui.window_editor import (
     WINDOW_BOX,
