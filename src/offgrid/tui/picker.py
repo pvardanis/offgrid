@@ -84,7 +84,7 @@ from offgrid.tui.shell import (
     SIGNAL_PANE,
     STATUS,
 )
-from offgrid.tui.signal import SignalView
+from offgrid.tui.signal_view import SignalView
 from offgrid.tui.window_editor import WINDOW_EDITOR, WindowEditor
 
 type ReadWhatCouldBeRun = Callable[[], WhatCouldBeRun]
