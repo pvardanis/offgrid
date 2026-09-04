@@ -150,6 +150,8 @@ tui/               the layer, and the screen bare `offgrid` opens
                    window it would be requested at
   reckoning.py     the facts the picker shows but does not compute: which
                    downloaded model a row is, and a picked agent's floor
+  signal.py        the run panel's signal, each line painted by the verdict
+                   it carries
 ```
 
 **adapters**
