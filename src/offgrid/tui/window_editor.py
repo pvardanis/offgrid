@@ -98,7 +98,7 @@ def get_step_value(value: int, delta: int, floor: int, ceiling: int) -> int:
     return clamp(value + delta, floor, ceiling)
 
 
-class WindowTrack(Widget):
+class ContextWindowTrack(Widget):
     """A horizontal track a handle rides, from a floor to a ceiling.
 
     The arrow keys move the handle by a step and the page keys by a page, and a
@@ -118,16 +118,16 @@ class WindowTrack(Widget):
     }
 
     DEFAULT_CSS = """
-    WindowTrack {
+    ContextWindowTrack {
         width: 1fr;
         height: 1;
     }
 
-    WindowTrack .window-track--bar {
+    ContextWindowTrack .window-track--bar {
         color: $panel;
     }
 
-    WindowTrack .window-track--handle {
+    ContextWindowTrack .window-track--handle {
         color: $accent;
     }
     """
@@ -249,7 +249,7 @@ class WindowTrack(Widget):
         self.release_mouse()
 
 
-class WindowEditor(Vertical):
+class ContextWindowEditor(Vertical):
     """A slider from the floor to the ceiling, floated over the row it edits.
 
     Opens with the handle on the window the cell shows and the same window in a
@@ -261,7 +261,7 @@ class WindowEditor(Vertical):
     """
 
     DEFAULT_CSS = f"""
-    WindowEditor {{
+    ContextWindowEditor {{
         layer: overlay;
         width: 40;
         height: auto;
@@ -270,16 +270,16 @@ class WindowEditor(Vertical):
         padding: 0 1;
     }}
 
-    WindowEditor > Input {{
+    ContextWindowEditor > Input {{
         border: none;
         background: $surface;
     }}
 
-    WindowEditor > #{WINDOW_CAPTION} {{
+    ContextWindowEditor > #{WINDOW_CAPTION} {{
         color: $text-muted;
     }}
 
-    WindowEditor > #{WINDOW_MESSAGE} {{
+    ContextWindowEditor > #{WINDOW_MESSAGE} {{
         color: $text-error;
     }}
     """
@@ -337,7 +337,7 @@ class WindowEditor(Vertical):
         :yield: Each widget, top to bottom.
         """
         if self._ceiling is not None and self._current is not None:
-            yield WindowTrack(
+            yield ContextWindowTrack(
                 value=self._current, floor=self._floor or 0, ceiling=self._ceiling
             )
 
@@ -368,10 +368,10 @@ class WindowEditor(Vertical):
 
         self.query_one(f"#{WINDOW_MESSAGE}", Static).display = False
 
-        tracks = self.query(WindowTrack)
+        tracks = self.query(ContextWindowTrack)
         (tracks.first() if tracks else box).focus()
 
-    def on_window_track_moved(self, event: WindowTrack.Moved) -> None:
+    def on_context_window_track_moved(self, event: ContextWindowTrack.Moved) -> None:
         """Mirror a handle move into the box, without moving the handle back.
 
         Setting the box's value fires its own change, which the change handler
@@ -390,7 +390,7 @@ class WindowEditor(Vertical):
 
         :param event: What the box holds now.
         """
-        tracks = self.query(WindowTrack)
+        tracks = self.query(ContextWindowTrack)
 
         if not tracks:
             return
@@ -471,7 +471,7 @@ class WindowEditor(Vertical):
             return
 
         if event.key == "down":
-            tracks = self.query(WindowTrack)
+            tracks = self.query(ContextWindowTrack)
 
             if tracks and tracks.first().has_focus:
                 event.stop()
@@ -481,7 +481,7 @@ class WindowEditor(Vertical):
             return
 
         if event.key == "enter":
-            tracks = self.query(WindowTrack)
+            tracks = self.query(ContextWindowTrack)
 
             if tracks and tracks.first().has_focus:
                 event.stop()
