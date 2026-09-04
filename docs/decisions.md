@@ -2565,3 +2565,36 @@ they pre-commit an answer to #43's shape; deleted, each regrows where its real
 caller needs it, which will not be one place. The findings behind them stay in
 `docs/research/adapter-surfaces.md`, `docs/research/local-agent-latency.md` and
 issues #43 and #109; only the unread type is gone.
+
+## The way back is said on exit, not only before a run
+
+`resume_with` was a preview-time concept: `doctor`'s checkup and the pre-run
+cost report show it before a run, out of `agent.conversations`. But a run ends
+and the agent gets the last word. Claude Code prints its own farewell —
+`Resume this session with: claude --resume <id>` — and because offgrid pointed
+it at its own config dir (`CLAUDE_CONFIG_DIR`, which carries conversations as
+well as settings, per "A conversation started here is resumed here"), that bare
+`claude --resume` reads the default dir, where the session is not. offgrid moved
+the ground, so it owns naming the way back.
+
+**`run` prints `resume_with` as its genuine last line, after `let_go`.** offgrid
+cannot suppress a subprocess's stdout, but a line printed after `start` returns
+beats a farewell that printed during it. The same line serves both agents
+agnostically: for Claude Code it counters a wrong hint, for OpenCode — which
+prints none of its own — it supplies a missing one. No `claude` shim: that would
+ship a binary on `PATH` and break bare `claude`.
+
+**Every exit except never-launched.** A crash or Ctrl-C still wrote a resumable
+session and is exactly when a person wants back in, so a non-zero and a `130`
+both print it. Only the spawn that never happened — the `OSError` from
+`start`, where the process never ran and nothing was written — stays silent;
+there is no session to get back into. The guard is a `launched` flag set false
+in that one handler, not the exit code: `start` returns the agent's own status,
+and `127` is one a launched run can return on its own, having written a session
+whose way back is still owed. No transcript stat either: a started session is a
+written one, and an empty one the picker handles.
+
+**`resume_with` only, not `kept_in` or `measured`.** The path and the version
+provenance are preview-time detail a person reads once; the way back is what
+they act on when they leave. It is already whole prose — the picker form and the
+by-id form — so the exit path reuses it rather than growing machinery.
