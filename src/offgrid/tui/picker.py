@@ -85,7 +85,7 @@ from offgrid.tui.shell import (
     STATUS,
 )
 from offgrid.tui.signal_view import SignalView
-from offgrid.tui.window_editor import WINDOW_EDITOR, WindowEditor
+from offgrid.tui.window_editor import WINDOW_EDITOR, ContextWindowEditor
 
 type ReadWhatCouldBeRun = Callable[[], WhatCouldBeRun]
 type SaveWhatWasAssembled = Callable[[Profile], None]
@@ -450,7 +450,7 @@ class Picker(App[Departure | None]):
 
         model = find_downloaded_model(report, identifier)
 
-        editor = WindowEditor(
+        editor = ContextWindowEditor(
             identifier=identifier,
             current=get_requested_model_context(
                 report, self._context_store, identifier, edits=self._session_windows
@@ -465,7 +465,9 @@ class Picker(App[Departure | None]):
 
         self._float_over_the_row(editor)
 
-    def on_window_editor_committed(self, event: WindowEditor.Committed) -> None:
+    def on_context_window_editor_committed(
+        self, event: ContextWindowEditor.Committed
+    ) -> None:
         """Keep the picked window in memory, and redraw the row to show it.
 
         The window is kept per model for the session, so arrowing away and
@@ -485,7 +487,9 @@ class Picker(App[Departure | None]):
         self._redraw_the_row(identifier)
         self._say_what_would_run()
 
-    def on_window_editor_cancelled(self, event: WindowEditor.Cancelled) -> None:
+    def on_context_window_editor_cancelled(
+        self, event: ContextWindowEditor.Cancelled
+    ) -> None:
         """Drop the slider, leaving the row on the window it already showed.
 
         :param event: That the edit was abandoned.
@@ -494,7 +498,7 @@ class Picker(App[Departure | None]):
 
     def _close_the_editor(self) -> None:
         """Take the slider off the screen and give the models list the keys."""
-        for editor in self.query(WindowEditor):
+        for editor in self.query(ContextWindowEditor):
             editor.remove()
 
         self._editing_model = None
@@ -520,7 +524,7 @@ class Picker(App[Departure | None]):
             describe_the_row(report, self._context_store, self._session_windows, model),
         )
 
-    def _float_over_the_row(self, editor: WindowEditor) -> None:
+    def _float_over_the_row(self, editor: ContextWindowEditor) -> None:
         """Place the slider over the highlighted row's `context` cell.
 
         :param editor: The slider to place.

@@ -94,7 +94,7 @@ from offgrid.tui.window_editor import (
     WINDOW_CAPTION,
     WINDOW_EDITOR,
     WINDOW_MESSAGE,
-    WindowTrack,
+    ContextWindowTrack,
 )
 from tests.commands import MACHINE
 from tests.doubles import serve_get
@@ -225,7 +225,7 @@ def _read_the_window_editor(
     if not picker.query(f"#{WINDOW_EDITOR}"):
         return False, None, "", "", ""
 
-    tracks = picker.query(WindowTrack)
+    tracks = picker.query(ContextWindowTrack)
     box = picker.query_one(f"#{WINDOW_BOX}", Input)
     caption = picker.query_one(f"#{WINDOW_CAPTION}", Static)
     message = picker.query_one(f"#{WINDOW_MESSAGE}", Static)
@@ -268,7 +268,7 @@ def drive(picker: Picker, *keys: str, size: tuple[int, int] = ROOMY) -> Driven:
                     # track's left edge is driven the way the arrows are: the
                     # left edge is the floor, the one column a click lands a known
                     # window on without reading how wide the track was laid out.
-                    await pilot.click(WindowTrack, offset=(0, 0))
+                    await pilot.click(ContextWindowTrack, offset=(0, 0))
                 else:
                     await pilot.press(key)
 
