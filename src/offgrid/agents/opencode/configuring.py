@@ -49,13 +49,17 @@ DATA_HOME = "XDG_DATA_HOME"
 # would put a store called `opencode` inside `opencode/`.
 STORE = "store"
 
-# What `opencode run --help` and `opencode session --help` offer at the version
-# below: `-c, --continue` takes up the last session, `-s, --session <id>` takes
-# up one by identifier, and `opencode session list` names what is there.
+# What `opencode --help` and `opencode session --help` offer at the version
+# below: `-c, --continue` takes up the last session and `-s, --session <id>`
+# one by identifier, both on the tui that the bare command starts, and
+# `opencode session list` names what is there. The flags are the top-level
+# command's, not `run`'s: `opencode run` is the one-shot path and refuses
+# without a message, so `run --continue` alone answers "You must provide a
+# message or a command" rather than opening the session.
 CONTINUE = "--continue"
 SESSION = "--session"
 LISTING = "session list"
-OFFERS_RESUMING = "opencode 1.18.23"
+OFFERS_RESUMING = "opencode 1.18.27"
 
 # What was measured of that store on the version below, and no more than it:
 # `session list` with `XDG_DATA_HOME` pointed at a directory nothing had written
@@ -67,10 +71,11 @@ OFFERS_RESUMING = "opencode 1.18.23"
 # because a run holds a model and lets it go again on its way out: looking a
 # session up would cost the load the session is being looked up to avoid.
 #
-# The two resuming flags were not measured, because measuring one means
-# generating against whatever it resolves to — the same reason `sharing.py`
-# leaves `--share` unmeasured. What would settle it is a session started under a
-# run and taken up again by identifier.
+# The two resuming flags are read off `opencode --help`, which is where they
+# sit — the top-level tui, not `run`. What is still unmeasured is a full round
+# trip: a session started under a run and taken up again by identifier, which
+# means generating against whatever it resolves to — the same reason
+# `sharing.py` leaves `--share` unmeasured.
 READS_THE_STORE = "opencode 1.18.23"
 
 # The rest of what a run leaves behind, which the variable above does not

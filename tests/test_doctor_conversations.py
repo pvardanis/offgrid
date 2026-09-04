@@ -58,4 +58,4 @@ def test_doctor_says_it_for_the_other_agent_too(here):
 
     assert result.exit_code == 0
     assert f"conversations\n  {here / 'opencode' / 'store'}\n" in result.stderr
-    assert "offgrid run -- run --continue" in result.stderr
+    assert "offgrid run -- --continue" in result.stderr

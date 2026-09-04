@@ -85,7 +85,7 @@ def test_run_says_the_way_back_on_exit(here, monkeypatch):
     result = runner.invoke(app, ["run"])
 
     assert result.exit_code == 0
-    assert "offgrid run -- run --continue" in result.stderr
+    assert "offgrid run -- --continue" in result.stderr
 
 
 def test_run_hands_the_rest_of_the_line_to_opencode(here, monkeypatch):
