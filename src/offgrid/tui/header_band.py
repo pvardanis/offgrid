@@ -32,7 +32,7 @@ BANNER_ROWS = (
 """The emboss block spelling offgrid, fixed rather than cycled with the theme."""
 
 
-def theme_line(name: str) -> str:
+def get_theme_line(name: str) -> str:
     """Give the header's third line, naming the theme the screen is drawn in.
 
     Shared by the band's first draw and its restatement so the two cannot drift.
@@ -139,16 +139,16 @@ class HeaderBand(Vertical):
             with Vertical(id="meta"):
                 yield Static(f"@ {self._sha}", id=BUILD, markup=False)
                 yield Static(self._cwd, id=CWD, markup=False)
-                yield Static(theme_line(self._theme), id=THEME, markup=False)
+                yield Static(get_theme_line(self._theme), id=THEME, markup=False)
 
     def show_theme(self, name: str) -> None:
         """Name the theme the screen is now drawn in, on the band's third line.
 
         The theme is the one thing the header reports that changes while the
         screen is open — a person cycles it live — so the line is restated
-        rather than composed once, both draws going through `theme_line`.
+        rather than composed once, both draws going through `get_theme_line`.
 
         :param name: The theme now applied.
         """
         self._theme = name
-        self.query_one(f"#{THEME}", Static).update(theme_line(name))
+        self.query_one(f"#{THEME}", Static).update(get_theme_line(name))
