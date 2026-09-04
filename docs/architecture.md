@@ -352,7 +352,7 @@ sequenceDiagram
     R-->>H: Model, as served
     H-->>C: Model
     C->>C: refuse a served window below the floor
-    Note over C: the load is spent either way; what this saves is<br/>the agent starting and failing on its own terms
+    Note over C: the load is spent either way — what this saves is<br/>the agent starting and failing on its own terms
     C->>W: read_what_became_of_the_window(discarded_windows, request, model)
     W-->>C: what to say, and whether it is worth keeping
     C->>W: save_discarded_window_if_new(...)
