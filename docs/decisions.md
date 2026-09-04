@@ -2541,3 +2541,27 @@ unit tests pin, rather than a frame the seam forbids snapshotting.
 Where the runtime states no ceiling there is no right edge to draw, but a model
 downloaded into a runtime states how much context it allows, so in practice the
 ceiling is always a number and the track always has both ends.
+
+## The runtime port drops what nothing reads
+
+`Capabilities` came onto the port before a caller did — three facts a
+connection settled and offered, and no code ever asked for. "What building the
+runtime port settled" and "A runtime serves a set of dialects, not one" both
+describe it as carried; it is not any more.
+
+**Nothing read it, so it went.** Both adapters filled the struct and one test
+checked its type; the `run` and `hold_model` path the docstring said would
+consult it never did. A port member every adapter must answer and no caller
+reads is a shape guessed ahead of use, which "Ports wait until there is a second
+adapter to extract them from" is the standing argument against.
+
+**The three fields were two questions wearing one coat.** `counts_tokens` is
+whether a runtime serves a dialect *completely* — the token count LM Studio
+answers `200` to while logging that the endpoint is not there — which is #43's
+open question, not a fact about a connection. `release_can_be_commanded` and
+`manages_its_own_memory` are eviction semantics, `ensure_only` and `let_go`
+territory, unsettled against a live server and tracked in #109. Kept together
+they pre-commit an answer to #43's shape; deleted, each regrows where its real
+caller needs it, which will not be one place. The findings behind them stay in
+`docs/research/adapter-surfaces.md`, `docs/research/local-agent-latency.md` and
+issues #43 and #109; only the unread type is gone.
