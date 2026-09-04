@@ -28,8 +28,8 @@ log = logging.getLogger(__name__)
 class LMStudio:
     """A running copy of LM Studio, at the address it was reached on.
 
-    `dialects` are facts about LM Studio rather than about one connection to
-    it, so `serving.py` settles them and nobody passes them.
+    The `dialects` are facts about LM Studio rather than about one connection
+    to it, so `serving.py` settles them and nobody passes them.
 
     :param config: What the profile settled for this runtime.
     """
