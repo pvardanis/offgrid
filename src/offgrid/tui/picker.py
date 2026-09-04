@@ -13,6 +13,11 @@ guarantee rather than a refusal somebody has to remember to write.
 Browsing writes nothing. Only the key that ends the session writes, and only
 the one that saves: it hands the assembled profile to the writer it was given,
 and exits with what to run. The screen never holds a model itself.
+
+This is the screen's composition root: it wires the widgets, holds the shell's
+CSS and the ids they answer to, and routes the keys. It runs past 200 lines by
+that role rather than by holding a second idea — the panels that do (the signal,
+the recommendation, the window slider) are widgets of their own beside it.
 """
 
 from collections.abc import Callable
