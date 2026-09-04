@@ -154,6 +154,8 @@ tui/               the layer, and the screen bare `offgrid` opens
                    it carries
   recommending.py  the one control that reaches the network: the ranked table
                    of what a published list says fits, fetched once
+  shell.py         where the screen's widgets sit: the ids they answer to and
+                   the CSS that lays them out
 ```
 
 **adapters**
