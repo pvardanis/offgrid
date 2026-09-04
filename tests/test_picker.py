@@ -65,6 +65,7 @@ from offgrid.tui.context_window_editor import (
     WINDOW_MESSAGE,
 )
 from offgrid.tui.context_window_track import ContextWindowTrack
+from offgrid.tui.departure import Departure
 from offgrid.tui.dropdown import Dropdown
 from offgrid.tui.header_band import BUILD, CWD, THEME
 from offgrid.tui.picker import (
@@ -72,7 +73,6 @@ from offgrid.tui.picker import (
     DEFAULT_THEME,
     UNCHANGED,
     WRITES,
-    Departure,
     Picker,
 )
 from offgrid.tui.recommend_panel import (

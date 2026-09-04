@@ -141,6 +141,8 @@ cli/               the layer, a module per command, the four attached, and
 tui/               the layer, and the screen bare `offgrid` opens
   picker.py        the two dropdowns, the models list, the report beside
                    them, and the keys that leave it
+  departure.py     what the picker exits with: the assembled profile, and
+                   whether the key that writes was pressed
   header_band.py   the band above the lists: the logo, the git SHA, the
                    working directory a run inherits, and the theme
   choices.py       what each list offers out of what was read, greyed where

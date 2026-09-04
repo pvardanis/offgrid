@@ -22,7 +22,6 @@ past 200 lines by that role rather than by holding a second idea.
 """
 
 from collections.abc import Callable
-from dataclasses import dataclass
 from typing import ClassVar
 
 from textual.app import App, ComposeResult
@@ -60,6 +59,7 @@ from offgrid.tui.choices import (
     runtime_choices,
 )
 from offgrid.tui.context_window_editor import WINDOW_EDITOR, ContextWindowEditor
+from offgrid.tui.departure import Departure
 from offgrid.tui.dropdown import Dropdown
 from offgrid.tui.header_band import HeaderBand
 from offgrid.tui.reckoning import find_downloaded_model, floor_for_agent
@@ -91,26 +91,6 @@ type ReadWhatCouldBeRun = Callable[[], WhatCouldBeRun]
 type SaveWhatWasAssembled = Callable[[Profile], None]
 type ReadLastSavedWindows = Callable[[], dict[str, int]]
 type MeasureThisMachine = Callable[[], tuple[str, ...]]
-
-
-@dataclass(frozen=True)
-class Departure:
-    """What a person assembled, and how they chose to leave the screen with it.
-
-    Handed back to whoever opened the screen, which carries out the run in the
-    plain lines a run is read in. The screen never holds a model itself; this
-    is the wish it exits with.
-
-    :param profile: What was assembled — runtime, agent and model — as a run is
-        made from it.
-    :param saved: Whether the key that writes was the one pressed, which is what
-        the report of the save is about. A past fact rather than a request: the
-        file is already written by the time this is handed back, and this says
-        whether to say so.
-    """
-
-    profile: Profile
-    saved: bool
 
 
 WRITES = "enter runs and saves · s runs once"
