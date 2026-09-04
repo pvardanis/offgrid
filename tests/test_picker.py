@@ -59,7 +59,7 @@ from offgrid.shared.exceptions import LeaderboardUnavailableError, ProfileError
 from offgrid.shared.say import LOGGER
 from offgrid.shared.wording import REACHING_THE_NETWORK
 from offgrid.tui.dropdown import Dropdown
-from offgrid.tui.header import BUILD, CWD, INHERITS, THEME
+from offgrid.tui.header import BUILD, CWD, THEME
 from offgrid.tui.picker import (
     AGENTS,
     CHANGED,
@@ -1027,7 +1027,7 @@ def test_bare_offgrid_names_the_build_unknown_where_git_is_not_on_the_path(
     driven = drive(opened[0])
 
     assert result.exit_code == 0
-    assert "offgrid @ unknown" in driven.build
+    assert driven.build == "@ unknown"
     # The cwd is wired through the same callback: what the screen shows is the
     # directory a run would inherit, read off this process rather than faked.
     assert str(Path.cwd()) in driven.cwd
@@ -1052,7 +1052,7 @@ def test_bare_offgrid_names_the_build_unknown_where_git_answers_nothing(
     result = runner.invoke(app, [])
 
     assert result.exit_code == 0
-    assert "offgrid @ unknown" in drive(opened[0]).build
+    assert drive(opened[0]).build == "@ unknown"
 
 
 def test_the_build_reads_the_short_commit_git_names(monkeypatch):
@@ -1836,11 +1836,9 @@ def test_the_header_names_the_build_the_cwd_and_the_theme(here, monkeypatch):
 
     driven = screen(here)
 
-    assert BUILD_SHA in driven.build
-    assert WORKDIR in driven.cwd
-    # The cwd line says the directory is inherited, not one offgrid sets — the
-    # note a privacy-minded person reads to know offgrid does not move them.
-    assert INHERITS in driven.cwd
+    # The build line names the SHA alone, without repeating the logo's word.
+    assert driven.build == f"@ {BUILD_SHA}"
+    assert driven.cwd == WORKDIR
     assert DEFAULT_THEME in driven.theme
     # The default theme is applied, not only named, so the palette a person
     # meets is the one the third line reports.

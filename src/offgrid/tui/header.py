@@ -44,14 +44,6 @@ def theme_line(name: str) -> str:
     return f"theme: {name}"
 
 
-INHERITS = "the directory the agent inherits"
-"""What the cwd line says the working directory is: inherited, not set here.
-
-offgrid shows where a run would operate; the agent takes the shell's cwd, and
-offgrid does not set it. The note says so beside the path.
-"""
-
-
 class HeaderBand(Vertical):
     """The logo and three lines: the build, the working directory, the theme."""
 
@@ -102,8 +94,7 @@ class HeaderBand(Vertical):
     }
 
     HeaderBand #build {
-        color: $accent;
-        text-style: bold;
+        color: $text-muted;
         height: 1;
     }
 
@@ -146,8 +137,8 @@ class HeaderBand(Vertical):
                 yield Static(BANNER_ROWS[2], id="banner-3", markup=False)
 
             with Vertical(id="meta"):
-                yield Static(f"offgrid @ {self._sha}", id=BUILD, markup=False)
-                yield Static(f"{self._cwd}  ·  {INHERITS}", id=CWD, markup=False)
+                yield Static(f"@ {self._sha}", id=BUILD, markup=False)
+                yield Static(self._cwd, id=CWD, markup=False)
                 yield Static(theme_line(self._theme), id=THEME, markup=False)
 
     def show_theme(self, name: str) -> None:
