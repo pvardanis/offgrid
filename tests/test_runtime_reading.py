@@ -7,7 +7,6 @@ run refuse an impossible pairing before it pays for a load.
 
 import pytest
 
-from offgrid.domain.running.capabilities import Capabilities
 from offgrid.domain.running.dialect import Dialect
 from offgrid.domain.running.model import ModelRequest
 from offgrid.shared.exceptions import RuntimeUnreachableError
@@ -52,15 +51,14 @@ def test_a_runtime_that_cannot_be_reached_is_offgrids_error_naming_the_address(
 def test_what_a_connection_settled_is_readable_without_reaching_the_runtime(
     runtime: RuntimeUnderTest, monkeypatch: pytest.MonkeyPatch
 ):
-    # The dialect and the capabilities are settled when the connection opens,
-    # so reading them is free and cannot fail. `run` checks the dialect before
-    # anything is loaded, which is only worth doing if it costs nothing.
+    # The dialects are settled when the connection opens, so reading them is
+    # free and cannot fail. `run` checks the dialect before anything is loaded,
+    # which is only worth doing if it costs nothing.
     runtime.arrange_unreachable(monkeypatch)
     connection = runtime.connect()
 
     assert isinstance(connection.dialects, frozenset)
     assert all(isinstance(dialect, Dialect) for dialect in connection.dialects)
-    assert isinstance(connection.capabilities, Capabilities)
 
 
 def test_a_runtime_serves_at_least_one_dialect(

@@ -1,10 +1,10 @@
 """What offgrid needs of a runtime, and which ones there are.
 
 An adapter binds its own settings once and answers with something satisfying
-``Runtime``. Two of its members are attributes, settled when the connection
-opens; four are methods, which reach the server.
+``Runtime``. One member is an attribute, settled when the connection opens;
+four are methods, which reach the server.
 
-Why it is shaped this way, and why the attributes are properties, is in
+Why it is shaped this way, and why the attribute is a property, is in
 `docs/architecture.md` under "The runtime seam".
 """
 
@@ -15,7 +15,6 @@ from typing import Protocol
 
 from pydantic import BaseModel, ConfigDict, computed_field
 
-from offgrid.domain.running.capabilities import Capabilities
 from offgrid.domain.running.dialect import Dialect
 from offgrid.domain.running.model import Model, ModelRequest
 
@@ -74,14 +73,6 @@ class Runtime(Protocol):
         """
         ...
 
-    @property
-    def capabilities(self) -> Capabilities:
-        """What this connection can be asked to do.
-
-        :return: What was settled when it opened.
-        """
-        ...
-
     def read_catalogue(self) -> list[Model]:
         """List every model the runtime has, held or not.
 
@@ -120,9 +111,6 @@ class Runtime(Protocol):
         named one is already in memory: there is no load to refuse, and a
         warm model is not worth failing a run over. Where a load *would* be
         needed, it is refused rather than paid into a pool that is still full.
-
-        How long the state lasts is `capabilities` business: a runtime that
-        manages its own memory can undo it a second after this returns.
 
         :param model_request: The model that will answer, and the window to hold
             it at. Its identifier is settled by the time it reaches here: a
