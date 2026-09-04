@@ -26,7 +26,7 @@ flowchart TD
     subgraph domain ["domain/"]
         checkup["checkup.py · assembling.py · costing.py"]
         sizing["sizing/<br/>machine · fit · measuring · listing · leaderboard ·<br/>speed · quality · shortlist · recommendation"]
-        running["running/<br/>model · dialect · capabilities · leaving ·<br/>launch · runtime · agent · config_editing · answering"]
+        running["running/<br/>model · dialect · leaving ·<br/>launch · runtime · agent · config_editing · answering"]
         profile["profile/"]
     end
     subgraph shared ["shared/"]
@@ -238,7 +238,6 @@ domain/
     context_window.py  which windows a run cannot be held at, and the
                    numbers deciding that
     dialect.py     which API shapes can be paired
-    capabilities.py  what a runtime can be asked to do
     leaving.py     what a run could send off this machine, and
                    whether that stops it
     conversations.py  where an agent keeps what it wrote down of a
@@ -562,9 +561,9 @@ leaderboard.py     what offgrid needs of a published list
 ```
 
 `runtime.py` holds `Runtime`, `RuntimeConfig` and `RuntimeName`; `agent.py`
-holds `Agent`, `AgentConfig` and `AgentName`; `capabilities.py` beside them
-holds `Capabilities`; `leaderboard.py` holds `Leaderboard`, `Fetch`
-and `Parse`. The adapter packages hold implementations and their registry, and
+holds `Agent`, `AgentConfig` and `AgentName`; `leaderboard.py` holds
+`Leaderboard`, `Fetch` and `Parse`. The adapter packages hold implementations
+and their registry, and
 each concrete adapter becomes importable from exactly one place: that registry.
 
 Their own modules rather than declared inside the code that calls them. A
@@ -593,8 +592,6 @@ Connect = Callable[[RuntimeConfig], Runtime]
 class Runtime(Protocol):
     @property
     def dialects(self) -> frozenset[Dialect]: ...
-    @property
-    def capabilities(self) -> Capabilities: ...
 
     def read_catalogue(self) -> list[Model]: ...
     def read_held(self) -> list[Model]: ...
@@ -602,10 +599,10 @@ class Runtime(Protocol):
     def let_go(self, identifier: str) -> bool: ...
 ```
 
-Six members. No payload crosses it, and nothing about the order of calls is
+Five members. No payload crosses it, and nothing about the order of calls is
 knowledge the caller has to hold.
 
-**Two are attributes and four are actions, and the split says something.** An
+**One is an attribute and four are actions, and the split says something.** An
 attribute is settled when the connection opens: reading it is free and cannot
 fail. A method reaches the server, so it costs time and can raise. Naming a
 method for what it does — `read_held`, not `held` — is the difference between
@@ -619,16 +616,16 @@ registry, `MODEL_DOWNLOAD_INSTRUCTIONS`, keyed by `RuntimeName` alongside the
 other two, so `recommend` asks it from the name a profile holds without opening
 anything. `docs/decisions.md` has why.
 
-The two attributes are declared as properties because that is what makes them
+The `dialects` attribute is declared a property because that is what makes it
 read-only. Written `dialects: frozenset[Dialect]`, a protocol attribute is one
 a caller may also assign to, and what satisfies it here is frozen: `ty` refuses
-the pair with `protocol member capabilities is incompatible — the member does
+the pair with `protocol member dialects is incompatible — the member does
 not accept writes`. A caller reads `runtime.dialects` either way.
 
 A Protocol rather than typed callables because a connection carries state —
-the host, the capabilities probed when it opened — and because six related
-members read better named than positional. The leaderboard seam below carries
-neither and is shaped differently for it.
+the host, settled when it opened — and because five related members read
+better named than positional. The leaderboard seam below carries neither and
+is shaped differently for it.
 
 **`ensure_only` states an intent, not a mechanism.** The domain wants one model
 in memory on a machine with one pool; how a runtime reaches that differs
@@ -665,27 +662,6 @@ they are separate requests — Ollama answers `/api/tags` and `/api/ps`, oMLX
 answers `/v1/models` and `/v1/models/status`. LM Studio answers both from one
 payload, and now holds that payload behind the seam rather than handing it
 around.
-
-**`capabilities` hangs off the connection, not the module**, because one of the
-three varies by how the server was started: a `llama-server` in router mode
-exposes `POST /models/unload` and the same binary started with a model does
-not. LM Studio's are the same however it was started, so its connection states
-them without asking; one that varies costs a call at connect. Nothing reads
-them yet — #43 is where the first caller is.
-
-```python
-@dataclass(frozen=True)
-class Capabilities:
-    counts_tokens: bool
-    release_can_be_commanded: bool
-    manages_its_own_memory: bool
-```
-
-Three, because each changes what offgrid does rather than what it reports.
-Without `count_tokens` the agent counts context through the messages endpoint
-instead, which on this machine spends the one model being held. Without a
-commandable release, `ensure_only` cannot promise what its name says. A runtime
-that manages its own memory can undo the promise a second after it is made.
 
 ## The agent seam — built
 
@@ -1149,8 +1125,8 @@ things, each of which a runtime that is not LM Studio still owes:
   anything raised there replaces the outcome they were about to report.
 - An unreachable runtime arrives as `RuntimeUnreachableError` naming the
   address, whichever of the three asking methods was called, while `dialects`
-  and `capabilities` still read: they were settled when the connection opened,
-  which is what lets `run` check the dialect before paying for a load.
+  still reads: it was settled when the connection opened, which is what lets
+  `run` check the dialect before paying for a load.
 - A runtime serves at least one dialect. One serving none would pass every
   membership check by never matching, which is not a runtime.
 

@@ -4,7 +4,6 @@ import logging
 import time
 from dataclasses import dataclass, field
 
-from offgrid.domain.running.capabilities import Capabilities
 from offgrid.domain.running.dialect import Dialect
 from offgrid.domain.running.model import Model, ModelRequest
 from offgrid.runtimes.lmstudio.catalogue import (
@@ -15,7 +14,7 @@ from offgrid.runtimes.lmstudio.catalogue import (
 )
 from offgrid.runtimes.lmstudio.config import LMStudioConfig
 from offgrid.runtimes.lmstudio.holding import load_model, unload_model
-from offgrid.runtimes.lmstudio.serving import CAPABILITIES, DIALECTS
+from offgrid.runtimes.lmstudio.serving import DIALECTS
 from offgrid.shared.exceptions import (
     ModelNotHeldError,
     ModelUnavailableError,
@@ -29,15 +28,14 @@ log = logging.getLogger(__name__)
 class LMStudio:
     """A running copy of LM Studio, at the address it was reached on.
 
-    `dialects` and `capabilities` are facts about LM Studio rather than about
-    one connection to it, so `serving.py` settles them and nobody passes them.
+    `dialects` are facts about LM Studio rather than about one connection to
+    it, so `serving.py` settles them and nobody passes them.
 
     :param config: What the profile settled for this runtime.
     """
 
     config: LMStudioConfig
     dialects: frozenset[Dialect] = field(init=False, default=DIALECTS)
-    capabilities: Capabilities = field(init=False, default=CAPABILITIES)
 
     def read_catalogue(self) -> list[Model]:
         """List every model LM Studio has, held or not.

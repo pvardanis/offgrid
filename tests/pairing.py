@@ -7,24 +7,13 @@ reaches one of those says so rather than passing on an invented answer; a test
 wanting those answers stands LM Studio's own server in instead.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import pytest
 
-from offgrid.domain.running.capabilities import Capabilities
 from offgrid.domain.running.dialect import Dialect
 from offgrid.domain.running.model import Model, ModelRequest
 from offgrid.domain.running.runtime import Connect, RuntimeName
-
-# Its own answers rather than the written adapter's: a test that passed on
-# either would be proving nothing about which of them was asked. Nothing here
-# reads them — they are what satisfies the port beside the dialects a test
-# states.
-CAPABILITIES = Capabilities(
-    counts_tokens=True,
-    release_can_be_commanded=False,
-    manages_its_own_memory=False,
-)
 
 
 @dataclass(frozen=True)
@@ -48,7 +37,6 @@ class StandInRuntime:
     dialects: frozenset[Dialect]
     downloaded: tuple[Model, ...] | None = None
     holding: tuple[Model, ...] = ()
-    capabilities: Capabilities = field(init=False, default=CAPABILITIES)
 
     def read_catalogue(self) -> list[Model]:
         """Answer with the catalogue a test stated, or refuse having none.
