@@ -66,16 +66,9 @@ from offgrid.tui.picker import (
     COLUMNS,
     DEFAULT_THEME,
     DETAIL,
-    DOWNLOAD,
     FITS,
     MODELS,
     PANE,
-    RANKED,
-    RANKED_CAPTION,
-    RECOMMEND,
-    RECOMMEND_CLOSED,
-    RECOMMEND_OPEN,
-    RECOMMENDING,
     REPORT,
     RUNTIMES,
     SIGNAL,
@@ -84,6 +77,15 @@ from offgrid.tui.picker import (
     WRITES,
     Departure,
     Picker,
+)
+from offgrid.tui.recommending import (
+    DOWNLOAD,
+    RANKED,
+    RANKED_CAPTION,
+    RECOMMEND,
+    RECOMMEND_CLOSED,
+    RECOMMEND_OPEN,
+    RECOMMENDING,
 )
 from offgrid.tui.window_editor import (
     WINDOW_BOX,
