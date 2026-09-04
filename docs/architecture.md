@@ -148,6 +148,8 @@ tui/               the layer, and the screen bare `offgrid` opens
   dropdown.py      a Select that greys the choices a run cannot start
   window_editor.py the slider `e` floats over a model row to set the
                    window it would be requested at
+  reckoning.py     the facts the picker shows but does not compute: which
+                   downloaded model a row is, and a picked agent's floor
 ```
 
 **adapters**
