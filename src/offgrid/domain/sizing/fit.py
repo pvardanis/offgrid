@@ -48,6 +48,25 @@ def get_params_that_fit(machine: Machine, quantization_bits: int) -> float:
     return for_weights * BITS_PER_BYTE / quantization_bits
 
 
+def model_fits(machine: Machine, weight_bytes: int) -> bool:
+    """Say whether a model's weights leave room for the context cache.
+
+    The same budget `get_params_that_fit` measures a parameter count against,
+    read against a weight the runtime stated rather than one derived from a
+    name: what is left of the memory the GPU may use once the cache's share is
+    set aside. A model whose weights are exactly the budget fits — the cache
+    grows into the share already held back from it.
+
+    :param machine: The host the model would run on.
+    :param weight_bytes: What the runtime says the model weighs on disk.
+
+    :return: Whether it fits with room left for the cache.
+    """
+    for_weights = machine.usable_bytes * (1 - CACHE_SHARE)
+
+    return weight_bytes <= for_weights
+
+
 def get_sizes_that_fit(machine: Machine) -> list[tuple[int, float]]:
     """List what a machine holds at each width models are published at.
 
