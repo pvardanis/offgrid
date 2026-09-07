@@ -38,7 +38,7 @@ from offgrid.agents.claude_code.launching import CONTEXT_FLOOR
 from offgrid.cli import app, read_this_build, save_the_assembled_profile
 from offgrid.cli.binding import read_profile, read_what_could_be_run
 from offgrid.cli.run import launch_the_assembled_profile
-from offgrid.domain.assembling import IN_MEMORY
+from offgrid.domain.assembling import IN_MEMORY, WONT_FIT
 from offgrid.domain.profile import Theme, save_profile
 from offgrid.domain.running import discarded_windows, last_saved_windows
 from offgrid.domain.running.dialect import Dialect
@@ -49,7 +49,6 @@ from offgrid.domain.running.last_saved_windows import (
 )
 from offgrid.domain.running.model import Model
 from offgrid.domain.running.runtime import RuntimeName
-from offgrid.domain.sizing.measuring import describe_the_machine_and_how_to_fit_more
 from offgrid.domain.sizing.recommendation import (
     PANEL_COLUMNS,
     Recommendation,
@@ -58,6 +57,7 @@ from offgrid.domain.sizing.recommendation import (
 from offgrid.shared.exceptions import LeaderboardUnavailableError, ProfileError
 from offgrid.shared.say import LOGGER
 from offgrid.shared.wording import REACHING_THE_NETWORK
+from offgrid.tui.choices import NOTHING_THAT_FITS
 from offgrid.tui.context_window_editor import (
     WINDOW_BOX,
     WINDOW_CAPTION,
@@ -313,12 +313,15 @@ def drive(picker: Picker, *keys: str, size: tuple[int, int] = ROOMY) -> Driven:
     return asyncio.run(driven())
 
 
-def screen(here, *keys: str, size: tuple[int, int] = ROOMY) -> Driven:
+def screen(here, *keys: str, size: tuple[int, int] = ROOMY, measure=None) -> Driven:
     """Open the screen over the profile a test wrote.
 
     :param here: Where that profile is.
     :param keys: What to press, in order.
     :param size: How much terminal to give it.
+    :param measure: What this machine reads as, for a test about a model's
+        weight against it. ``None`` where the test is not about fit, which
+        leaves the machine unsized and every model reachable.
 
     :return: What the screen answered.
     """
@@ -331,6 +334,7 @@ def screen(here, *keys: str, size: tuple[int, int] = ROOMY) -> Driven:
             read_store_func=lambda: read_last_saved_windows(
                 last_saved_windows.DEFAULT_PATH
             ),
+            measure_func=measure,
         ),
         *keys,
         size=size,
@@ -356,7 +360,7 @@ def fresh_screen(here, *keys: str, size: tuple[int, int] = ROOMY) -> Driven:
             save_func=lambda profile: save_profile(profile, here / "profile.yaml"),
             sha=BUILD_SHA,
             cwd=WORKDIR,
-            measure_func=lambda: describe_the_machine_and_how_to_fit_more(MACHINE),
+            measure_func=lambda: MACHINE,
         ),
         *keys,
         size=size,
@@ -504,14 +508,15 @@ def test_a_model_row_says_whether_it_is_held_and_the_most_it_could_be_served_at(
         holding={RESIDENT: SERVED},
         cold={"google/gemma-4-e4b": 131072},
         ceilings={"google/gemma-4-e4b": 131072},
+        weights={RESIDENT: 20429364306, "google/gemma-4-e4b": 6861939888},
     )
     on_this_machine(monkeypatch, "claude")
 
     driven = screen(here)
     held, cold = driven.listed[MODELS]
 
-    assert held.split() == [RESIDENT, IN_MEMORY, "262144"]
-    assert cold.split() == ["google/gemma-4-e4b", "131072"]
+    assert held.split() == [RESIDENT, IN_MEMORY, "20.4GB", "262144"]
+    assert cold.split() == ["google/gemma-4-e4b", "6.9GB", "131072"]
 
 
 def test_the_model_list_names_the_column_its_bare_number_is(here, monkeypatch):
@@ -527,17 +532,20 @@ def test_the_model_list_names_the_column_its_bare_number_is(here, monkeypatch):
         holding={RESIDENT: SERVED},
         cold={"google/gemma-4-e4b": 131072},
         ceilings={"google/gemma-4-e4b": 131072},
+        weights={RESIDENT: 20429364306, "google/gemma-4-e4b": 6861939888},
     )
     on_this_machine(monkeypatch, "claude")
 
     driven = screen(here)
     held, cold = driven.listed[MODELS]
 
-    assert driven.columns.split() == ["model", "held", "context"]
+    assert driven.columns.split() == ["model", "held", "size", "context"]
     # The mark and the `held` heading are centred in one column, so they share a
     # centre rather than a left edge — a narrower mark starts a cell in from a
     # wider heading and reads as being under it all the same.
     assert centre_of(driven.columns, "held") == centre_of(held, IN_MEMORY)
+    assert starts_at(driven.columns, "size") == starts_at(held, "20.4GB")
+    assert starts_at(driven.columns, "size") == starts_at(cold, "6.9GB")
     assert starts_at(driven.columns, "context") == starts_at(held, "262144")
     assert starts_at(driven.columns, "context") == starts_at(cold, "131072")
 
@@ -839,6 +847,56 @@ def test_a_runtime_with_nothing_downloaded_says_so_and_where_to_go_next(
     assert not driven.reachable[MODELS]
     assert "the runtime at 127.0.0.1:1234 has nothing downloaded" in driven.signal
     assert "Run `offgrid recommend`" in driven.signal
+
+
+def test_a_model_too_large_for_this_machine_is_marked_and_cannot_be_reached(
+    here, monkeypatch
+):
+    # A model heavier than this machine can hold will not run, so it is greyed
+    # and stepped over the way an absent agent is: the cursor never lands on it,
+    # and why it cannot goes under it, the one place a person who cannot reach
+    # the row still reads it. Deleting the guard that greys it lets the cursor
+    # land there, and this fails.
+    runner.invoke(app, ["setup"])
+    answer_as_lm_studio(
+        monkeypatch,
+        holding={RESIDENT: SERVED},
+        cold={"google/gemma-4-e4b": 131072},
+        ceilings={"google/gemma-4-e4b": 131072},
+        weights={RESIDENT: 20429364306, "google/gemma-4-e4b": 90_000_000_000},
+    )
+    on_this_machine(monkeypatch, "claude")
+
+    driven = screen(here, measure=lambda: MACHINE)
+    marked = next(
+        row for row in driven.listed[MODELS] if row.startswith("google/gemma-4-e4b")
+    )
+
+    assert WONT_FIT in marked
+    assert "needs 90.0GB" in marked
+    assert not any(
+        row.startswith("google/gemma-4-e4b") for row in driven.reachable[MODELS]
+    )
+    assert str(driven.highlighted[MODELS]).startswith(RESIDENT)
+
+
+def test_where_nothing_downloaded_fits_the_machine_the_list_says_so(here, monkeypatch):
+    # Told apart from an empty catalogue: everything is downloaded and none of it
+    # runs, which is a different thing to fix and a different place to look. The
+    # one row left points at the ranked table rather than a search.
+    runner.invoke(app, ["setup"])
+    answer_as_lm_studio(
+        monkeypatch,
+        cold={"google/gemma-4-e4b": 131072},
+        ceilings={"google/gemma-4-e4b": 131072},
+        weights={"google/gemma-4-e4b": 90_000_000_000},
+    )
+    on_this_machine(monkeypatch, "claude")
+
+    driven = screen(here, measure=lambda: MACHINE)
+
+    assert driven.listed[MODELS] == [NOTHING_THAT_FITS]
+    assert not driven.reachable[MODELS]
 
 
 def test_a_runtime_with_nothing_downloaded_still_reports_the_model_named(
@@ -2088,7 +2146,7 @@ def test_r_reveals_the_ranked_table_in_place_with_the_fits_summary_kept(
     revealed = reveal(
         here,
         lambda: A_RECOMMENDATION,
-        measure=lambda: describe_the_machine_and_how_to_fit_more(MACHINE),
+        measure=lambda: MACHINE,
     )
 
     assert revealed.running
@@ -2480,7 +2538,7 @@ def test_the_download_instruction_is_on_screen_and_not_below_the_panel(
         save_func=lambda profile: save_profile(profile, here / "profile.yaml"),
         sha=BUILD_SHA,
         cwd=WORKDIR,
-        measure_func=lambda: tuple(f"fits line {index}" for index in range(6)),
+        measure_func=lambda: MACHINE,
         recommend_func=lambda: A_RECOMMENDATION,
         describe_download_func=lambda name: f"To download {name}:\n- search\n- get it",
     )

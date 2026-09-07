@@ -22,6 +22,7 @@ from offgrid.domain.profile import Profile
 from offgrid.domain.running.agent import AgentConfig, AgentName
 from offgrid.domain.running.agent_presence import say_where_an_agent_comes_from
 from offgrid.domain.running.model import Model, ModelRequest
+from offgrid.domain.sizing.fit import BYTES_PER_GB
 from offgrid.shared.exceptions import AgentSettingsError
 from offgrid.shared.wording import (
     UNDER,
@@ -54,6 +55,23 @@ list has to be able to tell two builds of one model apart.
 
 HELD_COLUMN = 6
 """How wide the column saying a model is in memory is, blank where it is not."""
+
+SIZE_COLUMN = 9
+"""How wide the column saying what a model weighs on disk is.
+
+Wide enough for a weight in gigabytes with a decimal and a gap, blank where the
+runtime stated none. A weight is a fact the runtime answered over its socket,
+never one read off the name.
+"""
+
+WONT_FIT = "won't fit"
+"""What stands where the window would, on a model too large for this machine.
+
+The window a model that will not run would be held at is a number about nothing,
+so the column that shows it says why the row cannot be picked instead. The cursor
+steps over the row, so the reason goes under it — the one place a person who
+cannot land on it still reads it, the way an absent agent's does.
+"""
 
 IN_MEMORY = "✅"
 """What marks a model the runtime is already holding.
@@ -436,22 +454,56 @@ def _mark_an_agent_row(name: AgentName, marked: str, why: str) -> str:
     )
 
 
-def describe_a_model_row(model: Model, *, held: bool, window: int | None) -> str:
+def describe_weight(weight_bytes: int | None) -> str:
+    """Say what a model weighs on disk, in the gigabytes a model card states.
+
+    :param weight_bytes: What the runtime answered its weights weigh, or
+        ``None`` where it answered none.
+
+    :return: The weight in gigabytes, or empty where none was stated. Never a
+        guess: a weight the runtime did not answer is a blank column, not a
+        number worked out from the name.
+    """
+    if weight_bytes is None:
+        return ""
+
+    return f"{weight_bytes / BYTES_PER_GB:.1f}GB"
+
+
+def describe_a_model_row(
+    model: Model, *, held: bool, window: int | None, unfit_reason: str | None = None
+) -> str:
     """Lay out the row one model is listed as.
 
     Padded text rather than real columns, which is what `OptionList` costs and
     what skipping a row the cursor may not reach buys.
 
+    A model too large for this machine is marked where its window would be and
+    the reason put under it, since the cursor steps over it and the report is
+    never computed for a row nobody can land on — said anywhere else, the one
+    sentence that helps is the one nobody reaches. This mirrors an absent
+    agent's row.
+
     :param model: The model to lay out.
     :param held: Whether the runtime has it in memory.
     :param window: The concrete window this model would be requested at, which
         the `context` column shows.
+    :param unfit_reason: Why the model will not fit this machine, put under the
+        row, or ``None`` where it fits and the window is shown instead.
 
-    :return: The row, as it is read.
+    :return: The row, as it is read, over as many lines as the reason takes.
     """
+    size = describe_weight(model.weight_bytes)
+
+    if unfit_reason is not None:
+        marked = _lay_out_a_model_row(model.identifier, "", size, WONT_FIT)
+
+        return "\n".join((marked, *say_indented(UNDER, unfit_reason, ROW_WIDTH)))
+
     return _lay_out_a_model_row(
         model.identifier,
         IN_MEMORY if held else "",
+        size,
         describe_what_was_stated(window),
     )
 
@@ -470,11 +522,11 @@ def name_the_model_columns() -> str:
 
     :return: The heading, laid out in the columns the rows are.
     """
-    return _lay_out_a_model_row("model", "held", "context")
+    return _lay_out_a_model_row("model", "held", "size", "context")
 
 
-def _lay_out_a_model_row(identifier: str, held: str, window: str) -> str:
-    """Put three values in the columns a model is listed in.
+def _lay_out_a_model_row(identifier: str, held: str, size: str, window: str) -> str:
+    """Put the columns a model is listed in beside each other.
 
     Padded by what each takes on a terminal rather than by how many characters
     it has, because the mark for a held model is one character and two cells:
@@ -484,13 +536,16 @@ def _lay_out_a_model_row(identifier: str, held: str, window: str) -> str:
 
     :param identifier: What the model is called.
     :param held: What marks it as in memory, or empty where it is not.
-    :param window: The window it would be requested at.
+    :param size: What it weighs on disk, or empty where none was stated.
+    :param window: The window it would be requested at, or the mark saying it
+        will not fit.
 
     :return: The line, as it is read.
     """
     laid_out = (
         pad_to_cells(identifier, MODEL_COLUMN),
         center_in_cells(held, HELD_COLUMN),
+        pad_to_cells(size, SIZE_COLUMN),
         window,
     )
 

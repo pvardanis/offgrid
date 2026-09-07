@@ -36,6 +36,7 @@ def answer_as_lm_studio(
     ceilings: dict[str, int | None] | None = None,
     stuck: set[str] | None = None,
     serves: int | None = None,
+    weights: dict[str, int] | None = None,
 ) -> dict:
     """Answer for LM Studio, as what it holds changes.
 
@@ -58,6 +59,10 @@ def answer_as_lm_studio(
         ``None`` to serve what was asked. A runtime is free to honour a window
         it was given with a different one, and a double that always agrees
         cannot tell a readback from an echo.
+    :param weights: What each model weighs on disk, keyed on its id, which the
+        SDK socket answers rather than the REST catalogue. Empty by default, so
+        a test that is not about weights reaches no socket and its rows show a
+        blank size — the live machine's socket is never the one under a test.
 
     :return: What it was asked to load, at what window, what it was asked to
         let go of, and in what order.
@@ -131,5 +136,8 @@ def answer_as_lm_studio(
 
     serve_get(monkeypatch, catalogue)
     serve_post(monkeypatch, posted)
+    monkeypatch.setattr(
+        "offgrid.runtimes.lmstudio.lmstudio.read_weights", lambda: dict(weights or {})
+    )
 
     return asked
