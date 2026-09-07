@@ -24,7 +24,7 @@ from offgrid.domain.assembling import (
 )
 from offgrid.domain.running.model import Model
 from offgrid.domain.running.runtime import RuntimeName
-from offgrid.domain.sizing.fit import BYTES_PER_GB, CACHE_SHARE, model_fits
+from offgrid.domain.sizing.fit import BYTES_PER_GB, model_fits, weight_budget_bytes
 from offgrid.domain.sizing.machine import Machine
 
 NOTHING_DOWNLOADED = "the runtime has nothing downloaded"
@@ -82,7 +82,7 @@ def unfit_reason(machine: Machine | None, model: Model) -> str | None:
     if machine is None or weight is None or model_fits(machine, weight):
         return None
 
-    budget = machine.usable_bytes * (1 - CACHE_SHARE) / BYTES_PER_GB
+    budget = weight_budget_bytes(machine) / BYTES_PER_GB
 
     return (
         f"needs {describe_weight(weight)}, more than the {budget:.0f}GB this "

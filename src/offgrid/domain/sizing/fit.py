@@ -23,6 +23,21 @@ CACHE_SHARE = 0.2
 QUANTIZATION_WIDTHS = (4, 8, 16)
 
 
+def weight_budget_bytes(machine: Machine) -> float:
+    """Work out how much memory a model's weights may take.
+
+    What is left of the memory the GPU may use once the cache's share is set
+    aside — the one budget the weights of a model, or a parameter count, are
+    measured against. Named once so the number a row is greyed by and the
+    number a person is told cannot drift apart the day the cache's share moves.
+
+    :param machine: The host the model would run on.
+
+    :return: The bytes left for weights, with room held back for the cache.
+    """
+    return machine.usable_bytes * (1 - CACHE_SHARE)
+
+
 def weigh_model(parameters: float, quantization_bits: int) -> float:
     """Work out what a number of parameters weighs at a width.
 
@@ -43,9 +58,7 @@ def get_params_that_fit(machine: Machine, quantization_bits: int) -> float:
 
     :return: A number of parameters, with room left for the context cache.
     """
-    for_weights = machine.usable_bytes * (1 - CACHE_SHARE)
-
-    return for_weights * BITS_PER_BYTE / quantization_bits
+    return weight_budget_bytes(machine) * BITS_PER_BYTE / quantization_bits
 
 
 def model_fits(machine: Machine, weight_bytes: int) -> bool:
@@ -62,9 +75,7 @@ def model_fits(machine: Machine, weight_bytes: int) -> bool:
 
     :return: Whether it fits with room left for the cache.
     """
-    for_weights = machine.usable_bytes * (1 - CACHE_SHARE)
-
-    return weight_bytes <= for_weights
+    return weight_bytes <= weight_budget_bytes(machine)
 
 
 def get_sizes_that_fit(machine: Machine) -> list[tuple[int, float]]:
