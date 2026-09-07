@@ -95,8 +95,11 @@ Screen {{
     margin: 0 2;
 }}
 
+/* Wide enough to lay a whole model row — identifier, held, size, context — on
+   one line. A narrower column wraps the row, dropping the size and context
+   cells below where they no longer sit under their headings. */
 #{LISTS} {{
-    width: 44;
+    width: 55;
 }}
 
 .box {{

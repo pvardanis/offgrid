@@ -313,6 +313,26 @@ def drive(picker: Picker, *keys: str, size: tuple[int, int] = ROOMY) -> Driven:
     return asyncio.run(driven())
 
 
+def _picker_over(here, measure=None) -> Picker:
+    """Build the screen a test opens over the profile it wrote.
+
+    :param here: Where that profile is.
+    :param measure: What this machine reads as, or ``None`` to leave it unsized.
+
+    :return: The screen, unopened.
+    """
+    return Picker(
+        read_report_func=lambda: read_what_could_be_run(here / "profile.yaml"),
+        save_func=save_the_assembled_profile,
+        sha=BUILD_SHA,
+        cwd=WORKDIR,
+        read_store_func=lambda: read_last_saved_windows(
+            last_saved_windows.DEFAULT_PATH
+        ),
+        measure_func=measure,
+    )
+
+
 def screen(here, *keys: str, size: tuple[int, int] = ROOMY, measure=None) -> Driven:
     """Open the screen over the profile a test wrote.
 
@@ -325,20 +345,31 @@ def screen(here, *keys: str, size: tuple[int, int] = ROOMY, measure=None) -> Dri
 
     :return: What the screen answered.
     """
-    return drive(
-        Picker(
-            read_report_func=lambda: read_what_could_be_run(here / "profile.yaml"),
-            save_func=save_the_assembled_profile,
-            sha=BUILD_SHA,
-            cwd=WORKDIR,
-            read_store_func=lambda: read_last_saved_windows(
-                last_saved_windows.DEFAULT_PATH
-            ),
-            measure_func=measure,
-        ),
-        *keys,
-        size=size,
-    )
+    return drive(_picker_over(here, measure), *keys, size=size)
+
+
+def rendered_model_rows(here, *, size: tuple[int, int] = ROOMY) -> list[str]:
+    """Read the models list the way a terminal paints it, one string per line.
+
+    The rows a test reads off `Driven.listed` are the whole prompt, however
+    wide; this is what the fixed-width column actually shows, so a row too wide
+    to fit is read here as the wrapped lines the person sees.
+
+    :param here: Where the profile is.
+    :param size: How much terminal to give it.
+
+    :return: Each painted line of the models list, in order.
+    """
+
+    async def driven() -> list[str]:
+        picker = _picker_over(here)
+
+        async with picker.run_test(size=size):
+            listed = picker.query_one(f"#{MODELS}", OptionList)
+
+            return [listed.render_line(y).text for y in range(listed.size.height)]
+
+    return asyncio.run(driven())
 
 
 def fresh_screen(here, *keys: str, size: tuple[int, int] = ROOMY) -> Driven:
@@ -548,6 +579,26 @@ def test_the_model_list_names_the_column_its_bare_number_is(here, monkeypatch):
     assert starts_at(driven.columns, "size") == starts_at(cold, "6.9GB")
     assert starts_at(driven.columns, "context") == starts_at(held, "262144")
     assert starts_at(driven.columns, "context") == starts_at(cold, "131072")
+
+
+def test_a_models_row_lays_its_context_out_on_one_line(here, monkeypatch):
+    # The list is a fixed-width column. A row wider than it does not clip — the
+    # widget wraps it, dropping the `size` and `context` cells onto a second
+    # line where they no longer sit under their headings. The column has to be
+    # wide enough to paint a whole row on the one line its heading names.
+    runner.invoke(app, ["setup"])
+    answer_as_lm_studio(
+        monkeypatch,
+        holding={RESIDENT: SERVED},
+        weights={RESIDENT: 20429364306},
+    )
+    on_this_machine(monkeypatch, "claude")
+
+    painted = rendered_model_rows(here)
+    row = next(line for line in painted if RESIDENT in line)
+
+    assert "20.4GB" in row
+    assert "262144" in row
 
 
 def test_the_models_already_held_are_listed_first(here, monkeypatch):
