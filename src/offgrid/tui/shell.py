@@ -41,6 +41,13 @@ pushing the detail off.
 DETAIL = "detail"
 """The collapsible the curated detail waits behind, closed by default."""
 
+PANELS = "panels"
+"""The row splitting into the lists and the panels beside them.
+
+Carries the outer gutter so its left and right edges sit under the band's,
+the whole screen inset by the same amount.
+"""
+
 LISTS = "lists"
 """What the two dropdowns and the models list are stacked in."""
 
@@ -82,12 +89,20 @@ Screen {{
     layers: base overlay;
 }}
 
+/* The whole panel row shares the band's left/right inset, so the screen sits
+   in one gutter rather than the band floating over flush panels. */
+#{PANELS} {{
+    margin: 0 2;
+}}
+
 #{LISTS} {{
     width: 44;
 }}
 
 .box {{
     border: round $panel;
+    /* Content breathes off the round border rather than touching it. */
+    padding: 1 1;
     /* On the box rather than on the widget inside it, so that a heading and
        what it is over are one surface: a heading left transparent paints
        the screen behind it and reads as a second box. */
@@ -110,6 +125,10 @@ Screen {{
    rest. */
 .box.pick {{
     height: auto;
+    /* A collapsed dropdown is one line; it wants the horizontal breathing
+       room the boxes share but not the vertical, which would leave the box
+       standing taller than the control inside it. */
+    padding: 0 1;
 }}
 
 .box.pick > Select {{
@@ -129,7 +148,9 @@ Screen {{
 
 #{COLUMNS} {{
     color: $text-muted;
-    padding: 0 1;
+    /* The box carries the horizontal inset now; only the left nudge that sits
+       the header over the model rows stays. */
+    padding: 0 0 0 1;
 }}
 
 #{RIGHT} {{
@@ -143,11 +164,11 @@ Screen {{
 }}
 
 #{FITS} {{
-    padding: 0 1;
+    padding: 0;
 }}
 
 #{SIGNAL} {{
-    padding: 0 1;
+    padding: 0;
 }}
 
 /* The signal and the detail split the run panel evenly, a half each. Each
@@ -168,7 +189,8 @@ Screen {{
 
 #{STATUS} {{
     color: $text-muted;
-    padding: 0 1;
+    /* Aligns under the panel row's outer inset. */
+    padding: 0 2;
     height: 1;
 }}
 """
