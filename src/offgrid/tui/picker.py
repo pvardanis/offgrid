@@ -514,7 +514,9 @@ class Picker(App[Departure | None]):
                 self._context_store,
                 self._edits.windows,
                 model,
-                reason=unfit_reason(self._machine, model),
+                reason=unfit_reason(
+                    self._machine, model, held=identifier in report.held
+                ),
             ),
         )
 

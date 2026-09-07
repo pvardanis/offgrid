@@ -62,24 +62,29 @@ class Choices:
     opens_on: str | None
 
 
-def unfit_reason(machine: Machine | None, model: Model) -> str | None:
+def unfit_reason(machine: Machine | None, model: Model, *, held: bool) -> str | None:
     """Say why a model will not fit this machine, or that it will.
 
-    A machine offgrid could not size and a weight the runtime did not answer
-    are both reasons to leave a model reachable rather than mark it: nothing
-    here can call it too large, so the person is left to decide. Only a weight
-    read against a sized machine and found over its budget marks a row.
+    A model the runtime is already holding fits by demonstration — it is loaded
+    — so it is never marked, however heavy, ahead of any budget arithmetic. A
+    machine offgrid could not size and a weight the runtime did not answer are
+    both reasons to leave a model reachable rather than mark it: nothing here
+    can call it too large, so the person is left to decide. Only a weight read
+    against a sized machine and found over its budget, on a model not already
+    held, marks a row.
 
     :param machine: The host a run would use, or ``None`` where it could not be
         sized.
     :param model: The model to weigh against it.
+    :param held: Whether the runtime is already holding the model in memory,
+        which is proof it fits.
 
     :return: The reason the model will not fit, put under its row, or ``None``
         where it fits or cannot be judged.
     """
     weight = model.weight_bytes
 
-    if machine is None or weight is None or model_fits(machine, weight):
+    if held or machine is None or weight is None or model_fits(machine, weight):
         return None
 
     budget = weight_budget_bytes(machine) / BYTES_PER_GB
@@ -183,7 +188,7 @@ def _a_model_option(
 
     :return: The row, disabled where the model is too large.
     """
-    reason = unfit_reason(machine, model)
+    reason = unfit_reason(machine, model, held=model.identifier in report.held)
 
     return Option(
         describe_the_row(report, context_store, edits, model, reason=reason),

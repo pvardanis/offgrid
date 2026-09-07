@@ -931,6 +931,27 @@ def test_a_model_too_large_for_this_machine_is_marked_and_cannot_be_reached(
     assert str(driven.highlighted[MODELS]).startswith(RESIDENT)
 
 
+def test_a_model_held_in_memory_fits_however_heavy_it_is(here, monkeypatch):
+    # A model the runtime is already holding demonstrably fits — it is loaded.
+    # Judging it against the budget anyway would grey a running model, strip its
+    # in-memory mark, and could leave the list saying nothing fits while a model
+    # is loaded. That it is held is the answer, ahead of what it weighs.
+    runner.invoke(app, ["setup"])
+    answer_as_lm_studio(
+        monkeypatch,
+        holding={RESIDENT: SERVED},
+        weights={RESIDENT: 90_000_000_000},
+    )
+    on_this_machine(monkeypatch, "claude")
+
+    driven = screen(here, measure=lambda: MACHINE)
+    row = next(each for each in driven.listed[MODELS] if each.startswith(RESIDENT))
+
+    assert IN_MEMORY in row
+    assert WONT_FIT not in row
+    assert any(each.startswith(RESIDENT) for each in driven.reachable[MODELS])
+
+
 def test_where_nothing_downloaded_fits_the_machine_the_list_says_so(here, monkeypatch):
     # Told apart from an empty catalogue: everything is downloaded and none of it
     # runs, which is a different thing to fix and a different place to look. The
