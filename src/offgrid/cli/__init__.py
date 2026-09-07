@@ -34,8 +34,7 @@ from offgrid.cli.run import run as run_command
 from offgrid.cli.setup import setup as setup_command
 from offgrid.domain.profile import DEFAULT_PATH, Profile, save_profile
 from offgrid.domain.running import last_saved_windows
-from offgrid.domain.sizing.machine import detect
-from offgrid.domain.sizing.measuring import describe_the_machine_and_how_to_fit_more
+from offgrid.domain.sizing.machine import Machine, detect
 from offgrid.shared.exceptions import OffgridError, ProfileError
 from offgrid.shared.say import LOGGER, say_on_stderr, someone_is_at_a_terminal, tell
 from offgrid.shared.wording import DescribeModelDownload
@@ -181,8 +180,8 @@ def offgrid(ctx: typer.Context) -> None:
     # The machine panel shows what fits whether or not a profile is there: a
     # stranger following the README meets their machine sized without a `setup`
     # first, and its owner reads the same budget beside a run already assembled.
-    def measure() -> tuple[str, ...]:
-        return describe_the_machine_and_how_to_fit_more(detect())
+    def measure() -> Machine:
+        return detect()
 
     screen = Picker(
         read_report_func=lambda: read_what_could_be_run(DEFAULT_PATH),

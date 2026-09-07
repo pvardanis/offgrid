@@ -49,6 +49,8 @@ from offgrid.domain.assembling import (
 )
 from offgrid.domain.costing import describe_the_detail, describe_the_signal
 from offgrid.domain.profile import DEFAULT_THEME, Profile, Theme
+from offgrid.domain.sizing.machine import Machine
+from offgrid.domain.sizing.measuring import describe_the_machine_and_how_to_fit_more
 from offgrid.shared.exceptions import OffgridError
 from offgrid.shared.wording import DescribeModelDownload
 from offgrid.tui.choices import (
@@ -57,6 +59,7 @@ from offgrid.tui.choices import (
     describe_the_row,
     model_options,
     runtime_choices,
+    unfit_reason,
 )
 from offgrid.tui.context_window_editor import WINDOW_EDITOR, ContextWindowEditor
 from offgrid.tui.departure import Departure
@@ -92,7 +95,7 @@ from offgrid.tui.window_edits import WindowEdits
 type ReadWhatCouldBeRun = Callable[[], WhatCouldBeRun]
 type SaveWhatWasAssembled = Callable[[Profile], None]
 type ReadLastSavedWindows = Callable[[], dict[str, int]]
-type MeasureThisMachine = Callable[[], tuple[str, ...]]
+type MeasureThisMachine = Callable[[], Machine]
 
 
 WRITES = "enter runs and saves · s runs once"
@@ -208,6 +211,7 @@ class Picker(App[Departure | None]):
         self._context_store: dict[str, int] = {}
         self._edits = WindowEdits()
         self._measurement: tuple[str, ...] = ()
+        self._machine: Machine | None = None
         self._theme = DEFAULT_THEME
 
     def compose(self) -> ComposeResult:
@@ -305,7 +309,8 @@ class Picker(App[Departure | None]):
         # Measured first and kept, so the machine panel is filled whatever the
         # report turns out to be — the machine's budget survives a runtime that
         # did not answer, which is exactly the machine a stranger opened to size.
-        self._measurement = self._measure()
+        # The machine itself is kept too, since a model's row is read against it.
+        self._measure()
         self._show_the_machine()
 
         try:
@@ -504,7 +509,13 @@ class Picker(App[Departure | None]):
 
         self._get_list().replace_option_prompt(
             identifier,
-            describe_the_row(report, self._context_store, self._edits.windows, model),
+            describe_the_row(
+                report,
+                self._context_store,
+                self._edits.windows,
+                model,
+                reason=unfit_reason(self._machine, model),
+            ),
         )
 
     def _float_over_the_row(self, editor: ContextWindowEditor) -> None:
@@ -601,7 +612,9 @@ class Picker(App[Departure | None]):
         :param report: Everything that was read.
         """
         self._get_list().add_options(
-            model_options(report, self._context_store, self._edits.windows)
+            model_options(
+                report, self._context_store, self._edits.windows, self._machine
+            )
         )
         self._highlight_model(report)
 
@@ -735,21 +748,25 @@ class Picker(App[Departure | None]):
             f"{WRITES} · {CHANGED if differs else UNCHANGED}"
         )
 
-    def _measure(self) -> tuple[str, ...]:
+    def _measure(self) -> None:
         """Read this machine, where a fresh one was handed a way to.
 
-        :return: The measurement's lines, or none where a profile was there and
-            no measurement was handed in. A machine offgrid cannot size — not an
-            Apple Silicon Mac — is the one line saying so rather than a blank
-            pane, since that too is worth reading above the report.
+        Keeps both the panel's lines and the machine itself: the lines fill the
+        pane, and the machine is what each model's row is read against. A
+        machine offgrid cannot size — not an Apple Silicon Mac — leaves the
+        machine ``None`` and the one line saying so in the pane, so a model's
+        row is left reachable rather than judged against a machine there is not.
+
+        :return: Nothing; the measurement's lines and the machine are kept.
         """
         if self._measure_func is None:
-            return ()
+            return
 
         try:
-            return self._measure_func()
+            self._machine = self._measure_func()
+            self._measurement = describe_the_machine_and_how_to_fit_more(self._machine)
         except OffgridError as error:
-            return (str(error),)
+            self._measurement = (str(error),)
 
     def action_toggle_detail(self) -> None:
         """Open or close the collapsible the curated detail waits behind.

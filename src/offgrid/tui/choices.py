@@ -18,11 +18,14 @@ from offgrid.domain.assembling import (
     WhatCouldBeRun,
     describe_a_model_row,
     describe_an_agent_row,
+    describe_weight,
     get_requested_model_context,
     order_models_held_first,
 )
 from offgrid.domain.running.model import Model
 from offgrid.domain.running.runtime import RuntimeName
+from offgrid.domain.sizing.fit import BYTES_PER_GB, CACHE_SHARE, model_fits
+from offgrid.domain.sizing.machine import Machine
 
 NOTHING_DOWNLOADED = "the runtime has nothing downloaded"
 """What stands in the models list where a runtime has no models at all.
@@ -30,6 +33,17 @@ NOTHING_DOWNLOADED = "the runtime has nothing downloaded"
 A list with a row in it saying so, rather than an empty box: an empty box is
 read as offgrid having failed to ask. Disabled, because it is a sentence rather
 than something to pick.
+"""
+
+NOTHING_THAT_FITS = (
+    "nothing downloaded fits this machine — press r for what a list says fits"
+)
+"""What stands in the models list where everything downloaded is too large.
+
+Told apart from nothing being downloaded at all, because the two are different
+problems: one is answered by downloading a smaller model, the other by
+downloading anything. This one points at the ranked table, which is where a
+model small enough to run is named. Disabled, like the row it stands in for.
 """
 
 
@@ -48,11 +62,41 @@ class Choices:
     opens_on: str | None
 
 
+def unfit_reason(machine: Machine | None, model: Model) -> str | None:
+    """Say why a model will not fit this machine, or that it will.
+
+    A machine offgrid could not size and a weight the runtime did not answer
+    are both reasons to leave a model reachable rather than mark it: nothing
+    here can call it too large, so the person is left to decide. Only a weight
+    read against a sized machine and found over its budget marks a row.
+
+    :param machine: The host a run would use, or ``None`` where it could not be
+        sized.
+    :param model: The model to weigh against it.
+
+    :return: The reason the model will not fit, put under its row, or ``None``
+        where it fits or cannot be judged.
+    """
+    weight = model.weight_bytes
+
+    if machine is None or weight is None or model_fits(machine, weight):
+        return None
+
+    budget = machine.usable_bytes * (1 - CACHE_SHARE) / BYTES_PER_GB
+
+    return (
+        f"needs {describe_weight(weight)}, more than the {budget:.0f}GB this "
+        "machine holds with room for context"
+    )
+
+
 def describe_the_row(
     report: WhatCouldBeRun,
     context_store: Mapping[str, int],
     edits: Mapping[str, int],
     model: Model,
+    *,
+    reason: str | None = None,
 ) -> RenderableType:
     """Render one model's row, its `context` column seeded the way the list is.
 
@@ -66,6 +110,8 @@ def describe_the_row(
     :param edits: The window edited in place this session, keyed on the model,
         beating the store for the row it was edited on.
     :param model: The model whose row to render.
+    :param reason: Why the model will not fit this machine, put under the row,
+        or ``None`` where it fits and the window is shown instead.
 
     :return: The row as it reads.
     """
@@ -75,6 +121,7 @@ def describe_the_row(
         window=get_requested_model_context(
             report, context_store, model.identifier, edits=edits
         ),
+        unfit_reason=reason,
     )
 
 
@@ -82,8 +129,15 @@ def model_options(
     report: WhatCouldBeRun,
     context_store: Mapping[str, int],
     edits: Mapping[str, int],
+    machine: Machine | None,
 ) -> list[Option]:
     """Lay out a row per model downloaded, held ones first.
+
+    A model too large for this machine is greyed and stepped over, the way an
+    absent agent is: it cannot be run, so the cursor never lands on it and a
+    run is never assembled from it. Where every model downloaded is too large,
+    the one row left says so and points at the ranked table, which is a
+    different thing to read than an empty catalogue.
 
     :param report: Everything that was read.
     :param context_store: The window each model was last saved at, seeding the
@@ -91,19 +145,51 @@ def model_options(
     :param edits: The window edited in place this session, keyed on the model,
         beating the store for the row it was edited on. Empty where nothing
         has been edited.
+    :param machine: The host a run would use, against which a model's weight is
+        read, or ``None`` where it could not be sized and none is marked.
 
-    :return: The rows, or the one saying there are none.
+    :return: The rows, or the one saying there are none, or the one saying none
+        of them fit.
     """
     if not report.downloaded_models:
         return [Option(NOTHING_DOWNLOADED, disabled=True)]
 
-    return [
-        Option(
-            describe_the_row(report, context_store, edits, model),
-            id=model.identifier,
-        )
+    rows = [
+        _a_model_option(report, context_store, edits, machine, model)
         for model in order_models_held_first(report)
     ]
+
+    if all(option.disabled for option in rows):
+        return [Option(NOTHING_THAT_FITS, disabled=True)]
+
+    return rows
+
+
+def _a_model_option(
+    report: WhatCouldBeRun,
+    context_store: Mapping[str, int],
+    edits: Mapping[str, int],
+    machine: Machine | None,
+    model: Model,
+) -> Option:
+    """Lay out one model's row, greyed where it will not fit this machine.
+
+    :param report: Everything that was read.
+    :param context_store: The window each model was last saved at.
+    :param edits: The window edited in place this session.
+    :param machine: The host a run would use, or ``None`` where it could not be
+        sized.
+    :param model: The model whose row to build.
+
+    :return: The row, disabled where the model is too large.
+    """
+    reason = unfit_reason(machine, model)
+
+    return Option(
+        describe_the_row(report, context_store, edits, model, reason=reason),
+        id=model.identifier,
+        disabled=reason is not None,
+    )
 
 
 def runtime_choices(report: WhatCouldBeRun) -> Choices:
