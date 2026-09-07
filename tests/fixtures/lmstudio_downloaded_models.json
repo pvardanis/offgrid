@@ -1,0 +1,157 @@
+[
+  {
+    "type": "llm",
+    "modelKey": "qwen/qwen3.8-27b",
+    "format": "safetensors",
+    "publisher": "qwen",
+    "displayName": "Qwen3.8 27B",
+    "path": "qwen/qwen3.8-27b",
+    "sizeBytes": 16081678492,
+    "indexedModelIdentifier": "qwen/qwen3.8-27b",
+    "deviceIdentifier": null,
+    "paramsString": "27B",
+    "architecture": "qwen3_5",
+    "quantization": {
+      "bits": 4,
+      "name": "4bit"
+    },
+    "variants": [
+      "qwen/qwen3.8-27b@4bit"
+    ],
+    "selectedVariant": "qwen/qwen3.8-27b@4bit",
+    "vision": true,
+    "trainedForToolUse": true,
+    "maxContextLength": 262144
+  },
+  {
+    "type": "llm",
+    "modelKey": "qwen/qwen3.6-35b-a3b",
+    "format": "safetensors",
+    "publisher": "qwen",
+    "displayName": "Qwen3.6 35B A3B",
+    "path": "qwen/qwen3.6-35b-a3b",
+    "sizeBytes": 20429364306,
+    "indexedModelIdentifier": "qwen/qwen3.6-35b-a3b",
+    "deviceIdentifier": null,
+    "paramsString": "35B",
+    "architecture": "qwen3_5_moe",
+    "quantization": {
+      "bits": 4,
+      "name": "4bit"
+    },
+    "variants": [
+      "qwen/qwen3.6-35b-a3b@4bit",
+      "qwen/qwen3.6-35b-a3b@8bit"
+    ],
+    "selectedVariant": "qwen/qwen3.6-35b-a3b@4bit",
+    "vision": true,
+    "trainedForToolUse": true,
+    "maxContextLength": 262144
+  },
+  {
+    "type": "llm",
+    "modelKey": "lfm2.5-1.2b-instruct-mlx",
+    "format": "safetensors",
+    "publisher": "lmstudio-community",
+    "displayName": "LFM2.5 1.2B Instruct",
+    "path": "lmstudio-community/LFM2.5-1.2B-Instruct-MLX-8bit",
+    "sizeBytes": 1248412598,
+    "indexedModelIdentifier": "lmstudio-community/LFM2.5-1.2B-Instruct-MLX-8bit",
+    "deviceIdentifier": null,
+    "paramsString": "1.2B",
+    "architecture": "lfm2",
+    "quantization": {
+      "bits": 8,
+      "name": "8bit"
+    },
+    "vision": false,
+    "trainedForToolUse": true,
+    "maxContextLength": 128000
+  },
+  {
+    "type": "llm",
+    "modelKey": "qwen3-0.6b-mlx",
+    "format": "safetensors",
+    "publisher": "lmstudio-community",
+    "displayName": "Qwen3 0.6B",
+    "path": "lmstudio-community/Qwen3-0.6B-MLX-4bit",
+    "sizeBytes": 351383582,
+    "indexedModelIdentifier": "lmstudio-community/Qwen3-0.6B-MLX-4bit",
+    "deviceIdentifier": null,
+    "paramsString": "0.6B",
+    "architecture": "qwen3",
+    "quantization": {
+      "bits": 4,
+      "name": "4bit"
+    },
+    "vision": false,
+    "trainedForToolUse": true,
+    "maxContextLength": 40960
+  },
+  {
+    "type": "llm",
+    "modelKey": "qwen/qwen3.6-27b",
+    "format": "safetensors",
+    "publisher": "qwen",
+    "displayName": "Qwen3.6 27B",
+    "path": "qwen/qwen3.6-27b",
+    "sizeBytes": 16081685402,
+    "indexedModelIdentifier": "qwen/qwen3.6-27b",
+    "deviceIdentifier": null,
+    "paramsString": "27B",
+    "architecture": "qwen3_5",
+    "quantization": {
+      "bits": 4,
+      "name": "4bit"
+    },
+    "variants": [
+      "qwen/qwen3.6-27b@4bit"
+    ],
+    "selectedVariant": "qwen/qwen3.6-27b@4bit",
+    "vision": true,
+    "trainedForToolUse": true,
+    "maxContextLength": 262144
+  },
+  {
+    "type": "llm",
+    "modelKey": "google/gemma-4-e4b",
+    "format": "safetensors",
+    "publisher": "google",
+    "displayName": "Gemma 4 E4B",
+    "path": "google/gemma-4-e4b",
+    "sizeBytes": 6861939888,
+    "indexedModelIdentifier": "google/gemma-4-e4b",
+    "deviceIdentifier": null,
+    "paramsString": "4B",
+    "architecture": "gemma4",
+    "quantization": {
+      "bits": 4,
+      "name": "4bit"
+    },
+    "variants": [
+      "google/gemma-4-e4b@4bit",
+      "google/gemma-4-e4b@8bit"
+    ],
+    "selectedVariant": "google/gemma-4-e4b@4bit",
+    "vision": true,
+    "trainedForToolUse": true,
+    "maxContextLength": 131072
+  },
+  {
+    "type": "embedding",
+    "modelKey": "text-embedding-nomic-embed-text-v1.5",
+    "format": "gguf",
+    "publisher": "nomic-ai",
+    "displayName": "Nomic Embed Text v1.5",
+    "path": "nomic-ai/nomic-embed-text-v1.5-GGUF/nomic-embed-text-v1.5.Q4_K_M.gguf",
+    "sizeBytes": 84106624,
+    "indexedModelIdentifier": "nomic-ai/nomic-embed-text-v1.5-GGUF/nomic-embed-text-v1.5.Q4_K_M.gguf",
+    "deviceIdentifier": null,
+    "architecture": "nomic-bert",
+    "quantization": {
+      "bits": 4,
+      "name": "Q4_K_M"
+    },
+    "maxContextLength": 2048
+  }
+]

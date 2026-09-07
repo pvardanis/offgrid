@@ -35,11 +35,16 @@ class Model:
     :param context_window: What it is being served at now, and ``None`` when
         nothing is holding it — a stopped model is not being served at its
         ceiling, it is not being served.
+    :param weight_bytes: What the runtime says its weights weigh on disk, and
+        ``None`` when it states none — a runtime that does not answer the
+        question is told apart from one answering zero, the way the two windows
+        are. A fact the runtime stated, never one derived from the identifier.
     """
 
     identifier: str
     context_ceiling: int | None
     context_window: int | None
+    weight_bytes: int | None = None
 
 
 def refuse_a_yes_or_no(value: object) -> object:
