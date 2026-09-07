@@ -20,12 +20,13 @@ stop; what it catches is the import somebody adds without thinking.
 
 This is a regression guard, not a slice: it passes the day it is written. It
 was checked by taking a module out of the map, a package out of every layer, a
-registry entry out of its dict, and by pointing a module at a concrete adapter
-— and watching each fail.
+layer out of the contract that names them all, a registry entry out of its
+dict, and by pointing a module at a concrete adapter — and watching each fail.
 """
 
 import ast
 import tomllib
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -36,12 +37,117 @@ DOC = ROOT / "docs" / "architecture.md"
 PYPROJECT = ROOT / "pyproject.toml"
 SOURCE = ROOT / "src" / "offgrid"
 
-# Held here rather than derived, so that calling a package shared is a decision
-# someone makes rather than something a heuristic infers. Anything shared is
-# reachable from every layer, which is a thing to be sure about.
-ADAPTERS = {"offgrid.agents", "offgrid.leaderboards", "offgrid.runtimes"}
-COMMAND_LINE = {"offgrid.cli"}
-SHARED = {"offgrid.shared"}
+
+def _contracts() -> list[dict]:
+    """Every import contract, as pyproject states them."""
+    return tomllib.loads(PYPROJECT.read_text())["tool"]["importlinter"]["contracts"]
+
+
+def _the_contract_where(predicate: Callable[[dict], bool], *, named: str) -> dict:
+    """The one contract a predicate holds for.
+
+    :param predicate: What singles the contract out.
+    :param named: What that contract is, said in the error if it is gone or
+        no longer the only one.
+
+    :return: The one contract the predicate holds for.
+
+    :raise LookupError: If no contract matches, so a contract this test reads
+        being renamed or removed is named rather than raising a bare
+        `StopIteration` that says nothing about what to do; or if more than
+        one matches, so a predicate that has stopped singling one out is said
+        rather than silently narrowing to whichever the file lists first.
+    """
+    matching = [one for one in _contracts() if predicate(one)]
+
+    if len(matching) > 1:
+        raise LookupError(
+            f"more than one import contract in pyproject.toml is {named}: "
+            f"{[one['name'] for one in matching]}. The predicate here no longer "
+            "singles one out; tighten it, or split this helper."
+        )
+
+    if not matching:
+        raise LookupError(
+            f"no import contract in pyproject.toml is {named}. A contract this "
+            "test reads was renamed or removed; restore it, or fix the predicate."
+        )
+
+    return matching[0]
+
+
+def _adapter_packages() -> set[str]:
+    """Every adapter package, from the contract holding them apart.
+
+    The `independence` contract that keeps one adapter from reaching another
+    names each adapter package, and no other independence contract names a
+    top-level package — the other holds two halves of the domain apart. Read
+    the adapters from there rather than by hand, so an adapter added to that
+    contract is one this file already knows about.
+
+    :return: The packages a concrete adapter lives under.
+    """
+    contract = _the_contract_where(
+        lambda one: (
+            one["type"] == "independence"
+            and all(
+                not module.startswith("offgrid.domain") for module in one["modules"]
+            )
+        ),
+        named="the independence contract holding the adapters apart",
+    )
+
+    return set(contract["modules"])
+
+
+def _the_shared_contract() -> dict:
+    """The `forbidden` contract stating the shared layer reaches nothing.
+
+    Singled out by its source rather than its prose, and pinned to `forbidden`
+    so that a contract of another type carrying the same source could not be
+    read in its place and change what the layers mean under this file's feet.
+
+    :return: The contract forbidding the shared layer every other layer.
+    """
+    return _the_contract_where(
+        lambda one: (
+            one.get("type") == "forbidden"
+            and one.get("source_modules") == ["offgrid.shared"]
+        ),
+        named="the forbidden contract stating the shared layer reaches nothing",
+    )
+
+
+def _every_layer() -> set[str]:
+    """Every layer, from the one contract that names them all.
+
+    `shared/` is innermost — reachable from every layer — so the contract
+    forbidding it the rest names each of the others, and names shared itself as
+    its source. Read the layers from there rather than listing them again, so
+    that a layer dropped from the contract is a layer this check stops seeing,
+    and says so rather than going on covering it on faith.
+
+    :return: Every package a layer is stated over.
+    """
+    contract = _the_shared_contract()
+
+    return set(contract["source_modules"]) | set(contract["forbidden_modules"])
+
+
+def _layers_in_the_tree() -> set[str]:
+    """Every layer there is, as the top-level packages under offgrid.
+
+    A layer is a package directly under `offgrid`, so the tree is the whole
+    statement of which layers exist. Read from it rather than listed, so a
+    layer added to the tree is one this file already counts.
+
+    :return: Every top-level package, as an import statement names it.
+    """
+    return {
+        f"offgrid.{child.name}"
+        for child in SOURCE.iterdir()
+        if child.is_dir() and child.name != "__pycache__"
+    }
 
 
 def _modules() -> set[str]:
@@ -92,7 +198,7 @@ def _adapters() -> set[str]:
     """
     return {
         f"{package}.{adapter.stem}"
-        for package in ADAPTERS
+        for package in _adapter_packages()
         for adapter in (SOURCE / package.rsplit(".", 1)[-1]).iterdir()
         if adapter.name != "__init__.py"
         and adapter.name != "__pycache__"
@@ -204,11 +310,7 @@ def _stated_in_a_contract() -> set[str]:
     remembering this file. An `independence` contract states no source, and
     covers its modules from both directions instead.
     """
-    contracts = tomllib.loads(PYPROJECT.read_text())["tool"]["importlinter"][
-        "contracts"
-    ]
-
-    return {module for one in contracts for module in one.get("source_modules", ())}
+    return {module for one in _contracts() for module in one.get("source_modules", ())}
 
 
 def _is_covered(module: str, named: set[str]) -> bool:
@@ -250,7 +352,7 @@ def test_the_doc_names_every_module_there_is():
 
 
 def test_every_module_is_covered_by_the_layer_rule():
-    named = _stated_in_a_contract() | ADAPTERS | COMMAND_LINE | SHARED
+    named = _stated_in_a_contract() | _every_layer()
 
     unclassified = sorted(
         module for module in _modules() | _packages() if not _is_covered(module, named)
@@ -414,6 +516,26 @@ def test_a_config_built_for_one_runtime_cannot_reach_another_s_factory():
 
     with pytest.raises(TypeError, match="LMStudioConfig was expected"):
         connect(StandInRuntimeConfig(host="127.0.0.1:1234"))
+
+
+def test_the_shared_layer_is_forbidden_every_other_layer():
+    # shared is innermost: reachable from every layer, reaching none. The
+    # contract stating so is the whole list of which layers there are, and a
+    # layer dropped from it is a layer shared may now reach unnoticed —
+    # import-linter cannot see a forbidden contract weaken, only break. This
+    # is what does.
+    forbidden = set(_the_shared_contract()["forbidden_modules"])
+    every_other = _layers_in_the_tree() - {"offgrid.shared"}
+
+    adrift = sorted(forbidden ^ every_other)
+
+    assert not adrift, (
+        f"{adrift} is in the shared-layer contract's forbidden_modules or the "
+        "tree's layers and not the other. shared is reachable from every layer "
+        "and must reach none, so forbidden_modules in pyproject.toml should "
+        "name every top-level package but shared: add what is missing, or drop "
+        "what is gone."
+    )
 
 
 def test_the_layer_rule_names_no_module_that_is_gone():
