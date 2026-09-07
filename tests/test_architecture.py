@@ -26,7 +26,6 @@ concrete adapter — and watching each fail.
 """
 
 import ast
-import re
 import tomllib
 from collections.abc import Callable
 from pathlib import Path
@@ -354,44 +353,79 @@ def _below(base: type[BaseModel]) -> list[type[BaseModel]]:
     ]
 
 
+def _pathed(line: str, dirs: list[tuple[int, str]]) -> str | None:
+    """The path a fenced map line names, tracking the tree it is drawn under.
+
+    The map draws the tree by indentation — `runtimes/`, then `lmstudio/` two
+    spaces in, then `config.py` two more — so a file's path is the folders
+    open above it. Reading the whole path rather than the basename is what
+    tells `runtimes/lmstudio/config.py` from `agents/opencode/config.py`, which
+    share a name and would otherwise mask each other's absence.
+
+    :param line: A line inside a fenced block, its indentation intact.
+    :param dirs: The folders open above it, each with the indent it opened at.
+        Mutated: a folder line pushes onto it, closing any nested deeper.
+
+    :return: The file's path from the layer down, or ``None`` for a folder line
+        and for a line naming no module at all.
+    """
+    token = line.split(maxsplit=1)[0] if line.strip() else ""
+
+    indent = len(line) - len(line.lstrip())
+
+    while dirs and dirs[-1][0] >= indent:
+        dirs.pop()
+
+    if token.endswith("/"):
+        dirs.append((indent, token[:-1]))
+        return None
+
+    if not token.endswith(".py"):
+        return None
+
+    return "/".join(name for _, name in dirs) + f"/{token}"
+
+
 def _module_map() -> dict[str, set[str]]:
-    """The filenames the map lists in fenced code, gathered per layer heading.
+    """The module paths the map draws in fenced code, gathered per layer.
 
-    Only the blocks under **The modules** count, and only the `.py` names in
-    their fenced lines: a name in a sentence of prose, or under another layer's
-    heading, is not the map placing a module — it is the string happening to be
-    in the file. Names rather than raw text so a basename is matched whole, not
-    as a substring of a longer filename beside it.
+    Only the blocks under **The modules** count, and only the tree they draw:
+    a name in a sentence of prose, or under another layer's heading, is not the
+    map placing a module — it is the string happening to be in the file. Each
+    heading opens its own tree, so the folders of one layer never carry into
+    the next.
 
-    :return: Each layer heading, mapped to the filenames listed beneath it.
+    :return: Each layer heading, mapped to the module paths drawn beneath it.
     """
     section = DOC.read_text().split("## The modules")[1].split("\n## ")[0]
 
     blocks: dict[str, set[str]] = {}
-    heading, fenced = None, False
+    heading, fenced, dirs = None, False, []
 
     for line in section.splitlines():
         if line in MAP_LAYERS:
-            heading, fenced = line, False
+            heading, fenced, dirs = line, False, []
         elif line.startswith("```"):
             fenced = not fenced
-        elif fenced and heading:
-            blocks.setdefault(heading, set()).update(re.findall(r"\w+\.py", line))
+        elif fenced and heading and (path := _pathed(line, dirs)):
+            blocks.setdefault(heading, set()).add(path)
 
     return blocks
 
 
 def _named_under_its_layer(module: str, blocks: dict[str, set[str]]) -> bool:
-    """Whether the map lists a module under the heading its package belongs to.
+    """Whether the map draws a module under the heading its package belongs to.
 
     The layer is the module's top-level package — `offgrid.cli.binding` is the
-    command line — so a `cli/` module listed under **adapters** is not named
-    under its layer, however plainly the basename reads elsewhere.
+    command line — so a `cli/` module drawn under **adapters** is not named
+    under its layer, however plainly the basename reads elsewhere. The whole
+    path is matched, so two modules sharing a basename in one layer each have
+    to be drawn for both to pass.
 
     :param module: The module to place, as import-linter names it.
-    :param blocks: The map's filenames, per layer heading, from `_module_map`.
+    :param blocks: The map's module paths, per layer heading, from `_module_map`.
 
-    :return: Whether the basename is listed under that layer.
+    :return: Whether the module's path is drawn under that layer.
     """
     package = module.split(".")[1]
 
@@ -399,9 +433,9 @@ def _named_under_its_layer(module: str, blocks: dict[str, set[str]]) -> bool:
         (h for h, packages in MAP_LAYERS.items() if package in packages), None
     )
 
-    basename = module.rsplit(".", 1)[-1] + ".py"
+    path = module.split(".", 1)[1].replace(".", "/") + ".py"
 
-    return heading is not None and basename in blocks.get(heading, set())
+    return heading is not None and path in blocks.get(heading, set())
 
 
 def test_the_map_names_every_module_under_its_layer():
