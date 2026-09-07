@@ -15,6 +15,7 @@ from offgrid.runtimes.lmstudio.catalogue import (
 from offgrid.runtimes.lmstudio.config import LMStudioConfig
 from offgrid.runtimes.lmstudio.holding import load_model, unload_model
 from offgrid.runtimes.lmstudio.serving import DIALECTS
+from offgrid.runtimes.lmstudio.weights import attach_weights, read_weights
 from offgrid.shared.exceptions import (
     ModelNotHeldError,
     ModelUnavailableError,
@@ -40,11 +41,16 @@ class LMStudio:
     def read_catalogue(self) -> list[Model]:
         """List every model LM Studio has, held or not.
 
+        Each carries what it weighs where the SDK socket answered; a socket
+        that did not leaves the weight ``None`` rather than failing the read.
+
         :return: The models it can be asked for.
 
         :raise RuntimeUnreachableError: When it cannot be reached.
         """
-        return parse_models_from_payload(get_catalogue_payload(self.config.host))
+        models = parse_models_from_payload(get_catalogue_payload(self.config.host))
+
+        return attach_weights(models, read_weights())
 
     def read_held(self) -> list[Model]:
         """List the models LM Studio has in memory.
