@@ -75,6 +75,7 @@ from offgrid.tui.shell import (
     MODEL_BOX,
     MODELS,
     PANE,
+    PANELS,
     REPORT,
     RIGHT,
     RUN,
@@ -276,6 +277,7 @@ class Picker(App[Departure | None]):
                 ),
                 id=RIGHT,
             ),
+            id=PANELS,
         )
         yield Static(id=STATUS, markup=False)
         yield Footer()
@@ -292,11 +294,13 @@ class Picker(App[Departure | None]):
         # profile is read, so an error screen is still drawn in a theme.
         self.theme = self._theme
 
-        self.query_one(f"#{RUNTIME_BOX}", Vertical).border_title = "runtime"
-        self.query_one(f"#{AGENT_BOX}", Vertical).border_title = "agent"
-        self.query_one(f"#{MODEL_BOX}", Vertical).border_title = MODELS
-        self.query_one(f"#{MACHINE}", VerticalScroll).border_title = "machine"
-        self.query_one(f"#{RUN}", Vertical).border_title = "run"
+        # The titles are inset off the round corner by padding the string: a
+        # leading and trailing space lifts the word off the border either side.
+        self.query_one(f"#{RUNTIME_BOX}", Vertical).border_title = " runtime "
+        self.query_one(f"#{AGENT_BOX}", Vertical).border_title = " agent "
+        self.query_one(f"#{MODEL_BOX}", Vertical).border_title = f" {MODELS} "
+        self.query_one(f"#{MACHINE}", VerticalScroll).border_title = " machine "
+        self.query_one(f"#{RUN}", Vertical).border_title = " run "
 
         # Measured first and kept, so the machine panel is filled whatever the
         # report turns out to be — the machine's budget survives a runtime that

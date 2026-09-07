@@ -55,6 +55,9 @@ class HeaderBand(Vertical):
            left rule — which reads as unfinished on a light theme, where the
            block has nowhere to fade into. */
         margin: 1 2;
+        /* Logo to rule and rule to panels each one row: the padding lifts the
+           rule off the logo, the bottom margin drops the panels off the rule. */
+        padding: 0 0 1 0;
         border-bottom: solid $panel;
     }
 
