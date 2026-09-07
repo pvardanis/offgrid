@@ -2124,6 +2124,53 @@ and never asks the runtime what a file weighs.
 nothing-downloaded, and it cannot be computed without the fit it is named for.
 Nothing-downloaded stays, and is what the picker says today.
 
+## The weight comes from the SDK socket, on the port LM Studio assigns
+
+The probe above asked `GET /system` on `127.0.0.1:1234` and read
+`Unexpected endpoint` as the namespace not being served. It was the wrong
+address, not a missing surface: `1234` is the REST server, and LM Studio runs
+its SDK server on a separate port it assigns each launch and records in
+`~/.lmstudio/.internal/http-server.json` — the file the SDK itself reads to find
+it. On that port the `system` namespace answers, and the byte count the two
+missing columns need is there. So both columns have a source, and the row now
+says size and whether it fits.
+
+**The weight is read over the socket, joined onto the catalogue, keyed on the
+id.** The catalogue lists a model as `id` and the socket lists it as
+`modelKey`, and the two are the same string, so `read_catalogue` reads the REST
+catalogue as before and joins each `sizeBytes` onto the model it parsed. A
+weight is a second fact from a second surface, kept in its own module the way
+the catalogue's fetch and parse are.
+
+**A socket that will not answer leaves the weight `None`.** The catalogue is
+what a run depends on and it comes over REST; a missing weight costs a blank
+size column, not a refused read. A record that is not there, a socket that will
+not open or authenticate, or a frame that is not the answer all degrade to no
+weights. `Model.weight_bytes` is `None` for that, told apart from a stated zero
+by which surface said it, the way the two windows are.
+
+**The three dropped approaches stay dropped, for a better reason than before.**
+The socket answers the figure the runtime itself holds, so parsing a count out
+of the name, measuring the model directory, and shelling to `lms` are not
+weighed against a blank column any more — they are weighed against the runtime
+stating the number outright, which is what "never a number nobody published"
+asked for all along.
+
+**Nothing-that-fits is built.** It was shelved only because the fit it is named
+for could not be computed; the weight makes `fit.model_fits` a real comparison,
+so the picker now has its two empty states — nothing downloaded, and nothing
+downloaded that fits, the second pointing at the ranked table. A model too large
+is greyed and stepped over the way an absent agent is, and the reason goes under
+its row for the same cause: the cursor cannot land on it to be told anywhere
+else.
+
+**The machine a row is read against is the one the panel measures.**
+`measure_func` hands the picker the `Machine` itself rather than the panel's
+rendered lines; the picker fills the panel and weighs each model against the
+same object, so the budget a person reads and the budget a row is judged by
+cannot drift. A machine offgrid cannot size leaves every model reachable rather
+than judged against a machine there is not.
+
 ## A pairing is an agent and a model, and the runtime is listed rather than picked
 
 `Assembly` names the two the picker can move between. The runtimes list shows
