@@ -4,6 +4,7 @@ from offgrid.domain.sizing.fit import (
     CACHE_SHARE,
     get_params_that_fit,
     get_sizes_that_fit,
+    model_fits,
     weigh_model,
 )
 from offgrid.domain.sizing.machine import Machine
@@ -66,6 +67,35 @@ def test_weights_are_the_parameter_count_at_the_width_they_are_stored_at():
 
 def test_a_wider_build_of_one_model_weighs_proportionally_more():
     assert weigh_model(7 * BILLION, 8) == 2 * weigh_model(7 * BILLION, 4)
+
+
+def test_a_model_lighter_than_the_weight_budget_fits():
+    budget = machine().usable_bytes * (1 - CACHE_SHARE)
+    assert model_fits(machine(), int(budget) - 1)
+
+
+def test_a_model_heavier_than_the_weight_budget_does_not_fit():
+    budget = machine().usable_bytes * (1 - CACHE_SHARE)
+    assert not model_fits(machine(), int(budget) + GIB)
+
+
+def test_a_model_exactly_the_weight_budget_fits():
+    # Memory chosen so the budget lands on a whole number of bytes, which is
+    # what makes the model exactly at it a real boundary rather than one lost
+    # to truncation: 100e9 * 0.75 * (1 - 0.2) == 60e9.
+    exact = Machine(
+        chip="Apple M1", memory_bytes=100_000_000_000, wired_limit_bytes=None
+    )
+    budget = int(exact.usable_bytes * (1 - CACHE_SHARE))
+
+    assert model_fits(exact, budget)
+    assert not model_fits(exact, budget + 1)
+
+
+def test_raising_the_wired_limit_lets_a_heavier_model_fit():
+    weight = int(machine(wired_gib=32).usable_bytes * (1 - CACHE_SHARE)) + GIB
+    assert not model_fits(machine(wired_gib=32), weight)
+    assert model_fits(machine(wired_gib=56), weight)
 
 
 def test_sizes_are_offered_for_each_common_width():
