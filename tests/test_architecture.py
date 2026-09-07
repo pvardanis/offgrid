@@ -19,12 +19,14 @@ of its sight. Both are deliberate work to write, which the rule is not there to
 stop; what it catches is the import somebody adds without thinking.
 
 This is a regression guard, not a slice: it passes the day it is written. It
-was checked by taking a module out of the map, a package out of every layer, a
-layer out of the contract that names them all, a registry entry out of its
-dict, and by pointing a module at a concrete adapter — and watching each fail.
+was checked by taking a module out of the map, filing one under the wrong
+layer, a package out of every layer, a layer out of the contract that names
+them all, a registry entry out of its dict, and by pointing a module at a
+concrete adapter — and watching each fail.
 """
 
 import ast
+import re
 import tomllib
 from collections.abc import Callable
 from pathlib import Path
@@ -148,6 +150,20 @@ def _layers_in_the_tree() -> set[str]:
         for child in SOURCE.iterdir()
         if child.is_dir() and child.name != "__pycache__"
     }
+
+
+# The map's layer headings, each owning the top-level packages filed under it.
+# The map is read to find where a change goes, so a module named under the
+# wrong heading answers that question wrongly — which is worse than a missing
+# line, because it answers. Held here rather than derived, so that which
+# package is an adapter and which is the screen is a decision, not a heuristic.
+MAP_LAYERS = {
+    "**command line**": {"cli"},
+    "**the screen**": {"tui"},
+    "**adapters**": {"runtimes", "agents", "leaderboards"},
+    "**domain**": {"domain"},
+    "**shared**": {"shared"},
+}
 
 
 def _modules() -> set[str]:
@@ -338,16 +354,67 @@ def _below(base: type[BaseModel]) -> list[type[BaseModel]]:
     ]
 
 
-def test_the_doc_names_every_module_there_is():
-    missing = sorted(
-        module
-        for module in _modules()
-        if module.rsplit(".", 1)[-1] + ".py" not in DOC.read_text()
+def _module_map() -> dict[str, set[str]]:
+    """The filenames the map lists in fenced code, gathered per layer heading.
+
+    Only the blocks under **The modules** count, and only the `.py` names in
+    their fenced lines: a name in a sentence of prose, or under another layer's
+    heading, is not the map placing a module — it is the string happening to be
+    in the file. Names rather than raw text so a basename is matched whole, not
+    as a substring of a longer filename beside it.
+
+    :return: Each layer heading, mapped to the filenames listed beneath it.
+    """
+    section = DOC.read_text().split("## The modules")[1].split("\n## ")[0]
+
+    blocks: dict[str, set[str]] = {}
+    heading, fenced = None, False
+
+    for line in section.splitlines():
+        if line in MAP_LAYERS:
+            heading, fenced = line, False
+        elif line.startswith("```"):
+            fenced = not fenced
+        elif fenced and heading:
+            blocks.setdefault(heading, set()).update(re.findall(r"\w+\.py", line))
+
+    return blocks
+
+
+def _named_under_its_layer(module: str, blocks: dict[str, set[str]]) -> bool:
+    """Whether the map lists a module under the heading its package belongs to.
+
+    The layer is the module's top-level package — `offgrid.cli.binding` is the
+    command line — so a `cli/` module listed under **adapters** is not named
+    under its layer, however plainly the basename reads elsewhere.
+
+    :param module: The module to place, as import-linter names it.
+    :param blocks: The map's filenames, per layer heading, from `_module_map`.
+
+    :return: Whether the basename is listed under that layer.
+    """
+    package = module.split(".")[1]
+
+    heading = next(
+        (h for h, packages in MAP_LAYERS.items() if package in packages), None
     )
 
-    assert not missing, (
-        f"docs/architecture.md does not mention {missing}. Add each to the map "
-        "under the layer it belongs to."
+    basename = module.rsplit(".", 1)[-1] + ".py"
+
+    return heading is not None and basename in blocks.get(heading, set())
+
+
+def test_the_map_names_every_module_under_its_layer():
+    blocks = _module_map()
+
+    misplaced = sorted(
+        module for module in _modules() if not _named_under_its_layer(module, blocks)
+    )
+
+    assert not misplaced, (
+        f"docs/architecture.md does not name {misplaced} under the layer each "
+        "belongs to. Add each to the map's code block beneath the heading for "
+        "its package, or move it there from wherever it is now."
     )
 
 
