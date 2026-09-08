@@ -2645,3 +2645,57 @@ written one, and an empty one the picker handles.
 provenance are preview-time detail a person reads once; the way back is what
 they act on when they leave. It is already whole prose — the picker form and the
 by-id form — so the exit path reuses it rather than growing machinery.
+
+## Choosing a quantization variant is shelved: LM Studio will not load one headlessly
+
+A model downloaded at more than one quantization is a choice offgrid does not
+surface. LM Studio holds `google/gemma-4-e4b` as both `@4bit` and `@8bit`, shows
+the one identifier it defaults to, and holds whatever that resolves to; a person
+who wants the other variant has no way to say so. Letting them is naming what to
+run, not offgrid choosing between quants — the same act as naming a model — so it
+would belong where `model.identifier` already lives, and it does not cross the
+line that keeps offgrid from picking a model.
+
+The design was settled before the runtime refused it, and is recorded here so a
+revival does not relitigate it. The variant rides in the runtime's own
+identifier rather than a field of offgrid's. Every runtime offgrid targets —
+Ollama, llama.cpp, MLX, oMLX — names each installed quantization with its own
+identifier: a tag, a filename, a repo suffix. So the domain stays what it is, an
+opaque string it passes and never parses, and no quantization type enters it —
+LM Studio is the outlier, overloading one key across variants downloaded at
+once, and the survey is in `docs/research/runtime-quant-identifiers.md`. No
+glossary word for it either, because nothing in the code uses one until the hold
+works.
+
+It does not work. LM Studio shows the variants and will not load a chosen one.
+`GET /api/v1/models` lists them — `variants`, `selected_variant`, a structured
+`quantization` — over plain HTTP; `/api/v0/models`, which the catalogue parses
+today, collapses each model to its selected variant and is blind to the rest. But
+nothing loads a non-default variant through an interface offgrid drives:
+
+| Attempt against a two-variant model | Answer |
+|---|---|
+| `POST /api/v1/models/load` `{"model": "google/gemma-4-e4b@8bit"}` | `404`, not found in downloaded models |
+| the same with the concrete on-disk key `lmstudio-community/gemma-4-E4B-it-MLX-8bit` | `404`, not found |
+| `{"model": …, "variant": "8bit"}` or `{"quantization": "8bit"}` | refused, unrecognized key |
+| `{"model": "google/gemma-4-e4b"}`, the bare key | loads, always the `selected_variant` (4bit) |
+| `lms load "…@8bit"`, and the concrete key | no match; `lms load` has no variant flag |
+| the Python SDK's `load_new_instance(model_key="…@8bit")` | the websocket does not upgrade on the REST port |
+
+The one lever LM Studio exposes for which variant loads is `selected_variant`, a
+setting changed in the GUI with no headless setter. So offgrid could show the
+variants and never hold the chosen one, which is worse than not showing them.
+Moving the load off HTTP onto the SDK websocket might reach it, but that reverses
+the decision below that a load is a request needing no daemon or program on the
+PATH, and takes the LM Studio SDK as a dependency — its own question, not this
+one's. Flipping `selected_variant` and loading the bare key mutates the person's
+LM Studio past the end of the run, which the installation isolation forbids. So
+the feature waits on LM Studio taking a variant on its load endpoint, tracked in
+[#259](https://github.com/pvardanis/offgrid/issues/259), and the work already
+done — the identifier design, the outlier survey, the enumeration surface —
+waits with it, wasted by nothing.
+
+Measured against LM Studio 1.0.4+9, the build serving `/api/v1/models` with a
+`variants` array. Version-specific like the hosted-tools table above: a later
+build may add the parameter, so the way to know is to re-run the attempts, not
+to trust that they still fail.

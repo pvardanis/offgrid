@@ -539,6 +539,10 @@ it mid-session. Start OpenCode yourself to use what a project states.
 
 - **Choose a model.** `recommend` names the published models this machine can
   hold. Which of them suits your work, and downloading it, stay yours.
+- **Pick a quantization variant.** When a model is downloaded at more than one
+  quantization, `offgrid` holds whichever LM Studio defaults to. LM Studio
+  offers no way to load another without its window open, so neither does
+  `offgrid` — [#259](https://github.com/pvardanis/offgrid/issues/259).
 - **Search the web.** See [Agents](#agents). A replacement is planned.
 - **Enforce privacy — yet.** Today nothing stops you pointing a hosted agent at
   private work; `offgrid` keeps a run local but does not police the machine. A
