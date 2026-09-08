@@ -34,7 +34,7 @@ from offgrid.cli.run import run as run_command
 from offgrid.cli.setup import setup as setup_command
 from offgrid.domain.profile import DEFAULT_PATH, Profile, save_profile
 from offgrid.domain.running import last_saved_windows
-from offgrid.domain.sizing.machine import Machine, detect
+from offgrid.domain.sizing.machine import detect
 from offgrid.shared.exceptions import OffgridError, ProfileError
 from offgrid.shared.say import LOGGER, say_on_stderr, someone_is_at_a_terminal, tell
 from offgrid.shared.wording import DescribeModelDownload
@@ -177,12 +177,6 @@ def offgrid(ctx: typer.Context) -> None:
     # that is not the screen would pay it.
     from offgrid.tui.picker import Picker
 
-    # The machine panel shows what fits whether or not a profile is there: a
-    # stranger following the README meets their machine sized without a `setup`
-    # first, and its owner reads the same budget beside a run already assembled.
-    def measure() -> Machine:
-        return detect()
-
     screen = Picker(
         read_report_func=lambda: read_what_could_be_run(DEFAULT_PATH),
         save_func=save_the_assembled_profile,
@@ -191,7 +185,11 @@ def offgrid(ctx: typer.Context) -> None:
         read_store_func=lambda: last_saved_windows.read_last_saved_windows(
             last_saved_windows.DEFAULT_PATH
         ),
-        measure_func=measure,
+        # The machine panel shows what fits whether or not a profile is there: a
+        # stranger following the README meets their machine sized without a
+        # `setup` first, and its owner reads the same budget beside a run
+        # already assembled.
+        measure_func=detect,
         recommend_func=read_what_a_list_recommends,
         describe_download_func=_download_describer(),
     )
