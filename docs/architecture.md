@@ -174,7 +174,7 @@ runtimes/          one package per runtime
                    settled without reaching it
     config.py      what it is reached with, as a profile says it
     catalogue.py   what it has, and what it is holding
-    weights.py     what each download weighs, over the SDK socket
+    weighing.py    what each download weighs, over the SDK socket
     holding.py     taking a model into memory, and letting one go
 agents/            one package per agent
   claude_code/

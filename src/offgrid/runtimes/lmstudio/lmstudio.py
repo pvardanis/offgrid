@@ -15,7 +15,7 @@ from offgrid.runtimes.lmstudio.catalogue import (
 from offgrid.runtimes.lmstudio.config import LMStudioConfig
 from offgrid.runtimes.lmstudio.holding import load_model, unload_model
 from offgrid.runtimes.lmstudio.serving import DIALECTS
-from offgrid.runtimes.lmstudio.weights import attach_weights, read_weights
+from offgrid.runtimes.lmstudio.weighing import attach_weights, read_weights
 from offgrid.shared.exceptions import (
     ModelNotHeldError,
     ModelUnavailableError,
