@@ -367,7 +367,7 @@ What a runtime owes to count as serving a dialect fully is
 [issue #43](https://github.com/pvardanis/offgrid/issues/43).
 
 <details>
-<summary><b>LM Studio</b> — the endpoints used, and two behaviours worth knowing</summary>
+<summary><b>LM Studio</b> — the endpoints used, two behaviours worth knowing, and a quantization limit</summary>
 
 <br>
 
@@ -404,6 +404,15 @@ that gives it away.
 first: both copies stay in memory, and the catalogue lists each as its own
 entry with the second suffixed `:2`. Those ids are what the release takes, so
 letting go of a model means letting go of every one of them.
+
+A quantization limit sits beside them. Where you have downloaded a model at
+more than one quantization, `offgrid` loads whichever LM Studio has set as that
+model's default and cannot ask for another: the load endpoint takes the model's
+key and resolves the variant itself, with no parameter for it. To run a
+different one, set it as that model's default in LM Studio's own window;
+`offgrid` then holds what the key resolves to. Why this is LM Studio's limit
+rather than a missing feature — every other runtime names each variant with its
+own key — is [#259](https://github.com/pvardanis/offgrid/issues/259).
 
 </details>
 
@@ -539,10 +548,6 @@ it mid-session. Start OpenCode yourself to use what a project states.
 
 - **Choose a model.** `recommend` names the published models this machine can
   hold. Which of them suits your work, and downloading it, stay yours.
-- **Pick a quantization variant.** When a model is downloaded at more than one
-  quantization, `offgrid` holds whichever LM Studio defaults to. LM Studio
-  offers no way to load another without its window open, so neither does
-  `offgrid` — [#259](https://github.com/pvardanis/offgrid/issues/259).
 - **Search the web.** See [Agents](#agents). A replacement is planned.
 - **Enforce privacy — yet.** Today nothing stops you pointing a hosted agent at
   private work; `offgrid` keeps a run local but does not police the machine. A
