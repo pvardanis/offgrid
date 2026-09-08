@@ -98,6 +98,45 @@ def read_weights() -> WeightsByModelId:
     return weights
 
 
+def parse_weights(entries: list[dict]) -> WeightsByModelId:
+    """Read what each downloaded model weighs, keyed on the id it is joined by.
+
+    An entry with no ``modelKey``, or a ``sizeBytes`` that is not a whole number
+    of bytes, is left out rather than guessed at or carried: the join tolerates
+    a model the socket did not weigh, a weight nobody can be joined to is a
+    weight about nothing, and a size that is not an integer is schema drift that
+    must not reach the fit comparison, which would raise on it. A stated zero is
+    a whole number and stays.
+
+    :param entries: The socket's ``listDownloadedModels`` result, one dict per
+        model it has on disk.
+
+    :return: ``sizeBytes`` by ``modelKey``, for every entry stating both.
+    """
+    return {
+        entry["modelKey"]: entry["sizeBytes"]
+        for entry in entries
+        if entry.get("modelKey") and isinstance(entry.get("sizeBytes"), int)
+    }
+
+
+def attach_weights(models: list[Model], weights: WeightsByModelId) -> list[Model]:
+    """Join each model to what the socket said it weighs, where it said anything.
+
+    A model the socket did not weigh keeps the ``None`` the catalogue parsed it
+    with, so a weight that never arrived and a weight of zero stay told apart by
+    which surface said them.
+
+    :param models: The models the catalogue parsed, each weighing ``None``.
+    :param weights: What each model weighs, keyed on its identifier.
+
+    :return: The same models, each carrying its weight where one was joined.
+    """
+    return [
+        replace(model, weight_bytes=weights.get(model.identifier)) for model in models
+    ]
+
+
 def _socket_host() -> str:
     """Read the address of the SDK server LM Studio started this launch.
 
@@ -194,42 +233,3 @@ def _read_call_result(frame: str | bytes) -> list[dict]:
         )
 
     return result
-
-
-def parse_weights(entries: list[dict]) -> WeightsByModelId:
-    """Read what each downloaded model weighs, keyed on the id it is joined by.
-
-    An entry with no ``modelKey``, or a ``sizeBytes`` that is not a whole number
-    of bytes, is left out rather than guessed at or carried: the join tolerates
-    a model the socket did not weigh, a weight nobody can be joined to is a
-    weight about nothing, and a size that is not an integer is schema drift that
-    must not reach the fit comparison, which would raise on it. A stated zero is
-    a whole number and stays.
-
-    :param entries: The socket's ``listDownloadedModels`` result, one dict per
-        model it has on disk.
-
-    :return: ``sizeBytes`` by ``modelKey``, for every entry stating both.
-    """
-    return {
-        entry["modelKey"]: entry["sizeBytes"]
-        for entry in entries
-        if entry.get("modelKey") and isinstance(entry.get("sizeBytes"), int)
-    }
-
-
-def attach_weights(models: list[Model], weights: WeightsByModelId) -> list[Model]:
-    """Join each model to what the socket said it weighs, where it said anything.
-
-    A model the socket did not weigh keeps the ``None`` the catalogue parsed it
-    with, so a weight that never arrived and a weight of zero stay told apart by
-    which surface said them.
-
-    :param models: The models the catalogue parsed, each weighing ``None``.
-    :param weights: What each model weighs, keyed on its identifier.
-
-    :return: The same models, each carrying its weight where one was joined.
-    """
-    return [
-        replace(model, weight_bytes=weights.get(model.identifier)) for model in models
-    ]

@@ -4,8 +4,8 @@ import pathlib
 import pytest
 
 from offgrid.domain.running.model import Model
-from offgrid.runtimes.lmstudio import weights
-from offgrid.runtimes.lmstudio.weights import (
+from offgrid.runtimes.lmstudio import weighing
+from offgrid.runtimes.lmstudio.weighing import (
     attach_weights,
     parse_weights,
     read_weights,
@@ -95,7 +95,7 @@ def test_no_server_record_leaves_the_weights_empty(
 ):
     # A weight is not what a run depends on, so a launch whose SDK server was
     # never recorded degrades to no weights rather than raising.
-    monkeypatch.setattr(weights, "SERVER_RECORD", tmp_path / "not-there.json")
+    monkeypatch.setattr(weighing, "SERVER_RECORD", tmp_path / "not-there.json")
 
     assert read_weights() == {}
 
@@ -133,9 +133,9 @@ def _answer_over_the_socket(
     """Record a server and answer its socket with the given frames."""
     record = tmp_path / "http-server.json"
     record.write_text(json.dumps({"host": "127.0.0.1", "port": 1234}))
-    monkeypatch.setattr(weights, "SERVER_RECORD", record)
+    monkeypatch.setattr(weighing, "SERVER_RECORD", record)
     monkeypatch.setattr(
-        weights, "connect", lambda url, open_timeout: StubSocket(list(frames))
+        weighing, "connect", lambda url, open_timeout: StubSocket(list(frames))
     )
 
 
