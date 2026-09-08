@@ -62,7 +62,9 @@ class Choices:
     opens_on: str | None
 
 
-def unfit_reason(machine: Machine | None, model: Model, *, held: bool) -> str | None:
+def get_unfit_reason(
+    machine: Machine | None, model: Model, *, held: bool
+) -> str | None:
     """Say why a model will not fit this machine, or that it will.
 
     A model the runtime is already holding fits by demonstration — it is loaded
@@ -130,7 +132,7 @@ def describe_the_row(
     )
 
 
-def model_options(
+def get_model_options(
     report: WhatCouldBeRun,
     context_store: Mapping[str, int],
     edits: Mapping[str, int],
@@ -160,7 +162,7 @@ def model_options(
         return [Option(NOTHING_DOWNLOADED, disabled=True)]
 
     rows = [
-        _a_model_option(report, context_store, edits, machine, model)
+        _get_model_option(report, context_store, edits, machine, model)
         for model in order_models_held_first(report)
     ]
 
@@ -170,7 +172,7 @@ def model_options(
     return rows
 
 
-def _a_model_option(
+def _get_model_option(
     report: WhatCouldBeRun,
     context_store: Mapping[str, int],
     edits: Mapping[str, int],
@@ -188,7 +190,7 @@ def _a_model_option(
 
     :return: The row, disabled where the model is too large.
     """
-    reason = unfit_reason(machine, model, held=model.identifier in report.held)
+    reason = get_unfit_reason(machine, model, held=model.identifier in report.held)
 
     return Option(
         describe_the_row(report, context_store, edits, model, reason=reason),
