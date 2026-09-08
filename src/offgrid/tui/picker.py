@@ -57,9 +57,9 @@ from offgrid.tui.choices import (
     Choices,
     agent_choices,
     describe_the_row,
-    model_options,
+    get_model_options,
+    get_unfit_reason,
     runtime_choices,
-    unfit_reason,
 )
 from offgrid.tui.context_window_editor import WINDOW_EDITOR, ContextWindowEditor
 from offgrid.tui.departure import Departure
@@ -514,7 +514,7 @@ class Picker(App[Departure | None]):
                 self._context_store,
                 self._edits.windows,
                 model,
-                reason=unfit_reason(
+                reason=get_unfit_reason(
                     self._machine, model, held=identifier in report.held
                 ),
             ),
@@ -614,7 +614,7 @@ class Picker(App[Departure | None]):
         :param report: Everything that was read.
         """
         self._get_list().add_options(
-            model_options(
+            get_model_options(
                 report, self._context_store, self._edits.windows, self._machine
             )
         )
