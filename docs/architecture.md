@@ -1268,6 +1268,42 @@ offgrid uses. Documentation-derived fixtures would test the documentation.
 a mismatched parameter reports `protocol member ... is incompatible` — so
 structural conformance needs no test at all.
 
+## Local-agent security: two axes — designed
+
+Designed in the map [#261](https://github.com/pvardanis/offgrid/issues/261) and
+recorded in `docs/decisions.md`; this describes the target, not code that
+exists. It adds two things to the running layer, each a per-agent port slot the
+agent seam already carries `leaving` in.
+
+**A third leaving subject.** `running/leaving.py` gains a `WEB_SEARCH` `Subject`
+beside `HOSTED_TOOLS` and `TRANSCRIPT_SHARING` — **local web search** is egress
+like the others, not a way around being one. Off, its reading is `DENIED`
+(nothing registered); on, a new status `PERMITTED_BY_REQUEST`, which
+`require_nothing_leaves` passes through an explicit exception while still
+reporting it. That is the one place the guarantee softens from "nothing leaves"
+to "nothing leaves unconsented"; every other subject still refuses a run. The
+opt-in is a `web_search` profile key written in `configure()`, and both adapters
+register the on-machine executor (its delivery is #10). Denying the vendor's
+hosted WebSearch is untouched — the two are different subjects.
+
+**A boxing axis, sibling to leaving.** A new module `running/boxing.py` sits
+beside `leaving.py` in the running layer, the same shape: a `Guard` enum
+(`SECRET_READS`, `DESTRUCTIVE_DELETE`, `BRANCH_PUSH`), a `GuardReading`
+dataclass, and a report-only reader. The agent port gains a member
+`read_how_the_model_is_boxed_in()` that every adapter owes, answered per guard,
+and a conformance suite asks every adapter for every guard the way
+`tests/test_agent_leaving.py` does for subjects. Unlike leaving, boxing **never
+gates a run**: it is defence in depth over a trusted model, opt-in by a `harden`
+profile key, and its statuses (`BOXED`/`OPEN`/`UNEXPRESSIBLE`/`UNWRITTEN`) are
+`doctor` output only — `run` stays silent. Where an agent cannot express a guard
+(OpenCode has no path-scoped read guard, so its `SECRET_READS` is
+`UNEXPRESSIBLE`) the reading says so rather than offering nothing.
+
+`boxing` imports only `shared`, like `leaving`; the adapters import it; nothing
+of it points outward. It joins the running layer's module list and its
+`source_modules` contract in the commit that builds it, guarded by
+`tests/test_architecture.py`, not here.
+
 ## What is not decided
 
 - Where "do not reason before answering" lives (#40). offgrid never sends a
