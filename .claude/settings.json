@@ -48,7 +48,8 @@
     "sharp-edges@trailofbits": true,
     "property-based-testing@trailofbits": true,
     "mutation-testing@trailofbits": true,
-    "modern-python@trailofbits": true
+    "modern-python@trailofbits": true,
+    "audit-context-building@trailofbits": true
   },
   "extraKnownMarketplaces": {
     "trailofbits": {
