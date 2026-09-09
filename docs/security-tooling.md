@@ -26,7 +26,7 @@ surface for):
 
 | Plugin | What it does for offgrid |
 |---|---|
-| `static-analysis` | CodeQL + Semgrep over the Python, merged to SARIF. The centrepiece for taint / injection / unsafe-subprocess findings. Skills: `codeql`, `semgrep`, `sarif-parsing`. |
+| `static-analysis` | CodeQL + Semgrep over the Python, merged to SARIF — the main source of taint / injection / unsafe-subprocess findings. Skills: `codeql`, `semgrep`, `sarif-parsing`. |
 | `supply-chain-risk-auditor` | Risk report on PyPI dependencies — complements pip-audit / Dependabot, which match known CVEs rather than assess risk. |
 | `semgrep-rule-creator` | Turns a described vulnerability pattern into a custom Semgrep rule. |
 | `variant-analysis` | Sweeps the codebase for further instances of a bug already found. |
@@ -48,11 +48,8 @@ still has to be on the machine. `static-analysis` needs both:
   `PATH`. CodeQL builds a database before it queries, which is not free on a
   large tree; expect the first run to be slow.
 
-The dependency, testing and diff-review plugins (`supply-chain-risk-auditor`,
-`property-based-testing`, `mutation-testing`, `differential-review`,
-`semgrep-rule-creator`, `variant-analysis`, `fp-check`, `insecure-defaults`,
-`sharp-edges`) drive tooling offgrid already carries or the agent itself, and
-need nothing extra beyond what a given run asks for.
+Every other plugin drives tooling offgrid already carries or the agent itself,
+and needs nothing extra beyond what a given run asks for.
 
 ## How to run them
 
