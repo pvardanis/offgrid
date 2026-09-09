@@ -1281,9 +1281,12 @@ like the others, not a way around being one. Off, its reading is `DENIED`
 (nothing registered); on, a new status `PERMITTED_BY_REQUEST`, which
 `require_nothing_leaves` passes through an explicit exception while still
 reporting it. That is the one place the guarantee softens from "nothing leaves"
-to "nothing leaves unconsented"; every other subject still refuses a run. The
-opt-in is a `web_search` profile key written in `configure()`, and both adapters
-register the on-machine executor (its delivery is #10). Denying the vendor's
+to "nothing leaves unconsented"; every other subject still refuses a run.
+`doctor` shows the reading always; `run`, silent about the denied subjects,
+prints one line where web search is on, because a subject that leaves by consent
+is the one a run says out loud. The opt-in is a `web_search` profile key written
+in `configure()`, and both adapters register the on-machine executor (its
+delivery is #10). Denying the vendor's
 hosted WebSearch is untouched — the two are different subjects.
 
 **A boxing axis, sibling to leaving.** A new module `running/boxing.py` sits
