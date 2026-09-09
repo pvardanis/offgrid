@@ -34,7 +34,9 @@ than on this machine, and which therefore cannot run at all against a model
 held here. WebSearch is one: asked to search, the model emits the call, no
 server-side executor answers it, and the agent renders the call as a result.
 An invented answer, with no error. An agent is launched with its hosted tools
-denied.
+denied. This is the vendor's own WebSearch, run on its servers; **local web
+search**, which runs an executor on this machine, is a different thing and a
+subject of its own.
 
 **transcript sharing** — an agent publishing the session to its vendor's
 servers, as a link somebody can open or as a session that runs there outright.
@@ -42,15 +44,40 @@ The quieter failure of the two: the run works exactly as asked and the reading
 leaves the machine anyway. A run is refused rather than started where it is
 not settled.
 
-**what could leave this machine** — the two above together, which is what an
-agent is asked about before a run starts and what `doctor` reports. One reading
-each, because they are fixed in different places by different edits.
+**local web search** — a search executor that runs on this machine, denied by
+default and turned on only by a deliberate opt-in in the profile. Unlike a
+**hosted tool**, which runs on the vendor's servers and cannot answer here at
+all, this one answers — but the query still reaches a search engine to be
+answered, so it is a way off this machine like the others, not a way around
+being one. Off, nothing is registered and it stays denied; on, it leaves only
+because a person said it could.
+
+**what could leave this machine** — hosted tools, transcript sharing and local
+web search together, which is what an agent is asked about before a run starts
+and what `doctor` reports. One reading each, because they are fixed in different
+places by different edits. What a run holds to is that nothing leaves
+*unconsented*: two of the three are refused outright, and local web search
+leaves only where a person opted into it, which a run reports as it passes
+rather than refusing.
 
 **passthrough** — the arguments a person types after offgrid's own, handed to
 the agent unchanged. offgrid reads them as well as passing them: one decides
 whether the agent loads the settings offgrid wrote, and another runs the whole
 session on the vendor's servers, so a run is refused rather than started with
 something able to leave this machine.
+
+**how the model is boxed in** — the constraints a run puts between the model and
+this machine: reading a secret, deleting past recovery, pushing a branch. A
+separate axis from **what could leave this machine** — it narrows what the
+model, driven by the agent, can do here rather than watching an exit — and it is
+report-only, so it never refuses a run, only tells what `doctor` found. Turned
+on by an opt-in in the profile, and defence in depth over a model that is
+trusted: correctness is always on, this is not.
+
+**guard** — one line of how the model is boxed in: a named constraint and
+whether this agent's configuration expresses it. Some agents cannot express one
+at all, which a guard says rather than hides, and one an agent expresses but
+loosely is written and named as loose rather than counted as whole.
 
 **dialect** — the HTTP API shape a runtime serves and an agent expects,
 `anthropic` or `openai`. A runtime serves a set of them and an agent speaks

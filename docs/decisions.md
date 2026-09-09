@@ -2699,3 +2699,47 @@ Measured against LM Studio 1.0.4+9, the build serving `/api/v1/models` with a
 `variants` array. Version-specific like the hosted-tools table above: a later
 build may add the parameter, so the way to know is to re-run the attempts, not
 to trust that they still fail.
+
+## Local-agent security is config-first, on two axes
+
+The threat is what the *model*, driven by the agent, can do to this machine and
+the web — prompt-injection blast radius, arbitrary bash, unauthorised fetches.
+The model itself runs locally and is trusted. The answer is `settings.json` and
+hooks, which constrain the tools the agent exposes to the model. It splits into
+two axes, each recorded in its own ticket under the map
+[#261](https://github.com/pvardanis/offgrid/issues/261); the module map is in
+`docs/architecture.md` and the words in `CONTEXT.md`.
+
+**Boxing the model in is a report-only sibling to leaving, not a subject of it**
+([#265](https://github.com/pvardanis/offgrid/issues/265)). A new
+`running/boxing.py` mirrors `leaving.py` — a `Guard` enum, a `GuardReading`, a
+per-agent port member every adapter owes — but it never gates a run. Correctness
+is always on; defence in depth is opt-in by a `harden` profile key, and its
+readings are `doctor` output only. A guard an agent cannot express says so
+(`UNEXPRESSIBLE`, as OpenCode's `SECRET_READS` is) and one expressed loosely is
+named leaky rather than counted whole, because a guard that lies is worse than
+one that is honest about its reach.
+
+**Local web search is a third leaving subject, opt-in, and it softens the
+promise** ([#266](https://github.com/pvardanis/offgrid/issues/266)). A
+`WEB_SEARCH` `Subject` joins `leaving.py`: no on-machine option keeps the query
+here — a local executor moves the tool process local, not the query, which
+always egresses to a search engine
+([#263](https://github.com/pvardanis/offgrid/issues/263)) — so it is egress and
+belongs with the others. Off it is `DENIED`; on, a `PERMITTED_BY_REQUEST` status
+that `require_nothing_leaves` passes through an explicit exception. That is the
+one place the guarantee weakens from "nothing leaves" to "nothing leaves
+*unconsented*", written down because a softened promise a person is not told of
+is the quiet failure the whole axis exists to prevent. Denying the vendor's
+hosted WebSearch is untouched — a different subject.
+
+**Two things stay out of scope.** Stopping the vendor binary's own egress
+(telemetry, update checks) needs network-level isolation, which config cannot
+do; it waits for a deliberate isolation decision once the config layer is in.
+And Trail of Bits' analysis skills
+([#264](https://github.com/pvardanis/offgrid/issues/264)) are dev tooling
+([#268](https://github.com/pvardanis/offgrid/issues/268)), not a run-time
+feature — injecting them would break installation isolation.
+
+The evidence behind each thread lives in the ticket it links; this entry is the
+index, and the build is a handoff to `/tdd`.
