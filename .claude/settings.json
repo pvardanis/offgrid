@@ -36,5 +36,26 @@
         ]
       }
     ]
+  },
+  "enabledPlugins": {
+    "static-analysis@trailofbits": true,
+    "supply-chain-risk-auditor@trailofbits": true,
+    "semgrep-rule-creator@trailofbits": true,
+    "variant-analysis@trailofbits": true,
+    "fp-check@trailofbits": true,
+    "differential-review@trailofbits": true,
+    "insecure-defaults@trailofbits": true,
+    "sharp-edges@trailofbits": true,
+    "property-based-testing@trailofbits": true,
+    "mutation-testing@trailofbits": true,
+    "modern-python@trailofbits": true
+  },
+  "extraKnownMarketplaces": {
+    "trailofbits": {
+      "source": {
+        "source": "github",
+        "repo": "trailofbits/skills"
+      }
+    }
   }
 }
