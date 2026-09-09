@@ -595,6 +595,10 @@ When mutation-testing by hand, set `PYTHONDONTWRITEBYTECODE=1` — edits made
 within the same second as a restore leave stale `.pyc` files, and the suite
 then tests code that is no longer on disk.
 
+Security-analysis skills for hunting bugs in offgrid's own code are enabled at
+project scope and described in [`docs/security-tooling.md`](docs/security-tooling.md)
+— what is on, the binaries they need, and a run-order playbook for an audit pass.
+
 Measurements from a real machine live in [`benchmarks/`](benchmarks/). Commits
 follow [Conventional Commits](https://www.conventionalcommits.org/) with the
 modules as scopes. What was decided and why lives in `docs/decisions.md`; the
