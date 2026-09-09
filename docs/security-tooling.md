@@ -26,6 +26,7 @@ surface for):
 
 | Plugin | What it does for offgrid |
 |---|---|
+| `audit-context-building` | Reads the codebase a function at a time to understand it before any bug hunting — ToB's documented starting point. No binary. |
 | `static-analysis` | CodeQL + Semgrep over the Python, merged to SARIF — the main source of taint / injection / unsafe-subprocess findings. Skills: `codeql`, `semgrep`, `sarif-parsing`. |
 | `supply-chain-risk-auditor` | Risk report on PyPI dependencies — complements pip-audit / Dependabot, which match known CVEs rather than assess risk. |
 | `semgrep-rule-creator` | Turns a described vulnerability pattern into a custom Semgrep rule. |
@@ -44,9 +45,13 @@ Most of these skills teach the agent to drive an external binary; the binary
 still has to be on the machine. `static-analysis` needs both:
 
 - **Semgrep**: `uv tool install semgrep` (or `brew install semgrep`).
-- **CodeQL**: install the CodeQL CLI bundle from GitHub's releases and put it on
-  `PATH`. CodeQL builds a database before it queries, which is not free on a
-  large tree; expect the first run to be slow.
+- **CodeQL**: `brew install --cask codeql`, or
+  `gh extension install github/gh-codeql` (then `gh codeql install-stub`), or the
+  codeql-bundle from `github/codeql-action` releases put on `PATH`. CodeQL builds
+  a database before it queries, which is not free on a large tree; expect the
+  first run to be slow. On Apple Silicon, an exit code 137 mid-build is an
+  `arm64e`/`arm64` mismatch rather than a build failure — reach for Homebrew
+  arm64 tools or Rosetta before falling back to `build-mode=none`.
 
 Every other plugin drives tooling offgrid already carries or the agent itself,
 and needs nothing extra beyond what a given run asks for.
@@ -54,17 +59,27 @@ and needs nothing extra beyond what a given run asks for.
 ## How to run them
 
 They are skills, not `just` recipes: run them from a Claude Code session opened
-on this repo by asking for the work in plain language. Claude picks up the
-matching skill. Examples:
+on this repo by asking for the work in plain language — no security background
+needed, the skill drives the tool and explains what it finds. `static-analysis`
+presents its scan plan and waits for approval before running anything.
 
-- "Run a static-analysis scan of the codebase for injection and unsafe
-  subprocess use, and parse the SARIF." → `static-analysis`
-- "Audit our PyPI dependencies for supply-chain risk." →
-  `supply-chain-risk-auditor`
-- "Do a security diff review of this branch against main, with blast radius." →
-  `differential-review`
-- "Write a Semgrep rule for this pattern, then sweep for other instances." →
-  `semgrep-rule-creator`, then `variant-analysis`
+A run in order — the sequence is a suggested pipeline; ToB's one documented
+sequencing is "understand before hunting", which is step 0:
+
+| Step | Ask, in plain language | Skill | Needs |
+|---|---|---|---|
+| 0. Understand first | "Build audit context for this codebase." | `audit-context-building` | — |
+| 1. Dependencies | "Audit our PyPI dependencies for supply-chain risk." | `supply-chain-risk-auditor` | — |
+| 2. Config and footguns | "Check for insecure defaults and sharp edges." | `insecure-defaults`, `sharp-edges` | — |
+| 3. Main scan | "Run a static-analysis scan for injection and unsafe subprocess use." | `static-analysis` | Semgrep + CodeQL |
+| 4. Triage | "Triage these findings for false positives." | `fp-check` | — |
+| 5. Sweep for siblings | "Write a Semgrep rule for this bug and find other instances." | `semgrep-rule-creator`, `variant-analysis` | Semgrep |
+| Per-PR | "Security diff review of this branch against main." | `differential-review` | — |
+
+Steps 0–2 need no binaries; step 3 waits until Semgrep and CodeQL are installed
+(above). `property-based-testing`, `mutation-testing` and `modern-python` sit
+outside this pipeline — reach for them when hardening the parsers or
+cross-checking the project's standards, not as part of an audit pass.
 
 `claude plugin list` shows what is enabled; `claude plugin details <name>@trailofbits`
 shows a plugin's skills and its token cost. A plugin is enabled or disabled for
